@@ -1,4 +1,5 @@
 # from parcel import parcel
+import numpy as np
 
 
 class BldgCode:
@@ -7,14 +8,15 @@ class BldgCode:
         # First determine what code we need to pull based off of the location and year built:
         if parcel.location == "FL Panhandle":
             if parcel.year_built > 2001 & parcel.year_built < 2004:
-                self.edition = "2000 FBC"
+                self.edition = "2001 FBC"
                 print(self.edition)
 
         # Knowing the code edition, populate this parcel's code-informed attributes:
-        if self.edition == "2000 FBC":
-            # Derived parcel attributes:
+        if self.edition == "2001 FBC":
+            # Story height, building height, number of rooms
+            parcel.h_story = np.arange(7.5, 7.5 * parcel.num_stories, parcel.num_stories)
             parcel.h_bldg = parcel.num_stories * 7.5  # minimum ceiling height per room
-            print(parcel.h_bldg)
+            print(parcel.h_story, parcel.h_bldg)
 
 class NationalSurveyData:
 
