@@ -1,5 +1,6 @@
 # from parcel import parcel
 import numpy as np
+import random
 
 
 class BldgCode:
@@ -14,24 +15,38 @@ class BldgCode:
         # Knowing the code edition, populate this parcel's code-informed attributes:
         if self.edition == "2001 FBC":
             # Story height, building height, number of rooms
-            parcel.h_story = np.arange(7.5, 7.5 * parcel.num_stories, parcel.num_stories)
-            parcel.h_bldg = parcel.num_stories * 7.5  # minimum ceiling height per room
+            parcel.h_story = np.arange(7.5, 7.5 * parcel.num_stories, parcel.num_stories) #building elevation for each story
+            parcel.h_bldg = parcel.num_stories * 7.5  # minimum ceiling height per room is used to calculate height of building
+            parcel.num_rooms = 6 #assigning number of rooms based off of occupancy, structural system
             print(parcel.h_story, parcel.h_bldg)
 
-        # Filter through the predominant roof material options considering code-based rulesets:
-        if parcel.roof.pitch == 'flat':
-            roof_matls = ['built-up', 'concrete', 'metal surfacing', 'synthetic or rubber']
-            weights = [211, 0, 244, 78] #number of buildings in CBECS...ideally we would want this to get pulled from some sort of KB
-        elif parcel.roof.pitch == 'shallow':
-            roof_matls = ['shingles (not wood)','metal surfacing', 'wooden materials']
-            weights = [234, 244, 0]
-        elif parcel.roof.pitch == 'steeper':
-            roof_matls = ['shingles (not wood)','slate or tile shingles', 'wooden materials']
-            weights = [234, 66, 0]
-
-        # randomly select one of the predominant roof material options
-        # this will be written as follows:
-        # parcel.roof.type = random.choices(roof_matls, weights)
+        # Assign a roof pitch or predominant roof material given response from survey data (CBECS and RECS):
+        if 'type' in parcel.roof: #if the National survey data populates a 'type' key for the parcel
+            if parcel.roof['type'] == 'Built-up' or 'Concrete' or 'Synthetic or Rubber':
+                parcel.roof['pitch'] = 'flat' #roof slopes under 2:12
+            elif parcel.roof['type'] == 'Slate or tile':
+                parcel.roof['pitch'] = 'steeper' #roof slopes 4:12 and greater
+            elif parcel.roof['type'] == 'Metal Surfacing':
+                parcel.roof['pitch'] = "flat or shallow" #roof slopes up to 4:12
+            elif parcel.roof['type'] == 'Shingles (Not Wood)' or 'Wooden Materials':
+                parcel.roof['pitch'] = 'shallow or steeper' #roof slopes 2:12 and greater
+            else:
+                print('Roof type not supported')
+        else: #Assign the roof type (national survey data) using the roof pitch and code-informed rulesets
+            if parcel.roof['pitch'] == 'flat':
+                roof_matls = ['Builtup', 'Concrete', 'Metal Surfacing', 'Synthetic or Rubber']
+                roof_weights = [211, 0, 244, 78]
+                parcel.roof['type'] = random.choices(roof_matls, roof_weights)
+            elif parcel.roof['pitch'] == 'shallow':
+                roof_matls = ['Shingles (not wood)','Metal Surfacing', 'Wooden Materials']
+                roof_weights = [234, 244, 0]
+                parcel.roof['type'] = random.choices(roof_matls, roof_weights)
+            elif parcel.roof['pitch'] == 'steeper':
+                roof_matls = ['Shingles (not wood)', 'Slate or Tile', 'Wooden Materials']
+                roof_weights = [234, 66, 0]
+                parcel.roof['type'] = random.choices(roof_matls, roof_weights)
+            else:
+                print('Roof pitch not supported')
 
 
 
