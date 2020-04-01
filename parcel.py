@@ -1,4 +1,4 @@
-from bldg_code import BldgCode
+import bldg_code
 import numpy as np
 
 class Parcel:
@@ -18,10 +18,17 @@ class Parcel:
         else:
             self.is_comm = False
 
-        # Derived quantities from national survey data: Commercial Buildings Energy Consumption Survey
-        print(self.yr_built)
-
+        # 2) Define additional attributes regarding the building location:
         self.location_data(self)
+
+
+        # Derived quantities from national survey data: Commercial Buildings Energy Consumption Survey
+        bldg_code.NationalSurveyData(self)
+
+        #Here we would want to first ask for 1) predominant exterior wall material 2) roof characteristics 3) window and interior lighting features
+        #Then depending on what kind of roof we get, we can use the code-based rulesets to inform which attributes from "predominant roof material" we can use.
+
+
 
         # Pull this parcel's code-informed attributes:
         #self.bldg_code = BldgCode(self)
