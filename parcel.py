@@ -1,4 +1,5 @@
 import bldg_code
+# from NatlSurveyData import census_division
 import numpy as np
 
 class Parcel:
@@ -11,12 +12,16 @@ class Parcel:
         self.yr_built = yr_built
         self.address = address
         self.sq_ft = sq_ft
-        self.walls = ()
-        self.roof = ()
-        self.floors = ()
-        self.struct_sys = ()
-        self.ceilings = ()
-        self.footprint = () # in the case of parcel models, the footprint is going to be assumed as regular: Let's see if we can find data on this
+        self.walls = {}
+        self.roof = {}
+        self.floors = {}
+        self.struct_sys = {}
+        self.ceilings = {}
+        self.footprint = {} # in the case of parcel models, the footprint is going to be assumed as regular: Let's see if we can find data on this
+
+        #Let's say I wanted to add something to my empty dictionary for the walls:
+        self.walls['matls'] = 'concrete'
+
 
         # Using basic building attributes, set up building metavariables:
         # 1) Tag the building as "commercial" or "not commercial"
@@ -30,7 +35,7 @@ class Parcel:
 
 
         # Derived quantities from national survey data: Commercial Buildings Energy Consumption Survey
-        bldg_code.NationalSurveyData(self)
+        #NatlSurveyData.census_division(self)
 
         #Here we would want to first ask for 1) predominant exterior wall material 2) roof characteristics 3) window and interior lighting features
         #Then depending on what kind of roof we get, we can use the code-based rulesets to inform which attributes from "predominant roof material" we can use.
@@ -55,10 +60,7 @@ class Parcel:
             parcel.county = 'Bay'
         else:
             print('County and State Information not currently supported')
-        # Census division for CBECS:
-        if parcel.state == 'FL' or 'DE' or 'DC' or 'GA' or 'MD' or 'NC' or 'SC' or 'VA' or 'WV':
-            parcel.census_div = 'South Atlantic'
-            print(parcel.census_div)
 
-test = Parcel ('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401")
+
+test = Parcel ('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401",'3200')
 #print(test.bldg_code)

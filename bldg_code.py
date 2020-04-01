@@ -21,46 +21,28 @@ class BldgCode:
         # Filter through the predominant roof material options considering code-based rulesets:
         if parcel.roof.pitch == 'flat':
             roof_matls = ['built-up', 'concrete', 'metal surfacing', 'synthetic or rubber']
-            weights = [211, 0, 244, 78] #number of buildings in CBECS
+            weights = [211, 0, 244, 78] #number of buildings in CBECS...ideally we would want this to get pulled from some sort of KB
         elif parcel.roof.pitch == 'shallow':
-            roof_matls = ['asphalt, fiberglass, or other shingles','metal surfacing', 'wooden materials (including shingles']
+            roof_matls = ['shingles (not wood)','metal surfacing', 'wooden materials']
+            weights = [234, 244, 0]
         elif parcel.roof.pitch == 'steeper':
-            roof_matls = ['asphalt, fiberglass, or other shingles','slate or tile shingles', 'wooden materials (including shingles']
+            roof_matls = ['shingles (not wood)','slate or tile shingles', 'wooden materials']
+            weights = [234, 66, 0]
 
         # randomly select one of the predominant roof material options
+        # this will be written as follows:
+        # parcel.roof.type = random.choices(roof_matls, weights)
 
-class NationalSurveyData:
 
-    def __init__(self, parcel):
-        # Check what survey this parcel needs data from:
-        if parcel.is_comm:
-            self.survey = 'CBECS'
-        else:
-            self.survey = 'Requires nonengineered residential data'
 
-        # Select the survey year:
-        if self.survey == 'CBECS':
-            if parcel.yr_built > 2012 and parcel.yr_built <= 2018:
-                self.data_yr = 2018
-            elif parcel.yr_built <= 2012 and parcel.yr_built > 2003:
-                self.data_yr = 2012
-            elif parcel.yr_built <= 2003 and parcel.yr_built > 1999:
-                self.data_yr = 2003
-            elif parcel.yr_built <= 1999 and parcel.yr_built > 1995:
-                self.data_yr = 1999
-            elif parcel.yr_built <= 1995 & parcel.yr_built > 1992:
-                self.data_yr = 1995
-            elif parcel.yr_built <= 1992 & parcel.yr_built > 1989:
-                self.data_yr = 1992
-            elif parcel.yr_built <= 1989 & parcel.yr_built > 1986:
-                self.data_yr = 1989
-            elif parcel.yr_built <= 1986 & parcel.yr_built > 1983:
-                self.data_yr = 1986
-            elif parcel.yr_built <= 1983 & parcel.yr_built > 1979:
-                self.data_yr = 1983
-            elif parcel.yr_built <= 1979:
-                self.data_yr = 1979
-            print(self.survey, self.data_yr)
+
+
+#What we would like this class to do is define all of the relevant building parameters:
+#Predominant exterior wall material
+#roof pitch
+#roof type
+#
+
 
 # test = parcel ('12345', 5, 'Hotel', 2002, 14, 15, "FL Panhandle")
 # test2 = bldg_code(test)
