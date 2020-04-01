@@ -14,14 +14,14 @@ class NatlSurveyData:
 
         # Determine the census division for the CBECS and RECS surveys:
         if self.survey == 'CBECS' or 'RECS':
-            self.census_div(parcel)
+            self.census_div = self.census_division(parcel)
 
         #Now call the function that populates building attributes using the CBECS:
         if self.survey == 'CBECS':
             self.CBECS(self.census_div, parcel)
 
 
-    def census_div(self, parcel):
+    def census_division(self, parcel):
         # Census division for CBECS/RECS:
         if parcel.state == 'FL' or 'DE' or 'DC' or 'GA' or 'MD' or 'NC' or 'SC' or 'VA' or 'WV':
             census_div = 'South Atlantic'
@@ -56,6 +56,8 @@ class NatlSurveyData:
                              'Slate or Tile']
                 roof_weights = [211, 234, 244, 78, 66]
                 parcel.roof['type'] = random.choices(roof_type, roof_weights)
+            else:
+                print('census division not currently supported')
         elif parcel.yr_built <= 1999 and parcel.yr_built > 1995:
             self.data_yr = 1999
         elif parcel.yr_built <= 1995 & parcel.yr_built > 1992:
