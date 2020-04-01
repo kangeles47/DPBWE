@@ -3,13 +3,20 @@ import numpy as np
 
 class Parcel:
 
-    def __init__(self,PID, num_stories, occupancy, yr_built, address):
-        # First define all building attributes available from building tax data
+    def __init__(self,PID, num_stories, occupancy, yr_built, address, sq_ft):
+        # First define all building attributes available from building tax data and make placeholders for building components
         self.PID = PID
         self.num_stories = num_stories
         self.occupancy = occupancy
         self.yr_built = yr_built
         self.address = address
+        self.sq_ft = sq_ft
+        self.walls = ()
+        self.roof = ()
+        self.floors = ()
+        self.struct_sys = ()
+        self.ceilings = ()
+        self.footprint = () # in the case of parcel models, the footprint is going to be assumed as regular: Let's see if we can find data on this
 
         # Using basic building attributes, set up building metavariables:
         # 1) Tag the building as "commercial" or "not commercial"
