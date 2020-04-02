@@ -53,8 +53,40 @@ class BldgCode:
         else:
             print('Code edition/national survey currently not supported')
 
+    def assign_masonry(self, parcel):
+        # Assigns the wall width and determines necessary additional lateral support for the building considering its geometry:
+        parcel.walls.ext['thickness'] = 8/12 #ft
 
+        if parcel.walls.ext['loadbearing']:
+            if parcel.walls.ext['construction'] == 'solid or solid grouted':
+                max_lratio = 20
+            else:
+                max_lratio = 18
+        else:
+            if parcel.walls.subtype == 'nonbearing wall':
+                max_lratio = 18
+            else:
+                max_lratio = 36
 
+        #Based off of the maximum lateral support ratio, adjust the story height and add in additional walls:
+        #for each story, calculate the height to width ratio of the masonry walls on that floor and if the ratio is bigger than allowed, reduce the height of the wall.
+        allowed = max_lratio*parcel.walls.ext['thickness']
+
+        # First check the wall heights:
+        if parcel.walls.ext['height'] > allowed:
+            parcel.walls.ext['height'] = allowed
+        else:
+            pass
+
+        # Now check the wall lengths:
+        if parcel.walls.ext['length'] > allowed:
+            #If the wall length needs to be reduced, then a new wall spacing is required:
+            #Could always assign a longer number of placeholders than needed based off of the smaller ratio...if you have a bigger ratio, then you would have less walls
+            #We would then need to divide by something
+            parcel.walls.ext['length'] = allowed
+            # Since the length of the walls had to be reduced
+        else:
+            pass
 
 
 #What we would like this class to do is define all of the relevant building parameters:
