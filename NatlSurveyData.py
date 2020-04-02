@@ -1,25 +1,25 @@
-from parcel import Parcel
+#from BIM import Parcel
 import random
 
 class NatlSurveyData:
 
-    def __init__(self, parcel):
+
+    def run(self, parcel):
         # Check what survey this parcel needs data from:
         if parcel.is_comm:
-            self.survey = 'CBECS'
+            survey = 'CBECS'
         else:
-            self.survey = 'RECS - currently not supported'
+            survey = 'RECS - currently not supported'
 
-        print(self.survey)
+        print(survey)
 
         # Determine the census division for the CBECS and RECS surveys:
-        if self.survey == 'CBECS' or 'RECS':
-            self.census_div = self.census_division(parcel)
+        if survey == 'CBECS' or 'RECS':
+            census_div = self.census_division(parcel)
 
         #Now call the function that populates building attributes using the CBECS:
-        if self.survey == 'CBECS':
-            self.CBECS(self.census_div, parcel)
-
+        if survey == 'CBECS':
+            self.CBECS(census_div, parcel)
 
     def census_division(self, parcel):
         # Census division for CBECS/RECS:
@@ -75,5 +75,5 @@ class NatlSurveyData:
         print(self.survey, self.data_yr)
 
 #Let's play with the file:
-test = Parcel('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401",'3200')
-b = NatlSurveyData(test)
+#test = Parcel('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401",'3200')
+#b = NatlSurveyData(test)
