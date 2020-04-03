@@ -16,7 +16,7 @@ class BIM:
         self.sq_ft = sq_ft
         self.h_bldg = None #every building will have a height, building model fidelity will determine actual value
         self.walls = []
-        self.roof = []
+        self.roof = None
         self.floors = []
         self.struct_sys = []
         self.ceilings = []

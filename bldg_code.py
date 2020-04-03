@@ -1,6 +1,7 @@
 # from parcel import parcel
 import numpy as np
 import random
+from assembly import Roof
 
 
 class BldgCode:
@@ -23,7 +24,9 @@ class BldgCode:
             print(parcel.h_story, parcel.h_bldg)
             #self.roof_survey_data(self.edition, parcel) #populate missing data for the parcel from national survey (CBECS)
 
-    def roof_survey_data(self, edition, parcel):
+    def roof_attributes(self, edition, parcel):
+
+        #Populate roof attributes for this instance (parcel)
         if edition == "2001 FBC":
             # Assign a roof pitch or predominant roof material given response from survey data (CBECS and RECS):
             if 'type' in parcel.roof: #if the National survey data populates a 'type' key for the parcel
