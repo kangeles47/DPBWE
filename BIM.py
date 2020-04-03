@@ -1,4 +1,6 @@
 import numpy as np
+from math import sqrt
+from bldg_code import BldgCode
 from NatlSurveyData import NatlSurveyData
 
 class BIM:
@@ -18,7 +20,7 @@ class BIM:
         self.floors = []
         self.struct_sys = []
         self.ceilings = []
-        self.footprint = []  # in the case of parcel models, the footprint is going to be assumed as regular: Let's see if we can find data on this
+        self.footprint = {'type': None, 'geometry': None}  # in the case of parcel models, the footprint is going to be assumed as regular: Let's see if we can find data on this
 
         # Using basic building attributes, set up building metavariables:
         # 1) Tag the building as "commercial" or "not commercial"
@@ -50,7 +52,14 @@ class Parcel(BIM):
 
     def __init__(self, PID, num_stories, occupancy, yr_built, address, sq_ft):
         BIM.__init__(self, PID, num_stories, occupancy, yr_built, address, sq_ft) #Bring in all of the attributes that are defined in the BIM class for the parcel model
-        # Define any building attributes that are specific to parcel models
+        # Define building-level attributes that are specific to parcel models
+        self.footprint['type'] = 'regular'
+        area = self.sq_ft/self.num_stories
+        self.footprint['geometry'] = {'area': area, 'base': sqrt(area), 'length': sqrt(area)} #can go back and revisit this assignment with Tracy later
+        # Create an instance of the BldgCode class and populate building-level code-informed attributes for the parcel:
+        code_informed = BldgCode(self)
+
+
         #Populate instance attributes informed by national survey data:
         survey_data = NatlSurveyData() #create an instance of the survey data class
         survey_data.run(self) #populate the parcel information
@@ -58,7 +67,7 @@ class Parcel(BIM):
 
 
 
-test = Parcel('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401",'3200')
+test = Parcel('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401", 3200)
 print(test.is_comm)
 print(test.state)
 print(test.h_bldg)

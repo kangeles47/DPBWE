@@ -7,19 +7,21 @@ class BldgCode:
 
     def __init__(self, parcel):
         # First determine what code we need to pull based off of the location and year built:
-        if parcel.location == "FL":
-            if parcel.year_built > 2001 & parcel.year_built < 2004:
+        if parcel.state == "FL":
+            if parcel.yr_built > 2001 & parcel.yr_built < 2004:
                 self.edition = "2001 FBC"
                 print(self.edition)
+        self.bldg_attributes(self.edition, parcel)
 
-        # Knowing the code edition, populate this parcel's code-informed attributes:
-        if self.edition == "2001 FBC":
+    def bldg_attributes(self, edition, parcel):
+        # Knowing the code edition, populate this building-level code-informed attributes for the parcel:
+        if edition == "2001 FBC":
             # Story height, building height, number of rooms
             parcel.h_story = np.arange(7.5, 7.5 * parcel.num_stories, parcel.num_stories) #building elevation for each story
             parcel.h_bldg = parcel.num_stories * 7.5  # minimum ceiling height per room is used to calculate height of building
             parcel.num_rooms = 6 #assigning number of rooms based off of occupancy, structural system
             print(parcel.h_story, parcel.h_bldg)
-            self.roof_survey_data(self.edition, parcel) #populate missing data for the parcel from national survey (CBECS)
+            #self.roof_survey_data(self.edition, parcel) #populate missing data for the parcel from national survey (CBECS)
 
     def roof_survey_data(self, edition, parcel):
         if edition == "2001 FBC":
