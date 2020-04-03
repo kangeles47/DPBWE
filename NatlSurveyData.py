@@ -48,7 +48,9 @@ class NatlSurveyData:
 
         if len(parcel.walls) == 0:
             # Create a preliminary set of exterior walls per floor:
-            parcel.walls = Wall()
+            ext_wall = Wall(parcel)
+            ext_wall.is_exterior = 1
+
 
         # Determine survey year and populate type attributes:
         if parcel.yr_built > 2012 and parcel.yr_built <= 2018:
@@ -63,16 +65,16 @@ class NatlSurveyData:
                 roof_type = ['Builtup', 'Shingles (Not Wood)', 'Metal Surfacing', 'Synthetic or Rubber',
                              'Slate or Tile']
                 roof_weights = [211, 234, 244, 78, 66]
-                parcel.roof['type'] = random.choices(roof_type, roof_weights)
+                parcel.roof.cover = random.choices(roof_type, roof_weights)
                 # Wall attributes:
                 wall_type = ['Brick, Stone, or Stucco', 'Concrete (Block or Poured)', 'Concrete Panels',
                              'Siding or shingles', 'Metal Panels']
                 wall_weights = [418, 175, 16, 117, 136]
-                parcel.walls['type'] = random.choices(wall_type, wall_weights)
+                parcel.walls.type = random.choices(wall_type, wall_weights)
                 # Window attributes
                 window_type = ['Multipaned windows', 'Tinted Window Glass', 'Reflective Window Glass']
                 window_weights = [379, 294, 53]
-                parcel.windows['type'] = random.choices(window_type, window_weights)
+                parcel.windows.type = random.choices(window_type, window_weights)
 
             else:
                 print('census division not currently supported')
