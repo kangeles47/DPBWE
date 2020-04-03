@@ -13,7 +13,7 @@ class Parcel:
         self.address = address
         self.sq_ft = sq_ft
         self.walls = {}
-        self.roof = {}
+        self.roof_assem = {}
         self.floors = {}
         self.struct_sys = {}
         self.ceilings = {}

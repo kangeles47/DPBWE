@@ -40,16 +40,21 @@ class NatlSurveyData:
     def CBECS(self, census_div, parcel):
 
         # Generate instances of each assembly type supported by survey data: roof, exterior wall, window
-        if len(parcel.roof) == 0:
+        if len(parcel.roof_assem) == None:
             # Create a roof instance for the parcel:
             parcel.roof = Roof(parcel)
         else:
             print('A roof is already defined for this parcel')
 
-        if len(parcel.walls) == 0:
+        if len(parcel.walls) == 0 and parcel.footprint['type'] == 'regular':
             # Create a preliminary set of exterior walls per floor:
-            ext_wall = Wall(parcel)
-            ext_wall.is_exterior = 1
+            parcel.walls = np.zeros(4, parcel.num_stories)
+
+            for ext_wall in parcel.walls:
+                parcel.walls[ext_wall] = Wall(parcel) #Add a wall instance to each placeholder
+                parcel.walls[ext_wall].is_exterior = 1
+                parcel.walls[ext_wall].height = parcel.h_story
+                parcel.walls[ext_wall].base_floor = 0
 
 
         # Determine survey year and populate type attributes:
