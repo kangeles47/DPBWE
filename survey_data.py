@@ -8,18 +8,18 @@ class SurveyData:
     def run(self, parcel):
         # Check what survey this parcel needs data from:
         if parcel.is_comm:
-            survey = 'CBECS'
+            self.survey = 'CBECS'
         else:
-            survey = 'RECS - currently not supported'
+            self.survey = 'RECS - currently not supported'
 
-        print(survey)
+        print(self.survey)
 
         # Determine the census division for the CBECS and RECS surveys:
-        if survey == 'CBECS' or 'RECS':
+        if self.survey == 'CBECS' or 'RECS':
             census_div = self.census_division(parcel)
 
         #Now call the function that populates building attributes using the CBECS:
-        if survey == 'CBECS':
+        if self.survey == 'CBECS':
             self.CBECS(census_div, parcel)
 
     def census_division(self, parcel):
@@ -51,7 +51,8 @@ class SurveyData:
                 roof_type = ['Builtup', 'Shingles (Not Wood)', 'Metal Surfacing', 'Synthetic or Rubber',
                              'Slate or Tile']
                 roof_weights = [211, 234, 244, 78, 66]
-                parcel.roof.cover = random.choices(roof_type, roof_weights)
+                roof_choice = random.choices(roof_type, roof_weights)
+                parcel.roof.cover = roof_choice[0]
 
                 # Wall attributes:
                 wall_type = ['Brick, Stone, or Stucco', 'Concrete (Block or Poured)', 'Concrete Panels',
@@ -66,7 +67,7 @@ class SurveyData:
                 # Window attributes
                 window_type = ['Multipaned windows', 'Tinted Window Glass', 'Reflective Window Glass']
                 window_weights = [379, 294, 53]
-                parcel.windows.type = random.choices(window_type, window_weights)
+                #parcel.windows.type = random.choices(window_type, window_weights)
 
             else:
                 print('census division not currently supported')

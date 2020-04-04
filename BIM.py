@@ -61,10 +61,11 @@ class Parcel(BIM):
         code_informed = BldgCode(self)
         #Generate a preliminary set of assemblies:
         self.prelim_assem(self)
-
         #Populate instance attributes informed by national survey data:
         survey_data = SurveyData() #create an instance of the survey data class
         survey_data.run(self) #populate the parcel information
+        # Fill in code-informed assembly-level information
+        code_informed.roof_attributes(code_informed.edition, self, survey_data.survey)
 
     def prelim_assem(self, parcel):
         #IF statements here may be unnecessary but keeping them for now
