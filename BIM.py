@@ -1,6 +1,6 @@
 import numpy as np
 from math import sqrt
-from assembly import RoofAssem, WallAssem
+from assembly import RoofAssem, WallAssem, FloorAssem, CeilingAssem
 from bldg_code import BldgCode
 from survey_data import SurveyData
 
@@ -67,6 +67,7 @@ class Parcel(BIM):
         survey_data.run(self) #populate the parcel information
 
     def prelim_assem(self, parcel):
+        #IF statements here may be unnecessary but keeping them for now
         # Generate preliminary instances of walls - 4 for every floor
         if len(parcel.walls) == 0 and parcel.footprint['type'] == 'regular':
             # Create placeholders: This will give one list per story
@@ -82,13 +83,27 @@ class Parcel(BIM):
                     ext_wall.base_floor = lst
                     ext_wall.top_floor = lst+1
                     parcel.walls[index].append(ext_wall) #Add a wall instance to each placeholder
-        # Generate instances of each assembly type supported by survey data: roof, exterior wall, window
+        # Generate roof instance
         if parcel.roof == None:
             # Create a roof instance for the parcel:
             parcel.roof = RoofAssem(parcel)
         else:
             print('A roof is already defined for this parcel')
 
+        #Generate floor and ceiling instances:
+        if len(parcel.floors) == 0 and len(parcel.ceilings) == 0:
+            # Create placeholders: This will give one list per story
+            for num in range(0, parcel.num_stories - 1):
+                empty_floor = []
+                empty_ceiling = []
+                parcel.floors.append(empty_floor)
+                parcel.ceilings.append(empty_ceiling)
+
+            for idx in range(0, len(parcel.floors)): #for every list
+                new_floor = FloorAssem(parcel)
+                new_ceiling = CeilingAssem(parcel)
+                parcel.floors[idx].append(new_floor) #Add a floor instance to each placeholder
+                parcel.ceilings[idx].append(new_ceiling) #Add a ceiling instance to each placeholder
 
 test = Parcel('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401", 3200)
 print(test.is_comm)

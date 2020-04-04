@@ -31,14 +31,14 @@ class RoofAssem(Assembly):
         self.height = None
 
 
-class Floor(Assembly):
+class FloorAssem(Assembly):
     def __init__(self, bldg_model):
         Assembly.__init__(self)
         # Add in roof instance attributes:
         self.is_loadbearing = True
 
 
-class Ceiling(Assembly):
+class CeilingAssem(Assembly):
     def __init__(self, bldg_model):
         Assembly.__init__(self)
         # Add in roof instance attributes:
