@@ -11,7 +11,7 @@ class Assembly:
         # data = dict.fromkeys(['type', 'is_loadbearing', 'length', 'materials','thicknesses', 'location'])
 
 
-class Wall(Assembly):
+class WallAssem(Assembly):
     def __init__(self, bldg_model):
         Assembly.__init__(self)
         # Add in wall instance attributes:
@@ -22,7 +22,7 @@ class Wall(Assembly):
         self.top_floor = None
 
 
-class Roof(Assembly):
+class RoofAssem(Assembly):
     def __init__(self, bldg_model):
         Assembly.__init__(self)
         # Add in roof instance attributes:

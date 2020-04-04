@@ -1,7 +1,8 @@
 import numpy as np
 from math import sqrt
+from assembly import RoofAssem, WallAssem
 from bldg_code import BldgCode
-from NatlSurveyData import NatlSurveyData
+from survey_data import SurveyData
 
 class BIM:
 
@@ -58,13 +59,35 @@ class Parcel(BIM):
         self.footprint['geometry'] = {'area': area, 'base': sqrt(area), 'length': sqrt(area)} #can go back and revisit this assignment with Tracy later
         # Create an instance of the BldgCode class and populate building-level code-informed attributes for the parcel:
         code_informed = BldgCode(self)
-
+        #Generate a preliminary set of assemblies:
+        self.prelim_assem(self)
 
         #Populate instance attributes informed by national survey data:
-        survey_data = NatlSurveyData() #create an instance of the survey data class
+        survey_data = SurveyData() #create an instance of the survey data class
         survey_data.run(self) #populate the parcel information
-        a=1
 
+    def prelim_assem(self, parcel):
+        # Generate preliminary instances of walls - 4 for every floor
+        if len(parcel.walls) == 0 and parcel.footprint['type'] == 'regular':
+            # Create placeholders: This will give one list per story
+            for number in range(0, parcel.num_stories-1):
+                empty = []
+                parcel.walls.append(empty)
+
+            for lst in range(0, 4): #starting with four walls per floor
+                for index in range(0, len(parcel.walls)): #for every list (story)
+                    ext_wall = WallAssem(parcel)
+                    ext_wall.is_exterior = 1
+                    ext_wall.height = parcel.h_story[0]
+                    ext_wall.base_floor = lst
+                    ext_wall.top_floor = lst+1
+                    parcel.walls[index].append(ext_wall) #Add a wall instance to each placeholder
+        # Generate instances of each assembly type supported by survey data: roof, exterior wall, window
+        if parcel.roof == None:
+            # Create a roof instance for the parcel:
+            parcel.roof = RoofAssem(parcel)
+        else:
+            print('A roof is already defined for this parcel')
 
 
 test = Parcel('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401", 3200)

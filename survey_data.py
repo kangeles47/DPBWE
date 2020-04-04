@@ -1,8 +1,8 @@
 #from BIM import Parcel
+import numpy as np
 import random #switch later
-from assembly import Roof, Wall
 
-class NatlSurveyData:
+class SurveyData:
 
 
     def run(self, parcel):
@@ -38,25 +38,6 @@ class NatlSurveyData:
 
 
     def CBECS(self, census_div, parcel):
-
-        # Generate instances of each assembly type supported by survey data: roof, exterior wall, window
-        if len(parcel.roof_assem) == None:
-            # Create a roof instance for the parcel:
-            parcel.roof = Roof(parcel)
-        else:
-            print('A roof is already defined for this parcel')
-
-        if len(parcel.walls) == 0 and parcel.footprint['type'] == 'regular':
-            # Create a preliminary set of exterior walls per floor:
-            parcel.walls = np.zeros(4, parcel.num_stories)
-
-            for ext_wall in parcel.walls:
-                parcel.walls[ext_wall] = Wall(parcel) #Add a wall instance to each placeholder
-                parcel.walls[ext_wall].is_exterior = 1
-                parcel.walls[ext_wall].height = parcel.h_story
-                parcel.walls[ext_wall].base_floor = 0
-
-
         # Determine survey year and populate type attributes:
         if parcel.yr_built > 2012 and parcel.yr_built <= 2018:
             data_yr = 2018
@@ -71,11 +52,17 @@ class NatlSurveyData:
                              'Slate or Tile']
                 roof_weights = [211, 234, 244, 78, 66]
                 parcel.roof.cover = random.choices(roof_type, roof_weights)
+
                 # Wall attributes:
                 wall_type = ['Brick, Stone, or Stucco', 'Concrete (Block or Poured)', 'Concrete Panels',
                              'Siding or shingles', 'Metal Panels']
                 wall_weights = [418, 175, 16, 117, 136]
-                parcel.walls.type = random.choices(wall_type, wall_weights)
+                choice = random.choices(wall_type, wall_weights)
+
+                for lst in range(0, 4):  # starting with four walls per floor
+                    for index in range(0, len(parcel.walls)):  # for every list (story)
+                        parcel.walls[index][lst].type = choice
+
                 # Window attributes
                 window_type = ['Multipaned windows', 'Tinted Window Glass', 'Reflective Window Glass']
                 window_weights = [379, 294, 53]

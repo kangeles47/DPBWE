@@ -1,7 +1,7 @@
 # from parcel import parcel
 import numpy as np
 import random
-from assembly import Roof
+from assembly import RoofAssem
 
 
 class BldgCode:
