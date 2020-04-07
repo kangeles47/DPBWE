@@ -56,7 +56,7 @@ class Parcel(BIM):
         # Define building-level attributes that are specific to parcel models
         self.footprint['type'] = 'regular'
         area = self.sq_ft/self.num_stories
-        self.footprint['geometry'] = {'area': area, 'base': sqrt(area), 'length': sqrt(area)} #can go back and revisit this assignment with Tracy later
+        self.footprint['geometry'] = {'area': area, 'breadth': sqrt(area), 'depth': sqrt(area)} #can go back and revisit this assignment with Tracy later
         # Create an instance of the BldgCode class and populate building-level code-informed attributes for the parcel:
         code_informed = BldgCode(self)
         #Generate a preliminary set of assemblies:
@@ -76,14 +76,22 @@ class Parcel(BIM):
                 empty = []
                 parcel.walls.append(empty)
 
-            for lst in range(0, 4): #starting with four walls per floor
+            # Assign one wall for each side on each story:
+            for lst in range(0,4):  # four sides
                 for index in range(0, len(parcel.walls)): #for every list (story)
                     ext_wall = WallAssem(parcel)
                     ext_wall.is_exterior = 1
                     ext_wall.height = parcel.h_story[0]
-                    ext_wall.base_floor = lst
-                    ext_wall.top_floor = lst+1
-                    parcel.walls[index].append(ext_wall) #Add a wall instance to each placeholder
+                    ext_wall.base_floor = index
+                    ext_wall.top_floor = index+1
+                    ext_wall.location = lst+1 # adding 1 since Python indexing starts at 0
+                    if lst % 2 == 0:
+                        ext_wall.length = parcel.footprint['geometry']['breadth']
+                    else:
+                        ext_wall.length = parcel.footprint['geometry']['depth']
+                    # Add the wall to its corresponding list:
+                    parcel.walls[index].append(ext_wall) # Add a wall instance to each placeholder
+
         # Generate roof instance
         if parcel.roof == None:
             # Create a roof instance for the parcel:
