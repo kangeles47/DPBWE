@@ -99,7 +99,7 @@ class SurveyData:
             # Now I need to read in the .csv file:
             CBECS_data = pd.read_csv(data_yr + 'CBECS.csv')
 
-            # Filter by census division:
+            # Census division tag:
             if parcel.state == 'FL' or 'DE' or 'DC' or 'GA' or 'MD' or 'NC' or 'SC' or 'VA' or 'WV':
                 census_div = 5  # South Atlantic
                 print(census_div)
@@ -108,10 +108,7 @@ class SurveyData:
             elif parcel.state == 'AR' or 'LA' or 'OK' or 'TX':
                 census_div = 7  # West South Central
 
-            filter_div = CBECS_data.CENDIV4 == census_div
-            CBECS_data = CBECS_data[filter_div]
-
-            #Filter by year built (constructed):
+            # Year constructed tag:
             if parcel.yr_built >= 1987 and parcel.yr_built <= 1989:
                 value_yrconc = 9
             elif parcel.yr_built >= 1984 and parcel.yr_built <= 1986:
@@ -133,10 +130,7 @@ class SurveyData:
             else:
                 print('CBECS year constructed code not supported')
 
-            filter_yrconc = CBECS_data.YRCONC4 == value_yrconc
-            CBECS_data = CBECS_data[filter_yrconc]
-
-            #Filter by square footage:
+            # Square footage tag:
             if parcel.sq_ft <= 1000:
                 value_sq_ft = 1
             elif parcel.sq_ft > 1000 and parcel.sq_ft <= 5000:
@@ -160,8 +154,9 @@ class SurveyData:
             else:
                 print('CBECS square footage code not determined')
 
-            filter_sqft = CBECS_data.SQFTC4 == value_sq_ft
-            CBECS_data = CBECS_data[filter_sqft]
+            #Filter the dataset according to census division, year constructed, and square footage:
+            df = CBECS_data.loc[(CBECS_data['CENDIV4'] == census_div) & (CBECS_data['YRCONC4'] == value_yrconc) & (CBECS_data['SQFTC4'] == value_sq_ft)]
+
 
             #Now that dataset is filtered, make choose the corresponding statistical descriptions for wall construction material and roof material:
             wall_options = set(CBECS_data.WLCNS4)
