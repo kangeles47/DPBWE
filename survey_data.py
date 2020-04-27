@@ -90,45 +90,55 @@ class SurveyData:
 
 
         def CBECS_attrib(self, parcel):
-            # First I need to know what survey I need to access:
-            if parcel.yr_built >= 1989 and parcel.yr_built < 1992:
+            # First I need to know what survey I need to access and the year constructed tag (for filtering later):
+            if parcel.yr_built <= 1989 and parcel.yr_built > 1986:
                 data_yr = '1989'
-            else:
-                print('Year Built not supported')
+                # Year constructed tag:
+                if parcel.yr_built >= 1987 and parcel.yr_built <= 1989:
+                    value_yrconc = 9
+                elif parcel.yr_built >= 1984 and parcel.yr_built <= 1986:
+                    value_yrconc = 8
+                elif parcel.yr_built >= 1980 and parcel.yr_built <= 1983:
+                    value_yrconc = 7
+                elif parcel.yr_built >= 1970 and parcel.yr_built <= 1979:
+                    value_yrconc = 6
+                elif parcel.yr_built >= 1960 and parcel.yr_built <= 1969:
+                    value_yrconc = 5
+                elif parcel.yr_built >= 1946 and parcel.yr_built <= 1959:
+                    value_yrconc = 4
+                elif parcel.yr_built >= 1920 and parcel.yr_built <= 1945:
+                    value_yrconc = 3
+                elif parcel.yr_built >= 1900 and parcel.yr_built <= 1919:
+                    value_yrconc = 2
+                elif parcel.yr_built <= 1899:
+                    value_yrconc = 1
+                else:
+                    print('CBECS year constructed code not supported')
 
-            # Now I need to read in the .csv file:
-            CBECS_data = pd.read_csv(data_yr + 'CBECS.csv')
-
-            # Census division tag:
-            if parcel.state == 'FL' or 'DE' or 'DC' or 'GA' or 'MD' or 'NC' or 'SC' or 'VA' or 'WV':
-                census_div = 5  # South Atlantic
-                print(census_div)
-            elif parcel.state == 'AL' or 'KY' or 'MS' or 'TN':
-                census_div = 6  # East South Central
-            elif parcel.state == 'AR' or 'LA' or 'OK' or 'TX':
-                census_div = 7  # West South Central
-
-            # Year constructed tag:
-            if parcel.yr_built >= 1987 and parcel.yr_built <= 1989:
-                value_yrconc = 9
-            elif parcel.yr_built >= 1984 and parcel.yr_built <= 1986:
-                value_yrconc = 8
-            elif parcel.yr_built >= 1980 and parcel.yr_built <= 1983:
-                value_yrconc = 7
-            elif parcel.yr_built >= 1970 and parcel.yr_built <= 1979:
-                value_yrconc = 6
-            elif parcel.yr_built >= 1960 and parcel.yr_built <= 1969:
-                value_yrconc = 5
-            elif parcel.yr_built >= 1946 and parcel.yr_built <= 1959:
-                value_yrconc = 4
-            elif parcel.yr_built >= 1920 and parcel.yr_built <= 1945:
-                value_yrconc = 3
-            elif parcel.yr_built >= 1900 and parcel.yr_built <= 1919:
-                value_yrconc = 2
-            elif parcel.yr_built <= 1899:
-                value_yrconc = 1
-            else:
-                print('CBECS year constructed code not supported')
+            elif parcel.yr_built <= 2003 and parcel.yr_built > 1999:
+                data_yr = '2003'
+                # Populate tags for year constructed and square footage:
+                # Year constructed tag:
+                if parcel.yr_built == 2004:
+                    value_yrconc = 9
+                elif parcel.yr_built >= 2000 and parcel.yr_built <= 2003:
+                    value_yrconc = 8
+                elif parcel.yr_built >= 1990 and parcel.yr_built <= 1999:
+                    value_yrconc = 7
+                elif parcel.yr_built >= 1980 and parcel.yr_built <= 1989:
+                    value_yrconc = 6
+                elif parcel.yr_built >= 1970 and parcel.yr_built <= 1979:
+                    value_yrconc = 5
+                elif parcel.yr_built >= 1960 and parcel.yr_built <= 1969:
+                    value_yrconc = 4
+                elif parcel.yr_built >= 1946 and parcel.yr_built <= 1959:
+                    value_yrconc = 3
+                elif parcel.yr_built >= 1920 and parcel.yr_built <= 1945:
+                    value_yrconc = 2
+                elif parcel.yr_built < 1920:
+                    value_yrconc = 1
+                else:
+                    print('Year Built not supported')
 
             # Square footage tag:
             if parcel.sq_ft <= 1000:
@@ -154,8 +164,21 @@ class SurveyData:
             else:
                 print('CBECS square footage code not determined')
 
+            # Census division tag:
+            if parcel.state == 'FL' or 'DE' or 'DC' or 'GA' or 'MD' or 'NC' or 'SC' or 'VA' or 'WV':
+                census_div = 5  # South Atlantic
+                print(census_div)
+            elif parcel.state == 'AL' or 'KY' or 'MS' or 'TN':
+                census_div = 6  # East South Central
+            elif parcel.state == 'AR' or 'LA' or 'OK' or 'TX':
+                census_div = 7  # West South Central
+
+            # Read in the .csv file:
+            CBECS_data = pd.read_csv(data_yr + 'CBECS.csv')
+
+
             #Filter the dataset according to census division, year constructed, and square footage:
-            df = CBECS_data.loc[(CBECS_data['CENDIV4'] == census_div) & (CBECS_data['YRCONC4'] == value_yrconc) & (CBECS_data['SQFTC4'] == value_sq_ft)]
+            CBECS_data = CBECS_data.loc[(CBECS_data['CENDIV4'] == census_div) & (CBECS_data['YRCONC4'] == value_yrconc) & (CBECS_data['SQFTC4'] == value_sq_ft)]
 
 
             #Now that dataset is filtered, make choose the corresponding statistical descriptions for wall construction material and roof material:
