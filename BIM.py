@@ -114,7 +114,7 @@ class Parcel(BIM):
                 parcel.floors[idx].append(new_floor) #Add a floor instance to each placeholder
                 parcel.ceilings[idx].append(new_ceiling) #Add a ceiling instance to each placeholder
 
-test = Parcel('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401", 3200)
+test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134)
 print(test.is_comm)
 print(test.state)
 print(test.h_bldg)
