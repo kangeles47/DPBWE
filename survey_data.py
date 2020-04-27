@@ -163,6 +163,96 @@ class SurveyData:
             filter_sqft = CBECS_data.SQFTC4 == value_sq_ft
             CBECS_data = CBECS_data[filter_sqft]
 
+            #Now that dataset is filtered, make choose the corresponding statistical descriptions for wall construction material and roof material:
+            wall_options = set(CBECS_data.WLCNS4)
+            roof_options = set(CBECS_data.RFCNS4)
+
+            wall_weights = []
+            roof_weights = []
+
+            for option in wall_options:
+                wall_weights.append = CBECS_data.loc[CBECS_data['WLCNS4'] == option, 'ADJWT4'].sum()
+
+            for option in roof_options:
+                roof_weights.append = CBECS_data.loc[CBECS_data['RFCNS4'] == option, 'ADJWT4'].sum()
+
+            # Choose wall and roof descriptions:
+            wall_choice = random.choices(wall_options,wall_weights)
+            roof_choice = random.choices(roof_options,roof_weights)
+
+            if wall_choice == 1:
+                choice = 'Window/vision glass'
+            elif wall_choice == 2:
+                choice = 'Decor./construction glass'
+            elif wall_choice == 3:
+                choice = 'Concrete panels'
+            elif wall_choice == 4:
+                choice = 'Masonry'
+            elif wall_choice == 5:
+                choice = 'Siding/shingles/shakes'
+            elif wall_choice == 6:
+                choice = 'Metal panels'
+            elif wall_choice == 7:
+                choice = 'Other'
+            elif wall_choice == 8:
+                choice = 'Masonry & metal'
+            elif wall_choice == 9:
+                choice = 'Masonry & siding'
+            elif wall_choice == 10:
+                choice = 'Window glass & masonry'
+            elif wall_choice == 11:
+                choice = 'Window glass & concrete'
+            elif wall_choice == 12:
+                choice = 'Window glass & concrete'
+            elif wall_choice == 13:
+                choice = 'Window & construction glass'
+            elif wall_choice == 14:
+                choice = 'Steel frame & masonry'
+            elif wall_choice == 15:
+                choice = 'Window glass & metal'
+            elif wall_choice == 16:
+                choice = 'Concrete & siding'
+            else:
+                print('Wall construction not supported')
+
+            print(choice)
+
+            if roof_choice == 1:
+                choice = 'Wooden materials'
+            elif roof_choice == 2:
+                choice = 'Slate or tile'
+            elif roof_choice == 3:
+                choice = 'Shingles (not wood)'
+            elif roof_choice == 4:
+                choice = 'Built-up'
+            elif roof_choice == 5:
+                choice = 'Metal surfacing'
+            elif roof_choice == 6:
+                choice = 'Single/multiple ply'
+            elif roof_choice == 7:
+                choice = 'Concrete roof'
+            elif roof_choice == 8:
+                choice = 'Other'
+            elif roof_choice == 9:
+                choice = 'Metal & rubber'
+            elif roof_choice == 10:
+                choice = 'Cement & asphalt'
+            elif roof_choice == 11:
+                choice = 'Composite'
+            elif roof_choice == 12:
+                choice = 'Glass'
+            elif roof_choice == 13:
+                choice = 'Shingles & metal'
+            elif roof_choice == 14:
+                choice = 'Slate & built-up'
+            elif roof_choice == 15:
+                choice = 'Built-up & metal'
+            elif roof_choice == 16:
+                choice = 'Built-up & s/m ply'
+            else:
+                print('Roof construction not supported')
+
+            print(choice)
 
 #Let's play with the file:
 #test = Parcel('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401",'3200')
