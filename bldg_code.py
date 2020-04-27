@@ -8,9 +8,16 @@ class BldgCode:
     def __init__(self, parcel):
         # First determine what code we need to pull based off of the location and year built:
         if parcel.state == "FL":
-            if parcel.yr_built > 2001 & parcel.yr_built < 2004:
-                self.edition = "2001 FBC"
-                print(self.edition)
+            if parcel.yr_built > 1988 & parcel.yr_built <= 1991:
+                self.edition = '1988 SBC'
+            elif parcel.yr_built > 2001 & parcel.yr_built <= 2004:
+                self.edition = '2001 FBC'
+            elif parcel.yr_built > 2004 & parcel.yr_built <= 2007:
+                self.edition = '2004 FBC'
+            elif parcel.yr_built > 2007 & parcel.yr_built <= 2010:
+                self.edition = '2007 FBC'
+            else:
+                self.edition = '1988 SBC' # Minimum building code for all other construction as per FL statutes 
         self.bldg_attributes(self.edition, parcel)
 
     def bldg_attributes(self, edition, parcel):
