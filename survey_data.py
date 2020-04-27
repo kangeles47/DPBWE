@@ -1,6 +1,7 @@
 #from BIM import Parcel
 import numpy as np
 import random #switch later
+import pandas as pd
 
 class SurveyData:
 
@@ -25,14 +26,14 @@ class SurveyData:
     def census_division(self, parcel):
         # Census division for CBECS/RECS:
         if parcel.state == 'FL' or 'DE' or 'DC' or 'GA' or 'MD' or 'NC' or 'SC' or 'VA' or 'WV':
-            census_div = 'South Atlantic'
+            census_div = 5 # South Atlantic
             census_region = 'South'
             print(census_div)
         elif parcel.state == 'AL' or 'KY' or 'MS' or 'TN':
-            census_div = 'East South Central'
+            census_div = 6 # East South Central
             census_region = 'South'
         elif parcel.state == 'AR' or 'LA' or 'OK' or 'TX':
-            census_div = 'West South Central'
+            census_div = 7 # West South Central
             census_region = 'South'
         return census_div
 
@@ -86,6 +87,82 @@ class SurveyData:
         elif parcel.yr_built <= 1979:
             data_yr = 1979
         print(data_yr)
+
+
+        def CBECS_attrib(self, parcel):
+            # First I need to know what survey I need to access:
+            if parcel.yr_built >= 1989 and parcel.yr_built < 1992:
+                data_yr = '1989'
+            else:
+                print('Year Built not supported')
+
+            # Now I need to read in the .csv file:
+            CBECS_data = pd.read_csv(data_yr + 'CBECS.csv')
+
+            # Filter by census division:
+            if parcel.state == 'FL' or 'DE' or 'DC' or 'GA' or 'MD' or 'NC' or 'SC' or 'VA' or 'WV':
+                census_div = 5  # South Atlantic
+                print(census_div)
+            elif parcel.state == 'AL' or 'KY' or 'MS' or 'TN':
+                census_div = 6  # East South Central
+            elif parcel.state == 'AR' or 'LA' or 'OK' or 'TX':
+                census_div = 7  # West South Central
+
+            filter_div = CBECS_data.CENDIV4 == census_div
+            CBECS_data = CBECS_data[filter_div]
+
+            #Filter by year built (constructed):
+            if parcel.yr_built >= 1987 and parcel.yr_built <= 1989:
+                value_yrconc = 9
+            elif parcel.yr_built >= 1984 and parcel.yr_built <= 1986:
+                value_yrconc = 8
+            elif parcel.yr_built >= 1980 and parcel.yr_built <= 1983:
+                value_yrconc = 7
+            elif parcel.yr_built >= 1970 and parcel.yr_built <= 1979:
+                value_yrconc = 6
+            elif parcel.yr_built >= 1960 and parcel.yr_built <= 1969:
+                value_yrconc = 5
+            elif parcel.yr_built >= 1946 and parcel.yr_built <= 1959:
+                value_yrconc = 4
+            elif parcel.yr_built >= 1920 and parcel.yr_built <= 1945:
+                value_yrconc = 3
+            elif parcel.yr_built >= 1900 and parcel.yr_built <= 1919:
+                value_yrconc = 2
+            elif parcel.yr_built <= 1899:
+                value_yrconc = 1
+            else:
+                print('CBECS year constructed code not supported')
+
+            filter_yrconc = CBECS_data.YRCONC4 == value_yrconc
+            CBECS_data = CBECS_data[filter_yrconc]
+
+            #Filter by square footage:
+            if parcel.sq_ft <= 1000:
+                value_sq_ft = 1
+            elif parcel.sq_ft > 1000 and parcel.sq_ft <= 5000:
+                value_sq_ft = 2
+            elif parcel.sq_ft > 5000 and parcel.sq_ft <= 10000:
+                value_sq_ft = 3
+            elif parcel.sq_ft > 10000 and parcel.sq_ft <= 25000:
+                value_sq_ft = 4
+            elif parcel.sq_ft > 25000 and parcel.sq_ft <= 50000:
+                value_sq_ft = 5
+            elif parcel.sq_ft > 50000 and parcel.sq_ft <= 10000:
+                value_sq_ft = 6
+            elif parcel.sq_ft > 100000 and parcel.sq_ft <= 20000:
+                value_sq_ft = 7
+            elif parcel.sq_ft > 200000 and parcel.sq_ft <= 500000:
+                value_sq_ft = 8
+            elif parcel.sq_ft > 500000 and parcel.sq_ft <= 1000000:
+                value_sq_ft = 9
+            elif parcel.sq_ft > 1000000:
+                value_sq_ft = 10
+            else:
+                print('CBECS square footage code not determined')
+
+            filter_sqft = CBECS_data.SQFTC4 == value_sq_ft
+            CBECS_data = CBECS_data[filter_sqft]
+
 
 #Let's play with the file:
 #test = Parcel('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401",'3200')

@@ -17,12 +17,12 @@ class BldgCode:
             elif parcel.yr_built > 2007 & parcel.yr_built <= 2010:
                 self.edition = '2007 FBC'
             else:
-                self.edition = '1988 SBC' # Minimum building code for all other construction as per FL statutes 
+                self.edition = '1988 SBC' # Minimum building code for all other construction as per FL statutes
         self.bldg_attributes(self.edition, parcel)
 
     def bldg_attributes(self, edition, parcel):
         # Knowing the code edition, populate this building-level code-informed attributes for the parcel:
-        if edition == "2001 FBC":
+        if edition == '2001 FBC' or '1988 SBC':
             # Story height, building height, number of rooms
             parcel.h_story = np.arange(7.5, 7.5 * parcel.num_stories, parcel.num_stories) #building elevation for each story
             parcel.h_bldg = parcel.num_stories * 7.5  # minimum ceiling height per room is used to calculate height of building
@@ -33,7 +33,7 @@ class BldgCode:
     def roof_attributes(self, edition, parcel, survey):
 
         #Populate roof attributes for this instance (parcel)
-        if edition == "2001 FBC" and survey == 'CBECS':
+        if edition == '2001 FBC' and survey == 'CBECS':
             # Assign a roof pitch or predominant roof material given response from survey data (CBECS and RECS):
             if parcel.roof.cover == None:
                 if parcel.roof.pitch == 'flat':
@@ -56,7 +56,7 @@ class BldgCode:
                 elif parcel.roof.cover == 'Slate or tile':
                     parcel.roof.pitch = 'steeper' #roof slopes 4:12 and greater
                 elif parcel.roof.cover == 'Metal Surfacing':
-                    parcel.roof.pitch = "flat or shallow" #roof slopes up to 4:12
+                    parcel.roof.pitch = 'flat or shallow' #roof slopes up to 4:12
                 elif parcel.roof.cover == 'Shingles (Not Wood)' or 'Wooden Materials':
                     parcel.roof.pitch = 'shallow or steeper' #roof slopes 2:12 and greater
                 else:
