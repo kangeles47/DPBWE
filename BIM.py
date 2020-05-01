@@ -1,5 +1,8 @@
 import numpy as np
 from math import sqrt
+import geopandas as gpd
+from shapely.geometry import Point, Polygon
+import matplotlib.pyplot as plt
 from assembly import RoofAssem, WallAssem, FloorAssem, CeilingAssem
 from bldg_code import BldgCode
 from survey_data import SurveyData
@@ -8,12 +11,14 @@ class BIM:
 
     # Here we might have to write some sort of function that parses the .JSON file from the SimCenter BIM Model
 
-    def __init__(self, PID, num_stories, occupancy, yr_built, address, sq_ft):
-        self.PID = PID
+    def __init__(self, pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat):
+        self.pid = pid
         self.num_stories = num_stories
         self.occupancy = occupancy
         self.yr_built = yr_built
         self.address = address
+        self.lon = lon
+        self.lat = lat
         self.sq_ft = sq_ft
         self.h_bldg = None #every building will have a height, building model fidelity will determine actual value
         self.walls = []
@@ -46,17 +51,18 @@ class BIM:
         else:
             print('County and State Information not currently supported')
 
-
 # Now that we have defined the BIM superclass, it is time to define the Parcel subclass (we want all of our parcels to inherit the basic attributes outlined above)
 
 class Parcel(BIM):
 
-    def __init__(self, PID, num_stories, occupancy, yr_built, address, sq_ft):
-        BIM.__init__(self, PID, num_stories, occupancy, yr_built, address, sq_ft) #Bring in all of the attributes that are defined in the BIM class for the parcel model
+    def __init__(self, pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat):
+        BIM.__init__(self, pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat) #Bring in all of the attributes that are defined in the BIM class for the parcel model
         # Define building-level attributes that are specific to parcel models
-        self.footprint['type'] = 'regular'
-        area = self.sq_ft/self.num_stories
-        self.footprint['geometry'] = {'area': area, 'breadth': sqrt(area), 'depth': sqrt(area)} #can go back and revisit this assignment with Tracy later
+        # Building footprint:
+        self.assign_footprint(self)
+        #self.footprint['type'] = 'regular'
+        #area = self.sq_ft/self.num_stories
+        #self.footprint['geometry'] = {'area': area, 'breadth': sqrt(area), 'depth': sqrt(area)} #can go back and revisit this assignment with Tracy later
         # Create an instance of the BldgCode class and populate building-level code-informed attributes for the parcel:
         code_informed = BldgCode(self)
         #Generate a preliminary set of assemblies:
@@ -66,6 +72,45 @@ class Parcel(BIM):
         survey_data.run(self) #populate the parcel information
         # Fill in code-informed assembly-level information
         code_informed.roof_attributes(code_informed.edition, self, survey_data.survey)
+
+    def assign_footprint(self, parcel):
+        # Access file with region's building footprint information:
+        if parcel.location_data.state == 'FL' and parcel.location_data.county == 'Bay':
+            jFile = 'C:/Users/Karen/Desktop/BayCounty.geojson'
+        else:
+            print('Footprints for this region currently not supported')
+
+        data = gpd.read_file(jFile)
+        # data is a DataFrame object with column label = ['geometry'] and indexes = [0: end]
+        # Accessing a specific Polygon object then requires: data['geometry'][index]
+
+        # Need to access Polygon geometry in order to determine if the parcel's location is within that polygon:
+        # Create a Point object with the parcel's lon, lat coordinates:
+        p1 = Point(parcel.lon, parcel.lat)
+
+        # Loop through dataset to find the parcel's corresponding footprint:
+        for row in range(0, len(data["geometry"])):
+            # Check if point is within the polygon in this row:
+            poly = data['geometry'][row]
+            if p1.within(poly):
+                parcel.footprint["geometry"] = poly
+                parcel.footprint["type"] = 'open data'
+                print('Found building footprint')
+                print(poly)
+                # If we do find the building footprint, I would like to print it for verification:
+                x, y = poly.exterior.xy
+                plt.plot(x, y)
+                plt.show()
+            else:
+                pass
+
+        # Assign a regular footprint to any buildings without an open data footprint:
+        if parcel.footprint['type'] == 'open data':
+            pass
+        else:
+            parcel.footprint['type'] = 'default'
+            length = sqrt(self.sq_ft/self.num_stories) # Divide total building area by number of stories and take square root
+            parcel.footprint['geometry'] = Polygon([(parcel.lon + length/2, parcel.lat + length/2), (parcel.lon + length/2, parcel.lat - length/2), (parcel.lon - length/2, parcel.lat - length/2), (parcel.lon - length/2, parcel.lat + length/2)])
 
     def prelim_assem(self, parcel):
         #IF statements here may be unnecessary but keeping them for now
@@ -114,7 +159,6 @@ class Parcel(BIM):
                 parcel.floors[idx].append(new_floor) #Add a floor instance to each placeholder
                 parcel.ceilings[idx].append(new_ceiling) #Add a ceiling instance to each placeholder
 
-test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134)
-print(test.is_comm)
-print(test.state)
-print(test.h_bldg)
+lon = -85.676188
+lat = 30.190142
+test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
