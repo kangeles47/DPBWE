@@ -1,5 +1,6 @@
 from shapely.geometry import Point, Polygon
 import geopandas as gpd
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from BIM import Parcel
@@ -24,7 +25,7 @@ class Site:
         x1,y1 = parcel.footprint['geometry'].exterior.xy
         # (2) Define a bounding box for a given fetch length and wind direction:
         if wind_direction == 0:
-            fetch = 0.001
+            fetch = 0.007
             # Define points for site area Polygon object (starting with a rectangle here):
             p1 = Point(originz.x, originz.y+fetch)
             p2 = Point(originz.x, originz.y-fetch)
@@ -34,9 +35,31 @@ class Site:
             site_poly = Polygon([p1, p2, p3, p4])
             x,y = site_poly.exterior.xy
             plt.plot(x, y, x1, y1)
-            plt.show()
+            #plt.show()
         elif wind_direction == 90:
             pass
+
+        # (3) Identify all buildings within the bounding box:
+        # Read in parcel data:
+        parcel_data = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Parcels/CedarsCrossing.csv')
+        # Create an empty list to store identified parcels:
+        parcel_lst = []
+        # Create point objects for each parcel using its longitude and latitude and check if point is within bounding box:
+        for row in range(0, len(parcel_data)):
+            bldg_point = Point(parcel_data['Longitude'][row], parcel_data['Latitude'][row])
+            if bldg_point.within(site_poly):
+                # If the building is in the bounding box, create a Parcel Instance:
+                pid = parcel_data['Parcel ID'][row] # Alternatively could use parcel_data.loc[row][1], but let's not assume data is in a specific order
+                num_stories = parcel_data['Stories'][row]
+                occupancy = parcel_data['Use Code'][row]
+                yr_built = parcel_data['Year Built'][row]
+                address = parcel_data['Address'][row]
+                sq_ft = parcel_data['Square Footage'][row]
+                lon = parcel_data['Longitude'][row]
+                lat = parcel_data['Latitude'][row]
+                new_parcel = Parcel(pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat)
+                parcel_lst.append(new_parcel)
+
 
         # (3) Identify all footprints within the bounding box:
         # Create an empty list to store footprints:
@@ -47,8 +70,17 @@ class Site:
             # Check if building footprint is within the site area polygon:
             if bldg_centroid.within(site_poly):
                 fetch_bldg.append(data['geometry'][row])
+                xnew,ynew = data['geometry'][row].exterior.xy
+                plt.plot(xnew, ynew)
             else:
                 pass
+        plt.show()
+
+        # (4) Buildings within bounding box: interested in their 1) height and 2) surface area
+        # Can access parcel information from their instance attributes:
+        height = parcel.h_bldg
+        # For the given wind direction, need to derive the corresponding surface area:
+
 
         return originz
 
