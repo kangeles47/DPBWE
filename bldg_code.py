@@ -30,11 +30,23 @@ class BldgCode:
             print(parcel.h_story, parcel.h_bldg)
             #self.roof_survey_data(self.edition, parcel) #populate missing data for the parcel from national survey (CBECS)
 
-    def roof_attributes(self, edition, parcel, survey):
+    def roof_attributes(self, roof_choice, edition, parcel, survey):
 
         #Populate roof attributes for this instance (parcel)
-        if edition == '2001 FBC' and survey == 'CBECS':
-            # Assign a roof pitch or predominant roof material given response from survey data (CBECS and RECS):
+        if edition == '2001 FBC' and survey == 'CBECS' and parcel.yr_built < 2003:
+            # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
+            if parcel.roof.cover == 'Built-up' or 'Concrete' or 'Plastic/rubber/synthetic sheeting':
+                parcel.roof.pitch = 'flat'  # roof slopes under 2:12
+            elif parcel.roof.cover == 'Slate or tile shingles':
+                parcel.roof.pitch = 'steeper'  # roof slopes 4:12 and greater
+            elif parcel.roof.cover == 'Metal surfacing':
+                parcel.roof.pitch = 'flat or shallow'  # roof slopes up to 4:12
+            elif parcel.roof.cover == 'Asphalt/fiberglass/other shingles' or 'Wood shingles/shakes/other wood':
+                parcel.roof.pitch = 'shallow or steeper'  # roof slopes 2:12 and greater
+            else:
+                parcel.roof.pitch = 'unknown'
+
+
             if parcel.roof.cover == None:
                 if parcel.roof.pitch == 'flat':
                     roof_matls = ['Builtup', 'Concrete', 'Metal Surfacing', 'Synthetic or Rubber']

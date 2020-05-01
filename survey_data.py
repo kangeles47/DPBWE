@@ -329,6 +329,7 @@ class SurveyData:
         print(parcel.roof.cover)
 
 
+
 #Let's play with the file:
 #test = Parcel('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401",'3200')
 #b = NatlSurveyData(test)
