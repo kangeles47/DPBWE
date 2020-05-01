@@ -75,7 +75,7 @@ class Parcel(BIM):
 
     def assign_footprint(self, parcel):
         # Access file with region's building footprint information:
-        if parcel.location_data.state == 'FL' and parcel.location_data.county == 'Bay':
+        if parcel.state == 'FL' and parcel.county == 'Bay':
             jFile = 'C:/Users/Karen/Desktop/BayCounty.geojson'
         else:
             print('Footprints for this region currently not supported')
