@@ -43,7 +43,7 @@ class Site:
         # Read in parcel data:
         parcel_data = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Parcels/CedarsCrossing.csv')
         # Create an empty list to store identified parcels:
-        parcel_lst = []
+        fetch_parcels = []
         # Create point objects for each parcel using its longitude and latitude and check if point is within bounding box:
         for row in range(0, len(parcel_data)):
             bldg_point = Point(parcel_data['Longitude'][row], parcel_data['Latitude'][row])
@@ -58,27 +58,46 @@ class Site:
                 lon = parcel_data['Longitude'][row]
                 lat = parcel_data['Latitude'][row]
                 new_parcel = Parcel(pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat)
-                parcel_lst.append(new_parcel)
+                fetch_parcels.append(new_parcel)
+            else:
+                pass
 
 
         # (3) Identify all footprints within the bounding box:
         # Create an empty list to store footprints:
-        fetch_bldg = []
-        for row in range(0, len(data["geometry"])):
+        #fetch_bldg = []
+        #for row in range(0, len(data["geometry"])):
             # Use building footprint centroid for point of reference:
-            bldg_centroid = data['geometry'][row].centroid
+            #bldg_centroid = data['geometry'][row].centroid
             # Check if building footprint is within the site area polygon:
-            if bldg_centroid.within(site_poly):
-                fetch_bldg.append(data['geometry'][row])
-                xnew,ynew = data['geometry'][row].exterior.xy
-                plt.plot(xnew, ynew)
-            else:
-                pass
+            #if bldg_centroid.within(site_poly):
+                #fetch_bldg.append(data['geometry'][row])
+                #xnew,ynew = data['geometry'][row].exterior.xy
+                #plt.plot(xnew, ynew)
+            #else:
+                #pass
         plt.show()
 
         # (4) Buildings within bounding box: interested in their 1) height and 2) surface area
-        # Can access parcel information from their instance attributes:
-        height = parcel.h_bldg
+        # Create an empty DataFrame to hold all values:
+        z_params = pd.DataFrame(columns=['Building Height', 'Surface Area'])
+
+        for parcel in fetch_parcels:
+            h_parcel = parcel.h_bldg
+            surfA_parcel = 0
+            # Add new row to empty DataFrame:
+            z_params = z_params.append({'Building Height': parcel.h_bldg, 'Surface Area': surfA_parcel}, ignore_index=True)
+
+
+        # Calculate the average height of all parcels within the specified fetch length:
+        h_avg = z_params["Building Height"].mean()
+
+
+
+        # If lat, lons for each parcel are given, then can add up the building heights for each parcel instance:
+
+
+
         # For the given wind direction, need to derive the corresponding surface area:
 
 
