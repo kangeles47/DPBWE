@@ -22,7 +22,7 @@ class Site:
     def roughness_calc(self, parcel, footprints, wind_direction):
         # (1) Find the parcel's centroid - this will be the origin for the z0 calculation:
         originz = parcel.footprint['geometry'].centroid # Parcel footprint is a Polygon type
-        x1,y1 = parcel.footprint['geometry'].exterior.xy
+        xp,yp = parcel.footprint['geometry'].exterior.xy
         # (2) Define a bounding box for a given fetch length and wind direction:
         if wind_direction == 0:
             fetch = 0.007
@@ -33,8 +33,8 @@ class Site:
             p4 = Point(originz.x-fetch, originz.y+fetch)
             # Create Polygon object:
             site_poly = Polygon([p1, p2, p3, p4])
-            x,y = site_poly.exterior.xy
-            plt.plot(x, y, x1, y1)
+            x1,y1 = site_poly.exterior.xy
+            plt.plot(x1, y1, xp, yp)
             #plt.show()
         elif wind_direction == 90:
             pass
@@ -43,7 +43,7 @@ class Site:
         # Read in parcel data:
         parcel_data = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Parcels/CedarsCrossing.csv')
         # Create an empty list to store identified parcels:
-        fetch_parcels = []
+        fetch_bldgs = []
         # Create point objects for each parcel using its longitude and latitude and check if point is within bounding box:
         for row in range(0, len(parcel_data)):
             bldg_point = Point(parcel_data['Longitude'][row], parcel_data['Latitude'][row])
@@ -58,7 +58,7 @@ class Site:
                 lon = parcel_data['Longitude'][row]
                 lat = parcel_data['Latitude'][row]
                 new_parcel = Parcel(pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat)
-                fetch_parcels.append(new_parcel)
+                fetch_bldgs.append(new_parcel)
             else:
                 pass
 
@@ -82,26 +82,21 @@ class Site:
         # Create an empty DataFrame to hold all values:
         z_params = pd.DataFrame(columns=['Building Height', 'Surface Area'])
 
-        for parcel in fetch_parcels:
-            h_parcel = parcel.h_bldg
-            surfA_parcel = 0
+        for bldg in fetch_bldgs:
+            # Given wind direction, calculate surface area as follows:
+            # Create equivalent rectangle using building footprint coordinates and multiply by building height
+            if wind_direction == 0 or 90 or 180 or 270:
+                x2, y2 = bldg.footprint["geometry"].exterior.xy
+                rect = Polygon([(max(x2), max(y2)), (max(x2), min(y2)), (min(x2), min(y2), min(x2), max(y2))])
+                if wind_direction == 0 or 90:
+                    surfA_parcel = parcel.h_bldg*(max(y2)-min(y2))
+                else:
+                    surfA_parcel = parcel.h_bldg*(max(x2)-min(x2))
             # Add new row to empty DataFrame:
             z_params = z_params.append({'Building Height': parcel.h_bldg, 'Surface Area': surfA_parcel}, ignore_index=True)
 
-
         # Calculate the average height of all parcels within the specified fetch length:
         h_avg = z_params["Building Height"].mean()
-
-
-
-        # If lat, lons for each parcel are given, then can add up the building heights for each parcel instance:
-
-
-
-        # For the given wind direction, need to derive the corresponding surface area:
-
-
-        return originz
 
 
 # Identify the parcel:
