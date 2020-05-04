@@ -24,8 +24,18 @@ class Site:
         originz = parcel.footprint['geometry'].centroid # Parcel footprint is a Polygon type
         xp,yp = parcel.footprint['geometry'].exterior.xy
         # (2) Define a bounding box for a given fetch length and wind direction:
+        fetch = 0.007
+        # Create circle with radius = fetch length:
+        circ = originz.buffer(fetch, resolution=100)
+        lon_circ, lat_circ = circ.exterior.xy
+        bounds = []
+        # Create half-circle corresponding to the given wind direction:
         if wind_direction == 0:
-            fetch = 0.007
+            for p in range(0, len(lon_circ)):
+                if lon_circ[p] < originz.x:
+                    bounds.append(Point(lon_circ[p], lat_circ[p]))
+                else:
+                    pass
             # Define points for site area Polygon object (starting with a rectangle here):
             p1 = Point(originz.x, originz.y+fetch)
             p2 = Point(originz.x, originz.y-fetch)
@@ -34,11 +44,16 @@ class Site:
             # Create Polygon object:
             site_poly = Polygon([p1, p2, p3, p4])
             x1,y1 = site_poly.exterior.xy
-            plt.plot(x1, y1, xp, yp)
+            #plt.plot(x1, y1, xp, yp, lon_circ, lat_circ)
             #plt.show()
         elif wind_direction == 90:
             pass
 
+        # Create polygon object with the selected points:
+        site_geom = Polygon(bounds)
+        xsite, ysite = site_geom.exterior.xy
+        plt.plot(x1, y1, xp, yp, lon_circ, lat_circ, xsite, ysite)
+        plt.show()
         # (3) Identify all buildings within the bounding box:
         # Read in parcel data:
         parcel_data = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Parcels/CedarsCrossing.csv')

@@ -30,7 +30,7 @@ class BldgCode:
             print(parcel.h_story, parcel.h_bldg)
             #self.roof_survey_data(self.edition, parcel) #populate missing data for the parcel from national survey (CBECS)
 
-    def roof_attributes(self, roof_choice, edition, parcel, survey):
+    def roof_attributes(self, edition, parcel, survey):
 
         #Populate roof attributes for this instance (parcel)
         if edition == '2001 FBC' and survey == 'CBECS' and parcel.yr_built < 2003:
