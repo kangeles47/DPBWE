@@ -60,9 +60,6 @@ class Parcel(BIM):
         # Define building-level attributes that are specific to parcel models
         # Building footprint:
         self.assign_footprint(self)
-        #self.footprint['type'] = 'regular'
-        #area = self.sq_ft/self.num_stories
-        #self.footprint['geometry'] = {'area': area, 'breadth': sqrt(area), 'depth': sqrt(area)} #can go back and revisit this assignment with Tracy later
         # Create an instance of the BldgCode class and populate building-level code-informed attributes for the parcel:
         code_informed = BldgCode(self)
         #Generate a preliminary set of assemblies:
@@ -98,9 +95,9 @@ class Parcel(BIM):
                 print('Found building footprint')
                 print(poly)
                 # If we do find the building footprint, I would like to print it for verification:
-                x, y = poly.exterior.xy
-                plt.plot(x, y)
-                plt.show()
+                #x, y = poly.exterior.xy
+                #plt.plot(x, y)
+                #plt.show()
             else:
                 pass
 

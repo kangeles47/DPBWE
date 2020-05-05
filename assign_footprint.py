@@ -25,9 +25,9 @@ for row in range(0, len(data["geometry"])):
         print('Found building footprint')
         print(poly)
         # If we do find the building footprint, I would like to print it for verification:
-        x,y = poly.exterior.xy
-        plt.plot(x,y)
-        plt.show()
+        #x,y = poly.exterior.xy
+        #plt.plot(x,y)
+        #plt.show()
     else:
-        a = 0
+        pass
 
