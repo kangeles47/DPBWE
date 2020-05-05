@@ -124,7 +124,8 @@ class Site:
 
         # (3) Identify all buildings within the bounding box:
         # Read in parcel data:
-        parcel_data = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Parcels/CedarsCrossing.csv')
+        # 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Parcels/CedarsCrossing.csv'
+        parcel_data = pd.read_csv('C:/Users/Karen/Desktop/CedarsCrossing.csv')
         # Create an empty list to store identified buildings:
         fetch_bldgs = []
         # Create point objects for each building using longitude and latitude and check if point is within bounding box:
@@ -156,18 +157,30 @@ class Site:
         for bldg in fetch_bldgs:
             # Given wind direction, calculate surface area as follows:
             # Create equivalent rectangle using building footprint coordinates and multiply by building height
-            if wind_direction == 0 or 90 or 180 or 270:
-                x2, y2 = bldg.footprint["geometry"].exterior.xy
-                rect = Polygon([(max(x2), max(y2)), (max(x2), min(y2)), (min(x2), min(y2), min(x2), max(y2))])
-                if wind_direction == 0 or 90:
-                    surfA_parcel = parcel.h_bldg*(max(y2)-min(y2))
-                else:
-                    surfA_parcel = parcel.h_bldg*(max(x2)-min(x2))
+            # Check if an equivalent rectangle is needed:
+            xbldg,ybldg = bldg.footprint["geometry"].exterior.xy
+            if len(xbldg) != 4:
+                # Create equivalent rectangle:
+                rect = Polygon([(max(xbldg), max(ybldg)), (max(xbldg), min(ybldg)), (min(xbldg), min(ybldg), min(xbldg), max(ybldg))])
+                xbldg,ybldg = rect.exterior.xy
+            else:
+                pass
+            # Calculate the surface area for each obstruction (building):
+            if wind_direction == 0 or wind_direction == 180:
+                surf_area = parcel.h_bldg*(max(ybldg)-min(ybldg))
+            elif wind_direction == 90 or wind_direction == 270:
+                surf_area = parcel.h_bldg*(max(xbldg)-min(xbldg))
+            elif wind_direction == 45 or wind_direction == 135 or wind_direction == 225 or wind_direction == 315:
+                surf_area = parcel.h_bldg * ((max(xbldg) - min(xbldg)) + (max(ybldg)-min(ybldg)))
             # Add new row to empty DataFrame:
-            z_params = z_params.append({'Building Height': parcel.h_bldg, 'Surface Area': surfA_parcel}, ignore_index=True)
+            z_params = z_params.append({'Building Height': parcel.h_bldg, 'Surface Area': surf_area}, ignore_index=True)
 
-        # Calculate the average height of all parcels within the specified fetch length:
-        h_avg = z_params["Building Height"].mean()
+        # Calculate the average height of all buildings within the fetch length:
+        h_avg = z_params['Building Height'].mean()
+        # Calculate the total surface area for all buildings within the fetch length:
+        total_surf = sum(z_params['Surface Area'])
+        # Calculate the roughness length:
+        z0 = 0.5*h_avg*total_surf/bounds.area()
 
 
 # Identify the parcel:
