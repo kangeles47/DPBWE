@@ -8,27 +8,45 @@ class BldgCode:
     def __init__(self, parcel):
         # First determine what code we need to pull based off of the location and year built:
         if parcel.state == "FL":
-            if parcel.yr_built > 1988 & parcel.yr_built <= 1991:
-                self.edition = '1988 SBC'
-            elif parcel.yr_built > 2001 & parcel.yr_built <= 2004:
-                self.edition = '2001 FBC'
-            elif parcel.yr_built > 2004 & parcel.yr_built <= 2007:
-                self.edition = '2004 FBC'
-            elif parcel.yr_built > 2007 & parcel.yr_built <= 2010:
-                self.edition = '2007 FBC'
+            if parcel.is_comm:
+                if parcel.yr_built > 1988 & parcel.yr_built <= 1991:
+                    if parcel.county != 'Broward' or parcel.county != 'Dade':
+                        self.edition = '1988 SBC'
+                    else:
+                        self.edition = '1988 SFBC'
+                elif parcel.yr_built > 2001 & parcel.yr_built <= 2004:
+                    self.edition = '2001 FBC - Commercial'
+                elif parcel.yr_built > 2004 & parcel.yr_built <= 2007:
+                    self.edition = '2004 FBC - Commercial'
+                elif parcel.yr_built > 2007 & parcel.yr_built <= 2010:
+                    self.edition = '2007 FBC - Commercial'
+                else:
+                    self.edition = '1988 SBC'  # Minimum building code for all other construction older than 1988
             else:
-                self.edition = '1988 SBC' # Minimum building code for all other construction as per FL statutes
+                if parcel.yr_built > 1986 & parcel.yr_built <= 1991:
+                    self.edition = '1986 One and Two Family Dwelling Code'
+                elif parcel.yr_built > 2001 & parcel.yr_built <= 2004:
+                    self.edition = '2001 FBC - Residential'
+                elif parcel.yr_built > 2004 & parcel.yr_built <= 2007:
+                    self.edition = '2004 FBC - Residential'
+                elif parcel.yr_built > 2007 & parcel.yr_built <= 2010:
+                    self.edition = '2007 FBC - Residential'
+                else:
+                    self.edition = '1986 One and Two Family Dwelling Code' # Minimum building code for all construction older than 1986
         self.bldg_attributes(self.edition, parcel)
 
     def bldg_attributes(self, edition, parcel):
         # Knowing the code edition, populate this building-level code-informed attributes for the parcel:
-        if edition == '2001 FBC' or '1988 SBC':
+        if edition == '2001 FBC - Commercial' or edition == '1988 SBC':
             # Story height, building height, number of rooms
             parcel.h_story = np.arange(7.5, 7.5 * parcel.num_stories, parcel.num_stories) #building elevation for each story
             parcel.h_bldg = parcel.num_stories * 7.5  # minimum ceiling height per room is used to calculate height of building
             parcel.num_rooms = 6 #assigning number of rooms based off of occupancy, structural system
-            print(parcel.h_story, parcel.h_bldg)
             #self.roof_survey_data(self.edition, parcel) #populate missing data for the parcel from national survey (CBECS)
+        elif edition == '2001 FBC - Residential' or edition == '2004 FBC - Residential' or edition == '2007 FBC - Residential':
+            # Story height, building height, number of rooms
+            parcel.h_story = np.arange(7, 7*parcel.num_stories, parcel.num_stories)  # building elevation for each story
+            parcel.h_bldg = parcel.num_stories * 7  # minimum ceiling height per room is used to calculate height of building (Section R305.1)
 
     def roof_attributes(self, edition, parcel, survey):
 

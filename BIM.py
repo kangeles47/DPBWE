@@ -20,13 +20,13 @@ class BIM:
         self.lon = lon
         self.lat = lat
         self.sq_ft = sq_ft
-        self.h_bldg = None #every building will have a height, building model fidelity will determine actual value
+        self.h_bldg = None  # every building has a height, fidelity will determine value
         self.walls = []
         self.roof = None
         self.floors = []
         self.struct_sys = []
         self.ceilings = []
-        self.footprint = {'type': None, 'geometry': None}  # in the case of parcel models, the footprint is going to be assumed as regular: Let's see if we can find data on this
+        self.footprint = {'type': None, 'geometry': None}
 
         # Using basic building attributes, set up building metavariables:
         # 1) Tag the building as "commercial" or "not commercial"
@@ -62,11 +62,11 @@ class Parcel(BIM):
         self.assign_footprint(self)
         # Create an instance of the BldgCode class and populate building-level code-informed attributes for the parcel:
         code_informed = BldgCode(self)
-        #Generate a preliminary set of assemblies:
+        # Generate a preliminary set of assemblies:
         self.prelim_assem(self)
-        #Populate instance attributes informed by national survey data:
-        survey_data = SurveyData() #create an instance of the survey data class
-        survey_data.run(self) #populate the parcel information
+        # Populate instance attributes informed by national survey data:
+        survey_data = SurveyData()  # create an instance of the survey data class
+        survey_data.run(self)  # populate the parcel information
         # Fill in code-informed assembly-level information
         code_informed.roof_attributes(code_informed.edition, self, survey_data.survey)
 

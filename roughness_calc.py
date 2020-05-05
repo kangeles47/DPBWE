@@ -188,7 +188,7 @@ lon = -85.676188
 lat = 30.190142
 test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
 # Create an instance of the site class:
-wind_direction = 315
+wind_direction = 0
 jFile = 'C:/Users/Karen/Desktop/BayCounty.geojson'
 data = gpd.read_file(jFile)
 # data is a DataFrame object with column label = ['geometry'] and indexes = [0: end]
