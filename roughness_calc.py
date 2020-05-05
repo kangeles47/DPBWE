@@ -1,8 +1,11 @@
-from shapely.geometry import Point, Polygon
+from shapely.geometry import LineString, Point, Polygon
 import geopandas as gpd
 import pandas as pd
 import numpy as np
+import math
 import matplotlib.pyplot as plt
+from shapely.ops import split
+
 from BIM import Parcel
 
 class Wind:
@@ -26,32 +29,98 @@ class Site:
         # (2) Define a bounding box for a given fetch length and wind direction:
         fetch = 0.007
         # Create circle with radius = fetch length:
-        circ = originz.buffer(fetch, resolution=100)
+        circ = originz.buffer(fetch, resolution=200)
         lon_circ, lat_circ = circ.exterior.xy
         bounds = []
         # Create half-circle corresponding to the given wind direction:
-        if wind_direction == 0:
-            for p in range(0, len(lon_circ)):
-                if lon_circ[p] < originz.x:
-                    bounds.append(Point(lon_circ[p], lat_circ[p]))
+        if wind_direction == 0 or 180:
+            # Define boundary line:
+            bline = LineString([(originz.x, originz.y + fetch), (originz.x, originz.y - fetch)])
+            # Split the circle into two polygons
+            circ_split = split(circ, bline)
+            # Choose the first polygon to do a check and assign bounds for the wind direction:
+            x1, y1 = circ_split[0].exterior.xy
+            if wind_direction == 0:
+                # For 0 degrees, minimum longitude (x) in the Polygon we want should be smaller than bldg centroid x
+                if min(x1) < originz.x:
+                    bounds = circ_split[0]
                 else:
-                    pass
-            # Define points for site area Polygon object (starting with a rectangle here):
-            p1 = Point(originz.x, originz.y+fetch)
-            p2 = Point(originz.x, originz.y-fetch)
-            p3 = Point(originz.x-fetch, originz.y-fetch)
-            p4 = Point(originz.x-fetch, originz.y+fetch)
-            # Create Polygon object:
-            site_poly = Polygon([p1, p2, p3, p4])
-            x1,y1 = site_poly.exterior.xy
-            #plt.plot(x1, y1, xp, yp, lon_circ, lat_circ)
-            #plt.show()
-        elif wind_direction == 90:
-            pass
+                    bounds = circ_split[1]
+            if wind_direction == 180:
+                # For 180 degrees, max longitude (x) in the Polygon we want should be larger than bldg centroid x
+                if max(x1) > originz.x:
+                    bounds = circ_split[0]
+                else:
+                    bounds = circ_split[1]
+        elif wind_direction == 90 or 270:
+            # Define boundary line:
+            bline = LineString([(originz.x-fetch, originz.y), (originz.x+fetch, originz.y)])
+            # Split the circle into two polygons
+            circ_split = split(circ, bline)
+            # Choose the first polygon to do a check and assign bounds for the wind direction:
+            x1, y1 = circ_split[0].exterior.xy
+            if wind_direction == 90:
+                # For 90 degrees, minimum latitude (y) in the Polygon we want should be smaller than bldg centroid y
+                if min(y1) < originz.y:
+                    bounds = circ_split[0]
+                else:
+                    bounds = circ_split[1]
+            if wind_direction == 270:
+                # For 270 degrees, max latitude (y) in the Polygon we want should be larger than bldg centroid y
+                if max(y1) > originz.y:
+                    bounds = circ_split[0]
+                else:
+                    bounds = circ_split[1]
+        elif wind_direction == 45 or 225:
+            # Define boundary line:
+            rad1 = math.pi*(3/4)
+            rad2 = math.pi*(7/4)
+            bline = LineString([(originz.x-fetch*math.cos(rad1), originz.y+fetch*math.sin(rad1)), (originz.x+fetch*math.cos(rad2), originz.y-fetch*math.sin(rad2))])
+            # Split the circle into two polygons
+            circ_split = split(circ, bline)
+            # Choose the first polygon to do a check and assign bounds for the wind direction:
+            x1, y1 = circ_split[0].exterior.xy
+            if wind_direction == 45:
+                # For 45 degrees, use point in upper left-hand quadrant:
+                # Polygon we want will have a minimum longitude that is smaller than the longitude for this point
+                if min(x1) < originz.x-fetch*math.cos(rad1):
+                    bounds = circ_split[0]
+                else:
+                    bounds = circ_split[1]
+            if wind_direction == 225:
+                # For 225 degrees, use point in lower right-hand quadrant:
+                # Polygon we want will have a maximum longitude that is larger than the longitude for this point
+                if max(x1) > originz.x+fetch*math.cos(rad2):
+                    bounds = circ_split[0]
+                else:
+                    bounds = circ_split[1]
+        elif wind_direction == 135 or 315:
+            # Define boundary line:
+            rad1 = math.pi*(1/4)
+            rad2 = math.pi*(5/4)
+            bline = LineString([(originz.x+fetch*math.cos(rad1), originz.y+fetch*math.sin(rad1)), (originz.x-fetch*math.cos(rad2), originz.y-fetch*math.sin(rad2))])
+            # Split the circle into two polygons
+            circ_split = split(circ, bline)
+            # Choose the first polygon to do a check and assign bounds for the wind direction:
+            x1, y1 = circ_split[0].exterior.xy
+            if wind_direction == 135:
+                # For 135 degrees, use point in upper right-hand quadrant:
+                # Polygon we want will have a maximum longitude that is larger than the longitude for this point
+                if max(x1) > originz.x+fetch*math.cos(rad1):
+                    bounds = circ_split[0]
+                else:
+                    bounds = circ_split[1]
+            if wind_direction == 315:
+                # For 315 degrees, use point in lower left-hand quadrant:
+                # Polygon we want will have a minimum longitude that is smaller than the longitude for this point
+                if min(x1) < originz.x-fetch*math.cos(rad2):
+                    bounds = circ_split[0]
+                else:
+                    bounds = circ_split[1]
 
         # Create polygon object with the selected points:
-        site_geom = Polygon(bounds)
-        xsite, ysite = site_geom.exterior.xy
+        #site_geom = Polygon(bounds)
+        xsite, ysite = bounds.exterior.xy
         plt.plot(x1, y1, xp, yp, lon_circ, lat_circ, xsite, ysite)
         plt.show()
         # (3) Identify all buildings within the bounding box:
