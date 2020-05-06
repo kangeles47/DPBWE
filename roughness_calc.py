@@ -157,7 +157,7 @@ class Site:
                     pass
             # Check to see if we have any buildings:
             if len(fetch_bldgs) == 0:
-                pass  # Move on to the next fetch length
+                tol = 1.0  # Provide a default value for tolerance and move on to the next fetch length
             else:
                 # Now that we've identified all parcels, plot for confirmation:
                 plt.show()
@@ -210,6 +210,18 @@ class Site:
                 fdist = Site.distance(self, originz.x, originz.y, originz.x+f, originz.y)
                 # Populate the DataFrame with the values for this fetch length:
                 terrain_params = terrain_params.append({'Roughness Length': z0, 'Fetch Length': fdist, 'Local Wind Speed': vnew}, ignore_index=True)
+                # Check the difference in the wind speed:
+                if len(terrain_params['Roughness Length']) == 1:
+                    pass  # pass if we only have one roughness length value
+                else:
+                    row = np.where(fetch == f)[0][0]
+                    tol = (terrain_params['Local Wind Speed'][row] - terrain_params['Local Wind Speed'][row-1])/terrain_params['Local Wind Speed'][row]
+                    print(tol)
+        # Break the loop if the new fetch length provides us with the right tolerance value:
+            if tol < 0.4:
+                break
+            else:
+                pass
 
     def distance(self, lon1, lat1, lon2, lat2):
         # Calculate distance between two longitude, latitude points using the Haversine formula:
