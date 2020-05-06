@@ -19,7 +19,7 @@ class Site:
 
     def __init__(self, parcel, footprints, wind_direction):
         self.location = Point(parcel.lon, parcel.lat)
-        self.terrain = self.roughness_calc(parcel, footprints, wind_direction)
+        #self.terrain = self.roughness_calc(parcel, footprints, wind_direction)
 
 
     def roughness_calc(self, parcel, footprints, wind_direction):
@@ -182,6 +182,28 @@ class Site:
         # Calculate the roughness length:
         z0 = 0.5*h_avg*total_surf/bounds.area()
 
+    def calc_windspeed(self, hnew, znew, vref, href=10, zref=0.03):
+        # Note: Default reference parameters correspond to 10 meter height in open terrain
+        # Calculate the shear (friction) velocity for open terrain:
+        shear_ref = vref/(2.5*math.log(href/zref))
+        # Shear conversion model:
+        shear_ratio = (znew/zref)**0.0706
+        # Calculate shear velocity for new terrain (may or may not be applicable):
+        shear_new = shear_ref*shear_ratio
+        # Calculate the zero-plane displacement:
+        k = 0.4 # from the log law
+        zd = h_avg - znew/k
+        # Calculate new wind speed (log law for now) for different terrain and/or height:
+        vnew = 2.5*shear_new*math.log(hnew/znew)
+        # Need gradient heights for the given location --> can get these from wind measurement stations?
+        # Power law:
+        #alpha_new = 0.096*math.log10(znew) + 0.016*math.log10(znew)**2 + 0.24
+        #alpha_ref = 0.096*math.log10(zref) + 0.016*math.log10(zref)**2 + 0.24
+        #vnew = ((hnew/znew)**alpha_new)*((href/zref)**alpha_ref)*vref
+        vratio = vnew/vref
+        return vratio
+
+
 
 # Identify the parcel:
 lon = -85.676188
@@ -195,3 +217,18 @@ data = gpd.read_file(jFile)
 # Accessing a specific Polygon object then requires: data['geometry'][index]
 
 site = Site(test, data, wind_direction)
+test = site.calc_windspeed(21,0.78,11.7,10,0.08)
+print(test)
+
+# Recreating plot from HAZUS-HM
+heights = np.array([3, 5, 10, 20, 50, 100])
+zs = np.linspace(0.001,1,1000)
+for h in heights:
+    lst = []
+    for z in zs:
+        ratio = site.calc_windspeed(h, z, 80, href=h)
+        lst.append(ratio)
+    plt.loglog(zs, lst)
+
+plt.grid(True)
+plt.show()
