@@ -15,174 +15,220 @@ class Wind:
         self.direction = direction #This would need to be user-specified
         # Given the wind speed and direction, need to identify the surrounding terrain:
 
+
 class Site:
 
     def __init__(self, parcel, footprints, wind_direction):
         self.location = Point(parcel.lon, parcel.lat)
-        #self.terrain = self.roughness_calc(parcel, footprints, wind_direction)
-
-
-    def roughness_calc(self, parcel, footprints, wind_direction):
-        # (1) Find the parcel's centroid - this will be the origin for the z0 calculation:
-        originz = parcel.footprint['geometry'].centroid # Parcel footprint is a Polygon type
-        xp,yp = parcel.footprint['geometry'].exterior.xy
-        # (2) Define a bounding box for a given fetch length and wind direction:
-        fetch = 0.007
-        # Create circle with radius = fetch length:
-        circ = originz.buffer(fetch, resolution=200)
-        # Create half-circle corresponding to the given wind direction:
-        if wind_direction == 0 or wind_direction == 180:
-            # Define boundary line:
-            bline = LineString([(originz.x, originz.y + fetch), (originz.x, originz.y - fetch)])
-            # Split the circle into two polygons
-            circ_split = split(circ, bline)
-            # Choose the first polygon to do a check and assign bounds for the wind direction:
-            x1, y1 = circ_split[0].exterior.xy
-            if wind_direction == 0:
-                # For 0 degrees, minimum longitude (x) in the Polygon we want should be smaller than bldg centroid x
-                if min(x1) < originz.x:
-                    bounds = circ_split[0]
-                else:
-                    bounds = circ_split[1]
-            elif wind_direction == 180:
-                # For 180 degrees, max longitude (x) in the Polygon we want should be larger than bldg centroid x
-                if max(x1) > originz.x:
-                    bounds = circ_split[0]
-                else:
-                    bounds = circ_split[1]
-        elif wind_direction == 90 or wind_direction == 270:
-            print(wind_direction)
-            # Define boundary line:
-            bline = LineString([(originz.x-fetch, originz.y), (originz.x+fetch, originz.y)])
-            # Split the circle into two polygons
-            circ_split = split(circ, bline)
-            # Choose the first polygon to do a check and assign bounds for the wind direction:
-            x1, y1 = circ_split[0].exterior.xy
-            if wind_direction == 90:
-                # For 90 degrees, minimum latitude (y) in the Polygon we want should be smaller than bldg centroid y
-                if min(y1) < originz.y:
-                    bounds = circ_split[0]
-                else:
-                    bounds = circ_split[1]
-            elif wind_direction == 270:
-                # For 270 degrees, max latitude (y) in the Polygon we want should be larger than bldg centroid y
-                if max(y1) > originz.y:
-                    bounds = circ_split[0]
-                else:
-                    bounds = circ_split[1]
-        elif wind_direction == 45 or wind_direction == 225:
-            # Define boundary line:
-            rad = math.pi*(1/4)
-            bline = LineString([(originz.x-fetch*math.cos(rad), originz.y+fetch*math.sin(rad)), (originz.x+fetch*math.cos(rad), originz.y-fetch*math.sin(rad))])
-            # Split the circle into two polygons
-            circ_split = split(circ, bline)
-            print(len(circ_split))
-            # Choose the first polygon to do a check and assign bounds for the wind direction:
-            x1, y1 = circ_split[0].exterior.xy
-            if wind_direction == 45:
-                # For 45 degrees, use point in upper left-hand quadrant:
-                # Polygon we want will have a minimum longitude that is smaller than the longitude for this point
-                if min(x1) < originz.x-fetch*math.cos(rad):
-                    bounds = circ_split[0]
-                else:
-                    bounds = circ_split[1]
-            elif wind_direction == 225:
-                # For 225 degrees, use point in lower right-hand quadrant:
-                # Polygon we want will have a maximum longitude that is larger than the longitude for this point
-                if max(x1) > originz.x+fetch*math.cos(rad):
-                    bounds = circ_split[0]
-                else:
-                    bounds = circ_split[1]
-        elif wind_direction == 135 or 315:
-            # Define boundary line:
-            rad = math.pi*(1/4)
-            bline = LineString([(originz.x+fetch*math.cos(rad), originz.y+fetch*math.sin(rad)), (originz.x-fetch*math.cos(rad), originz.y-fetch*math.sin(rad))])
-            # Split the circle into two polygons
-            circ_split = split(circ, bline)
-            # Choose the first polygon to do a check and assign bounds for the wind direction:
-            x1, y1 = circ_split[0].exterior.xy
-            if wind_direction == 135:
-                # For 135 degrees, use point in upper right-hand quadrant:
-                # Polygon we want will have a maximum longitude that is larger than the longitude for this point
-                if max(x1) > originz.x+fetch*math.cos(rad):
-                    bounds = circ_split[0]
-                else:
-                    bounds = circ_split[1]
-            elif wind_direction == 315:
-                # For 315 degrees, use point in lower left-hand quadrant:
-                # Polygon we want will have a minimum longitude that is smaller than the longitude for this point
-                if min(x1) < originz.x-fetch*math.cos(rad):
-                    bounds = circ_split[0]
-                else:
-                    bounds = circ_split[1]
-
-        # Create polygon object with the selected points:
-        #site_geom = Polygon(bounds)
-        xsite, ysite = bounds.exterior.xy
-        plt.plot(xp, yp, xsite, ysite)
-        #plt.show()
-
-        # (3) Identify all buildings within the bounding box:
         # Read in parcel data:
         # 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Parcels/CedarsCrossing.csv'
         parcel_data = pd.read_csv('C:/Users/Karen/Desktop/CedarsCrossing.csv')
-        # Create an empty list to store identified buildings:
-        fetch_bldgs = []
-        # Create point objects for each building using longitude and latitude and check if point is within bounding box:
-        for row in range(0, len(parcel_data)):
-            bldg_point = Point(parcel_data['Longitude'][row], parcel_data['Latitude'][row])
-            if bldg_point.within(bounds):
-                # If the building is in the bounding box, create a Parcel Instance:
-                pid = parcel_data['Parcel ID'][row]
-                num_stories = parcel_data['Stories'][row]
-                occupancy = parcel_data['Use Code'][row]
-                yr_built = parcel_data['Year Built'][row]
-                address = parcel_data['Address'][row]
-                sq_ft = parcel_data['Square Footage'][row]
-                lon = parcel_data['Longitude'][row]
-                lat = parcel_data['Latitude'][row]
-                new_parcel = Parcel(pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat)
-                fetch_bldgs.append(new_parcel)
-                xparcel,yparcel = new_parcel.footprint["geometry"].exterior.xy
-                plt.plot(xparcel, yparcel)
-            else:
-                pass
-        # Now that we've identified all parcels, plot for confirmation:
-        plt.show()
+        self.terrain = self.roughness_calc(parcel, wind_direction)
 
-        # (4) Buildings within bounding box: interested in their 1) height and 2) surface area
-        # Create an empty DataFrame to hold all values:
-        z_params = pd.DataFrame(columns=['Building Height', 'Surface Area'])
 
-        for bldg in fetch_bldgs:
-            # Given wind direction, calculate surface area as follows:
-            # Create equivalent rectangle using building footprint coordinates and multiply by building height
-            # Check if an equivalent rectangle is needed:
-            xbldg,ybldg = bldg.footprint["geometry"].exterior.xy
-            if len(xbldg) != 4:
-                # Create equivalent rectangle:
-                rect = Polygon([(max(xbldg), max(ybldg)), (max(xbldg), min(ybldg)), (min(xbldg), min(ybldg), min(xbldg), max(ybldg))])
-                xbldg,ybldg = rect.exterior.xy
-            else:
-                pass
-            # Calculate the surface area for each obstruction (building):
+    def roughness_calc(self, parcel, wind_direction):
+        # This function calculates a data-driven surface roughness and the corresponding fetch length:
+        # (1) Find the parcel's centroid - this will be the origin for the z0 calculation:
+        originz = parcel.footprint['geometry'].centroid  # Parcel footprint is a Polygon type
+        xp,yp = parcel.footprint['geometry'].exterior.xy
+        # (2) Create an array of fetch lengths:
+        fetch = np.arange(0, 1, 0.001)  # degrees latitude/longitude
+        # (3) Create an empty DataFrame to hold values of wind speed, roughness length, and fetch length:
+        terrain_params = pd.DataFrame(columns=['Roughness Length', 'Fetch Length', 'Local Wind Speed'])
+        # (4) For each fetch length and the given wind direction, find the roughness length:
+        for f in fetch:
+            # (5) Create circle with radius = fetch length:
+            circ = originz.buffer(f, resolution=200)
+            # (6) Create half-circle corresponding to the given wind direction (bounds):
             if wind_direction == 0 or wind_direction == 180:
-                surf_area = parcel.h_bldg*(max(ybldg)-min(ybldg))
+                # Define boundary line:
+                bline = LineString([(originz.x, originz.y + f), (originz.x, originz.y - f)])
+                # Split the circle into two polygons
+                circ_split = split(circ, bline)
+                # Choose the first polygon to do a check and assign bounds for the wind direction:
+                x1, y1 = circ_split[0].exterior.xy
+                if wind_direction == 0:
+                    # For 0 degrees, minimum longitude (x) in the Polygon we want should be smaller than bldg centroid x
+                    if min(x1) < originz.x:
+                        bounds = circ_split[0]
+                    else:
+                        bounds = circ_split[1]
+                elif wind_direction == 180:
+                    # For 180 degrees, max longitude (x) in the Polygon we want should be larger than bldg centroid x
+                    if max(x1) > originz.x:
+                        bounds = circ_split[0]
+                    else:
+                        bounds = circ_split[1]
             elif wind_direction == 90 or wind_direction == 270:
-                surf_area = parcel.h_bldg*(max(xbldg)-min(xbldg))
-            elif wind_direction == 45 or wind_direction == 135 or wind_direction == 225 or wind_direction == 315:
-                surf_area = parcel.h_bldg * ((max(xbldg) - min(xbldg)) + (max(ybldg)-min(ybldg)))
-            # Add new row to empty DataFrame:
-            z_params = z_params.append({'Building Height': parcel.h_bldg, 'Surface Area': surf_area}, ignore_index=True)
+                print(wind_direction)
+                # Define boundary line:
+                bline = LineString([(originz.x-f, originz.y), (originz.x+f, originz.y)])
+                # Split the circle into two polygons
+                circ_split = split(circ, bline)
+                # Choose the first polygon to do a check and assign bounds for the wind direction:
+                x1, y1 = circ_split[0].exterior.xy
+                if wind_direction == 90:
+                    # For 90 degrees, minimum latitude (y) in the Polygon we want should be smaller than bldg centroid y
+                    if min(y1) < originz.y:
+                        bounds = circ_split[0]
+                    else:
+                        bounds = circ_split[1]
+                elif wind_direction == 270:
+                    # For 270 degrees, max latitude (y) in the Polygon we want should be larger than bldg centroid y
+                    if max(y1) > originz.y:
+                        bounds = circ_split[0]
+                    else:
+                        bounds = circ_split[1]
+            elif wind_direction == 45 or wind_direction == 225:
+                # Define boundary line:
+                rad = math.pi*(1/4)
+                bline = LineString([(originz.x-f*math.cos(rad), originz.y+f*math.sin(rad)), (originz.x+f*math.cos(rad), originz.y-f*math.sin(rad))])
+                # Split the circle into two polygons
+                circ_split = split(circ, bline)
+                print(len(circ_split))
+                # Choose the first polygon to do a check and assign bounds for the wind direction:
+                x1, y1 = circ_split[0].exterior.xy
+                if wind_direction == 45:
+                    # For 45 degrees, use point in upper left-hand quadrant:
+                    # Polygon we want will have a minimum longitude that is smaller than the longitude for this point
+                    if min(x1) < originz.x-fetch*math.cos(rad):
+                        bounds = circ_split[0]
+                    else:
+                        bounds = circ_split[1]
+                elif wind_direction == 225:
+                    # For 225 degrees, use point in lower right-hand quadrant:
+                    # Polygon we want will have a maximum longitude that is larger than the longitude for this point
+                    if max(x1) > originz.x+fetch*math.cos(rad):
+                        bounds = circ_split[0]
+                    else:
+                        bounds = circ_split[1]
+            elif wind_direction == 135 or 315:
+                # Define boundary line:
+                rad = math.pi*(1/4)
+                bline = LineString([(originz.x+fetch*math.cos(rad), originz.y+fetch*math.sin(rad)), (originz.x-fetch*math.cos(rad), originz.y-fetch*math.sin(rad))])
+                # Split the circle into two polygons
+                circ_split = split(circ, bline)
+                # Choose the first polygon to do a check and assign bounds for the wind direction:
+                x1, y1 = circ_split[0].exterior.xy
+                if wind_direction == 135:
+                    # For 135 degrees, use point in upper right-hand quadrant:
+                    # Polygon we want will have a maximum longitude that is larger than the longitude for this point
+                    if max(x1) > originz.x+fetch*math.cos(rad):
+                        bounds = circ_split[0]
+                    else:
+                        bounds = circ_split[1]
+                elif wind_direction == 315:
+                    # For 315 degrees, use point in lower left-hand quadrant:
+                    # Polygon we want will have a minimum longitude that is smaller than the longitude for this point
+                    if min(x1) < originz.x-fetch*math.cos(rad):
+                        bounds = circ_split[0]
+                    else:
+                        bounds = circ_split[1]
 
-        # Calculate the average height of all buildings within the fetch length:
-        h_avg = z_params['Building Height'].mean()
-        # Calculate the total surface area for all buildings within the fetch length:
-        total_surf = sum(z_params['Surface Area'])
-        # Calculate the roughness length:
-        z0 = 0.5*h_avg*total_surf/bounds.area()
+            # Plot the site bounds
+            xsite, ysite = bounds.exterior.xy
+            plt.plot(xp, yp, xsite, ysite)
+            #plt.show()
 
-    def calc_windspeed(self, hnew, znew, vref, href=10, zref=0.03):
+            # (6) Identify all buildings within the bounding geometry:
+            # Read in parcel data:
+            # 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Parcels/CedarsCrossing.csv'
+            parcel_data = pd.read_csv('C:/Users/Karen/Desktop/CedarsCrossing.csv')
+            # Create an empty list to store identified buildings:
+            fetch_bldgs = []
+            # Create point objects for each building (longitude, latitude) & check if point is within bounding geometry:
+            for row in range(0, len(parcel_data)):
+                bldg_point = Point(parcel_data['Longitude'][row], parcel_data['Latitude'][row])
+                if bldg_point.within(bounds):
+                    # If the building is in the bounding box, create a Parcel Instance:
+                    pid = parcel_data['Parcel ID'][row]
+                    num_stories = parcel_data['Stories'][row]
+                    occupancy = parcel_data['Use Code'][row]
+                    yr_built = parcel_data['Year Built'][row]
+                    address = parcel_data['Address'][row]
+                    sq_ft = parcel_data['Square Footage'][row]
+                    lon = parcel_data['Longitude'][row]
+                    lat = parcel_data['Latitude'][row]
+                    new_parcel = Parcel(pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat)
+                    fetch_bldgs.append(new_parcel)
+                    xparcel,yparcel = new_parcel.footprint["geometry"].exterior.xy
+                    plt.plot(xparcel, yparcel)
+                else:
+                    pass
+            # Check to see if we have any buildings:
+            if len(fetch_bldgs) == 0:
+                pass  # Move on to the next fetch length
+            else:
+                # Now that we've identified all parcels, plot for confirmation:
+                plt.show()
+
+                # (7) Buildings within bounding geometry: interested in their 1) height and 2) surface area
+                # Create an empty DataFrame to hold all values:
+                z_params = pd.DataFrame(columns=['Building Height', 'Surface Area'])
+                # Loop through the buildings:
+                for bldg in fetch_bldgs:
+                    # Given wind direction, calculate surface area as follows:
+                    # Create equivalent rectangle using building footprint coordinates and multiply by building height
+                    # Check if an equivalent rectangle is needed:
+                    xbldg,ybldg = bldg.footprint["geometry"].exterior.xy
+                    if len(xbldg) != 4:
+                        # Create equivalent rectangle:
+                        rect = Polygon([(max(xbldg), max(ybldg)), (max(xbldg), min(ybldg)), (min(xbldg), min(ybldg), min(xbldg), max(ybldg))])
+                        xbldg,ybldg = rect.exterior.xy
+                    else:
+                        pass
+                    # Calculate the surface area for each obstruction (building):
+                    if wind_direction == 0 or wind_direction == 180:
+                        # For these wind directions, we want the side parallel to the longitude:
+                        xd = xbldg(ybldg == max(ybldg))
+                        d = Site.distance(self, xd, max(ybldg), xd, min(ybldg))
+                        surf_area = parcel.h_bldg*d
+                    elif wind_direction == 90 or wind_direction == 270:
+                        # For these wind directions, we want the side parallel to the latitude:
+                        yd = ybldg(xbldg == max(xbldg))
+                        d = Site.distance(self, max(xbldg), yd, min(ybldg), yd)
+                        surf_area = parcel.h_bldg*d
+                    elif wind_direction == 45 or wind_direction == 135 or wind_direction == 225 or wind_direction == 315:
+                        # For these wind directions, we want both sides of the rectangle:
+                        xd = xbldg(ybldg == max(ybldg))
+                        d1 = Site.distance(self, xd, max(ybldg), xd, min(ybldg))
+                        yd = ybldg(xbldg == max(xbldg))
+                        d2 = Site.distance(self, max(xbldg), yd, min(ybldg), yd)
+                        surf_area = parcel.h_bldg * (d1+d2)
+                    # Add new row to empty DataFrame:
+                    z_params = z_params.append({'Building Height': parcel.h_bldg, 'Surface Area': surf_area}, ignore_index=True)
+
+                # Calculate the average height of all buildings within the fetch length:
+                h_avg = z_params['Building Height'].mean()
+                # Calculate the total surface area for all buildings within the fetch length:
+                total_surf = sum(z_params['Surface Area'])
+                # Calculate the roughness length:
+                z0 = 0.5*h_avg*total_surf/bounds.area()
+                # Calculate the wind speed:
+                vnew = Site.calc_windspeed(self, parcel.h_bldg, z0)
+                # Calculate the meters distance of the fetch length:
+                fdist = Site.distance(self, originz.x, originz.y, originz.x+f, originz.y)
+                # Populate the DataFrame with the values for this fetch length:
+                terrain_params = terrain_params.append({'Roughness Length': z0, 'Fetch Length': fdist, 'Local Wind Speed': vnew}, ignore_index=True)
+
+    def distance(self, lon1, lat1, lon2, lat2):
+        # Calculate distance between two longitude, latitude points using the Haversine formula:
+        earth_radius = 6371*1000  # in meters
+        # Calculate differences between longitudes, latitudes (convert from decimal degrees to radians):
+        dlat = math.radians(lat2) - math.radians(lat1)
+        dlon = math.radians(lon2) - math.radians(lon1)
+
+        sin_lat = math.sin(dlat / 2)
+        sin_lon = math.sin(dlon / 2)
+
+        a = (sin_lat * sin_lat) + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * (sin_lon * sin_lon)
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        dist = round(earth_radius*c, 2)
+
+        return dist
+
+
+    def calc_windspeed(self, hnew, znew, vref=80, href=10, zref=0.03):
         # Note: Default reference parameters correspond to 10 meter height in open terrain
         # Calculate the shear (friction) velocity for open terrain:
         shear_ref = vref/(2.5*math.log(href/zref))
@@ -191,17 +237,16 @@ class Site:
         # Calculate shear velocity for new terrain (may or may not be applicable):
         shear_new = shear_ref*shear_ratio
         # Calculate the zero-plane displacement:
-        k = 0.4 # from the log law
-        zd = h_avg - znew/k
+        #k = 0.4 # from the log law
+        #zd = h_avg - znew/k
         # Calculate new wind speed (log law for now) for different terrain and/or height:
         vnew = 2.5*shear_new*math.log(hnew/znew)
         # Need gradient heights for the given location --> can get these from wind measurement stations?
         # Power law:
-        #alpha_new = 0.096*math.log10(znew) + 0.016*math.log10(znew)**2 + 0.24
-        #alpha_ref = 0.096*math.log10(zref) + 0.016*math.log10(zref)**2 + 0.24
+
         #vnew = ((hnew/znew)**alpha_new)*((href/zref)**alpha_ref)*vref
-        vratio = vnew/vref
-        return vratio
+        #vratio = vnew/vref
+        return vnew
 
 
 
