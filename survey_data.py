@@ -14,12 +14,14 @@ class SurveyData:
             self.survey = 'RECS - currently not supported'
 
         # Determine the census division for the CBECS and RECS surveys:
-        if self.survey == 'CBECS' or 'RECS':
+        if self.survey == 'CBECS' or self.survey == 'RECS':
             census_div = self.census_division(parcel)
 
         # Call function that populates building attributes using the CBECS:
         if self.survey == 'CBECS':
             self.cbecs_attrib(census_div, parcel)
+        else:
+            print('Survey data for single family homes currently not supported')
 
     def census_division(self, parcel):
         # Census division for CBECS/RECS:

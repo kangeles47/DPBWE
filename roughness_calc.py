@@ -32,7 +32,7 @@ class Site:
         originz = parcel.footprint['geometry'].centroid  # Parcel footprint is a Polygon type
         xp,yp = parcel.footprint['geometry'].exterior.xy
         # (2) Create an array of fetch lengths:
-        fetch = np.arange(0, 1, 0.001)  # degrees latitude/longitude
+        fetch = np.arange(0.001, 1, 0.001)  # degrees latitude/longitude
         # (3) Create an empty DataFrame to hold values of wind speed, roughness length, and fetch length:
         terrain_params = pd.DataFrame(columns=['Roughness Length', 'Fetch Length', 'Local Wind Speed'])
         # (4) For each fetch length and the given wind direction, find the roughness length:
@@ -128,7 +128,7 @@ class Site:
             # Plot the site bounds
             xsite, ysite = bounds.exterior.xy
             plt.plot(xp, yp, xsite, ysite)
-            #plt.show()
+            plt.show()
 
             # (6) Identify all buildings within the bounding geometry:
             # Read in parcel data:
@@ -160,6 +160,7 @@ class Site:
                 tol = 1.0  # Provide a default value for tolerance and move on to the next fetch length
             else:
                 # Now that we've identified all parcels, plot for confirmation:
+                plt.plot(xp, yp, xsite, ysite)
                 plt.show()
 
                 # (7) Buildings within bounding geometry: interested in their 1) height and 2) surface area
@@ -180,19 +181,23 @@ class Site:
                     # Calculate the surface area for each obstruction (building):
                     if wind_direction == 0 or wind_direction == 180:
                         # For these wind directions, we want the side parallel to the longitude:
-                        xd = xbldg(ybldg == max(ybldg))
+                        ind_y = np.where(ybldg == max(ybldg))[0][0]
+                        xd = xbldg[ind_y]
                         d = Site.distance(self, xd, max(ybldg), xd, min(ybldg))
                         surf_area = parcel.h_bldg*d
                     elif wind_direction == 90 or wind_direction == 270:
                         # For these wind directions, we want the side parallel to the latitude:
-                        yd = ybldg(xbldg == max(xbldg))
+                        ind_x = np.where(xbldg == max(xbldg))[0][0]
+                        yd = ybldg[ind_x]
                         d = Site.distance(self, max(xbldg), yd, min(ybldg), yd)
                         surf_area = parcel.h_bldg*d
                     elif wind_direction == 45 or wind_direction == 135 or wind_direction == 225 or wind_direction == 315:
                         # For these wind directions, we want both sides of the rectangle:
-                        xd = xbldg(ybldg == max(ybldg))
+                        ind_y = np.where(ybldg == max(ybldg))[0][0]
+                        xd = xbldg[ind_y]
                         d1 = Site.distance(self, xd, max(ybldg), xd, min(ybldg))
-                        yd = ybldg(xbldg == max(xbldg))
+                        ind_x = np.where(xbldg == max(xbldg))[0][0]
+                        yd = ybldg[ind_x]
                         d2 = Site.distance(self, max(xbldg), yd, min(ybldg), yd)
                         surf_area = parcel.h_bldg * (d1+d2)
                     # Add new row to empty DataFrame:
