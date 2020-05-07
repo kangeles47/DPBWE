@@ -18,7 +18,7 @@ class Wind:
 
 class Site:
 
-    def __init__(self, parcel, footprints, wind_direction):
+    def __init__(self, parcel, wind_direction):
         self.location = Point(parcel.lon, parcel.lat)
         # Read in parcel data:
         # 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Parcels/CedarsCrossing.csv'
@@ -240,7 +240,7 @@ class Site:
         return dist
 
 
-    def calc_windspeed(self, hnew, znew, vref=80, href=10, zref=0.03):
+    def calc_windspeed(self, hnew, znew, vref=80.0, href=10.0, zref=0.03):
         # Note: Default reference parameters correspond to 10 meter height in open terrain
         # Calculate the shear (friction) velocity for open terrain:
         shear_ref = vref/(2.5*math.log(href/zref))
@@ -263,18 +263,17 @@ class Site:
 
 
 # Identify the parcel:
-lon = -85.676188
-lat = 30.190142
-test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
+lon = -85.62010796
+lat = 30.1802
+test = Parcel('14805-139-000', 1, 'SINGLE FAM', 2011, '2912 PATRICIA ANN LN PANAMA CITY 32405', 2555, lon, lat)
 # Create an instance of the site class:
 wind_direction = 0
-jFile = 'C:/Users/Karen/Desktop/BayCounty.geojson'
-data = gpd.read_file(jFile)
+
 # data is a DataFrame object with column label = ['geometry'] and indexes = [0: end]
 # Accessing a specific Polygon object then requires: data['geometry'][index]
 
-site = Site(test, data, wind_direction)
-test = site.calc_windspeed(21,0.78,11.7,10,0.08)
+site = Site(test, wind_direction)
+test = site.calc_windspeed(21, 0.78, 11.7, 10, 0.08)
 print(test)
 
 # Recreating plot from HAZUS-HM
