@@ -1,5 +1,5 @@
 import numpy as np
-from math import sqrt
+from math import sqrt, pi, cos
 import geopandas as gpd
 from shapely.geometry import Point, Polygon
 import matplotlib.pyplot as plt
@@ -15,15 +15,15 @@ class BIM:
         self.pid = pid
         # Exception for single family homes:
         if num_stories == 0:
-            self.num_stories = num_stories + 1
+            self.num_stories = int(num_stories) + 1
         else:
-            self.num_stories = num_stories
+            self.num_stories = int(num_stories)
         self.occupancy = occupancy
-        self.yr_built = yr_built
+        self.yr_built = int(yr_built)
         self.address = address
-        self.lon = lon
-        self.lat = lat
-        self.sq_ft = sq_ft
+        self.lon = float(lon)
+        self.lat = float(lat)
+        self.sq_ft = float(sq_ft)
         self.h_bldg = None  # every building has a height, fidelity will determine value
         self.walls = []
         self.roof = None
@@ -34,7 +34,7 @@ class BIM:
 
         # Using basic building attributes, set up building metavariables:
         # 1) Tag the building as "commercial" or "not commercial"
-        if self.occupancy == "Profession" or "Hotel" or "Motel" or "Financial":
+        if self.occupancy == "PROFESSION" or self.occupancy == "HOTEL" or self.occupancy == "MOTEL" or self.occupancy == "FINANCIAL":
             self.is_comm = True
         else:
             self.is_comm = False
@@ -71,8 +71,11 @@ class Parcel(BIM):
         # Populate instance attributes informed by national survey data:
         survey_data = SurveyData()  # create an instance of the survey data class
         survey_data.run(self)  # populate the parcel information
-        # Fill in code-informed assembly-level information
-        code_informed.roof_attributes(code_informed.edition, self, survey_data.survey)
+        if survey_data.survey == 'CBECS':
+            # Fill in code-informed assembly-level information
+            code_informed.roof_attributes(code_informed.edition, self, survey_data.survey)
+        else:
+            pass
 
     def assign_footprint(self, parcel):
         # Access file with region's building footprint information:
@@ -110,8 +113,11 @@ class Parcel(BIM):
             pass
         else:
             parcel.footprint['type'] = 'default'
-            length = sqrt(self.sq_ft/self.num_stories) # Divide total building area by number of stories and take square root
-            parcel.footprint['geometry'] = Polygon([(parcel.lon + length/2, parcel.lat + length/2), (parcel.lon + length/2, parcel.lat - length/2), (parcel.lon - length/2, parcel.lat - length/2), (parcel.lon - length/2, parcel.lat + length/2)])
+            length = (sqrt(self.sq_ft/self.num_stories))/2 # Divide total building area by number of stories and take square root, divide by 2
+            earth_radius = 6371 * 1000  # in meters
+            new_lon = (length/earth_radius)*(180/pi)
+            new_lat = (length/earth_radius)/cos(parcel.lat*180/pi)
+            parcel.footprint['geometry'] = Polygon([(parcel.lon + new_lon, parcel.lat + new_lat), (parcel.lon + new_lon, parcel.lat - new_lat), (parcel.lon - new_lon, parcel.lat - new_lat), (parcel.lon - new_lon, parcel.lat + new_lat)])
 
     def prelim_assem(self, parcel):
         #IF statements here may be unnecessary but keeping them for now
@@ -160,6 +166,6 @@ class Parcel(BIM):
                 parcel.floors[idx].append(new_floor) #Add a floor instance to each placeholder
                 parcel.ceilings[idx].append(new_ceiling) #Add a ceiling instance to each placeholder
 
-lon = -85.676188
-lat = 30.190142
-test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
+#lon = -85.676188
+#lat = 30.190142
+#test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
