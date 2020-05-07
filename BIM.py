@@ -13,7 +13,11 @@ class BIM:
 
     def __init__(self, pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat):
         self.pid = pid
-        self.num_stories = num_stories
+        # Exception for single family homes:
+        if num_stories == 0:
+            self.num_stories = num_stories + 1
+        else:
+            self.num_stories = num_stories
         self.occupancy = occupancy
         self.yr_built = yr_built
         self.address = address
