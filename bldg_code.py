@@ -15,38 +15,67 @@ class BldgCode:
                     else:
                         self.edition = '1988 SFBC'
                 elif parcel.yr_built > 2001 & parcel.yr_built <= 2004:
-                    self.edition = '2001 FBC - Commercial'
-                elif parcel.yr_built > 2004 & parcel.yr_built <= 2007:
-                    self.edition = '2004 FBC - Commercial'
-                elif parcel.yr_built > 2007 & parcel.yr_built <= 2010:
-                    self.edition = '2007 FBC - Commercial'
+                    self.edition = '2001 FBC - Building'
+                elif parcel.yr_built > 2004 & parcel.yr_built <= 2008:
+                    self.edition = '2004 FBC - Building'
+                elif parcel.yr_built > 2008 & parcel.yr_built <= 2011:
+                    self.edition = '2007 FBC - Building'
+                elif parcel.yr_built > 2011 & parcel.yr_built <= 2014:
+                    self.edition = '2010 FBC - Building'
+                elif parcel.yr_built > 2014 & parcel.yr_built <= 2017:
+                    self.edition = '2014 FBC - Building'
+                elif parcel.yr_built > 2017 & parcel.yr_built <= 2020:
+                    self.edition = '2017 FBC - Building'
                 else:
-                    self.edition = '1988 SBC'  # Minimum building code for all other construction older than 1988
+                    print('Building code and edition currently not supported', parcel.yr_built)
             else:
-                if parcel.yr_built > 1986 & parcel.yr_built <= 1991:
-                    self.edition = '1986 One and Two Family Dwelling Code'
+                if parcel.yr_built > 1983 & parcel.yr_built <= 1986:
+                    self.edition = '1983 CABO'
+                elif parcel.yr_built > 1986 & parcel.yr_built <= 1989:
+                    self.edition = '1986 CABO'
+                elif parcel.yr_built > 1989 & parcel.yr_built <= 1991:
+                    self.edition = '1989 CABO'
+                elif parcel.yr_built > 1991 & parcel.yr_built <= 1995:
+                    self.edition = '1992 CABO'
+                elif parcel.yr_built > 1995 & parcel.yr_built <= 2001:
+                    self.edition = '1995 CABO'
                 elif parcel.yr_built > 2001 & parcel.yr_built <= 2004:
                     self.edition = '2001 FBC - Residential'
-                elif parcel.yr_built > 2004 & parcel.yr_built <= 2007:
+                elif parcel.yr_built > 2004 & parcel.yr_built <= 2008:
                     self.edition = '2004 FBC - Residential'
-                elif parcel.yr_built > 2007 & parcel.yr_built <= 2010:
+                elif parcel.yr_built > 2008 & parcel.yr_built <= 2011:
                     self.edition = '2007 FBC - Residential'
+                elif parcel.yr_built > 2011 & parcel.yr_built <= 2014:
+                    self.edition = '2010 FBC - Residential'
+                elif parcel.yr_built > 2014 & parcel.yr_built <= 2017:
+                    self.edition = '2014 FBC - Residential'
+                elif parcel.yr_built > 2017 & parcel.yr_built <= 2020:
+                    self.edition = '2017 FBC - Residential'
                 else:
-                    self.edition = '1986 One and Two Family Dwelling Code' # Minimum building code for all construction older than 1986
+                    print('Building code and edition currently not supported', parcel.yr_built)
+        # Knowing the building code and edition, populate bldg level attributes:
         self.bldg_attributes(self.edition, parcel)
 
     def bldg_attributes(self, edition, parcel):
         # Knowing the code edition, populate this building-level code-informed attributes for the parcel:
-        if edition == '2001 FBC - Commercial' or edition == '1988 SBC':
-            # Story height, building height, number of rooms
-            parcel.h_story = np.arange(7.5, 7.5 * parcel.num_stories, parcel.num_stories) #building elevation for each story
-            parcel.h_bldg = parcel.num_stories * 7.5  # minimum ceiling height per room is used to calculate height of building
-            parcel.num_rooms = 6 #assigning number of rooms based off of occupancy, structural system
-            #self.roof_survey_data(self.edition, parcel) #populate missing data for the parcel from national survey (CBECS)
-        elif edition == '2001 FBC - Residential' or edition == '2004 FBC - Residential' or edition == '2007 FBC - Residential':
-            # Story height, building height, number of rooms
-            parcel.h_story = np.arange(7, 7*parcel.num_stories, parcel.num_stories)  # building elevation for each story
-            parcel.h_bldg = parcel.num_stories * 7  # minimum ceiling height per room is used to calculate height of building (Section R305.1)
+        if parcel.state == "FL":
+            if parcel.is_comm:
+                if 'FBC' in edition or edition == '1988 SBC':
+                    # Story height, building height, number of rooms
+                    parcel.h_story = np.arange(7.5, 7.5 * parcel.num_stories, parcel.num_stories)/3.281  # story elevations (meters)
+                    parcel.h_bldg = parcel.num_stories * 7.5/3.281  # min. ceiling height used to calculate building height (meters)
+                    parcel.num_rooms = 6 #assigning number of rooms based off of occupancy, structural system
+                    #self.roof_survey_data(self.edition, parcel) #populate missing data for the parcel from national survey (CBECS)
+                else:
+                    print('Building level attributes currently not supported')
+            else:
+                if 'FBC' in edition:
+                    # Story height, building height, number of rooms
+                    parcel.h_story = np.arange(7, 7*parcel.num_stories, parcel.num_stories)/3.281  # story elevations (meters)
+                    parcel.h_bldg = parcel.num_stories * 7/3.281  # min. ceiling height used to calculate building height
+                elif 'CABO' in edition:
+                    parcel.h_story = np.arange(7.5, 7.5 * parcel.num_stories, parcel.num_stories) / 3.281
+                    parcel.h_bldg = parcel.num_stories * 7.5 / 3.281
 
     def roof_attributes(self, edition, parcel, survey):
 
