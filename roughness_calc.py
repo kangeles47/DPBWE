@@ -157,7 +157,7 @@ class Site:
                         new_parcel = Parcel(pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat)
                         fetch_bldgs = fetch_bldgs.append({'Building ID': pid, 'BIM': new_parcel}, ignore_index=True)
                         xparcel,yparcel = new_parcel.footprint["geometry"].exterior.xy
-                        #plt.plot(xparcel, yparcel)
+                        plt.plot(xparcel, yparcel)
                 else:
                     pass
             # Check to see if we have any buildings:
@@ -167,8 +167,8 @@ class Site:
                 tol = 1.0  # Provide a default value for tolerance and move on to the next fetch length
             else:
                 # Now that we've identified all parcels, plot for confirmation:
-                #plt.plot(xp, yp, xsite, ysite)
-                #plt.show()
+                plt.plot(xp, yp, xsite, ysite)
+                plt.show()
                 # (7) Buildings within bounding geometry: interested in their 1) height and 2) surface area
                 # Create an empty DataFrame to hold all values:
                 z_params = pd.DataFrame(columns=['Building Height', 'Surface Area'])
@@ -227,7 +227,7 @@ class Site:
                 vnew = Site.calc_windspeed(self, parcel.h_bldg, z0)
                 # Calculate the meters distance of the fetch length:
                 fdist = Site.distance(self, originz.x, originz.y, originz.x+f, originz.y)
-                print('Fetch in meters:', fdist)
+                print('Fetch in meters:', fdist, "Fetch size:", f)
                 # Populate the DataFrame with the values for this fetch length:
                 terrain_params = terrain_params.append({'Roughness Length': z0, 'Fetch Length': fdist, 'Local Wind Speed': vnew}, ignore_index=True)
                 # Check the difference in the wind speed:
@@ -248,17 +248,18 @@ class Site:
 
     def distance(self, lon1, lat1, lon2, lat2):
         # Calculate distance between two longitude, latitude points using the Haversine formula:
-        earth_radius = 6371*1000  # in meters
-        # Calculate differences between longitudes, latitudes (convert from decimal degrees to radians):
-        dlat = abs(math.radians(lat2)) - abs(math.radians(lat1))
-        dlon = abs(math.radians(lon2)) - abs(math.radians(lon1))
+        earth_radius = 6371000  # radius of Earth in meters
+        phi_1 = math.radians(lat1)
+        phi_2 = math.radians(lat2)
 
-        sin_lat = math.sin(dlat / 2)
-        sin_lon = math.sin(dlon / 2)
+        delta_phi = math.radians(lat2 - lat1)
+        delta_lambda = math.radians(lon2 - lon1)
 
-        a = (sin_lat * sin_lat) + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * (sin_lon * sin_lon)
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-        dist = round(earth_radius*c, 2)
+        a = math.sin(delta_phi / 2.0) ** 2 + math.cos(phi_1) * math.cos(phi_2) * math.sin(delta_lambda / 2.0) ** 2
+
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+        dist = earth_radius * c  # output distance in meters
 
         return dist
 
@@ -286,8 +287,8 @@ class Site:
 
 
 # Identify the parcel:
-lon = -85.62010796
-lat = 30.1802
+lon = -85.61925391
+lat = 30.181
 test = Parcel('14805-139-000', 1, 'SINGLE FAM', 2011, '2912 PATRICIA ANN LN PANAMA CITY 32405', 2555, lon, lat)
 # Create an instance of the site class:
 wind_direction = 0

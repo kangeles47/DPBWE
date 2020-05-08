@@ -1,5 +1,5 @@
 import numpy as np
-from math import sqrt, pi, cos
+from math import sqrt, pi, cos, asin, sin, atan2, degrees
 import geopandas as gpd
 from shapely.geometry import Point, Polygon
 import matplotlib.pyplot as plt
@@ -11,7 +11,7 @@ class BIM:
 
     # Here we might have to write some sort of function that parses the .JSON file from the SimCenter BIM Model
 
-    def __init__(self, pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat):
+    def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
         self.pid = pid
         # Exception for single family homes:
         if num_stories == 0:
@@ -23,7 +23,7 @@ class BIM:
         self.address = address
         self.lon = float(lon)
         self.lat = float(lat)
-        self.sq_ft = float(sq_ft)
+        self.area = float(area)/10.764 # sq feet to sq meters
         self.h_bldg = None  # every building has a height, fidelity will determine value
         self.walls = []
         self.roof = None
@@ -59,8 +59,8 @@ class BIM:
 
 class Parcel(BIM):
 
-    def __init__(self, pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat):
-        BIM.__init__(self, pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat) #Bring in all of the attributes that are defined in the BIM class for the parcel model
+    def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
+        BIM.__init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat) #Bring in all of the attributes that are defined in the BIM class for the parcel model
         # Define building-level attributes that are specific to parcel models
         # Building footprint:
         self.assign_footprint(self)
@@ -113,11 +113,19 @@ class Parcel(BIM):
             pass
         else:
             parcel.footprint['type'] = 'default'
-            length = (sqrt(self.sq_ft/self.num_stories))/2 # Divide total building area by number of stories and take square root, divide by 2
+            length = sin(pi/4)*(sqrt(self.area/self.num_stories))/2 # Divide total building area by number of stories and take square root, divide by 2
             earth_radius = 6371 * 1000  # in meters
-            new_lon = (length/earth_radius)*(180/pi)
-            new_lat = (length/earth_radius)/cos(parcel.lat*180/pi)
+            brng1 = 0
+            brng2 = 45*pi/180
+            new_lat = asin(sin(parcel.lat*pi/180)*cos(length/earth_radius)+cos(parcel.lat*pi/180)*sin(length/earth_radius)*cos(brng2))
+            new_lon = parcel.lon*pi/180 + atan2(sin(brng2)*sin(length/earth_radius)*cos(parcel.lat*pi/180), cos(length/earth_radius)-sin(parcel.lat*pi/180)*sin(new_lat))
+            new_lat = degrees(new_lat)
+            new_lon = degrees(new_lon)
             parcel.footprint['geometry'] = Polygon([(parcel.lon + new_lon, parcel.lat + new_lat), (parcel.lon + new_lon, parcel.lat - new_lat), (parcel.lon - new_lon, parcel.lat - new_lat), (parcel.lon - new_lon, parcel.lat + new_lat)])
+            x,y = parcel.footprint['geometry'].exterior.xy
+            plt.plot(x,y)
+            plt.show()
+            a = 0
 
     def prelim_assem(self, parcel):
         #IF statements here may be unnecessary but keeping them for now
