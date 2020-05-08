@@ -99,8 +99,8 @@ class Parcel(BIM):
             if p1.within(poly):
                 parcel.footprint["geometry"] = poly
                 parcel.footprint["type"] = 'open data'
-                print('Found building footprint')
-                print(poly)
+                #print('Found building footprint')
+                #print(poly)
                 # If we do find the building footprint, I would like to print it for verification:
                 #x, y = poly.exterior.xy
                 #plt.plot(x, y)
