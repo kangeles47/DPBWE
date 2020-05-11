@@ -1,5 +1,5 @@
 import shapely.ops as ops
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import MultiLineString, LineString, Point, Polygon
 import pandas as pd
 import numpy as np
 import math
@@ -48,24 +48,53 @@ class Site:
             circ = originz.buffer(f, resolution=200)
             # (6) Create half-circle corresponding to the given wind direction (boundary):
             if wind_direction == 0 or wind_direction == 180:
-                # Define boundary line:
-                bline = LineString([(originz.x, originz.y + f), (originz.x, originz.y - f)])
+                # Define boundary line1:
+                rad = math.pi * (1 / 4)
+                bline1 = LineString([(originz.x - f * math.cos(rad), originz.y + f * math.sin(rad)),(originz.x + f * math.cos(rad), originz.y - f * math.sin(rad))])
                 # Split the circle into two polygons
-                circ_split = ops.split(circ, bline)
+                circ_split = ops.split(circ, bline1)
                 # Choose the first polygon to do a check and assign boundary for the wind direction:
                 x1, y1 = circ_split[0].exterior.xy
                 if wind_direction == 0:
-                    # For 0 degrees, minimum longitude (x) in the Polygon we want should be smaller than bldg centroid x
-                    if min(x1) < originz.x:
-                        boundary = circ_split[0]
+                    # For 0 degrees, use point in upper left-hand quadrant:
+                    # Polygon we want will have a minimum longitude that is smaller than the longitude for this point
+                    if min(x1) < originz.x - f * math.cos(rad):
+                        half_circ = circ_split[0]
                     else:
-                        boundary = circ_split[1]
+                        half_circ = circ_split[1]
+                    # Split the half-circle to get the sector we want:
+                    bline2 = LineString([(originz.x + f * math.cos(rad), originz.y + f * math.sin(rad)),(originz.x - f * math.cos(rad), originz.y - f * math.sin(rad))])
+                    circ_split2 = ops.split(half_circ, bline2)
+                    # Choose the first polygon to do a check and assign boundary for the wind direction:
+                    x2, y2 = circ_split2[0].exterior.xy
+                    # Polygon we want will have a minimum longitude that is smaller than the longitude in upper LH quadrant:
+                    if min(x1) < originz.x - f * math.cos(rad):
+                        boundary = circ_split2[0]
+                    else:
+                        boundary = circ_split2[1]
+                    #xb, yb = boundary.exterior.xy
+                    #plt.plot(xb, yb)
+                    #plt.show()
                 elif wind_direction == 180:
+                    pass
+                # Define boundary line:
+                #bline = LineString([(originz.x, originz.y + f), (originz.x, originz.y - f)])
+                # Split the circle into two polygons
+                #circ_split = ops.split(circ, bline)
+                # Choose the first polygon to do a check and assign boundary for the wind direction:
+                #x1, y1 = circ_split[0].exterior.xy
+                #if wind_direction == 0:
+                    # For 0 degrees, minimum longitude (x) in the Polygon we want should be smaller than bldg centroid x
+                    #if min(x1) < originz.x:
+                        #boundary = circ_split[0]
+                    #else:
+                        #boundary = circ_split[1]
+                #elif wind_direction == 180:
                     # For 180 degrees, max longitude (x) in the Polygon we want should be larger than bldg centroid x
-                    if max(x1) > originz.x:
-                        boundary = circ_split[0]
-                    else:
-                        boundary = circ_split[1]
+                    #if max(x1) > originz.x:
+                        #boundary = circ_split[0]
+                    #else:
+                        #boundary = circ_split[1]
             elif wind_direction == 90 or wind_direction == 270:
                 print(wind_direction)
                 # Define boundary line:
@@ -214,17 +243,20 @@ class Site:
                 h_avg = z_params['Building Height'].mean()
                 # Calculate the total surface area for all buildings within the fetch length:
                 total_surf = sum(z_params['Surface Area'])
-                # Calculate the site area:
-                site_area = ops.transform(partial(pyproj.transform, pyproj.Proj(init='EPSG:4326'), pyproj.Proj(proj='aea', lat_1 = boundary.bounds[1], lat_2 = boundary.bounds[3])), boundary)
-                print(site_area.area)
+                # Calculate the site area: EPSG:4326
+                # Calculate the meters distance of the fetch length:
+                fdist = Site.dist_calc(self, originz.x, originz.y, originz.x + f, originz.y)
+                site_area = (math.pi*fdist**2)/4
+                #site_area = ops.transform(partial(pyproj.transform, pyproj.Proj(init='WGS84'), pyproj.Proj(proj='aea', lat_1 = boundary.bounds[1], lat_2 = boundary.bounds[3])), boundary)
+                #print(site_area.area)
 
                 # Calculate the roughness length:
-                z0 = 0.5*h_avg*total_surf/site_area.area
+                z0 = 0.5*h_avg*total_surf/site_area
                 print('Roughness length:', z0)
                 # Calculate the wind speed:
                 vnew = Site.calc_windspeed(self, parcel.h_bldg, z0)
                 # Calculate the meters distance of the fetch length:
-                fdist = Site.dist_calc(self, originz.x, originz.y, originz.x+f, originz.y)
+                #fdist = Site.dist_calc(self, originz.x, originz.y, originz.x+f, originz.y)
                 print('Fetch in meters:', fdist, "Fetch size:", f)
                 # Populate the DataFrame with the values for this fetch length:
                 terrain_params = terrain_params.append({'Roughness Length': z0, 'Fetch Length': fdist, 'Local Wind Speed': vnew}, ignore_index=True)
