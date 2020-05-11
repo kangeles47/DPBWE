@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from assembly import RoofAssem, WallAssem, FloorAssem, CeilingAssem
 from bldg_code import BldgCode
 from survey_data import SurveyData
+from geopy import distance
 
 class BIM:
 
@@ -114,18 +115,28 @@ class Parcel(BIM):
         else:
             parcel.footprint['type'] = 'default'
             length = sin(pi/4)*(sqrt(self.area/self.num_stories))/2 # Divide total building area by number of stories and take square root, divide by 2
-            earth_radius = 6371 * 1000  # in meters
-            brng1 = 0
-            brng2 = 45*pi/180
-            new_lat = asin(sin(parcel.lat*pi/180)*cos(length/earth_radius)+cos(parcel.lat*pi/180)*sin(length/earth_radius)*cos(brng2))
-            new_lon = parcel.lon*pi/180 + atan2(sin(brng2)*sin(length/earth_radius)*cos(parcel.lat*pi/180), cos(length/earth_radius)-sin(parcel.lat*pi/180)*sin(new_lat))
-            new_lat = degrees(new_lat)
-            new_lon = degrees(new_lon)
-            parcel.footprint['geometry'] = Polygon([(parcel.lon + new_lon, parcel.lat + new_lat), (parcel.lon + new_lon, parcel.lat - new_lat), (parcel.lon - new_lon, parcel.lat - new_lat), (parcel.lon - new_lon, parcel.lat + new_lat)])
+            p1 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 45)
+            p2 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 135)
+            p3 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 225)
+            p4 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 315)
+            parcel.footprint['geometry'] = Polygon([(p1.longitude, p1.latitude), (p2.longitude, p2.latitude), (p3.longitude, p3.latitude), (p4.longitude, p4.latitude)])
+            #print(distance.distance(p1, p2).kilometers)
+            #print(distance.distance(p2, p3).kilometers)
+            #earth_radius = 6371 * 1000  # in meters
+            #brng1 = 0
+            #brng2 = 45*pi/180
+            #new_lat = asin(sin(parcel.lat*pi/180)*cos(length/earth_radius)+cos(parcel.lat*pi/180)*sin(length/earth_radius)*cos(brng2))
+            #new_lon = parcel.lon*pi/180 + atan2(sin(brng2)*sin(length/earth_radius)*cos(parcel.lat*pi/180), cos(length/earth_radius)-sin(parcel.lat*pi/180)*sin(new_lat))
+            #new_lat = degrees(new_lat)
+            #new_lon = degrees(new_lon)
+            #parcel.footprint['geometry'] = Polygon([(parcel.lon + new_lon, parcel.lat + new_lat), (parcel.lon + new_lon, parcel.lat - new_lat), (parcel.lon - new_lon, parcel.lat - new_lat), (parcel.lon - new_lon, parcel.lat + new_lat)])
             x,y = parcel.footprint['geometry'].exterior.xy
-            plt.plot(x,y)
-            plt.show()
-            a = 0
+            #fig, ax = plt.subplots()
+            #ax.plot(x,y)
+            #plt.plot(x,y)
+            #ax.axis('equal')
+            #plt.show()
+            #a = 0
 
     def prelim_assem(self, parcel):
         #IF statements here may be unnecessary but keeping them for now

@@ -6,6 +6,7 @@ import math
 import matplotlib.pyplot as plt
 import pyproj
 from functools import partial
+from geopy import distance
 
 from BIM import Parcel
 
@@ -166,9 +167,6 @@ class Site:
                 # Calculate the meters distance of the fetch length:
                 tol = 1.0  # Provide a default value for tolerance and move on to the next fetch length
             else:
-                # Now that we've identified all parcels, plot for confirmation:
-                plt.plot(xp, yp, xsite, ysite)
-                plt.show()
                 # (7) Buildings within bounding geometry: interested in their 1) height and 2) surface area
                 # Create an empty DataFrame to hold all values:
                 z_params = pd.DataFrame(columns=['Building Height', 'Surface Area'])
@@ -192,22 +190,22 @@ class Site:
                         # For these wind directions, we want the side parallel to the longitude:
                         ind_y = np.where(ybldg == max(ybldg))[0][0]
                         xd = xbldg[ind_y]
-                        d = Site.distance(self, xd, max(ybldg), xd, min(ybldg))
+                        d = Site.dist_calc(self, xd, max(ybldg), xd, min(ybldg))
                         surf_area = parcel.h_bldg*d
                     elif wind_direction == 90 or wind_direction == 270:
                         # For these wind directions, we want the side parallel to the latitude:
                         ind_x = np.where(xbldg == max(xbldg))[0][0]
                         yd = ybldg[ind_x]
-                        d = Site.distance(self, max(xbldg), yd, min(ybldg), yd)
+                        d = Site.dist_calc(self, max(xbldg), yd, min(ybldg), yd)
                         surf_area = parcel.h_bldg*d
                     elif wind_direction == 45 or wind_direction == 135 or wind_direction == 225 or wind_direction == 315:
                         # For these wind directions, we want both sides of the rectangle:
                         ind_y = np.where(ybldg == max(ybldg))[0][0]
                         xd = xbldg[ind_y]
-                        d1 = Site.distance(self, xd, max(ybldg), xd, min(ybldg))
+                        d1 = Site.dist_calc(self, xd, max(ybldg), xd, min(ybldg))
                         ind_x = np.where(xbldg == max(xbldg))[0][0]
                         yd = ybldg[ind_x]
-                        d2 = Site.distance(self, max(xbldg), yd, min(ybldg), yd)
+                        d2 = Site.dist_calc(self, max(xbldg), yd, min(ybldg), yd)
                         surf_area = parcel.h_bldg * (d1+d2)
                     # Add new row to empty DataFrame:
                     z_params = z_params.append({'Building Height': parcel.h_bldg, 'Surface Area': surf_area}, ignore_index=True)
@@ -226,7 +224,7 @@ class Site:
                 # Calculate the wind speed:
                 vnew = Site.calc_windspeed(self, parcel.h_bldg, z0)
                 # Calculate the meters distance of the fetch length:
-                fdist = Site.distance(self, originz.x, originz.y, originz.x+f, originz.y)
+                fdist = Site.dist_calc(self, originz.x, originz.y, originz.x+f, originz.y)
                 print('Fetch in meters:', fdist, "Fetch size:", f)
                 # Populate the DataFrame with the values for this fetch length:
                 terrain_params = terrain_params.append({'Roughness Length': z0, 'Fetch Length': fdist, 'Local Wind Speed': vnew}, ignore_index=True)
@@ -238,6 +236,10 @@ class Site:
                     tol = (terrain_params['Local Wind Speed'][row] - terrain_params['Local Wind Speed'][row-1])/terrain_params['Local Wind Speed'][row]
         # Break the loop if the new fetch length provides us with the right tolerance value:
             if abs(tol) < 0.2 and z0 > 0.1:
+                # Now that we've identified all parcels, plot for confirmation:
+                plt.plot(xp, yp, xsite, ysite)
+                plt.axis('equal')
+                plt.show()
                 print("fetch length:", fdist)
                 print("roughness length:", z0)
                 print("tolerance:", abs(tol))
@@ -246,7 +248,7 @@ class Site:
                 pass
 
 
-    def distance(self, lon1, lat1, lon2, lat2):
+    def dist_calc(self, lon1, lat1, lon2, lat2):
         # Calculate distance between two longitude, latitude points using the Haversine formula:
         earth_radius = 6371000  # radius of Earth in meters
         phi_1 = math.radians(lat1)
@@ -260,6 +262,7 @@ class Site:
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
         dist = earth_radius * c  # output distance in meters
+        dist = distance.distance((lat1, lon1), (lat2, lon2)).kilometers*1000
 
         return dist
 
