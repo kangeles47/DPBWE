@@ -323,8 +323,8 @@ class Site:
 
 
 # Identify the parcel:
-lon = -85.61925391
-lat = 30.181
+lon = -85.618980
+lat = 30.180940
 test = Parcel('14805-139-000', 1, 'SINGLE FAM', 2011, '2912  PATRICIA ANN LN   PANAMA CITY 32405', 2555, lon, lat)
 # Create an instance of the site class:
 wind_direction = 0

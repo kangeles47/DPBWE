@@ -1,7 +1,8 @@
 import numpy as np
-from math import sqrt, pi, cos, asin, sin, atan2, degrees
+from math import sqrt, pi, sin
 import geopandas as gpd
 from shapely.geometry import Point, Polygon
+from scipy import spatial
 import matplotlib.pyplot as plt
 from assembly import RoofAssem, WallAssem, FloorAssem, CeilingAssem
 from bldg_code import BldgCode
@@ -81,7 +82,7 @@ class Parcel(BIM):
     def assign_footprint(self, parcel):
         # Access file with region's building footprint information:
         if parcel.state == 'FL' and parcel.county == 'Bay':
-            jFile = 'C:/Users/Karen/Desktop/BayCounty.geojson'
+            jFile = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/Geojson/BayCounty.geojson'
         else:
             print('Footprints for this region currently not supported')
 
@@ -98,16 +99,34 @@ class Parcel(BIM):
             # Check if point is within the polygon in this row:
             poly = data['geometry'][row]
             if p1.within(poly):
-                parcel.footprint["geometry"] = poly
-                parcel.footprint["type"] = 'open data'
-                print(parcel.pid)
-                #print(poly)
-                # If we do find the building footprint, I would like to print it for verification:
-                #x, y = poly.exterior.xy
-                #plt.plot(x, y)
-                #plt.show()
+                parcel.footprint['geometry'] = poly
+                parcel.footprint['type'] = 'open data'
             else:
-                pass
+                # Populate the KD tree using the centroids of the building footprints:
+                centroids = data['geometry'].apply(lambda ind: [ind.centroid.x, ind.centroid.y]).tolist()
+                kdtree = spatial.KDTree(centroids)
+                # Set up an array of (small) longitude, latitude radii:
+                radii = np.arange(0.0001, 0.01, 0.0001)
+                # Find the nearest neighbors within the radius (increase until neighbors are present):
+                neigh_list = []
+                for rad in radii:
+                    neigh_list.append(kdtree.query_ball_point([parcel.lon, parcel.lat], r=rad))
+                    if len(neigh_list) > 1:
+                        break
+                    else:
+                        pass
+                # Find the identified building footprints:
+                if len(neigh_list[1]) == 1:
+                    parcel.footprint['geometry'] = data['geometry'][neigh_list[1][0]]
+                    parcel.footprint['type'] = 'open data'
+                    # Plot for visual confirmation:
+                    xselect, yselect = parcel.footprint['geometry'].exterior.xy
+                    plt.plot(xselect,yselect)
+                    plt.scatter(p1.x, p1.y)
+                    plt.show()
+                else:
+                    print('More than 1 building footprint identified')
+
 
         # Assign a regular footprint to any buildings without an open data footprint:
         if parcel.footprint['type'] == 'open data':
@@ -120,16 +139,6 @@ class Parcel(BIM):
             p3 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 225)
             p4 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 315)
             parcel.footprint['geometry'] = Polygon([(p1.longitude, p1.latitude), (p2.longitude, p2.latitude), (p3.longitude, p3.latitude), (p4.longitude, p4.latitude)])
-            #print(distance.distance(p1, p2).kilometers)
-            #print(distance.distance(p2, p3).kilometers)
-            #earth_radius = 6371 * 1000  # in meters
-            #brng1 = 0
-            #brng2 = 45*pi/180
-            #new_lat = asin(sin(parcel.lat*pi/180)*cos(length/earth_radius)+cos(parcel.lat*pi/180)*sin(length/earth_radius)*cos(brng2))
-            #new_lon = parcel.lon*pi/180 + atan2(sin(brng2)*sin(length/earth_radius)*cos(parcel.lat*pi/180), cos(length/earth_radius)-sin(parcel.lat*pi/180)*sin(new_lat))
-            #new_lat = degrees(new_lat)
-            #new_lon = degrees(new_lon)
-            #parcel.footprint['geometry'] = Polygon([(parcel.lon + new_lon, parcel.lat + new_lat), (parcel.lon + new_lon, parcel.lat - new_lat), (parcel.lon - new_lon, parcel.lat - new_lat), (parcel.lon - new_lon, parcel.lat + new_lat)])
             x,y = parcel.footprint['geometry'].exterior.xy
             #fig, ax = plt.subplots()
             #ax.plot(x,y)
