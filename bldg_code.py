@@ -61,9 +61,9 @@ class BldgCode:
         if parcel.state == "FL":
             if parcel.is_comm:
                 if 'FBC' in edition or edition == '1988 SBC':
-                    # Story height, building height, number of rooms
-                    parcel.h_story = np.arange(7.5, 7.5 * parcel.num_stories, parcel.num_stories)/3.281  # story elevations (meters)
-                    parcel.h_bldg = parcel.num_stories * 7.5/3.281  # min. ceiling height used to calculate building height (meters)
+                    # 9 ft standard ceiling height
+                    parcel.h_story = np.arange(9, 9 * parcel.num_stories, parcel.num_stories)/3.281  # story elevations (meters)
+                    parcel.h_bldg = parcel.num_stories * 9/3.281  # min. ceiling height used to calculate building height (meters)
                     parcel.num_rooms = 6 #assigning number of rooms based off of occupancy, structural system
                     #self.roof_survey_data(self.edition, parcel) #populate missing data for the parcel from national survey (CBECS)
                 else:
@@ -71,13 +71,13 @@ class BldgCode:
             else:
                 if 'FBC' in edition:
                     # Story height, building height, number of rooms
-                    # 7 ft minimum ceiling height
-                    parcel.h_story = np.arange(7, 7*parcel.num_stories, parcel.num_stories)/3.281  # story elevations (meters)
-                    parcel.h_bldg = parcel.num_stories * 7.5/3.281  # min. ceiling height used to calculate building height
+                    # 9 ft standard ceiling height
+                    parcel.h_story = np.arange(9, 9*parcel.num_stories, parcel.num_stories)/3.281  # story elevations (meters)
+                    parcel.h_bldg = parcel.num_stories * 9/3.281  # min. ceiling height used to calculate building height
                 elif 'CABO' in edition:
-                    # 7.5 minimum ceiling height
-                    parcel.h_story = np.arange(7.5, 7.5 * parcel.num_stories, parcel.num_stories) / 3.281
-                    parcel.h_bldg = parcel.num_stories * 7.5/ 3.281
+                    # 8 ft standard ceiling height for older construction
+                    parcel.h_story = np.arange(8, 8 * parcel.num_stories, parcel.num_stories)/3.281
+                    parcel.h_bldg = parcel.num_stories * 8/3.281
 
     def roof_attributes(self, edition, parcel, survey):
 
