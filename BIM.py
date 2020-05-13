@@ -102,30 +102,29 @@ class Parcel(BIM):
                 parcel.footprint['geometry'] = poly
                 parcel.footprint['type'] = 'open data'
             else:
-                # Populate the KD tree using the centroids of the building footprints:
-                centroids = data['geometry'].apply(lambda ind: [ind.centroid.x, ind.centroid.y]).tolist()
-                kdtree = spatial.KDTree(centroids)
-                # Set up an array of (small) longitude, latitude radii:
-                radii = np.arange(0.0001, 0.01, 0.0001)
-                # Find the nearest neighbors within the radius (increase until neighbors are present):
-                neigh_list = []
-                for rad in radii:
-                    neigh_list.append(kdtree.query_ball_point([parcel.lon, parcel.lat], r=rad))
-                    if len(neigh_list) > 1:
-                        break
-                    else:
-                        pass
-                # Find the identified building footprints:
-                if len(neigh_list[1]) == 1:
-                    parcel.footprint['geometry'] = data['geometry'][neigh_list[1][0]]
-                    parcel.footprint['type'] = 'open data'
-                    # Plot for visual confirmation:
-                    xselect, yselect = parcel.footprint['geometry'].exterior.xy
-                    plt.plot(xselect,yselect)
-                    plt.scatter(p1.x, p1.y)
-                    plt.show()
+                pass
+        # If the lon, lat of the parcel does not fall within bounds of any of the footprints, assign nearest neighbor:
+        if parcel.footprint["type"] is None:
+            # Populate the KD tree using the centroids of the building footprints:
+            centroids = data['geometry'].apply(lambda ind: [ind.centroid.x, ind.centroid.y]).tolist()
+            kdtree = spatial.KDTree(centroids)
+            # Set up an array of (small) longitude, latitude radii:
+            radii = np.arange(0.0001, 0.01, 0.0001)
+            # Find the nearest neighbors within the radius (increase until neighbors are present):
+            neigh_list = []
+            for rad in radii:
+                neigh_list.append(kdtree.query_ball_point([parcel.lon, parcel.lat], r=rad))
+                if len(neigh_list) > 1:
+                    break
                 else:
-                    print('More than 1 building footprint identified')
+                    pass
+            # Find the identified building footprints:
+            if len(neigh_list[1]) == 1:
+                parcel.footprint['geometry'] = data['geometry'][neigh_list[1][0]]
+                parcel.footprint['type'] = 'open data'
+            else:
+                print('More than 1 building footprint identified')
+                # In the future, might be able to do a match by considering the height of the parcel and it's area
 
 
         # Assign a regular footprint to any buildings without an open data footprint:
