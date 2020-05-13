@@ -71,11 +71,13 @@ class BldgCode:
             else:
                 if 'FBC' in edition:
                     # Story height, building height, number of rooms
+                    # 7 ft minimum ceiling height
                     parcel.h_story = np.arange(7, 7*parcel.num_stories, parcel.num_stories)/3.281  # story elevations (meters)
-                    parcel.h_bldg = parcel.num_stories * 7/3.281  # min. ceiling height used to calculate building height
+                    parcel.h_bldg = parcel.num_stories * 7.5/3.281  # min. ceiling height used to calculate building height
                 elif 'CABO' in edition:
+                    # 7.5 minimum ceiling height
                     parcel.h_story = np.arange(7.5, 7.5 * parcel.num_stories, parcel.num_stories) / 3.281
-                    parcel.h_bldg = parcel.num_stories * 7.5 / 3.281
+                    parcel.h_bldg = parcel.num_stories * 7.5/ 3.281
 
     def roof_attributes(self, edition, parcel, survey):
 

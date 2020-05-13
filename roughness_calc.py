@@ -24,7 +24,7 @@ class Site:
         self.location = Point(parcel.lon, parcel.lat)
         # Read in parcel data:
         # 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Parcels/CedarsCrossing.csv'
-        parcel_data = pd.read_csv('C:/Users/Karen/Desktop/CedarsCrossing.csv')
+        #parcel_data = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/ResSub.csv')
         self.terrain = self.roughness_calc(parcel, wind_direction)
 
 
@@ -163,8 +163,8 @@ class Site:
 
             # Plot the site boundary
             xsite, ysite = boundary.exterior.xy
-            plt.plot(xp, yp, xsite, ysite)
-            plt.show()
+            #plt.plot(xp, yp, xsite, ysite)
+            #plt.show()
 
             # (6) Identify all buildings within the bounding geometry:
             # Create point objects for each building (longitude, latitude) & check if point is within bounding geometry:
@@ -264,10 +264,11 @@ class Site:
                 if len(terrain_params['Roughness Length']) == 1:
                     tol = 1.0  # provide a default value for the tolerance for first z0
                 else:
-                    row = np.where(fetch == f)[0][0]
-                    tol = (terrain_params['Local Wind Speed'][row] - terrain_params['Local Wind Speed'][row-1])/terrain_params['Local Wind Speed'][row]
+                    tol1 = terrain_params.loc[terrain_params.index[-1], "Local Wind Speed"] # get current wind speed
+                    tol2 = terrain_params.loc[terrain_params.index[-2], "Local Wind Speed"] # get previous step wind speed
+                    tol = abs((tol1-tol2)/tol1)
         # Break the loop if the new fetch length provides us with the right tolerance value:
-            if abs(tol) < 0.2 and z0 > 0.1:
+            if abs(tol) < 0.1 and z0 > 0.1:
                 # Now that we've identified all parcels, plot for confirmation:
                 plt.plot(xp, yp, xsite, ysite)
                 plt.axis('equal')
@@ -324,7 +325,7 @@ class Site:
 # Identify the parcel:
 lon = -85.61925391
 lat = 30.181
-test = Parcel('14805-139-000', 1, 'SINGLE FAM', 2011, '2912 PATRICIA ANN LN PANAMA CITY 32405', 2555, lon, lat)
+test = Parcel('14805-139-000', 1, 'SINGLE FAM', 2011, '2912  PATRICIA ANN LN   PANAMA CITY 32405', 2555, lon, lat)
 # Create an instance of the site class:
 wind_direction = 0
 

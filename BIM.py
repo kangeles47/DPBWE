@@ -100,7 +100,7 @@ class Parcel(BIM):
             if p1.within(poly):
                 parcel.footprint["geometry"] = poly
                 parcel.footprint["type"] = 'open data'
-                #print('Found building footprint')
+                print(parcel.pid)
                 #print(poly)
                 # If we do find the building footprint, I would like to print it for verification:
                 #x, y = poly.exterior.xy
@@ -114,7 +114,7 @@ class Parcel(BIM):
             pass
         else:
             parcel.footprint['type'] = 'default'
-            length = sin(pi/4)*(sqrt(self.area/self.num_stories))/2 # Divide total building area by number of stories and take square root, divide by 2
+            length = (sqrt(self.area/self.num_stories))*(1/(2*sin(pi/4))) # Divide total building area by number of stories and take square root, divide by 2
             p1 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 45)
             p2 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 135)
             p3 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 225)

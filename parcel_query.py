@@ -18,8 +18,8 @@ agreeButton.click()
 # Parcels numbered between 14805-101-000 to 14805-191-000 AND 14876-501-000 to 14876-614-000
 parcel_list = []
 
-for num in range(101,192):
-    parcel_list.append('14805-' + str(num) + '-000')
+for num in range(0, 100):
+    parcel_list.append('13729-00' + str(num) + '-000')
 
 # for num2 in range(501,615):
     # parcel_list.append('14876-' + str(num2) + '-000')
@@ -70,7 +70,7 @@ for parcel in range(0, len(parcel_list)):
             elif 'Actual Year Built' in tag:
                 yr_built = value.splitlines()[1]
 
-    with open('CedarsCrossing.csv', 'a', newline = '') as csvfile:
+    with open('ResSub.csv', 'a', newline = '') as csvfile:
         fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writerow({'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Square Footage': sq_ft, 'Stories': stories, 'Year Built': yr_built})
