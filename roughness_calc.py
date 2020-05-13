@@ -266,17 +266,17 @@ class Site:
                     ybldg = np.array(ybldg)
                     # Calculate the surface area for each obstruction (building):
                     if wind_direction == 0 or wind_direction == 180:
-                        # For these wind directions, we want the side parallel to the longitude:
-                        ind_y = np.where(ybldg == max(ybldg))[0][0]
-                        xd = xbldg[ind_y]
-                        d = Site.dist_calc(self, xd, max(ybldg), xd, min(ybldg))
-                        surf_area = parcel.h_bldg*d
-                    elif wind_direction == 90 or wind_direction == 270:
                         # For these wind directions, we want the side parallel to the latitude:
                         ind_x = np.where(xbldg == max(xbldg))[0][0]
                         yd = ybldg[ind_x]
                         d = Site.dist_calc(self, max(xbldg), yd, min(ybldg), yd)
-                        surf_area = parcel.h_bldg*d
+                        surf_area = parcel.h_bldg * d
+                    elif wind_direction == 90 or wind_direction == 270:
+                        # For these wind directions, we want the side parallel to the longitude:
+                        ind_y = np.where(ybldg == max(ybldg))[0][0]
+                        xd = xbldg[ind_y]
+                        d = Site.dist_calc(self, xd, max(ybldg), xd, min(ybldg))
+                        surf_area = parcel.h_bldg * d
                     elif wind_direction == 45 or wind_direction == 135 or wind_direction == 225 or wind_direction == 315:
                         # For these wind directions, we want both sides of the rectangle:
                         ind_y = np.where(ybldg == max(ybldg))[0][0]
