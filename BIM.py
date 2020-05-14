@@ -123,7 +123,7 @@ class Parcel(BIM):
                 parcel.footprint['geometry'] = data['geometry'][neigh_list[1][0]]
                 parcel.footprint['type'] = 'open data'
             else:
-                print('More than 1 building footprint identified')
+                print('More than 1 building footprint identified', parcel.pid, parcel.address)
                 # In the future, might be able to do a match by considering the height of the parcel and it's area
 
 

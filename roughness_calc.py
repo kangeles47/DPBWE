@@ -30,8 +30,6 @@ class Site:
 
     def roughness_calc(self, parcel, wind_direction):
         # This function calculates a data-driven surface roughness and the corresponding fetch length:
-        # Read in parcel data:
-        # 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Parcels/CedarsCrossing.csv'
         parcel_data = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/Parcels/CedarsCrossing.csv')
         # (1) Find the parcel's centroid - this will be the origin for the z0 calculation:
         originz = parcel.footprint['geometry'].centroid  # Parcel footprint is a Polygon type
@@ -373,9 +371,9 @@ class Site:
 
 
 # Identify the parcel:
-lon = -85.618980
-lat = 30.180940
-test = Parcel('14805-139-000', 1, 'SINGLE FAM', 2011, '2912  PATRICIA ANN LN   PANAMA CITY 32405', 2555, lon, lat)
+lon = -85.620215
+lat = 30.180998
+test = Parcel('14805-133-000', 1, 'SINGLE FAM', 2009, '1806  EVERITT AVE   PANAMA CITY 32405', 2103, lon, lat)
 # Create an instance of the site class:
 wind_direction = 270
 
