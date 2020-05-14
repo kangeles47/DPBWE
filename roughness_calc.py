@@ -328,6 +328,184 @@ class Site:
             else:
                 pass
 
+    def get_sector(self, originz, wind_direction, f):
+        # For the given wind direction, determine the geometries for each sector
+        # Begin by defining a circle with radius = current fetch:
+        circ = originz.buffer(f, resolution=200)
+        # To determine the sector geometries for each wind direction, divide the circle into: halves, quarters, sectors
+        if wind_direction == 0 or wind_direction == 180:
+            # Define boundary line1:
+            rad = math.pi * (1 / 4)
+            bline1 = LineString([(originz.x - f * math.cos(rad), originz.y + f * math.sin(rad)), (originz.x + f * math.cos(rad), originz.y - f * math.sin(rad))])
+            # Split the circle into two polygons
+            circ_split = ops.split(circ, bline1)
+            # Choose the first polygon to do a check and assign boundary for the wind direction:
+            x1, y1 = circ_split[0].exterior.xy
+            if wind_direction == 0:
+                # For 0 degrees, use point in upper right-hand quadrant:
+                # Polygon we want will have a maximum longitude that is greater than the longitude for this point
+                if max(x1) > originz.x + f * math.cos(rad):
+                    half_circ = circ_split[0]
+                else:
+                    half_circ = circ_split[1]
+                # Split the half-circle to get the sector we want:
+                bline2 = LineString([(originz.x - f * math.cos(rad), originz.y - f * math.sin(rad)),
+                                     (originz.x + f * math.cos(rad), originz.y + f * math.sin(rad))])
+                circ_split2 = ops.split(half_circ, bline2)
+                # Choose the first polygon to do a check and assign boundary for the wind direction:
+                x2, y2 = circ_split2[0].exterior.xy
+                # Polygon we want will have a maximum latitude that is greater than the latitude in upper RH quadrant:
+                if max(y2) > originz.y + f * math.sin(rad):
+                    boundary = circ_split2[0]
+                else:
+                    boundary = circ_split2[1]
+            elif wind_direction == 180:
+                # For 180 degrees, use point in lower left-hand quadrant:
+                # Polygon we want will have a minimum longitude that is smaller than the longitude for this point
+                if min(x1) < originz.x - f * math.cos(rad):
+                    half_circ = circ_split[0]
+                else:
+                    half_circ = circ_split[1]
+                # Split the half-circle to get the sector we want:
+                bline2 = LineString([(originz.x - f * math.cos(rad), originz.y - f * math.sin(rad)),
+                                     (originz.x + f * math.cos(rad), originz.y + f * math.sin(rad))])
+                circ_split2 = ops.split(half_circ, bline2)
+                # Choose the first polygon to do a check and assign boundary for the wind direction:
+                x2, y2 = circ_split2[0].exterior.xy
+                # Polygon we want will have a minimum latitude that is smaller than the latitude in lower LH quadrant:
+                if min(y2) < originz.y - f * math.sin(rad):
+                    boundary = circ_split2[0]
+                else:
+                    boundary = circ_split2[1]
+        elif wind_direction == 90 or wind_direction == 270:
+            # Define boundary line1:
+            rad = math.pi * (1 / 4)
+            bline1 = LineString([(originz.x - f * math.cos(rad), originz.y - f * math.sin(rad)),
+                                 (originz.x + f * math.cos(rad), originz.y + f * math.sin(rad))])
+            # Split the circle into two polygons
+            circ_split = ops.split(circ, bline1)
+            # Choose the first polygon to do a check and assign boundary for the wind direction:
+            x1, y1 = circ_split[0].exterior.xy
+            if wind_direction == 90:
+                # For 90 degrees, use point in upper right-hand quadrant:
+                # Polygon we want will have a maximum longitude that is larger than the longitude for this point
+                if max(x1) > originz.x + f * math.cos(rad):
+                    half_circ = circ_split[0]
+                else:
+                    half_circ = circ_split[1]
+                # Split the half-circle to get the sector we want:
+                bline2 = LineString([(originz.x - f * math.cos(rad), originz.y + f * math.sin(rad)),
+                                     (originz.x + f * math.cos(rad), originz.y - f * math.sin(rad))])
+                circ_split2 = ops.split(half_circ, bline2)
+                # Choose the first polygon to do a check and assign boundary for the wind direction:
+                x2, y2 = circ_split2[0].exterior.xy
+                # Polygon we want will have a maximum longitude that is greater than the longitude in upper RH quadrant:
+                if max(x1) > originz.x + f * math.cos(rad):
+                    boundary = circ_split2[0]
+                else:
+                    boundary = circ_split2[1]
+            elif wind_direction == 270:
+                # For 270 degrees, use point in upper left-hand quadrant:
+                # Polygon we want will have a minimum longitude that is smaller than the longitude for this point
+                if min(x1) < originz.x - f * math.cos(rad):
+                    half_circ = circ_split[0]
+                else:
+                    half_circ = circ_split[1]
+                # Split the half-circle to get the sector we want:
+                bline2 = LineString([(originz.x - f * math.cos(rad), originz.y + f * math.sin(rad)),
+                                     (originz.x + f * math.cos(rad), originz.y - f * math.sin(rad))])
+                circ_split2 = ops.split(half_circ, bline2)
+                # Choose the first polygon to do a check and assign boundary for the wind direction:
+                x2, y2 = circ_split2[0].exterior.xy
+                # Polygon we want will have a minimum longitude that is smaller than the longitude in upper LH quadrant:
+                if min(x2) < originz.x - f * math.cos(rad):
+                    boundary = circ_split2[0]
+                else:
+                    boundary = circ_split2[1]
+        elif wind_direction == 45 or wind_direction == 225:
+            # Define boundary line1:
+            rad = math.pi * (1 / 4)
+            bline1 = LineString([(originz.x, originz.y - f), (originz.x, originz.y + f)])
+            # Split the circle into two polygons
+            circ_split = ops.split(circ, bline1)
+            # Choose the first polygon to do a check and assign boundary for the wind direction:
+            x1, y1 = circ_split[0].exterior.xy
+            if wind_direction == 45:
+                # For 45 degrees, use maximum longitude:
+                if max(x1) > originz.x:
+                    half_circ = circ_split[0]
+                else:
+                    half_circ = circ_split[1]
+                # Split the half-circle to get the sector we want:
+                bline2 = LineString([(originz.x - f, originz.y), (originz.x + f, originz.y)])
+                circ_split2 = ops.split(half_circ, bline2)
+                # Choose the first polygon to do a check and assign boundary for the wind direction:
+                x2, y2 = circ_split2[0].exterior.xy
+                # Use maximum latitude:
+                if max(y2) > originz.y:
+                    boundary = circ_split2[0]
+                else:
+                    boundary = circ_split2[1]
+            elif wind_direction == 225:
+                # For 225 degrees, use minimum longitude:
+                if min(x1) < originz.x:
+                    half_circ = circ_split[0]
+                else:
+                    half_circ = circ_split[1]
+                # Split the half-circle to get the sector we want:
+                bline2 = LineString([(originz.x - f, originz.y), (originz.x + f, originz.y)])
+                circ_split2 = ops.split(half_circ, bline2)
+                # Choose the first polygon to do a check and assign boundary for the wind direction:
+                x2, y2 = circ_split2[0].exterior.xy
+                # Use minimum latitude:
+                if min(y2) < originz.y:
+                    boundary = circ_split2[0]
+                else:
+                    boundary = circ_split2[1]
+        elif wind_direction == 135 or 315:
+            # Define boundary line1:
+            rad = math.pi * (1 / 4)
+            bline1 = LineString([(originz.x, originz.y - f), (originz.x, originz.y + f)])
+            # Split the circle into two polygons
+            circ_split = ops.split(circ, bline1)
+            # Choose the first polygon to do a check and assign boundary for the wind direction:
+            x1, y1 = circ_split[0].exterior.xy
+            if wind_direction == 135:
+                # For 135 degrees, use maximum longitude:
+                if max(x1) > originz.x:
+                    half_circ = circ_split[0]
+                else:
+                    half_circ = circ_split[1]
+                # Split the half-circle to get the sector we want:
+                bline2 = LineString([(originz.x - f, originz.y), (originz.x + f, originz.y)])
+                circ_split2 = ops.split(half_circ, bline2)
+                # Choose the first polygon to do a check and assign boundary for the wind direction:
+                x2, y2 = circ_split2[0].exterior.xy
+                # Use minimum latitude:
+                if min(y2) < originz.y:
+                    boundary = circ_split2[0]
+                else:
+                    boundary = circ_split2[1]
+            elif wind_direction == 315:
+                # For 225 degrees, use minimum longitude:
+                if min(x1) < originz.x:
+                    half_circ = circ_split[0]
+                else:
+                    half_circ = circ_split[1]
+                # Split the half-circle to get the sector we want:
+                bline2 = LineString([(originz.x - f, originz.y), (originz.x + f, originz.y)])
+                circ_split2 = ops.split(half_circ, bline2)
+                # Choose the first polygon to do a check and assign boundary for the wind direction:
+                x2, y2 = circ_split2[0].exterior.xy
+                # Use maximum latitude:
+                if max(y2) < originz.y:
+                    boundary = circ_split2[0]
+                else:
+                    boundary = circ_split2[1]
+        # Plot the site boundary
+        xsite, ysite = boundary.exterior.xy
+        # plt.plot(xp, yp, xsite, ysite)
+        # plt.show()
 
     def dist_calc(self, lon1, lat1, lon2, lat2):
         # Calculate distance between two longitude, latitude points using the Haversine formula:
