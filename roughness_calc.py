@@ -482,16 +482,28 @@ class Site:
                     half_circ = circ_split[0]
                 else:
                     half_circ = circ_split[1]
-                # Split the half-circle to get the sector we want:
+                # Split the half-circle to get the quadrant we want:
                 bline2 = LineString([(originz.x - f, originz.y), (originz.x + f, originz.y)])
                 circ_split2 = ops.split(half_circ, bline2)
-                # Choose the first polygon to do a check and assign boundary for the wind direction:
+                # Choose the first polygon to do a check and choose the right quadrant:
                 x2, y2 = circ_split2[0].exterior.xy
                 # Use maximum latitude:
                 if max(y2) > originz.y:
-                    boundary = circ_split2[0]
+                    quad_circ = circ_split2[0]
                 else:
-                    boundary = circ_split2[1]
+                    quad_circ = circ_split2[1]
+                # Split the quadrant into sectors:
+                bline3 = LineString([(originz.x - f * math.cos(rad), originz.y - f * math.cos(rad)), (originz.x + f * math.cos(rad), originz.y + f * math.cos(rad))])
+                circ_split3 = ops.split(quad_circ, bline3)
+                # Choose the first polygon to do a check and assign sector geometries:
+                x3, y3 = circ_split3[0].exterior.xy
+                # Polygon for first sector (smaller angle) will have maximum latitude greater than point in upper RH quadrant:
+                if max(y3) > originz.y + f * math.sin(rad):
+                    sector_geom.append(circ_split3[0])
+                    sector_geom.append(circ_split3[1])
+                else:
+                    sector_geom.append(circ_split3[1])
+                    sector_geom.append(circ_split3[0])
             elif wind_direction == 225:
                 # For 225 degrees, use minimum longitude:
                 if min(x1) < originz.x:
@@ -505,9 +517,26 @@ class Site:
                 x2, y2 = circ_split2[0].exterior.xy
                 # Use minimum latitude:
                 if min(y2) < originz.y:
-                    boundary = circ_split2[0]
+                    quad_circ = circ_split2[0]
                 else:
-                    boundary = circ_split2[1]
+                    quad_circ = circ_split2[1]
+                # Split the quadrant into sectors:
+                bline3 = LineString([(originz.x - f * math.cos(rad), originz.y - f * math.cos(rad)), (originz.x + f * math.cos(rad), originz.y + f * math.cos(rad))])
+                circ_split3 = ops.split(quad_circ, bline3)
+                # Choose the first polygon to do a check and assign sector geometries:
+                x3, y3 = circ_split3[0].exterior.xy
+                # Polygon for first sector (smaller angle) will have minimum latitude smaller than point in lower LH quadrant:
+                if min(y3) < originz.y - f * math.sin(rad):
+                    sector_geom.append(circ_split3[0])
+                    sector_geom.append(circ_split3[1])
+                else:
+                    sector_geom.append(circ_split3[1])
+                    sector_geom.append(circ_split3[0])
+                # Plot for confirmation:
+                xs, ys = sector_geom[0].exterior.xy
+                xs2, ys2 = sector_geom[1].exterior.xy
+                plt.plot(xs, ys, xs2, ys2)
+                plt.show()
         elif wind_direction == 135 or 315:
             # Define boundary line1:
             rad = math.pi * (1 / 4)
@@ -600,7 +629,7 @@ lon = -85.620215
 lat = 30.180998
 test = Parcel('14805-133-000', 1, 'SINGLE FAM', 2009, '1806  EVERITT AVE   PANAMA CITY 32405', 2103, lon, lat)
 # Create an instance of the site class:
-wind_direction = 180
+wind_direction = 225
 
 # data is a DataFrame object with column label = ['geometry'] and indexes = [0: end]
 # Accessing a specific Polygon object then requires: data['geometry'][index]
