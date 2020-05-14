@@ -42,6 +42,7 @@ class Site:
         # Create an empty DataFrame to store identified buildings:
         fetch_bldgs = pd.DataFrame(columns=['Building ID', 'BIM'])
         for f in fetch:
+            sectors = Site.get_sector(self, originz, wind_direction, f)
             # (5) Create circle with radius = fetch length:
             circ = originz.buffer(f, resolution=200)
             # (6) Create half-circle corresponding to the given wind direction (boundary):
@@ -330,6 +331,8 @@ class Site:
 
     def get_sector(self, originz, wind_direction, f):
         # For the given wind direction, determine the geometries for each sector
+        # Create an empty list to store sector geometries ([0] = sector in -45 degrees, [1] = sector +45 degrees
+        sector_geom = []
         # Begin by defining a circle with radius = current fetch:
         circ = originz.buffer(f, resolution=200)
         # To determine the sector geometries for each wind direction, divide the circle into: halves, quarters, sectors
@@ -380,11 +383,10 @@ class Site:
         elif wind_direction == 90 or wind_direction == 270:
             # Define boundary line1:
             rad = math.pi * (1 / 4)
-            bline1 = LineString([(originz.x - f * math.cos(rad), originz.y - f * math.sin(rad)),
-                                 (originz.x + f * math.cos(rad), originz.y + f * math.sin(rad))])
-            # Split the circle into two polygons
+            bline1 = LineString([(originz.x - f * math.cos(rad), originz.y - f * math.sin(rad)), (originz.x + f * math.cos(rad), originz.y + f * math.sin(rad))])
+            # Split the circle in half
             circ_split = ops.split(circ, bline1)
-            # Choose the first polygon to do a check and assign boundary for the wind direction:
+            # Choose the first polygon to do a check and choose the right half for the wind direction:
             x1, y1 = circ_split[0].exterior.xy
             if wind_direction == 90:
                 # For 90 degrees, use point in upper right-hand quadrant:
@@ -393,17 +395,28 @@ class Site:
                     half_circ = circ_split[0]
                 else:
                     half_circ = circ_split[1]
-                # Split the half-circle to get the sector we want:
-                bline2 = LineString([(originz.x - f * math.cos(rad), originz.y + f * math.sin(rad)),
-                                     (originz.x + f * math.cos(rad), originz.y - f * math.sin(rad))])
+                # Split the half-circle to get the quadrant we want:
+                bline2 = LineString([(originz.x - f * math.cos(rad), originz.y + f * math.sin(rad)), (originz.x + f * math.cos(rad), originz.y - f * math.sin(rad))])
                 circ_split2 = ops.split(half_circ, bline2)
-                # Choose the first polygon to do a check and assign boundary for the wind direction:
+                # Choose the first polygon to do a check and choose the right quadrant:
                 x2, y2 = circ_split2[0].exterior.xy
                 # Polygon we want will have a maximum longitude that is greater than the longitude in upper RH quadrant:
                 if max(x1) > originz.x + f * math.cos(rad):
-                    boundary = circ_split2[0]
+                    quad_circ = circ_split2[0]
                 else:
-                    boundary = circ_split2[1]
+                    quad_circ = circ_split2[1]
+                # Split the quadrant into sectors:
+                bline3 = LineString([(originz.x - f, originz.y), (originz.x + f, originz.y)])
+                circ_split3 = ops.split(quad_circ, bline3)
+                # Choose the first polygon to do a check and assign sector geometries:
+                x3, y3 = circ_split3[0].exterior.xy
+                # Polygon for first sector (smaller angle) will have maximum latitude greater than "origin":
+                if max(y3) > originz.y:
+                    sector_geom.append(circ_split3[0])
+                    sector_geom.append(circ_split3[1])
+                else:
+                    sector_geom.append(circ_split3[1])
+                    sector_geom.append(circ_split3[0])
             elif wind_direction == 270:
                 # For 270 degrees, use point in upper left-hand quadrant:
                 # Polygon we want will have a minimum longitude that is smaller than the longitude for this point
@@ -419,9 +432,26 @@ class Site:
                 x2, y2 = circ_split2[0].exterior.xy
                 # Polygon we want will have a minimum longitude that is smaller than the longitude in upper LH quadrant:
                 if min(x2) < originz.x - f * math.cos(rad):
-                    boundary = circ_split2[0]
+                    quad_circ = circ_split2[0]
                 else:
-                    boundary = circ_split2[1]
+                    quad_circ = circ_split2[1]
+                # Split the quadrant into sectors:
+                bline3 = LineString([(originz.x - f, originz.y), (originz.x + f, originz.y)])
+                circ_split3 = ops.split(quad_circ, bline3)
+                # Choose the first polygon to do a check and assign sector geometries:
+                x3, y3 = circ_split3[0].exterior.xy
+                # Polygon for first sector (smaller angle) will have maximum latitude greater than "origin":
+                if max(y3) > originz.y:
+                    sector_geom.append(circ_split3[0])
+                    sector_geom.append(circ_split3[1])
+                else:
+                    sector_geom.append(circ_split3[1])
+                    sector_geom.append(circ_split3[0])
+                # Plot for confirmation:
+                xs, ys = sector_geom[0].exterior.xy
+                xs2, ys2 = sector_geom[1].exterior.xy
+                plt.plot(xs, ys, xs2, ys2)
+                plt.show()
         elif wind_direction == 45 or wind_direction == 225:
             # Define boundary line1:
             rad = math.pi * (1 / 4)
@@ -506,6 +536,7 @@ class Site:
         xsite, ysite = boundary.exterior.xy
         # plt.plot(xp, yp, xsite, ysite)
         # plt.show()
+        return sector_geom
 
     def dist_calc(self, lon1, lat1, lon2, lat2):
         # Calculate distance between two longitude, latitude points using the Haversine formula:
