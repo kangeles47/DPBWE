@@ -198,22 +198,49 @@ class SurveyData:
             print('CBECS square footage code not determined')
 
         # Read in the .csv file:
-        path = 'C:/Users/Karen/Desktop/'
-        CBECS_data = pd.read_csv(path + str(data_yr) + '_CBECS.csv')
+        path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/CBECS/CBECS'
+        CBECS_data = pd.read_csv(path + str(data_yr) + '.csv')
 
+        if data_yr != 2012:
+            # Filter the dataset according to census division, year constructed, and square footage:
+            cendiv_tag = 'CENDIV' + yr_id
+            yrc_tag = 'YRCONC' + yr_id
+            sqft_tag = 'SQFTC' + yr_id
+            CBECS_data = CBECS_data.loc[(CBECS_data[cendiv_tag] == census_div) & (CBECS_data[yrc_tag] == value_yrconc) & (CBECS_data[sqft_tag] == value_area)]
 
-        # Filter the dataset according to census division, year constructed, and square footage:
-        cendiv_tag = 'CENDIV' + yr_id
-        yrc_tag = 'YRCONC' + yr_id
-        sqft_tag = 'SQFTC' + yr_id
-        CBECS_data = CBECS_data.loc[(CBECS_data[cendiv_tag] == census_div) & (CBECS_data[yrc_tag] == value_yrconc) & (CBECS_data[sqft_tag] == value_sq_ft)]
+            # Find the unique set of types for each attribute and define tag for associated weights:
+            wtype_tag = 'WLCNS' + yr_id
+            rtype_tag = 'RFCNS' + yr_id
+            wall_options = CBECS_data[wtype_tag].unique()
+            roof_options = CBECS_data[rtype_tag].unique()
+            wght_tag = 'ADJWT' + yr_id
+            if data_yr == 2003:
+                # Window type tag for 2003 CBECS:
+                CBECS_data2 = pd.read_csv(path + str(data_yr) + '_2.csv')
+                CBECS_data2 = CBECS_data2.loc[(CBECS_data2[cendiv_tag] == census_div) & (CBECS_data2[yrc_tag] == value_yrconc) & (CBECS_data2[sqft_tag] == value_area)]
+                win_tag = 'WINTYP'
+                win_options = CBECS_data2[win_tag].unique()
+            else:
+                pass
+        else:
+            # Filter the dataset according to census division, year constructed, and square footage:
+            cendiv_tag = 'CENDIV'
+            yrc_tag = 'YRCONC'
+            sqft_tag = 'SQFTC'
+            CBECS_data = CBECS_data.loc[(CBECS_data[cendiv_tag] == census_div) & (CBECS_data[yrc_tag] == value_yrconc) & (CBECS_data[sqft_tag] == value_area)]
 
-        # Find the unique set of types for each attribute and define tag for associated weights:
-        wtype_tag = 'WLCNS' + yr_id
-        rtype_tag = 'RFCNS' + yr_id
-        wall_options = CBECS_data[wtype_tag].unique()
-        roof_options = CBECS_data[rtype_tag].unique()
-        wght_tag = 'ADJWT' + yr_id
+            # Find the unique set of types for each attribute and define tag for associated weights:
+            wtype_tag = 'WLCNS'
+            rtype_tag = 'RFCNS'
+            rtilt_tag = 'RFTILT'
+            glsspc_tag = 'GLSSPC'
+            win_tag = 'WINTYP'
+            wall_options = CBECS_data[wtype_tag].unique()
+            roof_options = CBECS_data[rtype_tag].unique()
+            rtilt_options = CBECS_data[rtilt_tag].unique()
+            glsspc_options = CBECS_data[glsspc_tag].unique()
+            win_options = CBECS_data[win_tag].unique()
+            wght_tag = 'FINALWT'
 
         # Find the weights for each of the attributes:
         wall_weights = []
@@ -233,67 +260,65 @@ class SurveyData:
         # Wall type descriptions:
         if data_yr == 1989:
             if wall_choice == 1:
-                choice = 'Window/vision glass'
+                wtype = 'Window/vision glass'
             elif wall_choice == 2:
-                choice = 'Decor./construction glass'
+                wtype = 'Decor./construction glass'
             elif wall_choice == 3:
-                choice = 'Concrete panels'
+                wtype = 'Concrete panels'
             elif wall_choice == 4:
-                choice = 'Masonry'
+                wtype = 'Masonry'
             elif wall_choice == 5:
-                choice = 'Siding/shingles/shakes'
+                wtype = 'Siding/shingles/shakes'
             elif wall_choice == 6:
-                choice = 'Metal panels'
+                wtype = 'Metal panels'
             elif wall_choice == 7:
-                choice = 'Other'
+                wtype = 'Other'
             elif wall_choice == 8:
-                choice = 'Masonry & metal'
+                wtype = 'Masonry & metal'
             elif wall_choice == 9:
-                choice = 'Masonry & siding'
+                wtype = 'Masonry & siding'
             elif wall_choice == 10:
-                choice = 'Window glass & masonry'
+                wtype = 'Window glass & masonry'
             elif wall_choice == 11:
-                choice = 'Window glass & concrete'
+                wtype = 'Window glass & concrete'
             elif wall_choice == 12:
-                choice = 'Window glass & concrete'
+                wtype = 'Window glass & concrete'
             elif wall_choice == 13:
-                choice = 'Window & construction glass'
+                wtype = 'Window & construction glass'
             elif wall_choice == 14:
-                choice = 'Steel frame & masonry'
+                wtype = 'Steel frame & masonry'
             elif wall_choice == 15:
-                choice = 'Window glass & metal'
+                wtype = 'Window glass & metal'
             elif wall_choice == 16:
-                choice = 'Concrete & siding'
+                wtype = 'Concrete & siding'
             else:
                 print('Wall construction not supported')
-        elif data_yr == 2003:
+        elif data_yr == 2003 or data_yr == 2012:
             if wall_choice == 1:
-                choice = 'Brick, stone, or stucco'
+                wtype = 'Brick, stone, or stucco'
             elif wall_choice == 2:
                 choice = 'Pre-cast concrete panels'
             elif wall_choice == 3:
-                choice = 'Concrete block or poured concrete'
+                wtype = 'Concrete block or poured concrete'
             elif wall_choice == 4:
-                choice = 'Siding, shingles, tiles, or shakes'
+                wtype = 'Siding, shingles, tiles, or shakes'
             elif wall_choice == 5:
-                choice = 'Sheet metal panels'
+                wtype = 'Sheet metal panels'
             elif wall_choice == 6:
-                choice = 'Window or vision glass'
+                wtype = 'Window or vision glass'
             elif wall_choice == 7:
-                choice = 'Decorative or construction glass'
+                wtype = 'Decorative or construction glass'
             elif wall_choice == 8:
-                choice = 'No one major type'
+                wtype = 'No one major type'
             elif wall_choice == 9:
-                choice = 'Other'
+                wtype = 'Other'
         else:
             print('Survey year currently not supported')
-
-        print(choice)
 
         # Assign wall type description to every exterior wall for the parcel:
         for lst in range(0, 4):  # starting with four walls per floor
             for index in range(0, len(parcel.walls)):  # for every list (story)
-                parcel.walls[index][lst].type = choice
+                parcel.walls[index][lst].type = wtype
 
         # Roof type descriptions:
         if data_yr == 1989:
@@ -331,7 +356,7 @@ class SurveyData:
                 parcel.roof.cover = 'Built-up & s/m ply'
             else:
                 print('Roof construction not supported')
-        elif data_yr == 2003:
+        elif data_yr == 2003 or data_yr == 2012:
             if roof_choice == 1:
                 parcel.roof.cover = 'Built-up'
             elif roof_choice == 2:
@@ -354,6 +379,60 @@ class SurveyData:
             print('Survey year currently not supported')
 
         print(parcel.roof.cover)
+
+        # For CBECS 2003 and 2012, additional attributes are available:
+        if data_yr == 2003 or data_yr == 2012:
+            # Building glass percentage:
+            glsspc_weights = []
+            for option in glsspc_options:
+                glsspc_weights.append(CBECS_data.loc[CBECS_data[glsspc_tag] == option, wght_tag].sum())
+            # Choose glass percent: ********NEED TO CREATE A WINDOW ASSEMBLY AND BRING IN ************
+            glsspc_choice = random.choices(glsspc_options, glsspc_weights)[0]
+            if glsspc_choice == 1:
+                choice2 = '1 percent or less'
+            elif glsspc_choice == 2:
+                choice2 = '2 to 10 percent'
+            elif glsspc_choice == 3:
+                choice2 = '11 to 25 percent'
+            elif glsspc_choice == 4:
+                choice2 = '26 to 50 percent'
+            elif glsspc_choice == 5:
+                choice2 = '51 to 75 percent'
+            elif glsspc_choice == 6:
+                choice2 = '76 to 100 percent'
+            # Window type:
+            win_weights = []
+            for option in win_options:
+                if data_yr == 2003:
+                    win_weights.append(CBECS_data.loc[CBECS_data2[win_tag] == option, wght_tag].sum())
+                else:
+                    win_weights.append(CBECS_data.loc[CBECS_data[win_tag] == option, wght_tag].sum())
+            win_choice = random.choices(win_options, win_weights)[0]
+            if win_choice == 1:
+                win_type = 'Single layer glass'
+            elif win_choice == 2:
+                win_type = 'Multi layer glass'
+            elif win_choice == 3:
+                win_type = 'Combination of single layer and multi-layer glass'
+            elif win_choice == 4:
+                win_type = 'No windows'
+            # Additional "roof tilt" attribute for 2012 CBECS:
+            if data_yr == 2012:
+                rtilt_weights = []
+                for option in rtilt_options:
+                    rtilt_weights.append(CBECS_data.loc[CBECS_data[rtilt_tag] == option, wght_tag].sum())
+                # Choose roof tilt:
+                rtilt_choice = random.choices(rtilt_options, rtilt_weights)[0]
+                if rtilt_choice == 1:
+                    parcel.roof.pitch = 'Flat'
+                elif rtilt_choice == 2:
+                    parcel.roof.pitch = 'Shallow pitch'
+                elif rtilt_choice == 3:
+                    parcel.roof.pitch = 'Steeper pitch'
+            else:
+                pass
+        else:
+            pass
 
 
 
