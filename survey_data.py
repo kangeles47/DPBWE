@@ -122,7 +122,6 @@ class SurveyData:
                 value_yrconc = 1
             else:
                 print('CBECS year constructed code not supported')
-
         elif parcel.yr_built <= 2003 and parcel.yr_built > 1999:
             data_yr = 2003
             yr_id = '8'
@@ -147,28 +146,54 @@ class SurveyData:
                 value_yrconc = 1
             else:
                 print('Year Built not supported')
+        elif parcel.yr_built <= 2012 and parcel.yr_built > 2003:
+            data_yr = 2012
+            yr_id = None
+            # Value for Year Constructed Tag
+            if parcel.yr_built >= 2010 and parcel.yr_built <= 2012:
+                value_yrconc = 10
+            elif parcel.yr_built >= 2004 and parcel.yr_built <= 2007:
+                value_yrconc = 9
+            elif parcel.yr_built >= 2000 and parcel.yr_built <= 2003:
+                value_yrconc = 8
+            elif parcel.yr_built >= 1990 and parcel.yr_built <= 1999:
+                value_yrconc = 7
+            elif parcel.yr_built >= 1980 and parcel.yr_built <= 1989:
+                value_yrconc = 6
+            elif parcel.yr_built >= 1970 and parcel.yr_built <= 1979:
+                value_yrconc = 5
+            elif parcel.yr_built >= 1960 and parcel.yr_built <= 1969:
+                value_yrconc = 4
+            elif parcel.yr_built >= 1946 and parcel.yr_built <= 1959:
+                value_yrconc = 3
+            elif parcel.yr_built >= 1920 and parcel.yr_built <= 1945:
+                value_yrconc = 2
+            elif parcel.yr_built < 1920:
+                value_yrconc = 1
+            else:
+                print('Year Built not supported')
 
-        # Value for square footage tag (consistent across datasets):
-        if parcel.sq_ft <= 1000:
-            value_sq_ft = 1
-        elif parcel.sq_ft > 1000 and parcel.sq_ft <= 5000:
-            value_sq_ft = 2
-        elif parcel.sq_ft > 5000 and parcel.sq_ft <= 10000:
-            value_sq_ft = 3
-        elif parcel.sq_ft > 10000 and parcel.sq_ft <= 25000:
-            value_sq_ft = 4
-        elif parcel.sq_ft > 25000 and parcel.sq_ft <= 50000:
-            value_sq_ft = 5
-        elif parcel.sq_ft > 50000 and parcel.sq_ft <= 10000:
-            value_sq_ft = 6
-        elif parcel.sq_ft > 100000 and parcel.sq_ft <= 20000:
-            value_sq_ft = 7
-        elif parcel.sq_ft > 200000 and parcel.sq_ft <= 500000:
-            value_sq_ft = 8
-        elif parcel.sq_ft > 500000 and parcel.sq_ft <= 1000000:
-            value_sq_ft = 9
-        elif parcel.sq_ft > 1000000:
-            value_sq_ft = 10
+        # Value for square footage tag (consistent across datasets): dividing here by 10.764 to get square meters
+        if parcel.area <= 1000/10.764:
+            value_area = 1
+        elif parcel.area > 1000/10.764 and parcel.area <= 5000/10.764:
+            value_area = 2
+        elif parcel.area > 5000/10.764 and parcel.area <= 10000/10.764:
+            value_area = 3
+        elif parcel.area > 10000/10.764 and parcel.area <= 25000/10.764:
+            value_area = 4
+        elif parcel.area > 25000/10.764 and parcel.area <= 50000/10.764:
+            value_area = 5
+        elif parcel.area > 50000/10.764 and parcel.area <= 10000/10.764:
+            value_area = 6
+        elif parcel.area > 100000/10.764 and parcel.area <= 20000/10.764:
+            value_area = 7
+        elif parcel.area > 200000/10.764 and parcel.area <= 500000/10.764:
+            value_area = 8
+        elif parcel.area > 500000/10.764 and parcel.area <= 1000000/10.764:
+            value_area = 9
+        elif parcel.area > 1000000/10.764:
+            value_area = 10
         else:
             print('CBECS square footage code not determined')
 
