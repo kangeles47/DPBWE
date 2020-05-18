@@ -76,8 +76,8 @@ class BldgCode:
                     parcel.h_bldg = parcel.num_stories * 9/3.281  # min. ceiling height used to calculate building height
                 elif 'CABO' in edition:
                     # 8 ft standard ceiling height for older construction
-                    parcel.h_story = np.arange(8, 8 * parcel.num_stories, parcel.num_stories)/3.281
-                    parcel.h_bldg = parcel.num_stories * 8/3.281
+                    parcel.h_story = np.arange(9, 9 * parcel.num_stories, parcel.num_stories)/3.281
+                    parcel.h_bldg = parcel.num_stories * 9/3.281
 
     def roof_attributes(self, edition, parcel, survey):
 

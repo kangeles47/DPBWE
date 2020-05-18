@@ -43,22 +43,19 @@ class Site:
             terrain_params = pd.DataFrame(columns=['Roughness Length', 'Fetch Length', 'Local Wind Speed'])
             # Create an empty DataFrame to store any buildings that are within the fetch:
             fetch_bldgs = pd.DataFrame(columns=['Building ID', 'BIM'])
+            # Create an empty DataFrame to hold all values needed for roughness length calc:
+            z_params = pd.DataFrame(columns=['Building ID', 'Building Height', 'Surface Area'])
             for f in fetch:
                 # Determine the sector geometries:
                 sector_geom = Site.get_sector(self, originz, wind_direction, f)
-                # For each sector: (1) Identify buildings (2) Create
                 # Create point objects for each building (longitude, latitude) & check if point is within sector:
-                # Plot for confirmation:
-                xs, ys = sector_geom[sector].exterior.xy
-                plt.plot(xs, ys)
-                plt.show()
                 for row in range(0, len(parcel_data)):
                     bldg_point = Point(parcel_data['Longitude'][row], parcel_data['Latitude'][row])
                     # Check if the building is within the specified boundary:
                     if bldg_point.within(sector_geom[sector]):
-                        # Check that a BIM has not yet been created for the building:
+                        # Check that a BIM has not yet been created for the building and that the BIM is not the case study:
                         pid = parcel_data['Parcel ID'][row]
-                        if pid in fetch_bldgs["Building ID"].values:
+                        if pid in fetch_bldgs["Building ID"].values or pid == parcel.pid:
                             pass
                         else:  # Populate the remaining fields to create a Parcel Instance:
                             num_stories = parcel_data['Stories'][row]
@@ -80,8 +77,6 @@ class Site:
                     tol = 1.0  # Provide a default value for tolerance and move on to the next fetch length
                 else:
                     # Buildings within bounding geometry: interested in their 1) height and 2) surface area
-                    # Create an empty DataFrame to hold all values:
-                    z_params = pd.DataFrame(columns=['Building ID', 'Building Height', 'Surface Area'])
                     # Loop through the buildings:
                     for bldg in fetch_bldgs['BIM']:
                         # Avoid repeating this step for previously identified buildings:
@@ -111,6 +106,7 @@ class Site:
                                 d2 = Site.dist_calc(self, min(xrect), max(yrect), min(xrect), min(yrect))
                                 surf_area = parcel.h_bldg * (d1+d2)
                             # Add new row to empty DataFrame:
+                            print(bldg.pid, d1, d2, parcel.h_bldg)
                             z_params = z_params.append({'Building ID': bldg.pid, 'Building Height': parcel.h_bldg, 'Surface Area': surf_area}, ignore_index=True)
                     # Calculate the average height of all buildings within the fetch length:
                     h_avg = z_params['Building Height'].mean()
@@ -141,11 +137,11 @@ class Site:
                     if len(terrain_params['Roughness Length']) == 1:
                         tol = 1.0  # provide a default value for the tolerance for first z0
                     else:
-                        tol1 = terrain_params.loc[terrain_params.index[-1], "Local Wind Speed"] # get current wind speed
-                        tol2 = terrain_params.loc[terrain_params.index[-2], "Local Wind Speed"] # get previous step wind speed
-                        tol = abs((tol1-tol2)/tol1)
+                        vcurrent = terrain_params.loc[terrain_params.index[-1], "Local Wind Speed"] # get current wind speed
+                        vprev = terrain_params.loc[terrain_params.index[-2], "Local Wind Speed"] # get previous step wind speed
+                        tol = abs((vcurrent-vprev)/vcurrent)
                 # Break the loop if the new fetch length provides us with the right tolerance value:
-                if abs(tol) < 0.1 and z0 > 0.1:
+                if abs(tol) < 0.1 and vcurrent != vprev:
                     # Now that we've identified all parcels, plot for confirmation:
                     xsite, ysite = sector_geom[sector].exterior.xy
                     plt.plot(xp, yp, xsite, ysite)
@@ -393,7 +389,7 @@ class Site:
                 # Choose the first polygon to do a check and assign sector geometries:
                 x3, y3 = circ_split3[0].exterior.xy
                 # Polygon for first sector (smaller angle) will have maximum longitude greater than point in lower RH quadrant:
-                if max(x3) < originz.x + f * math.cos(rad):
+                if max(x3) > originz.x + f * math.cos(rad):
                     sector_geom.append(circ_split3[0])
                     sector_geom.append(circ_split3[1])
                 else:
@@ -480,7 +476,7 @@ lon = -85.666162
 lat = 30.19953
 test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
 # Create an instance of the site class:
-wind_direction = 270
+wind_direction = 315
 
 # data is a DataFrame object with column label = ['geometry'] and indexes = [0: end]
 # Accessing a specific Polygon object then requires: data['geometry'][index]
