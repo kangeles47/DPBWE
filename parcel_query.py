@@ -18,8 +18,8 @@ agreeButton.click()
 # Parcels numbered between 14805-101-000 to 14805-191-000 AND 14876-501-000 to 14876-614-000
 parcel_list = []
 
-for num in range(45, 67):
-    parcel_list.append('13783-0' + str(num) + '-000')
+for num in range(60, 61):
+    parcel_list.append('13779-0' + str(num) + '-000')
 
 # for num2 in range(501,615):
     # parcel_list.append('14876-' + str(num2) + '-000')
