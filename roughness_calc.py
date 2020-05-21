@@ -58,17 +58,21 @@ class Site:
                         if pid in fetch_bldgs["Building ID"].values or pid == parcel.pid:
                             pass
                         else:  # Populate the remaining fields to create a Parcel Instance:
-                            num_stories = parcel_data['Stories'][row]
                             occupancy = parcel_data['Use Code'][row]
-                            yr_built = parcel_data['Year Built'][row]
-                            address = parcel_data['Address'][row]
-                            sq_ft = parcel_data['Square Footage'][row]
-                            lon = parcel_data['Longitude'][row]
-                            lat = parcel_data['Latitude'][row]
-                            new_parcel = Parcel(pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat)
-                            fetch_bldgs = fetch_bldgs.append({'Building ID': pid, 'BIM': new_parcel}, ignore_index=True)
-                            xparcel,yparcel = new_parcel.footprint["geometry"].exterior.xy
-                            plt.plot(xparcel, yparcel)
+                            if 'VAC' in occupancy:
+                                vac_flag = 1  # Keep track of VACANT LOTS
+                            else:
+                                vac_flag = 0
+                                num_stories = parcel_data['Stories'][row]
+                                yr_built = parcel_data['Year Built'][row]
+                                address = parcel_data['Address'][row]
+                                sq_ft = parcel_data['Square Footage'][row]
+                                lon = parcel_data['Longitude'][row]
+                                lat = parcel_data['Latitude'][row]
+                                new_parcel = Parcel(pid, num_stories, occupancy, yr_built, address, sq_ft, lon, lat)
+                                fetch_bldgs = fetch_bldgs.append({'Building ID': pid, 'BIM': new_parcel}, ignore_index=True)
+                                xparcel,yparcel = new_parcel.footprint["geometry"].exterior.xy
+                                plt.plot(xparcel, yparcel)
                     else:
                         pass
                 # Check to see if we have any buildings:
@@ -158,7 +162,7 @@ class Site:
                     # zreq = [0.005, 0.01] # range of z0 for Open Water (lower limit from ASCE 7) [m]
 
                 # Break the loop if the new fetch length provides us with the right tolerance value:
-                if abs(tol) < 0.1 and fdist > 457.2:
+                if abs(tol) < 0.1 and fdist > 457.2 and z0 > 0.1:
                     # Now that we've identified all parcels, plot for confirmation:
                     xsite, ysite = sector_geom[sector].exterior.xy
                     plt.plot(xp, yp, xsite, ysite)
@@ -502,7 +506,7 @@ lon = -85.666162
 lat = 30.19953
 test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
 # Create an instance of the site class:
-wind_direction = 45
+wind_direction = 270
 
 # data is a DataFrame object with column label = ['geometry'] and indexes = [0: end]
 # Accessing a specific Polygon object then requires: data['geometry'][index]
