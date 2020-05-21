@@ -94,20 +94,31 @@ class Site:
                             # Calculate the surface area for each obstruction (building):
                             if wind_direction == 0 or wind_direction == 180:
                                 # For these wind directions, we want the side parallel to the latitude:
-                                d = Site.dist_calc(self, max(xrect), min(yrect), min(xrect), min(yrect))
-                                surf_area = parcel.h_bldg * d
+                                d1 = Site.dist_calc(self, max(xrect), min(yrect), min(xrect), min(yrect))
+                                d2 = Site.dist_calc(self, min(xrect), max(yrect), min(xrect), min(yrect))
+                                #d = Site.dist_calc(self, max(xrect), min(yrect), min(xrect), min(yrect))
+                                h_rmean = 0.5 * (min(d1, d2) / 2) * math.atan(2 / 12)
+                                bldg.h_bldg = bldg.h_bldg + h_rmean
+                                surf_area = bldg.h_bldg * d1
                             elif wind_direction == 90 or wind_direction == 270:
                                 # For these wind directions, we want the side parallel to the longitude:
-                                d = Site.dist_calc(self, min(xrect), max(yrect), min(xrect), min(yrect))
-                                surf_area = parcel.h_bldg * d
+                                d1 = Site.dist_calc(self, max(xrect), min(yrect), min(xrect), min(yrect))
+                                d2 = Site.dist_calc(self, min(xrect), max(yrect), min(xrect), min(yrect))
+                                #d = Site.dist_calc(self, min(xrect), max(yrect), min(xrect), min(yrect))
+                                # If this building has a pitched roof, find the mean roof height using the smallest dimension:
+                                h_rmean = 0.5*(min(d1, d2)/2)*math.atan(2/12)
+                                bldg.h_bldg = bldg.h_bldg+h_rmean
+                                print("new height:", bldg.h_bldg)
+                                surf_area = bldg.h_bldg * d2
                             elif wind_direction == 45 or wind_direction == 135 or wind_direction == 225 or wind_direction == 315:
                                 # For these wind directions, we want both sides of the rectangle:
                                 d1 = Site.dist_calc(self, max(xrect), min(yrect), min(xrect), min(yrect))
                                 d2 = Site.dist_calc(self, min(xrect), max(yrect), min(xrect), min(yrect))
-                                surf_area = parcel.h_bldg * (d1+d2)
+                                h_rmean = 0.5 * (min(d1, d2) / 2) * math.atan(2 / 12)
+                                bldg.h_bldg = bldg.h_bldg + h_rmean
+                                surf_area = bldg.h_bldg * (d1+d2)
                             # Add new row to empty DataFrame:
-                            print(bldg.pid, d1, d2, parcel.h_bldg)
-                            z_params = z_params.append({'Building ID': bldg.pid, 'Building Height': parcel.h_bldg, 'Surface Area': surf_area}, ignore_index=True)
+                            z_params = z_params.append({'Building ID': bldg.pid, 'Building Height': bldg.h_bldg, 'Surface Area': surf_area}, ignore_index=True)
                     # Calculate the average height of all buildings within the fetch length:
                     h_avg = z_params['Building Height'].mean()
                     # Calculate the average surface area:
@@ -140,8 +151,14 @@ class Site:
                         vcurrent = terrain_params.loc[terrain_params.index[-1], "Local Wind Speed"] # get current wind speed
                         vprev = terrain_params.loc[terrain_params.index[-2], "Local Wind Speed"] # get previous step wind speed
                         tol = abs((vcurrent-vprev)/vcurrent)
+                    # Threshold checks:
+                    # Roughness length: Assume we are in Exposure B (ASCE 7-10) range of z0 unless other criteria are met:
+                    zreq = [0.15, 0.7]  # range of z0 values for Suburban/urban [m]
+                    # zreq = [0.01, 0.15]  # range of z0 values for Open Terrain [m]
+                    # zreq = [0.005, 0.01] # range of z0 for Open Water (lower limit from ASCE 7) [m]
+
                 # Break the loop if the new fetch length provides us with the right tolerance value:
-                if abs(tol) < 0.1 and vcurrent != vprev:
+                if abs(tol) < 0.1 and fdist > 457.2:
                     # Now that we've identified all parcels, plot for confirmation:
                     xsite, ysite = sector_geom[sector].exterior.xy
                     plt.plot(xp, yp, xsite, ysite)
@@ -446,6 +463,7 @@ class Site:
 
     def calc_windspeed(self, hnew, znew, vref=80.0, href=10.0, zref=0.03):
         # Note: Default reference parameters correspond to 10 meter height in open terrain
+        # Note: this is for mean wind speeds only:
         # Calculate the shear (friction) velocity for open terrain:
         shear_ref = vref/(2.5*math.log(href/zref))
         # Shear conversion model:
@@ -459,9 +477,17 @@ class Site:
         vnew = 2.5*shear_new*math.log(hnew/znew)
         # Need gradient heights for the given location --> can get these from wind measurement stations?
         # Power law:
-
         #vnew = ((hnew/znew)**alpha_new)*((href/zref)**alpha_ref)*vref
         #vratio = vnew/vref
+        # ASCE 7 Power Law:
+        # Exposure Coefficient:
+        alpha = 5.65*znew**(-0.133)
+        zg = 450*znew**0.125
+        if hnew > 4.6 and hnew < zg:
+            kz = 2.01*(hnew/zg)**(2/alpha)
+        elif hnew < 4.6:
+            kz = 2.01*((15/3.281)/zg)**(2/alpha)
+
         return vnew
 
 
@@ -476,7 +502,7 @@ lon = -85.666162
 lat = 30.19953
 test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
 # Create an instance of the site class:
-wind_direction = 315
+wind_direction = 45
 
 # data is a DataFrame object with column label = ['geometry'] and indexes = [0: end]
 # Accessing a specific Polygon object then requires: data['geometry'][index]
