@@ -1,3 +1,4 @@
+import numpy as np
 # Laying out the code needed to replicate the pressures from ASCE 7
 
 def kz(z, exposure, edition, is_cc):
@@ -48,3 +49,38 @@ def kz(z, exposure, edition, is_cc):
         kz = factor * (z/zg) ** (2/alpha)
 
     return kz
+
+def roof_MWFRS(BIM, wind_direction):
+    # Identify roof MWFRS zones and pressure coefficients
+    aspect_ratios = [h / L; h / B]
+    for ratio in aspect_ratios:
+        if BIM.roof.pitch < 10 or BIM.roof.pitch == 'flat' or BIM.roof.pitch == 'shallow' or BIM.roof.pitch == 'flat or shallow' or wind_direction == 'parallel':
+            if ratio <= 0.5:
+                Cp_full = np.array([[-0.9, -0.18], [-0.9, -0.18], [-0.5, -0.18], [-0.3, -0.18]])
+                zones = np.array([0.5*BIM.h_bldg, BIM.h_bldg, 2*BIM.h_bldg, 2.0001*BIM.h_bldg])
+                num_zones = np.count_nonzero(zones <= ratio)
+                # Get back all Cps for the identified zones:
+                Cps = Cp_full[0:num_zones]
+            elif ratio >= 1.0:
+                Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
+                zones = np.array([0.5 * BIM.h_bldg, 0.50001*BIM.h_bldg])
+                num_zones = np.count_nonzero(zones <= ratio)
+                # Get back all Cps for the identified zones:
+                Cps = Cp_full[0:num_zones]
+        else:
+            if direction == 'windward':
+                angles = np.array([10, 15, 20, 25, 30, 35, 45, 60, 80])
+                if ratio <= 0.25:
+                    Cp_full = np.array([[-0.7, -0.18], [-0.5, 0.0], [-0.3, 0.2], [-0.2, 0.3], [-0.2, 0.3], [0.0, 0.4], [0.01, 0.01], [0.8, 0.8]])
+                    # Choose pressure coefficients given the load direction:
+                    Cps = Cp_full
+                elif ratio == 0.5:
+                    Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
+                    zones = np.array([0.5 * BIM.h_bldg, 0.50001*BIM.h_bldg])
+                    num_zones = np.count_nonzero(zones <= ratio)
+                    # Get back all Cps for the identified zones:
+                    Cps = Cp_full[0:num_zones]
+                elif ratio >= 1.0:
+                    pass
+            elif direction == 'leeward':
+                angles = np.array([10, 15, 20])
