@@ -53,6 +53,7 @@ def kz(z, exposure, edition, is_cc):
 def roof_MWFRS(BIM, wind_direction):
     # Identify roof MWFRS zones and pressure coefficients
     aspect_ratios = [h / L; h / B]
+    direction = 'windward'
     for ratio in aspect_ratios:
         if BIM.roof.pitch < 10 or BIM.roof.pitch == 'flat' or BIM.roof.pitch == 'shallow' or BIM.roof.pitch == 'flat or shallow' or wind_direction == 'parallel':
             if ratio <= 0.5:
@@ -84,3 +85,30 @@ def roof_MWFRS(BIM, wind_direction):
                     pass
             elif direction == 'leeward':
                 angles = np.array([10, 15, 20])
+
+def roof_CC(BIM):
+    # Negative external pressure coefficients:
+    # Zone 3
+    if area_eff < 0.9: # [m^2]
+        gcp = -2.8
+    elif 0.9 < area_eff < 9.3:
+        m = -1.7/8.4
+        gcp = m*(area_eff-0.9)-2.8
+    else:
+        gcp = -1.1
+    # Zone 2
+    if area_eff < 0.9: # [m^2]
+        gcp = -1.6
+    elif 0.9 < area_eff < 9.3:
+        m = (-1.1--1.6)/(9.3-0.9) # Slope of Line 3
+        gcp = m*(area_eff-0.9)-1.8
+    else:
+        gcp = -1.1
+    # Zone 1
+    if area_eff < 0.9: # [m^2]
+        gcp = -1.0
+    elif 0.9 < area_eff < 9.3:
+        m = (-1.1--1.6)/(9.3-0.9) # Slope of Line 3
+        gcp = m*(area_eff-0.9)-2.8
+    else:
+        gcp = -0.9
