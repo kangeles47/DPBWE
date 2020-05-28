@@ -86,7 +86,7 @@ def roof_MWFRS(BIM, wind_direction):
             elif direction == 'leeward':
                 angles = np.array([10, 15, 20])
 
-def roof_CC(BIM):
+def roof_cc(area_eff):
     # Area_eff needs to be in units of ft^2
     area_eff = area_eff*10.764
     # Positive external pressure coefficients:
@@ -95,13 +95,13 @@ def roof_CC(BIM):
         gcp = 0.3
     elif 10 < area_eff < 20:
         m = (0.25 - 0.3) / (20 - 10)
-        gcp = m * (area_eff - 10) - 0.3
+        gcp = m * (area_eff - 10) + 0.3
     elif 20 < area_eff < 50:
         m = (0.225 - 0.25) / (50 - 20)
-        gcp = m * (area_eff - 20) - 0.25
+        gcp = m * (area_eff - 20) + 0.25
     elif 50 < area_eff < 100:
         m = (0.3 - 0.225) / (100 - 50)
-        gcp = m * (area_eff - 50) - 0.225
+        gcp = m * (area_eff - 50) + 0.225
     elif area_eff > 100:
         gcp = 0.3
     # Negative external pressure coefficients:
@@ -147,3 +147,69 @@ def roof_CC(BIM):
         gcp = m*(area_eff-50)-1.6
     elif area_eff > 100:
         gcp = -1.1
+
+def wall_cc(area_eff):
+    # Area_eff needs to be in units of ft^2
+    area_eff = area_eff*10.764
+    # Positive external pressure coefficients:
+    # Zones 1, 2, and 3
+    if area_eff < 10:  # [ft^2]
+        gcp = 1.0
+    elif 10 < area_eff < 20:
+        m = (0.95 - 1.0) / (20 - 10)
+        gcp = m * (area_eff - 10) + 1.0
+    elif 20 < area_eff < 50:
+        m = (0.85 - 0.95) / (50 - 20)
+        gcp = m * (area_eff - 20) + 0.95
+    elif 50 < area_eff < 100:
+        m = (0.825 - 0.85) / (100 - 50)
+        gcp = m * (area_eff - 50) + 0.85
+    elif 100 < area_eff < 200:
+        m = (0.775 - 0.825) / (200 - 100)
+        gcp = m * (area_eff - 100) + 0.825
+    elif 200 < area_eff < 500:
+        m = (0.7 - 0.775) / (500 - 200)
+        gcp = m * (area_eff - 200) + 0.775
+    elif area_eff > 500:
+        gcp = 0.7
+    # Negative external pressure coefficients:
+    # Zone 4
+    if area_eff < 10: # [ft^2]
+        gcp = -1.1
+    elif 10 < area_eff < 20:
+        m = (-1.05--1.1)/(20-10)
+        gcp = m*(area_eff-10)-1.1
+    elif 20 < area_eff < 50:
+        m = (-0.975--1.05)/(50-20)
+        gcp = m*(area_eff-20)-1.05
+    elif 50 < area_eff < 100:
+        m = (-0.95--0.975)/(100-50)
+        gcp = m*(area_eff-50)-0.975
+    elif 100 < area_eff < 200:
+        m = (-0.85--0.95)/(200-100)
+        gcp = m*(area_eff-100)-0.95
+    elif 200 < area_eff < 500:
+        m = (-0.8--0.85)/(500-200)
+        gcp = m*(area_eff-200)-0.85
+    elif area_eff > 500:
+        gcp = -0.8
+    # Zone 5
+    if area_eff < 10: # [ft^2]
+        gcp = -1.0
+    elif 10 < area_eff < 20:
+        m = (-1.3--1.4)/(20-10)
+        gcp = m*(area_eff-10)-1.4
+    elif 20 < area_eff < 50:
+        m = (-1.15--1.3)/(50-20)
+        gcp = m*(area_eff-20)-1.3
+    elif 50 < area_eff < 100:
+        m = (-1.05--1.15)/(100-50)
+        gcp = m*(area_eff-50)-1.15
+    elif 100 < area_eff < 200:
+        m = (-0.95--1.05)/(200-100)
+        gcp = m*(area_eff-100)-1.05
+    elif 200 < area_eff < 500:
+        m = (-0.8--0.95)/(500-200)
+        gcp = m*(area_eff-200)-0.95
+    elif area_eff > 500:
+        gcp = -0.8
