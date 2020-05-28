@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 # Laying out the code needed to replicate the pressures from ASCE 7
 
 def kz(z, exposure, edition, is_cc):
@@ -101,26 +102,26 @@ def roof_cc(area_eff, pos, zone):
             m = (0.225 - 0.25) / (50 - 20)
             gcp = m * (area_eff - 20) + 0.25
         elif 50 < area_eff < 100:
-            m = (0.3 - 0.225) / (100 - 50)
+            m = (0.2 - 0.225) / (100 - 50)
             gcp = m * (area_eff - 50) + 0.225
         elif area_eff > 100:
-            gcp = 0.3
+            gcp = 0.2
     else:
         # Negative external pressure coefficients:
         if zone == 1:
             if area_eff < 10: # [ft^2]
-                gcp1 = -1.0
+                gcp = -1.0
             elif 10 < area_eff < 20:
                 m = (-0.975--1.0)/(20-10)
-                gcp1 = m*(area_eff-10)-1.0
+                gcp = m*(area_eff-10)-1.0
             elif 20 < area_eff < 50:
                 m = (-0.95--0.975)/(50-20)
-                gcp1 = m*(area_eff-20)-0.975
+                gcp = m*(area_eff-20)-0.975
             elif 50 < area_eff < 100:
                 m = (-0.9--0.95)/(100-50)
-                gcp1 = m*(area_eff-50)-0.95
+                gcp = m*(area_eff-50)-0.95
             elif area_eff > 100:
-                gcp1 = -0.9
+                gcp = -0.9
         elif zone == 2:
             if area_eff < 10:
                 gcp = -1.8
@@ -201,7 +202,7 @@ def wall_cc(area_eff, pos, zone):
         elif zone == 5:
         # Zone 5
             if area_eff < 10: # [ft^2]
-                gcp = -1.0
+                gcp = -1.4
             elif 10 < area_eff < 20:
                 m = (-1.3--1.4)/(20-10)
                 gcp = m*(area_eff-10)-1.4
@@ -223,4 +224,12 @@ def wall_cc(area_eff, pos, zone):
     return gcp
 
 # Let's plot and see if it works:
-areas = np.linspace(5, 500, 5)
+areas = np.arange(0.1, 93, 0.1)
+gcp_lst = np.array([])
+for area in areas:
+    gcp = roof_cc(area, pos=False, zone=3)
+    gcp_lst = np.append(gcp_lst, gcp)
+
+plt.plot(areas, gcp_lst)
+plt.show()
+
