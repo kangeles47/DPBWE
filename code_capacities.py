@@ -87,28 +87,63 @@ def roof_MWFRS(BIM, wind_direction):
                 angles = np.array([10, 15, 20])
 
 def roof_CC(BIM):
+    # Area_eff needs to be in units of ft^2
+    area_eff = area_eff*10.764
+    # Positive external pressure coefficients:
+    # Zones 1, 2, and 3
+    if area_eff < 10:  # [ft^2]
+        gcp = 0.3
+    elif 10 < area_eff < 20:
+        m = (0.25 - 0.3) / (20 - 10)
+        gcp = m * (area_eff - 10) - 0.3
+    elif 20 < area_eff < 50:
+        m = (0.225 - 0.25) / (50 - 20)
+        gcp = m * (area_eff - 20) - 0.25
+    elif 50 < area_eff < 100:
+        m = (0.3 - 0.225) / (100 - 50)
+        gcp = m * (area_eff - 50) - 0.225
+    elif area_eff > 100:
+        gcp = 0.3
     # Negative external pressure coefficients:
-    # Zone 3
-    if area_eff < 0.9: # [m^2]
-        gcp = -2.8
-    elif 0.9 < area_eff < 9.3:
-        m = -1.7/8.4
-        gcp = m*(area_eff-0.9)-2.8
-    else:
-        gcp = -1.1
-    # Zone 2
-    if area_eff < 0.9: # [m^2]
-        gcp = -1.6
-    elif 0.9 < area_eff < 9.3:
-        m = (-1.1--1.6)/(9.3-0.9) # Slope of Line 3
-        gcp = m*(area_eff-0.9)-1.8
-    else:
-        gcp = -1.1
     # Zone 1
-    if area_eff < 0.9: # [m^2]
+    if area_eff < 10: # [ft^2]
         gcp = -1.0
-    elif 0.9 < area_eff < 9.3:
-        m = (-1.1--1.6)/(9.3-0.9) # Slope of Line 3
-        gcp = m*(area_eff-0.9)-2.8
-    else:
+    elif 10 < area_eff < 20:
+        m = (-0.975--1.0)/(20-10)
+        gcp = m*(area_eff-10)-1.0
+    elif 20 < area_eff < 50:
+        m = (-0.95--0.975)/(50-20)
+        gcp = m*(area_eff-20)-0.975
+    elif 50 < area_eff < 100:
+        m = (-0.9--0.95)/(100-50)
+        gcp = m*(area_eff-50)-0.95
+    elif area_eff > 100:
         gcp = -0.9
+    # Zone 2
+    if area_eff < 10:
+        gcp = -1.8
+    elif 10 < area_eff < 20:
+        m = (-1.6--1.8)/(20-10)
+        gcp = m*(area_eff-10)-1.8
+    elif 20 < area_eff < 50:
+        m = (-1.325--1.6)/(50-20)
+        gcp = m*(area_eff-20)-1.6
+    elif 50 < area_eff < 100:
+        m = (-1.1--1.325)/(100-50)
+        gcp = m*(area_eff-50)-1.325
+    elif area_eff > 100:
+        gcp = -1.1
+    # Zone 3
+    if area_eff < 10: # [ft^2]
+        gcp = -2.8
+    elif 10 < area_eff < 20:
+        m = (-2.3--2.8)/(20-10)
+        gcp = m*(area_eff-10)-2.8
+    elif 20 < area_eff < 50:
+        m = (-1.6--2.3)/(50-20)
+        gcp = m*(area_eff-20)-2.3
+    elif 50 < area_eff < 100:
+        m = (-1.1--1.6)/(100-50)
+        gcp = m*(area_eff-50)-1.6
+    elif area_eff > 100:
+        gcp = -1.1
