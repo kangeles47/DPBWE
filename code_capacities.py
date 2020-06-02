@@ -35,10 +35,10 @@ def kz(z, exposure, edition, is_cc):
     else:
         factor = 2.01
     # Velocity pressure coefficient:
-    # Exception: ASCE 7-98
+    # Exception: ASCE 7-98-ASCE 7-05
     # Case 1a for all components and cladding
     # z shall not be taken as less than 30 feet for Case 1 in Exposure B
-    if edition == 'ASCE 7-98' and is_cc:
+    if edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' and is_cc:
         if z < 30/3.281:
             z = 30/3.281
         else:
@@ -50,6 +50,28 @@ def kz(z, exposure, edition, is_cc):
         kz = factor * (z/zg) ** (2/alpha)
 
     return kz
+
+def i_factor(BIM, wind_speed, hpr, h_ocean):
+    # Importance factor for ASCE 7-05 and older:
+    # Assume occupancy category is II for now (later add logic to identify tags for the region (MED, UNIV, etc.):
+    cat = 2
+    if h_ocean: # if building is at hurricane oceanline (ASCE 7-88 and 7-93)
+        categories = np.array([1.05, 1.11, 1.11, 1.00])
+        imp = categories[cat]
+    else:
+        categories = np.array([1.00, 1.07, 1.07, 0.95])
+        imp = categories[cat - 1]
+    if hpr and wind_speed > 100/2.237: # wind speed in [m]/[s]
+        if cat == 1: # Note: this exception not applicable ASCE 7-95
+            imp = 0.77
+    else:
+        if cat == 1:
+            imp = 0.87
+        elif cat == 2:
+            imp = 1.00
+        elif cat == 3 or cat == 4:
+            imp = 1.15
+
 
 def roof_MWFRS(BIM, wind_direction):
     # Identify roof MWFRS zones and pressure coefficients
