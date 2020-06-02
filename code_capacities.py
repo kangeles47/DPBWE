@@ -112,68 +112,7 @@ def roof_MWFRS(BIM, wind_direction):
 def roof_cc(area_eff, pos, zone, edition):
     # Area_eff needs to be in units of ft^2
     area_eff = area_eff*10.764
-    if edition > 93:
-        # Positive external pressure coefficients:
-        # Zones 1, 2, and 3
-        if pos:
-            if area_eff < 10:  # [ft^2]
-                gcp = 0.3
-            elif 10 < area_eff < 20:
-                m = (0.25 - 0.3) / (20 - 10)
-                gcp = m * (area_eff - 10) + 0.3
-            elif 20 < area_eff < 50:
-                m = (0.225 - 0.25) / (50 - 20)
-                gcp = m * (area_eff - 20) + 0.25
-            elif 50 < area_eff < 100:
-                m = (0.2 - 0.225) / (100 - 50)
-                gcp = m * (area_eff - 50) + 0.225
-            elif area_eff > 100:
-                gcp = 0.2
-        else:
-        # Negative external pressure coefficients:
-            if zone == 1:
-                if area_eff < 10: # [ft^2]
-                    gcp = -1.0
-                elif 10 < area_eff < 20:
-                    m = (-0.975--1.0)/(20-10)
-                    gcp = m*(area_eff-10)-1.0
-                elif 20 < area_eff < 50:
-                    m = (-0.95--0.975)/(50-20)
-                    gcp = m*(area_eff-20)-0.975
-                elif 50 < area_eff < 100:
-                    m = (-0.9--0.95)/(100-50)
-                    gcp = m*(area_eff-50)-0.95
-                elif area_eff > 100:
-                    gcp = -0.9
-            elif zone == 2:
-                if area_eff < 10:
-                    gcp = -1.8
-                elif 10 < area_eff < 20:
-                    m = (-1.6--1.8)/(20-10)
-                    gcp = m*(area_eff-10)-1.8
-                elif 20 < area_eff < 50:
-                    m = (-1.325--1.6)/(50-20)
-                    gcp = m*(area_eff-20)-1.6
-                elif 50 < area_eff < 100:
-                    m = (-1.1--1.325)/(100-50)
-                    gcp = m*(area_eff-50)-1.325
-                elif area_eff > 100:
-                    gcp = -1.1
-            elif zone == 3:
-                if area_eff < 10: # [ft^2]
-                    gcp = -2.8
-                elif 10 < area_eff < 20:
-                    m = (-2.3--2.8)/(20-10)
-                    gcp = m*(area_eff-10)-2.8
-                elif 20 < area_eff < 50:
-                    m = (-1.6--2.3)/(50-20)
-                    gcp = m*(area_eff-20)-2.3
-                elif 50 < area_eff < 100:
-                    m = (-1.1--1.6)/(100-50)
-                    gcp = m*(area_eff-50)-1.6
-                elif area_eff > 100:
-                    gcp = -1.1
-    else:
+    if edition == 'ASCE 7-93' or edition == 'ASCE 7-88' or edition == 'Older':
         # Negative external pressure coefficients: ASCE 7-93, -88, and ANSI-A58.1-1982
         if zone == 1:
             if area_eff < 10:  # [ft^2]
@@ -217,6 +156,68 @@ def roof_cc(area_eff, pos, zone, edition):
                 gcp = m * (area_eff - 50) - 2.25
             elif area_eff > 100:
                 gcp = -1.5
+    else:
+        # Positive external pressure coefficients:
+        # Zones 1, 2, and 3
+        if pos:
+            if area_eff < 10:  # [ft^2]
+                gcp = 0.3
+            elif 10 < area_eff < 20:
+                m = (0.25 - 0.3) / (20 - 10)
+                gcp = m * (area_eff - 10) + 0.3
+            elif 20 < area_eff < 50:
+                m = (0.225 - 0.25) / (50 - 20)
+                gcp = m * (area_eff - 20) + 0.25
+            elif 50 < area_eff < 100:
+                m = (0.2 - 0.225) / (100 - 50)
+                gcp = m * (area_eff - 50) + 0.225
+            elif area_eff > 100:
+                gcp = 0.2
+        else:
+            # Negative external pressure coefficients:
+            if zone == 1:
+                if area_eff < 10:  # [ft^2]
+                    gcp = -1.0
+                elif 10 < area_eff < 20:
+                    m = (-0.975 - -1.0) / (20 - 10)
+                    gcp = m * (area_eff - 10) - 1.0
+                elif 20 < area_eff < 50:
+                    m = (-0.95 - -0.975) / (50 - 20)
+                    gcp = m * (area_eff - 20) - 0.975
+                elif 50 < area_eff < 100:
+                    m = (-0.9 - -0.95) / (100 - 50)
+                    gcp = m * (area_eff - 50) - 0.95
+                elif area_eff > 100:
+                    gcp = -0.9
+            elif zone == 2:
+                if area_eff < 10:
+                    gcp = -1.8
+                elif 10 < area_eff < 20:
+                    m = (-1.6 - -1.8) / (20 - 10)
+                    gcp = m * (area_eff - 10) - 1.8
+                elif 20 < area_eff < 50:
+                    m = (-1.325 - -1.6) / (50 - 20)
+                    gcp = m * (area_eff - 20) - 1.6
+                elif 50 < area_eff < 100:
+                    m = (-1.1 - -1.325) / (100 - 50)
+                    gcp = m * (area_eff - 50) - 1.325
+                elif area_eff > 100:
+                    gcp = -1.1
+            elif zone == 3:
+                if area_eff < 10:  # [ft^2]
+                    gcp = -2.8
+                elif 10 < area_eff < 20:
+                    m = (-2.3 - -2.8) / (20 - 10)
+                    gcp = m * (area_eff - 10) - 2.8
+                elif 20 < area_eff < 50:
+                    m = (-1.6 - -2.3) / (50 - 20)
+                    gcp = m * (area_eff - 20) - 2.3
+                elif 50 < area_eff < 100:
+                    m = (-1.1 - -1.6) / (100 - 50)
+                    gcp = m * (area_eff - 50) - 1.6
+                elif area_eff > 100:
+                    gcp = -1.1
+
     return gcp
 
 def wall_cc(area_eff, pos, zone, edition):
