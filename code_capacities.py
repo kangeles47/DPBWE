@@ -2,7 +2,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 # Laying out the code needed to replicate the pressures from ASCE 7
 
-def kz(z, exposure, edition, is_cc):
+def qz(BIM, wind_speed, edition):
+    # Every edition of ASCE 7 has a velocity exposure coefficient:
+    kz = kz_coeff(z, exposure, edition, is_cc)
+    # Importance factor for ASCE 7-88 to ASCE 7-05:
+    imp = i_factor(BIM, wind_speed, hpr, h_ocean)
+    # Calculate the velocity pressure:
+    if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
+        qz = 0.613*kz*(imp*wind_speed)**2
+    elif edition == 'ASCE 7-95':
+        kzt = 1.0
+        qz = 0.613 * kz * kzt * imp * wind_speed ** 2
+    elif edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
+        kzt = 1.0
+        kd = 0.85
+        qz = 0.613*kz*kzt*kd*imp*wind_speed**2
+    elif edition == 'ASCE 7-10' or edition == 'ASCE 7-16':
+        kzt = 1.0
+        kd = 0.85
+        qz = 0.613 * kz * kzt * kd * wind_speed ** 2
+
+def kz_coeff(z, exposure, edition, is_cc):
     # Given Exposure Category, select alpha and zg:
     if exposure == 'A':
         zg = 1500 / 3.281
@@ -355,7 +375,7 @@ def wall_cc(area_eff, pos, zone, edition):
                     gcp = m * (area_eff - 200) - 0.95
                 elif area_eff > 500:
                     gcp = -0.8
-                    
+
     return gcp
 
 # Let's plot and see if it works:
