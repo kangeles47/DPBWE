@@ -3,13 +3,75 @@ import matplotlib.pyplot as plt
 
 
 # Laying out the code needed to replicate the pressures from ASCE 7
+def pressure_calc(z, wind_speed, exposure, edition, is_cc):
+    # Determine the velocity pressure:
+    # Roof MWFRS (q = qh):
+    qh, alpha = qz_calc(z, wind_speed, exposure, edition, is_cc)  # For roof, q=qh
+    # Determine the enclosure classification for the building:
+    encl_class = 'Enclosed'
+    # Determine GCpi: in the future, will need to develop a procedure to determine the enclosure category
+    if encl_class == 'Open':
+        gcpi = 0.0
+    if edition == 'ASCE 7-95':
+        if encl_class == 'Partial': # includes those in hpr regions, no opening protection:
+            gcpi = [0.80, -0.3]
+        elif encl_class == 'Enclosed':
+            gcpi = 0.18
+    elif edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
+        if encl_class == 'Partial':
+            gcpi = [0.75, -0.25]
+        elif encl_class == 'Enclosed':
+            gcpi = 0.25
+    else:
+        if encl_class == 'Partial':
+            gcpi = 0.55
+        elif encl_class == 'Enclosed':
+            gcpi = 0.18
+    # Gust effect or gust response factor:
+    if edition == 'ASCE 7-95':
+        if exposure == 'A' or exposure == 'B':
+            g = 0.8
+        elif exposure == 'C' or exposure == 'D':
+            g = 0.85
+    elif edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
+        # Gust response factors:
+        # Gz is used for C&C, Gh for MWFRS:
+        # Select surface drag coefficient:
+        if exposure == 'A':
+            d0 = 0.025
+        elif exposure == 'B':
+            d0 = 0.010
+        elif exposure == 'C':
+            d0 = 0.005
+        elif exposure == 'D':
+            d0 = 0.003
+        if is_cc: # Gz and Gh are calculated the exact same way, except that Gz uses the mean roof height
+            tz = (2.35*(d0)**(1/2))/((z/30)**(1/alpha))
+            gz = 0.65 + 3.65*tz
+        else:
+            tz = (2.35 * (d0) ** (1 / 2)) / ((z / 30) ** (1 / alpha))
+            gz = 0.65 + 3.65 * tz
+    else: # All other editions of ASCE 7
+        g = 0.85
+    # Determine the Cps or GCps:
+    
+    # Pressure calc: will need to code in a procedure to determine both +/- cases for GCpi
+    # ASCE 7-93:
+    if is_cc:
+        if z < 60:  # should be building height:
+            p = qh * (gcp - gcpi)
+        else:
+            pass  # same equation, except q = qz
+    else:
+        p = qh * g * cp - qh * gcpi  # q = qz for roof (at mean roof height)
 
-def qz_calc(z, wind_speed, edition, is_cc):
-    exposure = 'B'
+
+
+def qz_calc(z, wind_speed, exposure, edition, is_cc):
     hpr = True
     h_ocean = True
     # Every edition of ASCE 7 has a velocity exposure coefficient:
-    kz = kz_coeff(z, exposure, edition, is_cc)
+    kz, alpha = kz_coeff(z, exposure, edition, is_cc)
     # Calculate the velocity pressure:
     if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
         imp = i_factor(z, wind_speed, hpr, h_ocean)
@@ -27,7 +89,7 @@ def qz_calc(z, wind_speed, edition, is_cc):
         kzt = 1.0
         kd = 0.85
         qz = 0.613 * kz * kzt * kd * wind_speed ** 2
-    return qz
+    return qz, alpha
 
 
 def kz_coeff(z, exposure, edition, is_cc):
@@ -77,7 +139,7 @@ def kz_coeff(z, exposure, edition, is_cc):
         kz = factor * ((15 / 3.281) / zg) ** (2 / alpha)
     elif 15 / 3.281 <= z < zg:
         kz = factor * (z / zg) ** (2 / alpha)
-    return kz
+    return kz, alpha
 
 
 def i_factor(z, wind_speed, hpr, h_ocean):
@@ -394,13 +456,14 @@ def wall_cc(area_eff, pos, zone, edition):
 # Testing out velocity pressure calculation:
 z = np.linspace(15 / 3.281, 100/3.281, 200)
 wind_speed =  np.linspace(60/ 2.237, 180/2.237, 20) # [m]/[s]
-edition = 'ASCE 7-05'
+exposure = 'B'
+edition = 'ASCE 7-93'
 is_cc = False
 
 for speed in wind_speed:
     qzs = np.array([])
     for zs in z:
-        qz = qz_calc(zs, speed, edition, is_cc)
+        qz = qz_calc(zs, speed, exposure, edition, is_cc)
         qzs = np.append(qzs, qz)
     plt.plot(z, qzs)
 
