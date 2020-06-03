@@ -5,8 +5,11 @@ import matplotlib.pyplot as plt
 # Laying out the code needed to replicate the pressures from ASCE 7
 def pressure_calc(z, wind_speed, exposure, edition, is_cc):
     # Determine the velocity pressure:
-    # Roof MWFRS (q = qh):
-    qh, alpha = qz_calc(z, wind_speed, exposure, edition, is_cc)  # For roof, q=qh
+    # C&C Loads (q = qh):
+    if is_cc:
+        qh, alpha = qz_calc(z, wind_speed, exposure, edition, is_cc)  # For roof, q=qh
+    else:
+        pass
     # Determine the enclosure classification for the building:
     encl_class = 'Enclosed'
     # Determine GCpi: in the future, will need to develop a procedure to determine the enclosure category
@@ -54,16 +57,27 @@ def pressure_calc(z, wind_speed, exposure, edition, is_cc):
     else: # All other editions of ASCE 7
         g = 0.85
     # Determine the Cps or GCps:
-    
+    # Wall C&C:
+    area_eff = 15*(15/3)/10.764 # area in m^2
+    pos = True
+    zone = 5
+    gcp = wall_cc(area_eff, pos, zone, edition)
     # Pressure calc: will need to code in a procedure to determine both +/- cases for GCpi
     # ASCE 7-93:
     if is_cc:
-        if z < 60:  # should be building height:
-            p = qh * (gcp - gcpi)
+        if z < 60/ 3.281:  # should be building height:
+            # Calculate pressure for the controlling case:
+            if gcp > 0:
+                p = qh * (gcp + gcpi)
+            elif gcp < 0:
+                p = qh * (gcp - gcpi)
         else:
             pass  # same equation, except q = qz
     else:
-        p = qh * g * cp - qh * gcpi  # q = qz for roof (at mean roof height)
+        pass
+        #p = qh * g * cp - qh * gcpi  # q = qz for roof (at mean roof height)
+    print('pressure:',p * 0.020885) # print in psf
+    return p
 
 
 
@@ -89,6 +103,7 @@ def qz_calc(z, wind_speed, exposure, edition, is_cc):
         kzt = 1.0
         kd = 0.85
         qz = 0.613 * kz * kzt * kd * wind_speed ** 2
+    print('qz:',qz * 0.020885)
     return qz, alpha
 
 
@@ -129,15 +144,15 @@ def kz_coeff(z, exposure, edition, is_cc):
     # Case 1a for all components and cladding
     # z shall not be taken as less than 30 feet for Case 1 in Exposure B
     if is_cc:
-        if exposure == 'B' and edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10':
+        if exposure == 'B' and (edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10'):
             if z < 30 / 3.281:
                 z = 30 / 3.281
             else:
                 pass
     # Calculate the velocity pressure coefficient:
-    if z < 15 / 3.281:  # [m]
+    if z <= 15 / 3.281:  # [m]
         kz = factor * ((15 / 3.281) / zg) ** (2 / alpha)
-    elif 15 / 3.281 <= z < zg:
+    elif 15 / 3.281 < z < zg:
         kz = factor * (z / zg) ** (2 / alpha)
     return kz, alpha
 
@@ -329,7 +344,7 @@ def wall_cc(area_eff, pos, zone, edition):
             elif 20 < area_eff < 50:
                 m = (1.225 - 1.3) / (50 - 20)
                 gcp = m * (area_eff - 20) + 1.3
-            elif 50 < area_eff < 100:
+            elif 50 < area_eff < 100: # 75 ft^2 corresponds to gcp = 0.85
                 m = (1.15 - 1.225) / (100 - 50)
                 gcp = m * (area_eff - 50) + 1.225
             elif 100 < area_eff < 200:
@@ -454,20 +469,16 @@ def wall_cc(area_eff, pos, zone, edition):
 
 
 # Testing out velocity pressure calculation:
-z = np.linspace(15 / 3.281, 100/3.281, 200)
-wind_speed =  np.linspace(60/ 2.237, 180/2.237, 20) # [m]/[s]
-exposure = 'B'
-edition = 'ASCE 7-93'
-is_cc = False
+#z = np.linspace(15 / 3.281, 100/3.281, 200)
+z = 15 / 3.281
+wind_speed = 148/2.237
+#wind_speed = np.linspace(60/ 2.237, 180/2.237, 20) # [m]/[s]
+exposure = 'C'
+edition = 'ASCE 7-10'
+is_cc = True
 
-for speed in wind_speed:
-    qzs = np.array([])
-    for zs in z:
-        qz = qz_calc(zs, speed, exposure, edition, is_cc)
-        qzs = np.append(qzs, qz)
-    plt.plot(z, qzs)
+p = pressure_calc(z, wind_speed, exposure, edition, is_cc)
 
-plt.show()
 
 # Let's plot and see if it works:
 # areas = np.arange(0.1, 93, 0.1)
