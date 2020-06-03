@@ -10,17 +10,18 @@ def qz_calc(z, wind_speed, edition, is_cc):
     h_ocean = True
     # Every edition of ASCE 7 has a velocity exposure coefficient:
     kz = kz_coeff(z, exposure, edition, is_cc)
-    # Importance factor for ASCE 7-88 to ASCE 7-05:
-    imp = i_factor(z, wind_speed, hpr, h_ocean)
     # Calculate the velocity pressure:
     if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
+        imp = i_factor(z, wind_speed, hpr, h_ocean)
         qz = 0.613 * kz * (imp * wind_speed) ** 2
     elif edition == 'ASCE 7-95':
         kzt = 1.0
+        imp = i_factor(z, wind_speed, hpr, h_ocean)
         qz = 0.613 * kz * kzt * imp * wind_speed ** 2
     elif edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
         kzt = 1.0
         kd = 0.85
+        imp = i_factor(z, wind_speed, hpr, h_ocean)
         qz = 0.613 * kz * kzt * kd * imp * wind_speed ** 2
     elif edition == 'ASCE 7-10' or edition == 'ASCE 7-16':
         kzt = 1.0
@@ -97,7 +98,6 @@ def i_factor(z, wind_speed, hpr, h_ocean):
         else:
             categories = np.array([0.87, 1.00, 1.15, 1.15])
             imp = categories[cat - 1]
-    print(imp)
     return imp
 
 
