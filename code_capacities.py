@@ -82,23 +82,22 @@ def kz_coeff(z, exposure, edition, is_cc):
 def i_factor(z, wind_speed, hpr, h_ocean):
     # Importance factor for ASCE 7-05 and older:
     # Assume occupancy category is II for now (later add logic to identify tags for the region (MED, UNIV, etc.):
-    cat = 2
-    if h_ocean:  # if building is at hurricane oceanline (ASCE 7-88 and 7-93)
-        categories = np.array([1.05, 1.11, 1.11, 1.00])
-        imp = categories[cat - 1]
+    cat = 1
+    if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
+        if h_ocean:  # if building is at hurricane oceanline (ASCE 7-88 and 7-93)
+            categories = np.array([1.05, 1.11, 1.11, 1.00])
+            imp = categories[cat - 1]
+        else:
+            categories = np.array([1.00, 1.07, 1.07, 0.95])
+            imp = categories[cat - 1]
     else:
-        categories = np.array([1.00, 1.07, 1.07, 0.95])
-        imp = categories[cat - 1]
-    if hpr and wind_speed > 100 / 2.237:  # wind speed in [m]/[s]
-        if cat == 1:  # Note: this exception not applicable ASCE 7-95
-            imp = 0.77
-    else:
-        if cat == 1:
-            imp = 0.87
-        elif cat == 2:
-            imp = 1.00
-        elif cat == 3 or cat == 4:
-            imp = 1.15
+        if hpr and wind_speed > 100 / 2.237:  # wind speed in [m]/[s]
+            categories = np.array([0.77, 1.00, 1.15, 1.15])
+            imp = categories[cat - 1]
+        else:
+            categories = np.array([0.87, 1.00, 1.15, 1.15])
+            imp = categories[cat - 1]
+    print(imp)
     return imp
 
 
@@ -394,8 +393,8 @@ def wall_cc(area_eff, pos, zone, edition):
 
 # Testing out velocity pressure calculation:
 z = 15 / 3.281
-wind_speed = 80
-edition = 'ASCE 7-93'
+wind_speed =  80/ 2.237 # [m]/[s]
+edition = 'ASCE 7-05'
 is_cc = False
 qz = qz_calc(z, wind_speed, edition, is_cc)
 
