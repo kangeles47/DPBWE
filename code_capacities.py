@@ -58,21 +58,24 @@ def kz_coeff(z, exposure, edition, is_cc):
         factor = 2.58 # ASCE 7-93: Different values (fastest mile wind speeds)
     else:
         factor = 2.01
-    print('Exposure:', exposure, 'zg:', zg, 'alpha', alpha, 'factor:', factor)
     # Velocity pressure coefficient:
     # Exception: ASCE 7-98-ASCE 7-05
     # Case 1a for all components and cladding
     # z shall not be taken as less than 30 feet for Case 1 in Exposure B
     if edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' and is_cc:
-        if z < 30/3.281:
-            z = 30/3.281
-        else:
-            pass
+        z_flag = 1
+    elif edition == 'ASCE 7-10' and exposure == 'B':
+        z_flag = 1
+    # Correct reference height if needed:
+    if z_flag == 1 and z < 30 / 3.281:
+        z = 30 / 3.281
+    else:
+        pass
     print(z)
     # Calculate the velocity pressure coefficient:
     if z < 15/3.281:  # [m]
         kz = factor * ((15/3.281)/zg)**(2/alpha)
-    elif 15/3.281 < z < zg:
+    elif 15/3.281 <= z < zg:
         kz = factor * (z/zg) ** (2/alpha)
     print(kz)
     return kz
@@ -386,9 +389,9 @@ def wall_cc(area_eff, pos, zone, edition):
     return gcp
 
 # Testing out velocity pressure calculation:
-z = 15/3.281
+z = 10/3.281
 wind_speed = 80
-edition = 'ASCE 7-93'
+edition = 'ASCE 7-05'
 is_cc = True
 qz = qz_calc(z, wind_speed, edition, is_cc)
 
