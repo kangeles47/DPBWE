@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+
+
 # Laying out the code needed to replicate the pressures from ASCE 7
 
 def qz_calc(z, wind_speed, edition, is_cc):
@@ -12,19 +14,20 @@ def qz_calc(z, wind_speed, edition, is_cc):
     imp = i_factor(z, wind_speed, hpr, h_ocean)
     # Calculate the velocity pressure:
     if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
-        qz = 0.613*kz*(imp*wind_speed)**2
+        qz = 0.613 * kz * (imp * wind_speed) ** 2
     elif edition == 'ASCE 7-95':
         kzt = 1.0
         qz = 0.613 * kz * kzt * imp * wind_speed ** 2
     elif edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
         kzt = 1.0
         kd = 0.85
-        qz = 0.613*kz*kzt*kd*imp*wind_speed**2
+        qz = 0.613 * kz * kzt * kd * imp * wind_speed ** 2
     elif edition == 'ASCE 7-10' or edition == 'ASCE 7-16':
         kzt = 1.0
         kd = 0.85
         qz = 0.613 * kz * kzt * kd * wind_speed ** 2
     return qz
+
 
 def kz_coeff(z, exposure, edition, is_cc):
     # Given Exposure Category, select alpha and zg:
@@ -35,59 +38,59 @@ def kz_coeff(z, exposure, edition, is_cc):
         else:
             alpha = 5.0
     elif exposure == 'B':
-        zg = 1200/3.281
+        zg = 1200 / 3.281
         if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
             alpha = 4.5
         else:
             alpha = 7.0
     elif exposure == 'C':
-        zg = 900/3.281
+        zg = 900 / 3.281
         if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
             alpha = 7.0
         else:
             alpha = 9.5
     elif exposure == 'D':
         alpha = 11.5
-        zg = 700/3.281
+        zg = 700 / 3.281
         if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
             alpha = 10.0
         else:
             alpha = 11.5
     # Define the factor in front of power law:
     if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
-        factor = 2.58 # ASCE 7-93: Different values (fastest mile wind speeds)
+        factor = 2.58  # ASCE 7-93: Different values (fastest mile wind speeds)
     else:
         factor = 2.01
     # Velocity pressure coefficient:
     # Exception: ASCE 7-98-ASCE 7-05
     # Case 1a for all components and cladding
     # z shall not be taken as less than 30 feet for Case 1 in Exposure B
-    if is_cc and exposure == 'B' and edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10':
-        if z < 30/3.281:
-            z = 30/3.281
-        else:
-            pass
-    print(z)
+    if is_cc:
+        if exposure == 'B' and edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10':
+            if z < 30 / 3.281:
+                z = 30 / 3.281
+            else:
+                pass
     # Calculate the velocity pressure coefficient:
-    if z < 15/3.281:  # [m]
-        kz = factor * ((15/3.281)/zg)**(2/alpha)
-    elif 15/3.281 <= z < zg:
-        kz = factor * (z/zg) ** (2/alpha)
-    print(kz)
+    if z < 15 / 3.281:  # [m]
+        kz = factor * ((15 / 3.281) / zg) ** (2 / alpha)
+    elif 15 / 3.281 <= z < zg:
+        kz = factor * (z / zg) ** (2 / alpha)
     return kz
+
 
 def i_factor(z, wind_speed, hpr, h_ocean):
     # Importance factor for ASCE 7-05 and older:
     # Assume occupancy category is II for now (later add logic to identify tags for the region (MED, UNIV, etc.):
     cat = 2
-    if h_ocean: # if building is at hurricane oceanline (ASCE 7-88 and 7-93)
+    if h_ocean:  # if building is at hurricane oceanline (ASCE 7-88 and 7-93)
         categories = np.array([1.05, 1.11, 1.11, 1.00])
-        imp = categories[cat-1]
+        imp = categories[cat - 1]
     else:
         categories = np.array([1.00, 1.07, 1.07, 0.95])
         imp = categories[cat - 1]
-    if hpr and wind_speed > 100/2.237: # wind speed in [m]/[s]
-        if cat == 1: # Note: this exception not applicable ASCE 7-95
+    if hpr and wind_speed > 100 / 2.237:  # wind speed in [m]/[s]
+        if cat == 1:  # Note: this exception not applicable ASCE 7-95
             imp = 0.77
     else:
         if cat == 1:
@@ -101,19 +104,19 @@ def i_factor(z, wind_speed, hpr, h_ocean):
 
 def roof_MWFRS(BIM, wind_direction):
     # Identify roof MWFRS zones and pressure coefficients
-    aspect_ratios = None #[h / L; h / B]
+    aspect_ratios = None  # [h / L; h / B]
     direction = 'windward'
     for ratio in aspect_ratios:
         if BIM.roof.pitch < 10 or BIM.roof.pitch == 'flat' or BIM.roof.pitch == 'shallow' or BIM.roof.pitch == 'flat or shallow' or wind_direction == 'parallel':
             if ratio <= 0.5:
                 Cp_full = np.array([[-0.9, -0.18], [-0.9, -0.18], [-0.5, -0.18], [-0.3, -0.18]])
-                zones = np.array([0.5*BIM.h_bldg, BIM.h_bldg, 2*BIM.h_bldg, 2.0001*BIM.h_bldg])
+                zones = np.array([0.5 * BIM.h_bldg, BIM.h_bldg, 2 * BIM.h_bldg, 2.0001 * BIM.h_bldg])
                 num_zones = np.count_nonzero(zones <= ratio)
                 # Get back all Cps for the identified zones:
                 Cps = Cp_full[0:num_zones]
             elif ratio >= 1.0:
                 Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
-                zones = np.array([0.5 * BIM.h_bldg, 0.50001*BIM.h_bldg])
+                zones = np.array([0.5 * BIM.h_bldg, 0.50001 * BIM.h_bldg])
                 num_zones = np.count_nonzero(zones <= ratio)
                 # Get back all Cps for the identified zones:
                 Cps = Cp_full[0:num_zones]
@@ -121,12 +124,14 @@ def roof_MWFRS(BIM, wind_direction):
             if direction == 'windward':
                 angles = np.array([10, 15, 20, 25, 30, 35, 45, 60, 80])
                 if ratio <= 0.25:
-                    Cp_full = np.array([[-0.7, -0.18], [-0.5, 0.0], [-0.3, 0.2], [-0.2, 0.3], [-0.2, 0.3], [0.0, 0.4], [0.01, 0.01], [0.8, 0.8]])
+                    Cp_full = np.array(
+                        [[-0.7, -0.18], [-0.5, 0.0], [-0.3, 0.2], [-0.2, 0.3], [-0.2, 0.3], [0.0, 0.4], [0.01, 0.01],
+                         [0.8, 0.8]])
                     # Choose pressure coefficients given the load direction:
                     Cps = Cp_full
                 elif ratio == 0.5:
                     Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
-                    zones = np.array([0.5 * BIM.h_bldg, 0.50001*BIM.h_bldg])
+                    zones = np.array([0.5 * BIM.h_bldg, 0.50001 * BIM.h_bldg])
                     num_zones = np.count_nonzero(zones <= ratio)
                     # Get back all Cps for the identified zones:
                     Cps = Cp_full[0:num_zones]
@@ -135,9 +140,10 @@ def roof_MWFRS(BIM, wind_direction):
             elif direction == 'leeward':
                 angles = np.array([10, 15, 20])
 
+
 def roof_cc(area_eff, pos, zone, edition):
     # Area_eff needs to be in units of ft^2
-    area_eff = area_eff*10.764
+    area_eff = area_eff * 10.764
     if edition == 'ASCE 7-93' or edition == 'ASCE 7-88' or edition == 'Older':
         # Negative external pressure coefficients: ASCE 7-93, -88, and ANSI-A58.1-1982
         if zone == 1:
@@ -246,9 +252,10 @@ def roof_cc(area_eff, pos, zone, edition):
 
     return gcp
 
+
 def wall_cc(area_eff, pos, zone, edition):
     # Area_eff needs to be in units of ft^2
-    area_eff = area_eff*10.764
+    area_eff = area_eff * 10.764
     if edition == 'ASCE 7-93' or edition == 'ASCE 7-88' or edition == 'Older':
         # Positive external pressure coefficients:
         # Zones 4 and 5
@@ -384,20 +391,20 @@ def wall_cc(area_eff, pos, zone, edition):
 
     return gcp
 
+
 # Testing out velocity pressure calculation:
-z = 10/3.281
+z = 15 / 3.281
 wind_speed = 80
-edition = 'ASCE 7-05'
-is_cc = True
+edition = 'ASCE 7-93'
+is_cc = False
 qz = qz_calc(z, wind_speed, edition, is_cc)
 
 # Let's plot and see if it works:
-#areas = np.arange(0.1, 93, 0.1)
-#gcp_lst = np.array([])
-#for area in areas:
-    #gcp = roof_cc(area, pos=False, zone=3)
-    #gcp_lst = np.append(gcp_lst, gcp)
+# areas = np.arange(0.1, 93, 0.1)
+# gcp_lst = np.array([])
+# for area in areas:
+# gcp = roof_cc(area, pos=False, zone=3)
+# gcp_lst = np.append(gcp_lst, gcp)
 
-#plt.plot(areas, gcp_lst)
-#plt.show()
-
+# plt.plot(areas, gcp_lst)
+# plt.show()
