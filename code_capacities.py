@@ -392,11 +392,19 @@ def wall_cc(area_eff, pos, zone, edition):
 
 
 # Testing out velocity pressure calculation:
-z = 15 / 3.281
-wind_speed =  80/ 2.237 # [m]/[s]
+z = np.linspace(15 / 3.281, 100/3.281, 200)
+wind_speed =  np.linspace(60/ 2.237, 180/2.237, 20) # [m]/[s]
 edition = 'ASCE 7-05'
 is_cc = False
-qz = qz_calc(z, wind_speed, edition, is_cc)
+
+for speed in wind_speed:
+    qzs = np.array([])
+    for zs in z:
+        qz = qz_calc(zs, speed, edition, is_cc)
+        qzs = np.append(qzs, qz)
+    plt.plot(z, qzs)
+
+plt.show()
 
 # Let's plot and see if it works:
 # areas = np.arange(0.1, 93, 0.1)
