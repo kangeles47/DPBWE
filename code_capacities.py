@@ -62,15 +62,11 @@ def kz_coeff(z, exposure, edition, is_cc):
     # Exception: ASCE 7-98-ASCE 7-05
     # Case 1a for all components and cladding
     # z shall not be taken as less than 30 feet for Case 1 in Exposure B
-    if edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' and is_cc:
-        z_flag = 1
-    elif edition == 'ASCE 7-10' and exposure == 'B':
-        z_flag = 1
-    # Correct reference height if needed:
-    if z_flag == 1 and z < 30 / 3.281:
-        z = 30 / 3.281
-    else:
-        pass
+    if is_cc and exposure == 'B' and edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10':
+        if z < 30/3.281:
+            z = 30/3.281
+        else:
+            pass
     print(z)
     # Calculate the velocity pressure coefficient:
     if z < 15/3.281:  # [m]
