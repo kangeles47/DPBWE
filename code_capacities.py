@@ -75,7 +75,7 @@ def pressure_calc(z, wind_speed, exposure, edition, is_cc):
             pass  # same equation, except q = qz
         # Minimum design pressure for C&C:
         if abs(p)/1000 < 0.48: # [kN/m^2]
-            p = 0.48*1000 # [N/m^2]
+            p = np.sign(p)*0.48*1000 # [N/m^2]
         else:
             pass
     else:
