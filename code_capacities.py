@@ -13,35 +13,43 @@ class PressureCalc:
         # Determine pressure for components and cladding:
         # Wall C&C loads:
         # All components and cladding calculations require qh:
-        qh = PressureCalc.qz_calc(self, z, wind_speed, exposure, edition, is_cc)
+        qh, alpha = PressureCalc.qz_calc(self, z, wind_speed, exposure, edition, is_cc)
         # Get GCps and calculate the pressure for each zone:
         area_eff = 75 / 10.764  # area in m^2 # for C&C loads, we would have a limited range of effective areas for the component
         wpos = [True, True, False, False]
         wzone = [4, 5, 4, 5]
-        wgcps = list()
         wps = list()
         for ind in range(0, len(wpos)):
             # Find the GCp
             gcp = PressureCalc.wall_cc(self, area_eff, wpos[ind], wzone[ind], edition)
+            # Reduce GCp for walls if roof pitch is <= 10 degrees:
+            theta = 10
+            if theta <= 10:
+                gcp = 0.9*gcp
+            else:
+                pass
             # Calculate pressure at the zone:
             p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
-            wgcps.append(gcp)
             wps.append(p)
         # Adding a couple of lines here to accommodate loop:
         wall_pressures = np.empty((0, len(wpos)))
         wall_pressures = np.append(wall_pressures, np.array([wps]), axis=0)
         print(wall_pressures)
-
         # Roof C&C:
-        rarea_eff = 75 / 10.764  # area in m^2
+        rarea_eff = 300 / 10.764  # area in m^2
         rpos = [True, True, True, False, False, False]
         rzone = [1, 2, 3, 1, 2, 3]
-        rgcps = list()
+        rps = list()
         for ind in range(0, len(rpos)):
             # Find the GCp
             gcp = PressureCalc.roof_cc(self, rarea_eff, rpos[ind], rzone[ind], edition)
             # Calculate pressure at the zone:
-            rgcps.append(gcp)
+            p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
+            rps.append(p)
+        # Adding a couple of lines here to accommodate loop:
+        roof_pressures = np.empty((0, len(rpos)))
+        roof_pressures = np.append(roof_pressures, np.array([rps]), axis=0)
+        print('roof pressures:', roof_pressures)
 
     def get_gcpi(self, edition, encl_class='Enclosed'):
         # Determine GCpi: in the future, will need to develop a procedure to determine the enclosure category
@@ -519,10 +527,10 @@ class PressureCalc:
 # Testing out velocity pressure calculation:
 # z = np.linspace(15 / 3.281, 100/3.281, 200)
 z = 15 / 3.281
-wind_speed = 130 / 2.237
+wind_speed = 148 / 2.237
 # wind_speed = np.linspace(60/ 2.237, 180/2.237, 20) # [m]/[s]
 exposure = 'C'
-edition = 'ASCE 7-93'
+edition = 'ASCE 7-10'
 is_cc = True
 pressures = PressureCalc()
 run = pressures.run(z, wind_speed, exposure, edition, is_cc)
