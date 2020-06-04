@@ -49,10 +49,10 @@ def pressure_calc(z, wind_speed, exposure, edition, is_cc):
         elif exposure == 'D':
             d0 = 0.003
         if is_cc: # Gz and Gh are calculated the exact same way, except that Gz uses the mean roof height
-            tz = (2.35*(d0)**(1/2))/((z/30)**(1/alpha))
+            tz = (2.35*(d0)**(1/2))/((z/(30/3.281))**(1/alpha))
             gz = 0.65 + 3.65*tz
         else:
-            tz = (2.35 * (d0) ** (1 / 2)) / ((z / 30) ** (1 / alpha))
+            tz = (2.35 * (d0) ** (1 / 2)) / ((z /(30/3.281)) ** (1 / alpha))
             gz = 0.65 + 3.65 * tz
     else: # All other editions of ASCE 7
         g = 0.85
@@ -62,6 +62,11 @@ def pressure_calc(z, wind_speed, exposure, edition, is_cc):
     pos = False
     zone = 4
     gcp = wall_cc(area_eff, pos, zone, edition)
+    # For wall C&C: External pressure coefficients can be reduced by 10% when roof pitch <= 10 deg.
+    # if theta <= 10:
+        # gcp = 0.9*gcp
+    # else:
+        # pass
     # Pressure calc: will need to code in a procedure to determine both +/- cases for GCpi
     # ASCE 7-93:
     if is_cc:
@@ -365,7 +370,7 @@ def wall_cc(area_eff, pos, zone, edition):
             elif 20 < area_eff < 50:
                 m = (1.225 - 1.3) / (50 - 20)
                 gcp = m * (area_eff - 20) + 1.3
-            elif 50 < area_eff < 100: # 75 ft^2 corresponds to gcp = 0.85
+            elif 50 < area_eff < 100:
                 m = (1.15 - 1.225) / (100 - 50)
                 gcp = m * (area_eff - 50) + 1.225
             elif 100 < area_eff < 200:
@@ -495,7 +500,7 @@ z = 15 / 3.281
 wind_speed = 130/2.237
 #wind_speed = np.linspace(60/ 2.237, 180/2.237, 20) # [m]/[s]
 exposure = 'C'
-edition = 'ASCE 7-05'
+edition = 'ASCE 7-93'
 is_cc = True
 
 p = pressure_calc(z, wind_speed, exposure, edition, is_cc)
