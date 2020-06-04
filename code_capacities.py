@@ -118,6 +118,17 @@ def qz_calc(z, wind_speed, exposure, edition, is_cc):
 
 
 def kz_coeff(z, exposure, edition, is_cc):
+    # ASCE 7-95 and older: Exposure Category is C for C&C (B allowed for 7-95)
+    if is_cc:
+        if edition == 'ASCE 7-95':
+            if exposure == 'A' or exposure == 'D':
+                exposure = 'C'
+            else:
+                pass
+        elif edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
+            exposure = 'C'
+    else:
+        pass
     # Given Exposure Category, select alpha and zg:
     if exposure == 'A':
         zg = 1500 / 3.281
@@ -230,7 +241,7 @@ def roof_MWFRS(BIM, wind_direction):
 def roof_cc(area_eff, pos, zone, edition):
     # Area_eff needs to be in units of ft^2
     area_eff = area_eff * 10.764
-    if edition == 'ASCE 7-93' or edition == 'ASCE 7-88' or edition == 'Older':
+    if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
         # Negative external pressure coefficients: ASCE 7-93, -88, and ANSI-A58.1-1982
         if zone == 1:
             if area_eff < 10:  # [ft^2]
@@ -342,7 +353,7 @@ def roof_cc(area_eff, pos, zone, edition):
 def wall_cc(area_eff, pos, zone, edition):
     # Area_eff needs to be in units of ft^2
     area_eff = area_eff * 10.764
-    if edition == 'ASCE 7-93' or edition == 'ASCE 7-88' or edition == 'Older':
+    if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
         # Positive external pressure coefficients:
         # Zones 4 and 5
         if pos:
