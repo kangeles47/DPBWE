@@ -59,8 +59,8 @@ def pressure_calc(z, wind_speed, exposure, edition, is_cc):
     # Determine the Cps or GCps:
     # Wall C&C:
     area_eff = 15*(15/3)/10.764 # area in m^2
-    pos = True
-    zone = 5
+    pos = False
+    zone = 4
     gcp = wall_cc(area_eff, pos, zone, edition)
     # Pressure calc: will need to code in a procedure to determine both +/- cases for GCpi
     # ASCE 7-93:
@@ -73,6 +73,11 @@ def pressure_calc(z, wind_speed, exposure, edition, is_cc):
                 p = qh * (gcp - gcpi)
         else:
             pass  # same equation, except q = qz
+        # Minimum design pressure for C&C:
+        if abs(p)/1000 < 0.48: # [kN/m^2]
+            p = 0.48*1000 # [N/m^2]
+        else:
+            pass
     else:
         pass
         #p = qh * g * cp - qh * gcpi  # q = qz for roof (at mean roof height)
@@ -160,7 +165,7 @@ def kz_coeff(z, exposure, edition, is_cc):
 def i_factor(z, wind_speed, hpr, h_ocean):
     # Importance factor for ASCE 7-05 and older:
     # Assume occupancy category is II for now (later add logic to identify tags for the region (MED, UNIV, etc.):
-    cat = 1
+    cat = 2
     if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
         if h_ocean:  # if building is at hurricane oceanline (ASCE 7-88 and 7-93)
             categories = np.array([1.05, 1.11, 1.11, 1.00])
@@ -471,10 +476,10 @@ def wall_cc(area_eff, pos, zone, edition):
 # Testing out velocity pressure calculation:
 #z = np.linspace(15 / 3.281, 100/3.281, 200)
 z = 15 / 3.281
-wind_speed = 148/2.237
+wind_speed = 130/2.237
 #wind_speed = np.linspace(60/ 2.237, 180/2.237, 20) # [m]/[s]
 exposure = 'C'
-edition = 'ASCE 7-10'
+edition = 'ASCE 7-05'
 is_cc = True
 
 p = pressure_calc(z, wind_speed, exposure, edition, is_cc)
