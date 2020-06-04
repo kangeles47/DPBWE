@@ -73,6 +73,11 @@ def pressure_calc(z, wind_speed, exposure, edition, is_cc):
                 p = qh * (gcp - gcpi)
         else:
             pass  # same equation, except q = qz
+        # Exception for ASCE 7-95: For buildings in Exposure B, calculated pressure shall be multiplied by 0.85
+        if edition == 'ASCE 7-95':
+            p = 0.85*p
+        else:
+            pass
         # Minimum design pressure for C&C:
         if abs(p)/1000 < 0.48: # [kN/m^2]
             p = np.sign(p)*0.48*1000 # [N/m^2]
