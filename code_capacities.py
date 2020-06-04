@@ -1,35 +1,54 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 class PressureCalc:
-    def run(self, z, wind_speed, exposure, edition, is_cc):
+
+    def run(self, z, wind_speed, exposure, edition, is_cc): # will probably want to add flags r_mwfrs = True, w_cc = True, r_cc = True
+        # Determine GCpis for pressure calculation:
+        gcpi = PressureCalc.get_gcpi(self, edition, encl_class='Enclosed')
+        # Determine the MWFRS pressures for roof:
+        #if r_mwfrs:
+            #cp = PressureCalc.roof_MWFRS(self, BIM, wind_direction)
+        # Determine pressure for components and cladding:
         # Wall C&C loads:
-        area_eff = 75 / 10.764  # area in m^2
+        # All components and cladding calculations require qh:
+        qh = PressureCalc.qz_calc(self, z, wind_speed, exposure, edition, is_cc)
+        # Get GCps and calculate the pressure for each zone:
+        area_eff = 75 / 10.764  # area in m^2 # for C&C loads, we would have a limited range of effective areas for the component
         wpos = [True, True, False, False]
         wzone = [4, 5, 4, 5]
         wgcps = list()
+        wps = list()
         for ind in range(0, len(wpos)):
+            # Find the GCp
             gcp = PressureCalc.wall_cc(self, area_eff, wpos[ind], wzone[ind], edition)
+            # Calculate pressure at the zone:
+            p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
             wgcps.append(gcp)
+            wps.append(p)
         # Adding a couple of lines here to accommodate loop:
-        wall_pressures = np.empty((0,len(wpos)))
-        wall_pressures = np.append(wall_pressures, np.array([wgcps]), axis=0)
+        wall_pressures = np.empty((0, len(wpos)))
+        wall_pressures = np.append(wall_pressures, np.array([wps]), axis=0)
         print(wall_pressures)
-    # Laying out the code needed to replicate the pressures from ASCE 7
-    def pressure_calc(self, z, wind_speed, exposure, edition, is_cc):
-        # Determine the velocity pressure:
-        # C&C Loads (q = qh):
-        if is_cc:
-            qh, alpha = PressureCalc.qz_calc(self, z, wind_speed, exposure, edition, is_cc)  # For roof, q=qh
-        else:
-            pass
-        # Determine the enclosure classification for the building:
-        encl_class = 'Enclosed'
+
+        # Roof C&C:
+        rarea_eff = 75 / 10.764  # area in m^2
+        rpos = [True, True, True, False, False, False]
+        rzone = [1, 2, 3, 1, 2, 3]
+        rgcps = list()
+        for ind in range(0, len(rpos)):
+            # Find the GCp
+            gcp = PressureCalc.roof_cc(self, rarea_eff, rpos[ind], rzone[ind], edition)
+            # Calculate pressure at the zone:
+            rgcps.append(gcp)
+
+    def get_gcpi(self, edition, encl_class='Enclosed'):
         # Determine GCpi: in the future, will need to develop a procedure to determine the enclosure category
         if encl_class == 'Open':
             gcpi = 0.0
         if edition == 'ASCE 7-95':
-            if encl_class == 'Partial': # includes those in hpr regions, no opening protection:
+            if encl_class == 'Partial':  # includes those in hpr regions, no opening protection:
                 gcpi = [0.80, -0.3]
             elif encl_class == 'Enclosed':
                 gcpi = 0.18
@@ -43,6 +62,12 @@ class PressureCalc:
                 gcpi = 0.55
             elif encl_class == 'Enclosed':
                 gcpi = 0.18
+
+        return gcpi
+
+    # Laying out the code needed to replicate the pressures from ASCE 7
+    def calc_pressure(self, z, exposure, edition, is_cc, q, gcp, gcpi):
+        alpha = 7.0 # Provide default value for Exposure B
         # Gust effect or gust response factor:
         if edition == 'ASCE 7-95':
             if exposure == 'A' or exposure == 'B':
@@ -61,55 +86,40 @@ class PressureCalc:
                 d0 = 0.005
             elif exposure == 'D':
                 d0 = 0.003
-            if is_cc: # Gz and Gh are calculated the exact same way, except that Gz uses the mean roof height
-                tz = (2.35*(d0)**(1/2))/((z/(30/3.281))**(1/alpha))
-                gz = 0.65 + 3.65*tz
-            else:
-                tz = (2.35 * (d0) ** (1 / 2)) / ((z /(30/3.281)) ** (1 / alpha))
+            if is_cc:  # Gz and Gh are calculated the exact same way, except that Gz uses the mean roof height
+                tz = (2.35 * (d0) ** (1 / 2)) / ((z / (30 / 3.281)) ** (1 / alpha))
                 gz = 0.65 + 3.65 * tz
-        else: # All other editions of ASCE 7
+            else:
+                tz = (2.35 * (d0) ** (1 / 2)) / ((z / (30 / 3.281)) ** (1 / alpha))
+                gz = 0.65 + 3.65 * tz
+        else:  # All other editions of ASCE 7
             g = 0.85
-        # Determine the Cps or GCps:
-        # Wall C&C:
-        area_eff = 75/10.764 # area in m^2
-        pos = False
-        zone = 3
-        #gcp = wall_cc(area_eff, pos, zone, edition)
-        # For wall C&C: External pressure coefficients can be reduced by 10% when roof pitch <= 10 deg.
-        # if theta <= 10:
-            # gcp = 0.9*gcp
-        # else:
-            # pass
-        # Roof C&C:
-        gcp = PressureCalc.roof_cc(self, area_eff, pos, zone, edition)
         # Pressure calc: will need to code in a procedure to determine both +/- cases for GCpi
         # ASCE 7-93:
         if is_cc:
-            if z < 60/ 3.281:  # should be building height:
+            if z < 60 / 3.281:  # should be building height:
                 # Calculate pressure for the controlling case:
                 if gcp > 0:
-                    p = qh * (gcp + gcpi)
+                    p = q * (gcp + gcpi)
                 elif gcp < 0:
-                    p = qh * (gcp - gcpi)
+                    p = q * (gcp - gcpi)
             else:
                 pass  # same equation, except q = qz
             # Exception for ASCE 7-95: For buildings in Exposure B, calculated pressure shall be multiplied by 0.85
             if edition == 'ASCE 7-95':
-                p = 0.85*p
+                p = 0.85 * p
             else:
                 pass
             # Minimum design pressure for C&C:
-            if abs(p)/1000 < 0.48: # [kN/m^2]
-                p = np.sign(p)*0.48*1000 # [N/m^2]
+            if abs(p) / 1000 < 0.48:  # [kN/m^2]
+                p = np.sign(p) * 0.48 * 1000  # [N/m^2]
             else:
                 pass
         else:
             pass
-            #p = qh * g * cp - qh * gcpi  # q = qz for roof (at mean roof height)
-        print('pressure:',p * 0.020885) # print in psf
+            # p = qh * g * cp - qh * gcpi  # q = qz for roof (at mean roof height)
+        print('pressure:', p * 0.020885)  # print in psf
         return p
-
-
 
     def qz_calc(self, z, wind_speed, exposure, edition, is_cc):
         hpr = True
@@ -133,9 +143,8 @@ class PressureCalc:
             kzt = 1.0
             kd = 0.85
             qz = 0.613 * kz * kzt * kd * wind_speed ** 2
-        print('qz:',qz * 0.020885)
+        print('qz:', qz * 0.020885)
         return qz, alpha
-
 
     def kz_coeff(self, z, exposure, edition, is_cc):
         # ASCE 7-95 and older: Exposure Category is C for C&C (B allowed for 7-95)
@@ -185,7 +194,8 @@ class PressureCalc:
         # Case 1a for all components and cladding
         # z shall not be taken as less than 30 feet for Case 1 in Exposure B
         if is_cc:
-            if exposure == 'B' and (edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10'):
+            if exposure == 'B' and (
+                    edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10'):
                 if z < 30 / 3.281:
                     z = 30 / 3.281
                 else:
@@ -196,7 +206,6 @@ class PressureCalc:
         elif 15 / 3.281 < z < zg:
             kz = factor * (z / zg) ** (2 / alpha)
         return kz, alpha
-
 
     def i_factor(self, z, wind_speed, hpr, h_ocean):
         # Importance factor for ASCE 7-05 and older:
@@ -217,7 +226,6 @@ class PressureCalc:
                 categories = np.array([0.87, 1.00, 1.15, 1.15])
                 imp = categories[cat - 1]
         return imp
-
 
     def roof_MWFRS(self, BIM, wind_direction):
         # Identify roof MWFRS zones and pressure coefficients
@@ -242,8 +250,9 @@ class PressureCalc:
                     angles = np.array([10, 15, 20, 25, 30, 35, 45, 60, 80])
                     if ratio <= 0.25:
                         Cp_full = np.array(
-                            [[-0.7, -0.18], [-0.5, 0.0], [-0.3, 0.2], [-0.2, 0.3], [-0.2, 0.3], [0.0, 0.4], [0.01, 0.01],
-                            [0.8, 0.8]])
+                            [[-0.7, -0.18], [-0.5, 0.0], [-0.3, 0.2], [-0.2, 0.3], [-0.2, 0.3], [0.0, 0.4],
+                             [0.01, 0.01],
+                             [0.8, 0.8]])
                         # Choose pressure coefficients given the load direction:
                         Cps = Cp_full
                     elif ratio == 0.5:
@@ -256,7 +265,6 @@ class PressureCalc:
                         pass
                 elif direction == 'leeward':
                     angles = np.array([10, 15, 20])
-
 
     def roof_cc(self, area_eff, pos, zone, edition):
         # Area_eff needs to be in units of ft^2
@@ -368,7 +376,6 @@ class PressureCalc:
                         gcp = -1.1
 
         return gcp
-
 
     def wall_cc(self, area_eff, pos, zone, edition):
         # Area_eff needs to be in units of ft^2
@@ -510,16 +517,15 @@ class PressureCalc:
 
 
 # Testing out velocity pressure calculation:
-#z = np.linspace(15 / 3.281, 100/3.281, 200)
+# z = np.linspace(15 / 3.281, 100/3.281, 200)
 z = 15 / 3.281
-wind_speed = 130/2.237
-#wind_speed = np.linspace(60/ 2.237, 180/2.237, 20) # [m]/[s]
+wind_speed = 130 / 2.237
+# wind_speed = np.linspace(60/ 2.237, 180/2.237, 20) # [m]/[s]
 exposure = 'C'
 edition = 'ASCE 7-93'
 is_cc = True
 pressures = PressureCalc()
 run = pressures.run(z, wind_speed, exposure, edition, is_cc)
-
 
 # Let's plot and see if it works:
 # areas = np.arange(0.1, 93, 0.1)
