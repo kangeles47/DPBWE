@@ -9,6 +9,8 @@ class PressureCalc:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class='Enclosed')
         # Determine the MWFRS pressures for roof:
         if r_mwfrs:
+            wps = 0
+            rps = 0
             is_cc = False
             # Roof uplift pressures require qh:
             qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc)
@@ -17,15 +19,16 @@ class PressureCalc:
             # Set up to find Cp values:
             direction = 'parallel'
             pitch = 9
-            aspect_ratios = [h_bldg/2]
+            ratio = 0.5
             # Set up placeholders for Cp values:
-            cps = list()
-            for ratio in aspect_ratios:
-                # Find the Cps:
-                cp = PressureCalc.roof_mwfrs(self, h_bldg, direction, aspect_ratios, pitch)
-                gcp = g*cp
+            rmps = list()
+            # Find the Cps:
+            cp = PressureCalc.roof_mwfrs(self, h_bldg, direction, ratio, pitch)
+            for row in cp:
+                gcp = g*cp[0][0] # Take the first Cp value for uplift calculations
                 # Calculate uplift pressure at the zone:
                 p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
+                rmps.append(p)
         # Determine pressure for components and cladding:
         if w_cc or r_cc:
             # C&C loads:
@@ -60,7 +63,7 @@ class PressureCalc:
                     # Calculate pressure at the zone:
                     p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
                     rps.append(p)
-        return wps, rps
+        return wps, rps, rmps
 
     def get_gcpi(self, edition, encl_class='Enclosed'):
         # Determine GCpi: in the future, will need to develop a procedure to determine the enclosure category
@@ -247,42 +250,38 @@ class PressureCalc:
                 imp = categories[cat - 1]
         return imp
 
-    def roof_mwfrs(self, h_bldg, direction, aspect_ratios, pitch):
+    def roof_mwfrs(self, h_bldg, direction, ratio, pitch):
         # Identify roof MWFRS zones and pressure coefficients
-        for ratio in aspect_ratios:
-            if (pitch < 10 or pitch == 'flat' or pitch == 'shallow' or pitch == 'flat or shallow') or direction == 'parallel':
-                if ratio <= 0.5:
-                    Cp_full = np.array([[-0.9, -0.18], [-0.9, -0.18], [-0.5, -0.18], [-0.3, -0.18]])
-                    zones = np.array([0.5 * h_bldg, h_bldg, 2 * h_bldg, 2.0001 * h_bldg])
-                    num_zones = np.count_nonzero(zones <= ratio)
-                    # Get back all Cps for the identified zones:
-                    Cps = Cp_full[0:num_zones]
-                elif ratio >= 1.0:
+        if (pitch < 10 or pitch == 'flat' or pitch == 'shallow' or pitch == 'flat or shallow') or direction == 'parallel':
+            if ratio <= 0.5:
+                Cp_full = np.array([[-0.9, -0.18], [-0.9, -0.18], [-0.5, -0.18], [-0.3, -0.18]])
+                zones = np.array([0.5, 1.0, 2, 2.0001])
+                num_zones = np.count_nonzero(zones <= ratio)
+                # Get back all Cps for the identified zones:
+                Cps = Cp_full[0:num_zones]
+            elif ratio >= 1.0:
+                Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
+                zones = np.array([0.5 * h_bldg, 0.50001 * h_bldg])
+                num_zones = np.count_nonzero(zones <= ratio)
+                # Get back all Cps for the identified zones:
+                Cps = Cp_full[0:num_zones]
+        else:
+            if direction == 'windward':
+                angles = np.array([10, 15, 20, 25, 30, 35, 45, 60, 80])
+                if ratio <= 0.25:
+                    Cp_full = np.array([[-0.7, -0.18], [-0.5, 0.0], [-0.3, 0.2], [-0.2, 0.3], [-0.2, 0.3], [0.0, 0.4],[0.01, 0.01],[0.8, 0.8]])
+                    # Choose pressure coefficients given the load direction:
+                    Cps = Cp_full
+                elif ratio == 0.5:
                     Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
                     zones = np.array([0.5 * h_bldg, 0.50001 * h_bldg])
                     num_zones = np.count_nonzero(zones <= ratio)
                     # Get back all Cps for the identified zones:
                     Cps = Cp_full[0:num_zones]
-            else:
-                if direction == 'windward':
-                    angles = np.array([10, 15, 20, 25, 30, 35, 45, 60, 80])
-                    if ratio <= 0.25:
-                        Cp_full = np.array(
-                            [[-0.7, -0.18], [-0.5, 0.0], [-0.3, 0.2], [-0.2, 0.3], [-0.2, 0.3], [0.0, 0.4],
-                             [0.01, 0.01],
-                             [0.8, 0.8]])
-                        # Choose pressure coefficients given the load direction:
-                        Cps = Cp_full
-                    elif ratio == 0.5:
-                        Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
-                        zones = np.array([0.5 * h_bldg, 0.50001 * h_bldg])
-                        num_zones = np.count_nonzero(zones <= ratio)
-                        # Get back all Cps for the identified zones:
-                        Cps = Cp_full[0:num_zones]
-                    elif ratio >= 1.0:
-                        pass
-                elif direction == 'leeward':
-                    angles = np.array([10, 15, 20])
+                elif ratio >= 1.0:
+                    pass
+            elif direction == 'leeward':
+                angles = np.array([10, 15, 20])
         return Cps
 
     def roof_cc(self, area_eff, pos, zone, edition):
@@ -540,10 +539,11 @@ def func(x, a, b, c):
 
 # Testing out velocity pressure calculation:
 # z = np.linspace(15 / 3.281, 100/3.281, 200)
-z = 15 / 3.281
+z = 60 / 3.281
+h_bldg = 60 / 3.281
 #wind_speed = 148 / 2.237
 wind_speed = np.linspace(90, 180, 9)/2.237 # [m]/[s]
-exposure = ['B','C']
+exposure = 'C'
 edition = 'ASCE 7-16'
 is_cc = True
 pressures = PressureCalc()
@@ -554,8 +554,24 @@ area_eff= np.array([45])/10.764
 wall_pressures = np.empty((0, 4))
 roof_pressures = np.empty((0, 6))
 
+
+# Play with roof mwfrs:
+r_mwfrs = True
+rmps_arr = np.array([])
+for speed in wind_speed:
+    wps, rps, rmps = pressures.run(z, speed, exposure, edition, r_mwfrs, h_bldg, w_cc=False, r_cc=False, area_eff=None)
+    # Each row in rmps will contain as many pressures as zones identified:
+    rmps[0] = rmps[0]*0.020885
+    rmps_arr = np.append(rmps_arr, rmps, axis = 0)
+print(rmps_arr)
+
 # Set up a matplotlib figure:
 fig, ax = plt.subplots()
+line = ax.plot(rmps_arr, wind_speed*2.237)
+plt.ylim(90, max(wind_speed)*2.237)
+plt.show()
+
+
 for ex in exposure:
     for area in area_eff:
         wall_pressures = np.empty((0, 4))
