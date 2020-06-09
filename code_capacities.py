@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from scipy.optimize import curve_fit
 
 class PressureCalc:
@@ -540,7 +541,7 @@ def func(x, a, b, c):
 # Testing out velocity pressure calculation:
 # z = np.linspace(15 / 3.281, 100/3.281, 200)
 z = 60 / 3.281
-h_bldg = 60 / 3.281
+h_bldg = np.arange(10, 70, 10) / 3.281
 #wind_speed = 148 / 2.237
 wind_speed = np.linspace(90, 180, 9)/2.237 # [m]/[s]
 exposure = 'C'
@@ -554,16 +555,35 @@ area_eff= np.array([45])/10.764
 wall_pressures = np.empty((0, 4))
 roof_pressures = np.empty((0, 6))
 
+df = pd.DataFrame()
 
 # Play with roof mwfrs:
 r_mwfrs = True
-rmps_arr = np.array([])
-for speed in wind_speed:
-    wps, rps, rmps = pressures.run(z, speed, exposure, edition, r_mwfrs, h_bldg, w_cc=False, r_cc=False, area_eff=None)
-    # Each row in rmps will contain as many pressures as zones identified:
-    rmps[0] = rmps[0]*0.020885
-    rmps_arr = np.append(rmps_arr, rmps, axis = 0)
-print(rmps_arr)
+
+for h in h_bldg:
+    rmps_arr = np.array([])
+    for speed in wind_speed:
+        wps, rps, rmps = pressures.run(z, speed, exposure, edition, r_mwfrs, h, w_cc=False, r_cc=False, area_eff=None)
+        # Each row in rmps will contain as many pressures as zones identified:
+        rmps[0] = rmps[0]*0.020885
+        rmps_arr = np.append(rmps_arr, rmps, axis = 0)
+    # Append column of pressures for various wind speeds for this height:
+    col_name = str(h*3.281)
+    df[col_name] = rmps_arr
+
+print(df)
+
+# Figure out the pressure difference for various heights:
+print('percent change in height:')
+print(df.pct_change(axis=1))
+print('percent change in wind speed:')
+print(df.pct_change(axis=0))
+
+
+
+#print(((df['20.0']-df['10.0'])/df['10.0']), ((df['30.0']-df['20.0'])/df['20.0']), ((df['40.0']-df['30.0'])/df['30.0']))
+
+
 
 # Set up a matplotlib figure:
 fig, ax = plt.subplots()
