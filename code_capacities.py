@@ -24,7 +24,8 @@ class PressureCalc:
             # Set up placeholders for Cp values:
             rmps = list()
             # Find the Cps:
-            cp = PressureCalc.roof_mwfrs(self, h_bldg, direction, ratio, pitch)
+            length = 2*h_bldg
+            cp = PressureCalc.roof_mwfrs(self, h_bldg, direction, ratio, pitch, length)
             for row in cp:
                 gcp = g*cp[0][0] # Take the first Cp value for uplift calculations
                 # Calculate uplift pressure at the zone:
@@ -110,10 +111,10 @@ class PressureCalc:
                 d0 = 0.003
             if is_cc:  # Gz and Gh are calculated the exact same way, except that Gz uses the mean roof height
                 tz = (2.35 * (d0) ** (1 / 2)) / ((z / (30 / 3.281)) ** (1 / alpha))
-                gz = 0.65 + 3.65 * tz
+                g = 0.65 + 3.65 * tz
             else:
                 tz = (2.35 * (d0) ** (1 / 2)) / ((z / (30 / 3.281)) ** (1 / alpha))
-                gz = 0.65 + 3.65 * tz
+                g = 0.65 + 3.65 * tz
         else:  # All other editions of ASCE 7
             g = 0.85
         return g
@@ -251,13 +252,13 @@ class PressureCalc:
                 imp = categories[cat - 1]
         return imp
 
-    def roof_mwfrs(self, h_bldg, direction, ratio, pitch):
+    def roof_mwfrs(self, h_bldg, direction, ratio, pitch, length):
         # Identify roof MWFRS zones and pressure coefficients
         if (pitch < 10 or pitch == 'flat' or pitch == 'shallow' or pitch == 'flat or shallow') or direction == 'parallel':
             if ratio <= 0.5:
                 Cp_full = np.array([[-0.9, -0.18], [-0.9, -0.18], [-0.5, -0.18], [-0.3, -0.18]])
-                zones = np.array([0.5, 1.0, 2, 2.0001])
-                num_zones = np.count_nonzero(zones <= ratio)
+                zones = np.array([0.5*h_bldg, 1.0*h_bldg, 2*h_bldg, 2.0001*h_bldg])
+                num_zones = np.count_nonzero(zones <= length)
                 # Get back all Cps for the identified zones:
                 Cps = Cp_full[0:num_zones]
             elif ratio >= 1.0:
@@ -545,8 +546,7 @@ h_bldg = np.arange(10, 70, 10) / 3.281
 #wind_speed = 148 / 2.237
 wind_speed = np.linspace(90, 180, 9)/2.237 # [m]/[s]
 exposure = 'C'
-edition = 'ASCE 7-16'
-is_cc = True
+edition = 'ASCE 7-10'
 pressures = PressureCalc()
 # Set up array of effective areas:
 # area_eff= np.array([0.93, 1.86, 4.65, 9.3, 18.58, 46.45, 92.9])
@@ -565,8 +565,8 @@ for h in h_bldg:
     for speed in wind_speed:
         wps, rps, rmps = pressures.run(z, speed, exposure, edition, r_mwfrs, h, w_cc=False, r_cc=False, area_eff=None)
         # Each row in rmps will contain as many pressures as zones identified:
-        rmps[0] = rmps[0]*0.020885
-        rmps_arr = np.append(rmps_arr, rmps, axis = 0)
+        rmps[2] = rmps[2]*0.020885
+        rmps_arr = np.append(rmps_arr, rmps[2])
     # Append column of pressures for various wind speeds for this height:
     col_name = str(h*3.281)
     df[col_name] = rmps_arr
@@ -579,11 +579,25 @@ print(df.pct_change(axis=1))
 print('percent change in wind speed:')
 print(df.pct_change(axis=0))
 
+# Try for a different exposure category:
+exposure = 'B'
+df2 = pd.DataFrame()
 
+for h in h_bldg:
+    rmps_arr = np.array([])
+    for speed in wind_speed:
+        wps, rps, rmps = pressures.run(z, speed, exposure, edition, r_mwfrs, h, w_cc=False, r_cc=False, area_eff=None)
+        # Each row in rmps will contain as many pressures as zones identified:
+        rmps[2] = rmps[2]*0.020885
+        rmps_arr = np.append(rmps_arr, rmps[2])
+    # Append column of pressures for various wind speeds for this height:
+    col_name = str(h*3.281)
+    df2[col_name] = rmps_arr
 
-#print(((df['20.0']-df['10.0'])/df['10.0']), ((df['30.0']-df['20.0'])/df['20.0']), ((df['40.0']-df['30.0'])/df['30.0']))
+print(df2)
 
-
+# Check the difference between Exposure B and Exposure C:
+print((df['10.0']-df2['10.0'])/df['10.0'], (df['20.0']-df2['20.0'])/df['20.0'], (df['30.0']-df2['30.0'])/df['30.0'], (df['40.0']-df2['40.0'])/df['40.0'])
 
 # Set up a matplotlib figure:
 fig, ax = plt.subplots()
