@@ -65,6 +65,8 @@ class PressureCalc:
                     # Calculate pressure at the zone:
                     p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
                     rps.append(p)
+                wps = 0
+                rmps = 0
         return wps, rps, rmps
 
     def get_gcpi(self, edition, encl_class='Enclosed'):
@@ -548,12 +550,6 @@ wind_speed = np.linspace(90, 180, 9)/2.237 # [m]/[s]
 exposure = 'C'
 edition = 'ASCE 7-10'
 pressures = PressureCalc()
-# Set up array of effective areas:
-# area_eff= np.array([0.93, 1.86, 4.65, 9.3, 18.58, 46.45, 92.9])
-area_eff= np.array([45])/10.764
-# Set up empty numpy arrays to store wall and roof pressures:
-wall_pressures = np.empty((0, 4))
-roof_pressures = np.empty((0, 6))
 
 df = pd.DataFrame()
 
@@ -605,17 +601,27 @@ line = ax.plot(rmps_arr, wind_speed*2.237)
 plt.ylim(90, max(wind_speed)*2.237)
 plt.show()
 
-
-for ex in exposure:
-    for area in area_eff:
-        wall_pressures = np.empty((0, 4))
-        roof_pressures = np.empty((0, 6))
-        for speed in wind_speed:
-            wps, rps = pressures.run(z, speed, ex, edition, is_cc, area)
-            # Add to our empty array:
-            wall_pressures = np.append(wall_pressures, np.array([wps])*0.020885, axis=0)
-            roof_pressures = np.append(roof_pressures, np.array([rps]), axis=0)
-        line = ax.plot(wall_pressures[:,3]*0.020885, wind_speed*2.237, label=str(area) + ex)
+# Set up array of effective areas:
+# area_eff= np.array([0.93, 1.86, 4.65, 9.3, 18.58, 46.45, 92.9])
+area_eff= np.array([4.5, 45])/10.764
+# Set up empty numpy arrays to store wall and roof pressures:
+wall_pressures = np.empty((0, 4))
+roof_pressures = np.empty((0, 6))
+w_cc = True
+r_cc = False
+h_bldg = 9 / 3.281
+count = 0
+fig2, ax2 = plt.subplots()
+for area in area_eff:
+    wall_pressures = np.empty((0, 4))
+    roof_pressures = np.empty((0, 6))
+    for speed in wind_speed:
+        wps, rps, rmps = pressures.run(z, speed, exposure, edition, r_mwfrs, h_bldg, w_cc, r_cc, area)
+        # Add to our empty array:
+        wall_pressures = np.append(wall_pressures, np.array([wps]), axis=0)
+        #roof_pressures = np.append(roof_pressures, np.array([rps]), axis=0)
+    count = count + 1
+    line = ax2.plot(wall_pressures[:,1]*0.020885, wind_speed*2.237, label='bound'+str(count))
     #params = curve_fit(func, wall_pressures[:,3], wind_speed*2.237)
     #[a, b, c] = params[0]
     #fit_curve = ax.plot(wall_pressures[:, 3], func(wall_pressures[:,3], a, b, c), label=str(area * 10.7639))
@@ -623,8 +629,9 @@ for ex in exposure:
 #ax.legend()
 #plt.ylim(90, max(wind_speed)*2.237)
 
-ax.legend()
+ax2.legend()
 plt.ylim(90, max(wind_speed)*2.237)
+plt.title('Glass panel C&C bounds (+), Zones 4 and 5 for h =' + str(h_bldg*3.281))
 plt.show()
 
 # Plot the range of pressures for all wind speeds:
