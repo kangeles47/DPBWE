@@ -5,56 +5,87 @@ import random
 
 class BldgCode:
 
-    def __init__(self, parcel):
-        # First determine what code we need to pull based off of the location and year built:
-        if parcel.state == "FL":
-            if parcel.is_comm:
-                if parcel.yr_built > 1988 & parcel.yr_built <= 1991:
-                    if parcel.county != 'Broward' or parcel.county != 'Dade':
-                        self.edition = '1988 SBC'
+    def __init__(self, parcel, desc_flag):
+        # Building codes have editions:
+        desc_flag = 1
+        self.edition = self.get_edition(parcel, desc_flag)
+
+    def get_edition(self, parcel, desc_flag):
+        # Get the code edition considering parcel location, year built
+        # For code-based rulesets (Parcels):
+        if desc_flag == 1:
+            if parcel.state == "FL":
+                if parcel.is_comm:
+                    if parcel.yr_built > 1988 & parcel.yr_built <= 1991:
+                        if parcel.county != 'Broward' or parcel.county != 'Dade':
+                            edition = '1988 SBC'
+                        else:
+                            edition = '1988 SFBC'
+                    elif parcel.yr_built > 2001 & parcel.yr_built <= 2004:
+                        edition = '2001 FBC - Building'
+                    elif parcel.yr_built > 2004 & parcel.yr_built <= 2008:
+                        edition = '2004 FBC - Building'
+                    elif parcel.yr_built > 2008 & parcel.yr_built <= 2011:
+                        edition = '2007 FBC - Building'
+                    elif parcel.yr_built > 2011 & parcel.yr_built <= 2014:
+                        edition = '2010 FBC - Building'
+                    elif parcel.yr_built > 2014 & parcel.yr_built <= 2017:
+                        edition = '2014 FBC - Building'
+                    elif parcel.yr_built > 2017 & parcel.yr_built <= 2020:
+                        edition = '2017 FBC - Building'
                     else:
-                        self.edition = '1988 SFBC'
-                elif parcel.yr_built > 2001 & parcel.yr_built <= 2004:
-                    self.edition = '2001 FBC - Building'
-                elif parcel.yr_built > 2004 & parcel.yr_built <= 2008:
-                    self.edition = '2004 FBC - Building'
-                elif parcel.yr_built > 2008 & parcel.yr_built <= 2011:
-                    self.edition = '2007 FBC - Building'
-                elif parcel.yr_built > 2011 & parcel.yr_built <= 2014:
-                    self.edition = '2010 FBC - Building'
-                elif parcel.yr_built > 2014 & parcel.yr_built <= 2017:
-                    self.edition = '2014 FBC - Building'
-                elif parcel.yr_built > 2017 & parcel.yr_built <= 2020:
-                    self.edition = '2017 FBC - Building'
+                        print('Building code and edition currently not supported', parcel.yr_built)
                 else:
-                    print('Building code and edition currently not supported', parcel.yr_built)
-            else:
-                if parcel.yr_built > 1983 & parcel.yr_built <= 1986:
-                    self.edition = '1983 CABO'
-                elif parcel.yr_built > 1986 & parcel.yr_built <= 1989:
-                    self.edition = '1986 CABO'
-                elif parcel.yr_built > 1989 & parcel.yr_built <= 1991:
-                    self.edition = '1989 CABO'
-                elif parcel.yr_built > 1991 & parcel.yr_built <= 1995:
-                    self.edition = '1992 CABO'
-                elif parcel.yr_built > 1995 & parcel.yr_built <= 2001:
-                    self.edition = '1995 CABO'
-                elif parcel.yr_built > 2001 & parcel.yr_built <= 2004:
-                    self.edition = '2001 FBC - Residential'
-                elif parcel.yr_built > 2004 & parcel.yr_built <= 2008:
-                    self.edition = '2004 FBC - Residential'
-                elif parcel.yr_built > 2008 & parcel.yr_built <= 2011:
-                    self.edition = '2007 FBC - Residential'
-                elif parcel.yr_built > 2011 & parcel.yr_built <= 2014:
-                    self.edition = '2010 FBC - Residential'
-                elif parcel.yr_built > 2014 & parcel.yr_built <= 2017:
-                    self.edition = '2014 FBC - Residential'
-                elif parcel.yr_built > 2017 & parcel.yr_built <= 2020:
-                    self.edition = '2017 FBC - Residential'
-                else:
-                    print('Building code and edition currently not supported', parcel.yr_built)
-        # Knowing the building code and edition, populate bldg level attributes:
-        self.bldg_attributes(self.edition, parcel)
+                    if parcel.yr_built > 1983 & parcel.yr_built <= 1986:
+                        edition = '1983 CABO'
+                    elif parcel.yr_built > 1986 & parcel.yr_built <= 1989:
+                        edition = '1986 CABO'
+                    elif parcel.yr_built > 1989 & parcel.yr_built <= 1991:
+                        edition = '1989 CABO'
+                    elif parcel.yr_built > 1991 & parcel.yr_built <= 1995:
+                        edition = '1992 CABO'
+                    elif parcel.yr_built > 1995 & parcel.yr_built <= 2001:
+                        edition = '1995 CABO'
+                    elif parcel.yr_built > 2001 & parcel.yr_built <= 2004:
+                        edition = '2001 FBC - Residential'
+                    elif parcel.yr_built > 2004 & parcel.yr_built <= 2008:
+                        edition = '2004 FBC - Residential'
+                    elif parcel.yr_built > 2008 & parcel.yr_built <= 2011:
+                        edition = '2007 FBC - Residential'
+                    elif parcel.yr_built > 2011 & parcel.yr_built <= 2014:
+                        edition = '2010 FBC - Residential'
+                    elif parcel.yr_built > 2014 & parcel.yr_built <= 2017:
+                        edition = '2014 FBC - Residential'
+                    elif parcel.yr_built > 2017 & parcel.yr_built <= 2020:
+                        edition = '2017 FBC - Residential'
+                    else:
+                        print('Building code and edition currently not supported', parcel.yr_built)
+        elif desc_flag == 0:
+            # For code-informed capacities using ASCE 7:
+            if parcel.yr_built <= 1988:
+                edition = 'ASCE 7-88'
+            elif 1988 < parcel.yr_built <= 1993:
+                edition = 'ASCE 7-88'
+            elif 1993 < parcel.yr_built <= 1995:
+                edition = 'ASCE 7-93'
+            elif 1995 < parcel.yr_built <= 1998:
+                edition = 'ASCE 7-95'
+            elif 1998 < parcel.yr_built <= 2002:
+                edition = 'ASCE 7-98'
+            elif 2002 < parcel.yr_built <= 2005:
+                edition = 'ASCE 7-02'
+            elif 2005 < parcel.yr_built <= 2010:
+                edition = 'ASCE 7-05'
+            elif 2010 < parcel.yr_built <= 2016:
+                edition = 'ASCE 7-10'
+            elif parcel.yr_built > 2016:
+                edition = 'ASCE 7-16'
+        return edition
+
+class FBC(BldgCode):
+
+    def __init__(self, parcel, desc_flag):
+        BldgCode.__init__(self, parcel, desc_flag)  # Bring in building code attributes (edition)
 
     def bldg_attributes(self, edition, parcel):
         # Knowing the code edition, populate this building-level code-informed attributes for the parcel:
@@ -159,6 +190,11 @@ class BldgCode:
             # Since the length of the walls had to be reduced
         else:
             pass
+
+class ASCE7(BldgCode):
+
+    def __init__(self, parcel, desc_flag):
+        BldgCode.__init__(self, parcel, desc_flag)  # Bring in building code attributes (edition)
 
 
 #What we would like this class to do is define all of the relevant building parameters:
