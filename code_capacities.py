@@ -5,6 +5,77 @@ from scipy.optimize import curve_fit
 
 class PressureCalc:
 
+    def wcc_capacity(self, wind_speed, exposure, edition, h_bldg, area_eff):
+        # Determine GCpis for pressure calculation:
+        gcpi = PressureCalc.get_gcpi(self, edition, encl_class='Enclosed')
+        # Determine components and cladding pressure for building facade components:
+        is_cc = True
+        # All components and cladding calculations require qh:
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc)
+        # Get GCps and calculate the pressure for each zone:
+        wpos = [True, True, False, False]
+        wzone = [4, 5, 4, 5]
+        wps = list()
+        for ind in range(0, len(wpos)):
+            # Find the GCp
+            gcp = PressureCalc.wall_cc(self, area_eff, wpos[ind], wzone[ind], edition)
+            # Reduce GCp for walls if roof pitch is <= 10 degrees:
+            theta = 12
+            if theta <= 10:
+                gcp = 0.9 * gcp
+            else:
+                pass
+            # Calculate pressure at the zone:
+            p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
+            wps.append(p)
+
+        return wps
+
+    def rcc_capacity(self, wind_speed, exposure, edition, h_bldg, area_eff):
+        # Determine GCpis for pressure calculation:
+        gcpi = PressureCalc.get_gcpi(self, edition, encl_class='Enclosed')
+        # Determine components and cladding pressure for building roof components:
+        is_cc = True
+        # All components and cladding calculations require qh:
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc)
+        # Get GCps and calculate the pressure for each zone:
+        rpos = [True, True, True, False, False, False]
+        rzone = [1, 2, 3, 1, 2, 3]
+        rps = list()
+        for ind in range(0, len(rpos)):
+            # Find the GCp
+            gcp = PressureCalc.roof_cc(self, area_eff, rpos[ind], rzone[ind], edition)
+            # Calculate pressure at the zone:
+            p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
+            rps.append(p)
+        return rps
+
+    def rmwfrs_capacity(self, wind_speed, exposure, edition, h_bldg):
+        # Determine GCpis for pressure calculation:
+        gcpi = PressureCalc.get_gcpi(self, edition, encl_class='Enclosed')
+        # Determine the velocity pressure:
+        is_cc = False
+        # Roof uplift pressures require qh:
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc)
+        # Get the gust effect or gust response factor:
+        g = PressureCalc.get_g(self, edition, exposure, is_cc, alpha)
+        # Set up to find Cp values:
+        direction = 'parallel'
+        pitch = 9
+        ratio = 0.5
+        # Set up placeholders for Cp values:
+        rmps = list()
+        # Find the Cps:
+        length = 2 * h_bldg
+        cp = PressureCalc.roof_mwfrs(self, h_bldg, direction, ratio, pitch, length)
+        for row in cp:
+            gcp = g * cp[0][0]  # Take the first Cp value for uplift calculations
+            # Calculate uplift pressure at the zone:
+            p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
+            rmps.append(p)
+
+        return rmps
+
     def run(self, z, wind_speed, exposure, edition, r_mwfrs, h_bldg, w_cc, r_cc, area_eff=None):
         # Determine GCpis for pressure calculation:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class='Enclosed')
@@ -152,19 +223,19 @@ class PressureCalc:
         hpr = True
         h_ocean = True
         # Every edition of ASCE 7 has a velocity exposure coefficient:
-        kz, alpha = PressureCalc.kz_coeff(self, z, exposure, edition, is_cc)
+        kz, alpha = PressureCalc.get_kz(self, z, exposure, edition, is_cc)
         # Calculate the velocity pressure:
         if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
-            imp = PressureCalc.i_factor(self, z, wind_speed, hpr, h_ocean)
+            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean)
             qz = 0.613 * kz * (imp * wind_speed) ** 2
         elif edition == 'ASCE 7-95':
             kzt = 1.0
-            imp = PressureCalc.i_factor(self, z, wind_speed, hpr, h_ocean)
+            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean)
             qz = 0.613 * kz * kzt * imp * wind_speed ** 2
         elif edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
             kzt = 1.0
             kd = 0.85
-            imp = PressureCalc.i_factor(self, z, wind_speed, hpr, h_ocean)
+            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean)
             qz = 0.613 * kz * kzt * kd * imp * wind_speed ** 2
         elif edition == 'ASCE 7-10' or edition == 'ASCE 7-16':
             kzt = 1.0
@@ -173,7 +244,7 @@ class PressureCalc:
         print('qz:', qz * 0.020885, 'z:', z, 'wind_speed:', wind_speed*2.237)
         return qz, alpha
 
-    def kz_coeff(self, z, exposure, edition, is_cc):
+    def get_kz(self, z, exposure, edition, is_cc):
         # ASCE 7-95 and older: Exposure Category is C for C&C (B allowed for 7-95)
         if is_cc:
             if edition == 'ASCE 7-95':
@@ -234,7 +305,7 @@ class PressureCalc:
             kz = factor * (z / zg) ** (2 / alpha)
         return kz, alpha
 
-    def i_factor(self, z, wind_speed, hpr, h_ocean):
+    def get_i(self, z, wind_speed, hpr, h_ocean):
         # Importance factor for ASCE 7-05 and older:
         # Assume occupancy category is II for now (later add logic to identify tags for the region (MED, UNIV, etc.):
         cat = 2
