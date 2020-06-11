@@ -608,6 +608,25 @@ class PressureCalc:
 
         return gcp
 
+    def get_warea(self, ctype, parcel_flag, h_story):
+        # Determine the effective area for a wall C&C:
+        if ctype == 'mullion':
+            if parcel_flag == 1:
+                if h_story <= 15/3.281:  # [m]
+                    area_eff = h_story*(5/3.281)  # [m^2]
+                else:
+                    area_eff = h_story*h_story/3  # [m^2]
+            else:
+                pass
+        elif ctype == 'glass curtain wall':
+            if parcel_flag == 1:
+                area_eff = (h_story/2)*(5/3.281)  # [m^2]
+            else:
+                pass
+        elif ctype == 'wall':
+            area_eff = h_story*h_story/3  # [m^2]
+
+        return area_eff
 
 def func(x, a, b, c):
     return a*(x**2)+b*x+c
@@ -674,7 +693,7 @@ plt.show()
 
 # Set up array of effective areas:
 # area_eff= np.array([0.93, 1.86, 4.65, 9.3, 18.58, 46.45, 92.9])
-area_eff= np.array([4.5, 45])/10.764
+area_eff= np.array([45, 54])/10.764
 # Set up empty numpy arrays to store wall and roof pressures:
 wall_pressures = np.empty((0, 4))
 roof_pressures = np.empty((0, 6))
