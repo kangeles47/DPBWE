@@ -20,6 +20,7 @@ class WallAssem(Assembly):
         self.is_exterior = None
         self.base_floor = None
         self.top_floor = None
+        self.capacity = None
 
 
 class RoofAssem(Assembly):
@@ -29,6 +30,7 @@ class RoofAssem(Assembly):
         self.pitch = None
         self.cover = None
         self.height = None
+        self.capacity = None
 
 
 class FloorAssem(Assembly):
@@ -36,6 +38,7 @@ class FloorAssem(Assembly):
         Assembly.__init__(self)
         # Add in roof instance attributes:
         self.is_loadbearing = True
+        self.capacity = None
 
 
 class CeilingAssem(Assembly):
@@ -43,6 +46,7 @@ class CeilingAssem(Assembly):
         Assembly.__init__(self)
         # Add in roof instance attributes:
         self.is_loadbearing = False
+        self.capacity = None
 
 
 class StructSys(Assembly):
