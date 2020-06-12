@@ -811,8 +811,47 @@ for index in range(0, len(row)):
     factor_lst.append(factor)
 
 # Try for a different exposure category:
-#exposure = 'B'
-#df2 = pd.DataFrame()
+exposures = ['C', 'B', 'D']
+dfE = pd.DataFrame()
+fig, ax = plt.subplots()
+
+for exp in exposures:
+    rmps_arr = np.array([])
+    for speed in wind_speed:
+        length = 2 * base_height
+        ratio = base_height / length
+        rmps = pressures.rmwfrs_capacity(speed, exp, edition, base_height, length, ratio)
+        rmps_arr = np.append(rmps_arr, rmps[1])
+    # Add values to DataFrame:
+    dfE[exp] = rmps_arr
+    # Plot the results:
+    ax.plot(dfE[exp] * 0.020885, wind_speed * 2.237)
+
+# Plot the results:
+ax.legend(['B', 'C', 'D'])
+plt.title('Roof uplift pressures (MWFRS) for Zone 1 vs. Wind speed for various exposures')
+plt.ylabel('Wind Speed [mph]')
+plt.xlabel('Pressure [psf]')
+plt.ylim(90, max(wind_speed)*2.237)
+plt.show()
+
+# Check the percent change between Exposure categories:
+print('percent change in pressure by Exposure Categoery:')
+print(dfE.pct_change(axis=1))
+
+# Calculate the percent change from Exposure C:
+factor_elst = list()
+row = dfE.iloc[0]
+for index in range(0, len(row)):
+    if index == 0:
+        factor = 1.0
+    elif row[index] == row[0]:
+        factor = 1.0
+    else:
+        factor = (row[index]-row[0])/row[0]
+    factor_elst.append(factor)
+
+print(factor_elst)
 
 #for h in h_bldg:
     #rmps_arr = np.array([])
