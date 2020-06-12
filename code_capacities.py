@@ -67,10 +67,10 @@ class PressureCalc:
         # Set up placeholders for Cp values:
         rmps = list()
         # Find the Cps:
-        length = 2 * h_bldg
+        length = 0.5 * h_bldg
         cp = PressureCalc.roof_mwfrs(self, h_bldg, direction, ratio, pitch, length)
         for row in cp:
-            gcp = g * cp[0][0]  # Take the first Cp value for uplift calculations
+            gcp = g * row[0]  # Take the first Cp value for uplift calculations
             # Calculate uplift pressure at the zone:
             p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
             rmps.append(p)
@@ -331,16 +331,26 @@ class PressureCalc:
         if (pitch < 10 or pitch == 'flat' or pitch == 'shallow' or pitch == 'flat or shallow') or direction == 'parallel':
             if ratio <= 0.5:
                 Cp_full = np.array([[-0.9, -0.18], [-0.9, -0.18], [-0.5, -0.18], [-0.3, -0.18]])
-                zones = np.array([0.5*h_bldg, 1.0*h_bldg, 2*h_bldg, 2.0001*h_bldg])
+                if length <= 0.5*h_bldg:
+                    zones = 1
+                elif 0.5*h_bldg < length <= h_bldg:
+                    zones = 2
+                elif h_bldg < length <= 2*h_bldg:
+                    zones = 3
+                elif length > 2*h_bldg:
+                    zones = 4
                 num_zones = np.count_nonzero(zones <= length)
                 # Get back all Cps for the identified zones:
-                Cps = Cp_full[0:num_zones]
+                Cps = Cp_full[0:zones-1] # (-1 to accommodate Python indexing)
             elif ratio >= 1.0:
                 Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
                 zones = np.array([0.5 * h_bldg, 0.50001 * h_bldg])
-                num_zones = np.count_nonzero(zones <= ratio)
+                if length <= 0.5 * h_bldg:
+                    zones = 1
+                elif length > 0.5 * h_bldg:
+                    zones = 2
                 # Get back all Cps for the identified zones:
-                Cps = Cp_full[0:num_zones]
+                Cps = Cp_full[0:zones-1]
         else:
             if direction == 'windward':
                 angles = np.array([10, 15, 20, 25, 30, 35, 45, 60, 80])
@@ -634,12 +644,18 @@ class PressureCalc:
         if ctype == 'Metal deck':
             pass
 
-    def get_ccpressure(self, wind_speed, exposure, edition, h_story, h_bldg, comp_lst):
-        # Given the input building parameters, return the pressure for the specified component:
+
+    def base_bldg(self):
         # Base building parameters:
         base_exposure = 'C'
         base_story = 9/3.281 # [m]
         base_height = 9/3.281 # [m]
+        return base_exposure, base_story, base_height
+
+    def get_mwfrs_pressure(self, wind_speed, exposure, edition, h_story, h_bldg):
+        # Given the input building parameters, return the pressure for the specified component:
+        # Base building parameters:
+        base_exposure, base_story, base_height = PressureCalc.base_bldg(self)
         # Filter #1: Code editions:
         if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
             pass
@@ -672,31 +688,36 @@ def func(x, a, b, c):
     return a*(x**2)+b*x+c
 
 
-# Testing out velocity pressure calculation:
-# z = np.linspace(15 / 3.281, 100/3.281, 200)
-z = 60 / 3.281
-h_bldg = np.arange(10, 70, 10) / 3.281
-#wind_speed = 148 / 2.237
+# Case study #1: Same building, different wind speeds:
+base_exposure = 'C'
+base_story = 9 / 3.281  # [m]
+base_height = 9 / 3.281  # [m]
+z = base_height
+# Define a range of wind speed values:
 wind_speed = np.linspace(90, 180, 9)/2.237 # [m]/[s]
-exposure = 'C'
-edition = 'ASCE 7-10'
+# Create an instance of PressureCalc()
 pressures = PressureCalc()
-
+# Start with ASCE 7-10:
+edition = 'ASCE 7-10'
+# Set up a dataframe to compare values:
 df = pd.DataFrame()
-
 # Play with roof mwfrs:
 r_mwfrs = True
+# Set up placeholder:
+rmps_arr = np.array([])
 
-for h in h_bldg:
-    rmps_arr = np.array([])
-    for speed in wind_speed:
-        wps, rps, rmps = pressures.run(z, speed, exposure, edition, r_mwfrs, h, w_cc=False, r_cc=False, area_eff=None)
-        # Each row in rmps will contain as many pressures as zones identified:
-        rmps[2] = rmps[2]*0.020885
-        rmps_arr = np.append(rmps_arr, rmps[2])
-    # Append column of pressures for various wind speeds for this height:
-    col_name = str(h*3.281)
-    df[col_name] = rmps_arr
+for speed in wind_speed:
+    rmps = pressures.rmwfrs_capacity(wind_speed, base_exposure, edition, base_height)
+    # Each row in rmps will contain as many pressures as zones identified:
+    rmps_arr = np.append(rmps_arr, rmps*0.020885)
+    #params = curve_fit(func, wall_pressures[:,3], wind_speed*2.237)
+    #[a, b, c] = params[0]
+    #fit_curve = ax.plot(wall_pressures[:, 3], func(wall_pressures[:,3], a, b, c), label=str(area * 10.7639))
+# Set up a matplotlib figure:
+fig, ax = plt.subplots()
+line = ax.plot(rmps_arr, wind_speed*2.237)
+plt.ylim(90, max(wind_speed)*2.237)
+plt.show()
 
 print(df)
 
@@ -707,21 +728,21 @@ print('percent change in wind speed:')
 print(df.pct_change(axis=0))
 
 # Try for a different exposure category:
-exposure = 'B'
-df2 = pd.DataFrame()
+#exposure = 'B'
+#df2 = pd.DataFrame()
 
-for h in h_bldg:
-    rmps_arr = np.array([])
-    for speed in wind_speed:
-        wps, rps, rmps = pressures.run(z, speed, exposure, edition, r_mwfrs, h, w_cc=False, r_cc=False, area_eff=None)
+#for h in h_bldg:
+    #rmps_arr = np.array([])
+    #for speed in wind_speed:
+        #wps, rps, rmps = pressures.run(z, speed, exposure, edition, r_mwfrs, h, w_cc=False, r_cc=False, area_eff=None)
         # Each row in rmps will contain as many pressures as zones identified:
-        rmps[2] = rmps[2]*0.020885
-        rmps_arr = np.append(rmps_arr, rmps[2])
+        #rmps[2] = rmps[2]*0.020885
+        #rmps_arr = np.append(rmps_arr, rmps[2])
     # Append column of pressures for various wind speeds for this height:
-    col_name = str(h*3.281)
-    df2[col_name] = rmps_arr
+    #col_name = str(h*3.281)
+    #df2[col_name] = rmps_arr
 
-print(df2)
+#print(df2)
 
 # Check the difference between Exposure B and Exposure C:
 print((df['10.0']-df2['10.0'])/df['10.0'], (df['20.0']-df2['20.0'])/df['20.0'], (df['30.0']-df2['30.0'])/df['30.0'], (df['40.0']-df2['40.0'])/df['40.0'])
