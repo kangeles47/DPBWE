@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import cmath
+import csv
 from scipy.optimize import curve_fit
 
 class PressureCalc:
@@ -51,7 +52,7 @@ class PressureCalc:
             rps.append(p)
         return rps
 
-    def rmwfrs_capacity(self, wind_speed, exposure, edition, h_bldg, length):
+    def rmwfrs_capacity(self, wind_speed, exposure, edition, h_bldg, length, ratio):
         # Determine GCpis for pressure calculation:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class='Enclosed')
         # Determine the velocity pressure:
@@ -63,7 +64,6 @@ class PressureCalc:
         # Set up to find Cp values:
         direction = 'parallel'
         pitch = 9
-        ratio = 0.5
         # Set up placeholders for Cp values:
         rmps = list()
         # Find the Cps:
@@ -71,7 +71,7 @@ class PressureCalc:
         for row in cp:
             gcp = g * row[0]  # Take the first Cp value for uplift calculations
             # Calculate uplift pressure at the zone:
-            p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
+            p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
             rmps.append(p)
 
         return rmps
@@ -95,7 +95,6 @@ class PressureCalc:
             # Set up placeholders for Cp values:
             rmps = list()
             # Find the Cps:
-            length = 2*h_bldg
             cp = PressureCalc.roof_mwfrs(self, h_bldg, direction, ratio, pitch, length)
             for row in cp:
                 gcp = g*cp[0][0] # Take the first Cp value for uplift calculations
@@ -241,7 +240,6 @@ class PressureCalc:
             kzt = 1.0
             kd = 0.85
             qz = 0.613 * kz * kzt * kd * wind_speed ** 2
-        print('qz:', qz * 0.020885, 'z:', z, 'wind_speed:', wind_speed*2.237)
         return qz, alpha
 
     def get_kz(self, z, exposure, edition, is_cc):
@@ -671,7 +669,7 @@ class PressureCalc:
         elif edition == 'ASCE 7-16':
             pass
 
-    def get_sim(self, a, b, c):
+    def get_sim_pressure(self, a, b, c):
         # Solve the quadratic equation ax**2 + bx + c = 0
         # Calculate the discriminant
         d = (b ** 2) - (4 * a * c)
@@ -680,6 +678,7 @@ class PressureCalc:
         sol2 = (-b + cmath.sqrt(d)) / (2 * a)
 
         print('The solution are {0} and {1}'.format(sol1, sol2))
+        return sol1, sol2
 
 
 def func(x, a, b, c):
@@ -687,81 +686,105 @@ def func(x, a, b, c):
 
 
 # Case study #1: Same building, different wind speeds:
-base_exposure = 'B'
+base_exposure = 'C'
 base_story = 9 / 3.281  # [m]
 base_height = 9 / 3.281  # [m]
-z = base_height
 # Define a range of wind speed values:
-wind_speed = np.linspace(90, 180, 9)/2.237 # [m]/[s]
+wind_speed = np.linspace(90, 180, 18)/2.237 # [m]/[s]
 # Create an instance of PressureCalc()
 pressures = PressureCalc()
 # Start with ASCE 7-10:
 edition = 'ASCE 7-10'
 # Set up a dataframe to compare values:
-df = pd.DataFrame(columns=['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4'])
+df = pd.DataFrame(columns=['Zone 1', 'Zone 2', 'Zone 3'])
 # Play with roof mwfrs:
-
+length = 2*base_height
+ratio = base_height/length
 # Set up a matplotlib figure:
 fig, ax = plt.subplots()
 
 # Set up placeholder:
 rmps_arr = np.array([])
 for speed in wind_speed:
-    rmps = pressures.rmwfrs_capacity(speed, base_exposure, edition, base_height, 3.0*base_height)
+    rmps = pressures.rmwfrs_capacity(speed, base_exposure, edition, base_height, length, ratio)
     # Add values to Dataframe:
-    df = df.append({'Zone 1': rmps[0], 'Zone 2': rmps[1], 'Zone 3': rmps[2], 'Zone 4': rmps[3]}, ignore_index = True)
+    df = df.append({'Zone 1': rmps[0], 'Zone 2': rmps[1], 'Zone 3': rmps[2]}, ignore_index = True)
 # Plot the results:
-ax.plot(df['Zone 1']*0.020885, wind_speed * 2.237)
-ax.plot(df['Zone 2']*0.020885, wind_speed * 2.237)
-ax.plot(df['Zone 3']*0.020885, wind_speed * 2.237)
-ax.plot(df['Zone 4']*0.020885, wind_speed * 2.237)
-ax.legend(['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4'])
+ax.plot(df['Zone 1'], wind_speed)
+ax.plot(df['Zone 2'], wind_speed)
+ax.plot(df['Zone 3'], wind_speed)
+#ax.plot(df['Zone 4']*0.020885, wind_speed * 2.237)
+#ax.legend(['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4'])
 
-#params = curve_fit(func, wall_pressures[:,3], wind_speed*2.237)
-#[a, b, c] = params[0]
-#fit_curve = ax.plot(wall_pressures[:, 3], func(wall_pressures[:,3], a, b, c), label=str(area * 10.7639))
+# Set up .csv file:
+with open('Pressure_Sim.csv', 'a', newline = '') as csv_file:
+    fieldnames = ['Zone 1', 'Zone 2', 'Zone 3']
+    writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+    writer.writerow({'Zone 1': fieldnames[0], 'Zone 2': fieldnames[1], 'Zone 3': fieldnames[2]})
 
+
+# Now that we've got the data for each of our zones across a variety of wind speeds, fit a curve (metric units):
+df_param = pd.DataFrame(columns=df.columns)
+param_lst = list()
+for zone in range(0,3):
+    col_names = df.columns
+    params = curve_fit(func, df[col_names[zone]], wind_speed)
+    [a, b, c] = params[0]
+    fit_curve = ax.plot(df[col_names[zone]], func(df[col_names[zone]], a, b, c))
+    # Save parameters in list:
+    param_lst.append([a,b,c])
+    # Add parameters to .csv file:
+    with open('Pressure_Sim.csv', 'a', newline = '') as csv_file:
+        fieldnames = ['Zone 1', 'Zone 2', 'Zone 3']
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writerow({'Zone 1': param_lst[zone][0], 'Zone 2': param_lst[zone][1], 'Zone 3': param_lst[zone][2]})
 
 plt.title('Roof uplift pressures (MWFRS) for all zones vs. Wind speed for h=9.0 ft')
-plt.ylabel('Wind Speed [mph]')
-plt.xlabel('Pressure [psf]')
-plt.ylim(90, max(wind_speed)*2.237)
+plt.ylabel('Wind Speed [m/s]')
+plt.xlabel('Pressure [N/m^2]')
+plt.ylim(min(wind_speed), max(wind_speed))
 plt.show()
 
-print(df)
+# Get back the pressure for a specific wind speed:
+y = 120/2.237
+sim_pressure1, sim_pressure2 = pressures.get_sim_pressure(a, b, c-y)
 
-# Figure out the pressure difference for various heights:
+# Figure out the pressure difference between wind speeds:
 print('percent change in wind speed:')
 print(df.pct_change(axis=0))
 # Figure out the pressure difference between zones:
 print('percent change in pressure by zone:')
 print(df.pct_change(axis=1))
 
-# Figure out what the percent difference is from the base wind speed to other wind speeds:
-for row in range(0, len(df['Zone 4'])):
-    a =df['Zone 4'][0]
-    if row > 0:
-        pct = (df['Zone 4'][0] - df['Zone 4'][row])/df['Zone 4'][0]
-        print(pct)
-    else:
-        pass
-
 # Time to figure out the differences in height across zone pressures:
 # Set up a dataframe to compare values:
 dfh = pd.DataFrame()
 # Play with roof mwfrs:
-h_bldg = np.array([base_height, 2*base_height, 3*base_height, 4*base_height])
+h_bldg = np.arange(base_height, 61/3.281, 1/3.281)
 # Set up a matplotlib figure:
 fig, ax = plt.subplots()
 
-# Set up placeholder:
+# Set up .csv file:
+# First create a list referring to each of the heights:
+height_list = list()
+height_dict={}
+for num in h_bldg:
+    height_list.append(str(round(num*3.281))+' ft')
+    # Create a dictionary of to write first row of csv file:
+    height_dict[str(round(num*3.281))+' ft'] = str(round(num*3.281))+' ft'
+
+with open('Height_Sim.csv', 'a', newline = '') as csv_file:
+    fieldnames = height_list
+    writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+    writer.writerow(height_dict)
 
 for h in h_bldg:
     rmps_arr = np.array([])
     for speed in wind_speed:
-        rmps = pressures.rmwfrs_capacity(speed, base_exposure, edition, h, 1.5*base_height)
-        print('rmps', rmps)
-        rmps_arr = np.append(rmps_arr, rmps[2])
+        length = 2*h
+        ratio = h/length
+        rmps = pressures.rmwfrs_capacity(speed, base_exposure, edition, h, length, ratio)
+        rmps_arr = np.append(rmps_arr, rmps[1])
     # Add values to DataFrame:
     col_name = str(h)
     dfh[col_name] = rmps_arr
@@ -775,10 +798,18 @@ plt.xlabel('Pressure [psf]')
 plt.ylim(90, max(wind_speed)*2.237)
 plt.show()
 
-# Figure out the pressure difference for various heights:
-print('percent change in height:')
-a = dfh.pct_change(axis=1)
-print(dfh.pct_change(axis=1))
+# Calculate the percent change from the base height:
+factor_lst = list()
+row = dfh.iloc[0]
+for index in range(0, len(row)):
+    if index == 0:
+        factor = 1.0
+    elif row[index] == row[0]:
+        factor = 1.0
+    else:
+        factor = (row[index]-row[0])/row[0]
+    factor_lst.append(factor)
+
 # Try for a different exposure category:
 #exposure = 'B'
 #df2 = pd.DataFrame()
