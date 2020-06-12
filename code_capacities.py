@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import cmath
 from scipy.optimize import curve_fit
 
 class PressureCalc:
@@ -647,12 +648,29 @@ class PressureCalc:
         elif edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
             pass
         elif edition == 'ASCE 7-10':
-            pass
+            if h_story == base_story and exposure == base_exposure and h_bldg == base_height:
+                # Quadratic function parameters:
+                a = 1
+                b = 2
+                c = 3 - wind_speed
+
         elif edition == 'ASCE 7-16':
             pass
 
+    def get_sim(self, a, b, c):
+        # Solve the quadratic equation ax**2 + bx + c = 0
+        # Calculate the discriminant
+        d = (b ** 2) - (4 * a * c)
+        # Find two solutions
+        sol1 = (-b - cmath.sqrt(d)) / (2 * a)
+        sol2 = (-b + cmath.sqrt(d)) / (2 * a)
+
+        print('The solution are {0} and {1}'.format(sol1, sol2))
+
+
 def func(x, a, b, c):
     return a*(x**2)+b*x+c
+
 
 # Testing out velocity pressure calculation:
 # z = np.linspace(15 / 3.281, 100/3.281, 200)
