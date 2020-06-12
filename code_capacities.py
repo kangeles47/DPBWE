@@ -628,6 +628,29 @@ class PressureCalc:
 
         return area_eff
 
+    def get_rarea(self, ctype, parcel_flag, h_story):
+        # Determine the effective area for roof C&C:
+        if ctype == 'Metal deck':
+            pass
+
+    def get_ccpressure(self, wind_speed, exposure, edition, h_story, h_bldg, comp_lst):
+        # Given the input building parameters, return the pressure for the specified component:
+        # Base building parameters:
+        base_exposure = 'C'
+        base_story = 9/3.281 # [m]
+        base_height = 9/3.281 # [m]
+        # Filter #1: Code editions:
+        if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
+            pass
+        elif edition == 'ASCE 7-95':
+            pass
+        elif edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
+            pass
+        elif edition == 'ASCE 7-10':
+            pass
+        elif edition == 'ASCE 7-16':
+            pass
+
 def func(x, a, b, c):
     return a*(x**2)+b*x+c
 
@@ -691,9 +714,10 @@ line = ax.plot(rmps_arr, wind_speed*2.237)
 plt.ylim(90, max(wind_speed)*2.237)
 plt.show()
 
+
+df_wcc = pd.DataFrame()
 # Set up array of effective areas:
-# area_eff= np.array([0.93, 1.86, 4.65, 9.3, 18.58, 46.45, 92.9])
-area_eff= np.array([45, 54])/10.764
+area_eff= np.array([27, 90])/10.764
 # Set up empty numpy arrays to store wall and roof pressures:
 wall_pressures = np.empty((0, 4))
 roof_pressures = np.empty((0, 6))
@@ -711,19 +735,55 @@ for area in area_eff:
         wall_pressures = np.append(wall_pressures, np.array([wps]), axis=0)
         #roof_pressures = np.append(roof_pressures, np.array([rps]), axis=0)
     count = count + 1
-    line = ax2.plot(wall_pressures[:,1]*0.020885, wind_speed*2.237, label='bound'+str(count))
+    line = ax2.plot(wall_pressures[:,0]*0.020885, wind_speed*2.237, label='bound'+str(count))
+    # Append column of pressures for various wind speeds for this height:
+    col_name = str(area)
+    df_wcc[col_name] = wall_pressures[:,0]
     #params = curve_fit(func, wall_pressures[:,3], wind_speed*2.237)
     #[a, b, c] = params[0]
     #fit_curve = ax.plot(wall_pressures[:, 3], func(wall_pressures[:,3], a, b, c), label=str(area * 10.7639))
 
 #ax.legend()
 #plt.ylim(90, max(wind_speed)*2.237)
-
+print('percent change in effective area:')
+print(df_wcc.pct_change(axis=1))
 ax2.legend()
 plt.ylim(90, max(wind_speed)*2.237)
-plt.title('Glass panel C&C bounds (+), Zones 4 and 5 for h =' + str(h_bldg*3.281))
+plt.title('Mullion C&C bounds (+), Zones 4 and 5 for h = ' + str(h_bldg*3.281)+ ' [ft]')
+plt.ylabel('Wind Speed [mph]')
+plt.xlabel('Pressure [psf]')
 plt.show()
 
+# First I need to determine the effective area for the component that I am interested in:
+ctype = 'mullion'
+parcel_flag = 1
+h_story = 10/3.281
+h_bldg = np.array([h_story, h_story*2, h_story*3, h_story*4, h_story*5, h_story*6])
+fig3, ax3 = plt.subplots()
+df_wccm = pd.DataFrame()
+
+for h in h_bldg:
+    wall_pressures = np.empty((0, 4))
+    area_eff = pressures.get_warea(ctype, parcel_flag, h_story)
+    for speed in wind_speed:
+        # Calculate the pressure across various wind speeds, heights, and exposures:
+        wps = pressures.wcc_capacity(speed, exposure, edition, h, area_eff)
+        wall_pressures = np.append(wall_pressures, np.array([wps]), axis=0)
+    line = ax3.plot(wall_pressures[:, 1] * 0.020885, wind_speed * 2.237, label= str(round(h*3.281))+ ' ft')
+    col_name = str(h*3.281)
+    df_wccm[col_name] = wall_pressures[:, 1]* 0.020885
+
+ax3.legend()
+plt.ylim(90, max(wind_speed)*2.237)
+plt.ylabel('Wind Speed [mph]')
+plt.xlabel('Pressure [psf]')
+plt.title('Mullion C&C pressures (-), Zone 5 for h_story = h_bldg')
+plt.show()
+
+pct_change = df_wccm.pct_change(axis=1)
+print(df_wccm.pct_change(axis=1))
+
+print((df_wccm['10.0']-df_wccm['60.0'])/df_wccm['10.0'])
 # Plot the range of pressures for all wind speeds:
 #plt.plot(wall_pressures[:,0], wind_speed)
 #plt.plot(wall_pressures[:,1], wind_speed)
