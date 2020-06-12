@@ -51,7 +51,7 @@ class PressureCalc:
             rps.append(p)
         return rps
 
-    def rmwfrs_capacity(self, wind_speed, exposure, edition, h_bldg):
+    def rmwfrs_capacity(self, wind_speed, exposure, edition, h_bldg, length):
         # Determine GCpis for pressure calculation:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class='Enclosed')
         # Determine the velocity pressure:
@@ -67,7 +67,6 @@ class PressureCalc:
         # Set up placeholders for Cp values:
         rmps = list()
         # Find the Cps:
-        length = 0.5 * h_bldg
         cp = PressureCalc.roof_mwfrs(self, h_bldg, direction, ratio, pitch, length)
         for row in cp:
             gcp = g * row[0]  # Take the first Cp value for uplift calculations
@@ -339,9 +338,8 @@ class PressureCalc:
                     zones = 3
                 elif length > 2*h_bldg:
                     zones = 4
-                num_zones = np.count_nonzero(zones <= length)
                 # Get back all Cps for the identified zones:
-                Cps = Cp_full[0:zones-1] # (-1 to accommodate Python indexing)
+                Cps = Cp_full[0:zones]
             elif ratio >= 1.0:
                 Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
                 zones = np.array([0.5 * h_bldg, 0.50001 * h_bldg])
@@ -350,7 +348,7 @@ class PressureCalc:
                 elif length > 0.5 * h_bldg:
                     zones = 2
                 # Get back all Cps for the identified zones:
-                Cps = Cp_full[0:zones-1]
+                Cps = Cp_full[0:zones]
         else:
             if direction == 'windward':
                 angles = np.array([10, 15, 20, 25, 30, 35, 45, 60, 80])
@@ -689,7 +687,7 @@ def func(x, a, b, c):
 
 
 # Case study #1: Same building, different wind speeds:
-base_exposure = 'C'
+base_exposure = 'B'
 base_story = 9 / 3.281  # [m]
 base_height = 9 / 3.281  # [m]
 z = base_height
@@ -700,33 +698,87 @@ pressures = PressureCalc()
 # Start with ASCE 7-10:
 edition = 'ASCE 7-10'
 # Set up a dataframe to compare values:
-df = pd.DataFrame()
+df = pd.DataFrame(columns=['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4'])
 # Play with roof mwfrs:
-r_mwfrs = True
-# Set up placeholder:
-rmps_arr = np.array([])
 
-for speed in wind_speed:
-    rmps = pressures.rmwfrs_capacity(wind_speed, base_exposure, edition, base_height)
-    # Each row in rmps will contain as many pressures as zones identified:
-    rmps_arr = np.append(rmps_arr, rmps*0.020885)
-    #params = curve_fit(func, wall_pressures[:,3], wind_speed*2.237)
-    #[a, b, c] = params[0]
-    #fit_curve = ax.plot(wall_pressures[:, 3], func(wall_pressures[:,3], a, b, c), label=str(area * 10.7639))
 # Set up a matplotlib figure:
 fig, ax = plt.subplots()
-line = ax.plot(rmps_arr, wind_speed*2.237)
+
+# Set up placeholder:
+rmps_arr = np.array([])
+for speed in wind_speed:
+    rmps = pressures.rmwfrs_capacity(speed, base_exposure, edition, base_height, 3.0*base_height)
+    # Add values to Dataframe:
+    df = df.append({'Zone 1': rmps[0], 'Zone 2': rmps[1], 'Zone 3': rmps[2], 'Zone 4': rmps[3]}, ignore_index = True)
+# Plot the results:
+ax.plot(df['Zone 1']*0.020885, wind_speed * 2.237)
+ax.plot(df['Zone 2']*0.020885, wind_speed * 2.237)
+ax.plot(df['Zone 3']*0.020885, wind_speed * 2.237)
+ax.plot(df['Zone 4']*0.020885, wind_speed * 2.237)
+ax.legend(['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4'])
+
+#params = curve_fit(func, wall_pressures[:,3], wind_speed*2.237)
+#[a, b, c] = params[0]
+#fit_curve = ax.plot(wall_pressures[:, 3], func(wall_pressures[:,3], a, b, c), label=str(area * 10.7639))
+
+
+plt.title('Roof uplift pressures (MWFRS) for all zones vs. Wind speed for h=9.0 ft')
+plt.ylabel('Wind Speed [mph]')
+plt.xlabel('Pressure [psf]')
 plt.ylim(90, max(wind_speed)*2.237)
 plt.show()
 
 print(df)
 
 # Figure out the pressure difference for various heights:
-print('percent change in height:')
-print(df.pct_change(axis=1))
 print('percent change in wind speed:')
 print(df.pct_change(axis=0))
+# Figure out the pressure difference between zones:
+print('percent change in pressure by zone:')
+print(df.pct_change(axis=1))
 
+# Figure out what the percent difference is from the base wind speed to other wind speeds:
+for row in range(0, len(df['Zone 4'])):
+    a =df['Zone 4'][0]
+    if row > 0:
+        pct = (df['Zone 4'][0] - df['Zone 4'][row])/df['Zone 4'][0]
+        print(pct)
+    else:
+        pass
+
+# Time to figure out the differences in height across zone pressures:
+# Set up a dataframe to compare values:
+dfh = pd.DataFrame()
+# Play with roof mwfrs:
+h_bldg = np.array([base_height, 2*base_height, 3*base_height, 4*base_height])
+# Set up a matplotlib figure:
+fig, ax = plt.subplots()
+
+# Set up placeholder:
+
+for h in h_bldg:
+    rmps_arr = np.array([])
+    for speed in wind_speed:
+        rmps = pressures.rmwfrs_capacity(speed, base_exposure, edition, h, 1.5*base_height)
+        print('rmps', rmps)
+        rmps_arr = np.append(rmps_arr, rmps[2])
+    # Add values to DataFrame:
+    col_name = str(h)
+    dfh[col_name] = rmps_arr
+    # Plot the results:
+    ax.plot(dfh[col_name] * 0.020885, wind_speed * 2.237)
+# Plot the results:
+ax.legend(['h = 9.0 ft', 'h = 18.0 ft', 'h = 27.0 ft', 'h = 36.0 ft'])
+plt.title('Roof uplift pressures (MWFRS) for Zone 1 vs. Wind speed for various heights')
+plt.ylabel('Wind Speed [mph]')
+plt.xlabel('Pressure [psf]')
+plt.ylim(90, max(wind_speed)*2.237)
+plt.show()
+
+# Figure out the pressure difference for various heights:
+print('percent change in height:')
+a = dfh.pct_change(axis=1)
+print(dfh.pct_change(axis=1))
 # Try for a different exposure category:
 #exposure = 'B'
 #df2 = pd.DataFrame()
