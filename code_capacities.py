@@ -13,7 +13,7 @@ class PressureCalc:
         # Determine components and cladding pressure for building facade components:
         is_cc = True
         # All components and cladding calculations require qh:
-        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc)
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat)
         # Get GCps and calculate the pressure for each zone:
         wpos = [True, True, False, False]
         wzone = [4, 5, 4, 5]
@@ -39,7 +39,7 @@ class PressureCalc:
         # Determine components and cladding pressure for building roof components:
         is_cc = True
         # All components and cladding calculations require qh:
-        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc)
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat)
         # Get GCps and calculate the pressure for each zone:
         rpos = [True, True, True, False, False, False]
         rzone = [1, 2, 3, 1, 2, 3]
@@ -72,6 +72,14 @@ class PressureCalc:
             gcp = g * row[0]  # Take the first Cp value for uplift calculations
             # Calculate uplift pressure at the zone:
             p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
+            # Minimum design pressures for roof MWFRS:
+            if abs(p) < 10:
+                if edition != 'ASCE 7-10':  # [psf]
+                    p = np.sign(p) * 10  # [psf]
+                elif abs(p) < 8 and edition == 'ASCE 7-10':
+                    p = np.sign(p) * 8  # [psf]
+            else:
+                pass
             rmps.append(p)
 
         return rmps
@@ -217,8 +225,8 @@ class PressureCalc:
             # Minimum design pressure for C&C (ASCE 7-10):
             if abs(p) < 16 and edition == 'ASCE 7-10':  # [psf]
                 p = np.sign(p) * 16 # [psf]
-            else:
-                pass
+            elif abs(p) < 10 and edition != 'ASCE 7-10':
+                p = np.sign(p) * 10  # [psf]
         else:
             p = q * gcp - q * gcpi  # q = qz for roof (at mean roof height)
 
