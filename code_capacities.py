@@ -73,13 +73,13 @@ class PressureCalc:
             # Calculate uplift pressure at the zone:
             p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
             # Minimum design pressures for roof MWFRS:
-            if abs(p) < 10:
-                if edition != 'ASCE 7-10':  # [psf]
-                    p = np.sign(p) * 10  # [psf]
-                elif abs(p) < 8 and edition == 'ASCE 7-10':
-                    p = np.sign(p) * 8  # [psf]
-            else:
-                pass
+            #if abs(p) < 10:
+                #if edition != 'ASCE 7-10':  # [psf]
+                    #p = np.sign(p) * 10  # [psf]
+                #elif abs(p) < 8 and edition == 'ASCE 7-10':
+                    #p = np.sign(p) * 8  # [psf]
+            #else:
+                #pass
             rmps.append(p)
 
         return rmps
@@ -195,10 +195,10 @@ class PressureCalc:
             elif exposure == 'D':
                 d0 = 0.003
             if is_cc:  # Gz and Gh are calculated the exact same way, except that Gz uses the mean roof height
-                tz = (2.35 * (d0) ** (1 / 2)) / ((z / (30 / 3.281)) ** (1 / alpha))
+                tz = (2.35 * (d0) ** (1 / 2)) / ((z /30) ** (1 / alpha))
                 g = 0.65 + 3.65 * tz
             else:
-                tz = (2.35 * (d0) ** (1 / 2)) / ((z / (30 / 3.281)) ** (1 / alpha))
+                tz = (2.35 * (d0) ** (1 / 2)) / ((z /30) ** (1 / alpha))
                 g = 0.65 + 3.65 * tz
         else:  # All other editions of ASCE 7
             g = 0.85
@@ -207,7 +207,6 @@ class PressureCalc:
     # Laying out the code needed to replicate the pressures from ASCE 7
     def calc_pressure(self, z, exposure, edition, is_cc, q, gcp, gcpi):
         # Pressure calc: will need to code in a procedure to determine both +/- cases for GCpi
-        # ASCE 7-93:
         if is_cc:
             if z <= 60:  # [ft]
                 # Calculate pressure for the controlling case:
@@ -300,8 +299,8 @@ class PressureCalc:
         else:
             factor = 2.01
         # Velocity pressure coefficient:
-        # Exception: ASCE 7-98-ASCE 7-05
-        # Case 1a for all components and cladding
+        # Exception: ASCE 7-98-ASCE 7-10
+        # Case 1a for all components and cladding and (7-10 Chapter 30 Provisions)
         # z shall not be taken as less than 30 feet for Case 1 in Exposure B
         if is_cc:
             if exposure == 'B' and (
@@ -705,57 +704,59 @@ cat = 2
 wind_speed = np.linspace(90, 180, 18) # [mph]
 # Create an instance of PressureCalc()
 pressures = PressureCalc()
-# Start with ASCE 7-10:
-edition = 'ASCE 7-88'
+# Create a vector of editions:
+edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
 # Set up a dataframe to compare values:
-df = pd.DataFrame(columns=['Zone 1', 'Zone 2', 'Zone 3'])
+#df = pd.DataFrame(columns=['Zone 1', 'Zone 2', 'Zone 3'], index=edition)
 # Play with roof mwfrs:
 length = 2*base_height
 ratio = base_height/length
-# Set up a matplotlib figure:
-fig, ax = plt.subplots()
 
-# Set up placeholder:
-rmps_arr = np.array([])
-for speed in wind_speed:
-    rmps = pressures.rmwfrs_capacity(speed, base_exposure, edition, base_height, length, ratio, cat)
-    # Add values to Dataframe:
-    df = df.append({'Zone 1': rmps[0], 'Zone 2': rmps[1], 'Zone 3': rmps[2]}, ignore_index = True)
-# Plot the results:
-ax.plot(df['Zone 1'], wind_speed)
-ax.plot(df['Zone 2'], wind_speed)
-ax.plot(df['Zone 3'], wind_speed)
-#ax.plot(df['Zone 4'], wind_speed)
-#ax.legend(['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4'])
-# Percent difference across zones:
-print(df.pct_change(axis=1))
+# Fit curves for each zone for each code edition
+# Create an empty list that will hold DataFrames for each code edition:
+ed_list = list()
+for ed in edition:
+    # Create a new dataframe for each edition:
+    df = pd.DataFrame(columns=['Zone 1', 'Zone 2', 'Zone 3'])
+    for speed in wind_speed:
+        rmps = pressures.rmwfrs_capacity(speed, base_exposure, ed, base_height, length, ratio, cat)
+        # Add values to Dataframe:
+        df = df.append({'Zone 1': rmps[0], 'Zone 2': rmps[1], 'Zone 3': rmps[2]}, ignore_index=True)
+    # Add DataFrame to list:
+    ed_list.append(df)
+    # Plot the results:
+    #fig, ax = plt.subplots()
+    #ax.plot(df['Zone 1'], wind_speed)
+    #ax.plot(df['Zone 2'], wind_speed)
+    #ax.plot(df['Zone 3'], wind_speed)
+    #plt.title('Roof uplift pressures (MWFRS) for Zones 1-3 vs. Wind speed for h=9.0 ft')
+    #plt.ylabel('Wind Speed [mph]')
+    #plt.xlabel('Pressure [psf]')
+    #plt.show()
+    print('percent change between zones:', df.pct_change(axis=1))
 
-# Set up .csv file:
-with open('Pressure_Sim.csv', 'a', newline = '') as csv_file:
-    fieldnames = ['Zone 1', 'Zone 2', 'Zone 3']
-    writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-    writer.writerow({'Zone 1': fieldnames[0], 'Zone 2': fieldnames[1], 'Zone 3': fieldnames[2]})
-
-
-# Now that we've got the data for each of our zones across a variety of wind speeds, fit a curve (metric units):
+# Next step: Fit a curve to each zone for each code edition and save to a .csv:
 df_param = pd.DataFrame(columns=df.columns)
-param_lst = list()
-for zone in range(0,3):
-    col_names = df.columns
-    params = curve_fit(func, df[col_names[zone]], wind_speed)
-    [a, b, c] = params[0]
-    fit_curve = ax.plot(df[col_names[zone]], func(df[col_names[zone]], a, b, c))
-    # Save parameters in list:
-    param_lst.append([a,b,c])
-    # Add parameters to .csv file:
-    with open('Pressure_Sim.csv', 'a', newline = '') as csv_file:
-        fieldnames = ['Zone 1', 'Zone 2', 'Zone 3']
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writerow({'Zone 1': param_lst[zone][0], 'Zone 2': param_lst[zone][1], 'Zone 3': param_lst[zone][2]})
+for dframe in ed_list:
+    param_lst = list()
+    for zone in range(0,3):
+        col_names = dframe.columns
+        params = curve_fit(func, dframe[col_names[zone]], wind_speed)
+        [a, b, c] = params[0]
+        #fit_curve = ax.plot(dframe[col_names[zone]], func(dframe[col_names[zone]], a, b, c))
+        # Save parameters in list:
+        param_lst.append([a,b,c])
+    # Add parameters to DataFrame:
+    df_param = df_param.append({col_names[0]: param_lst[0], col_names[1]: param_lst[1], col_names[2]: param_lst[2]}, ignore_index=True)
+
+# Set the index to the corresponding code editions:
+# Add column:
+df_param['Edition'] = edition
+df_param.set_index('Edition', inplace=True)
 
 plt.title('Roof uplift pressures (MWFRS) for all zones vs. Wind speed for h=9.0 ft')
-plt.ylabel('Wind Speed [m/s]')
-plt.xlabel('Pressure [N/m^2]')
+plt.ylabel('Wind Speed [mph]')
+plt.xlabel('Pressure [psf]')
 plt.ylim(min(wind_speed), max(wind_speed))
 plt.show()
 
