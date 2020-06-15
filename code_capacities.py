@@ -28,7 +28,7 @@ class PressureCalc:
             else:
                 pass
             # Calculate pressure at the zone:
-            p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
+            p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
             wps.append(p)
 
         return wps
@@ -48,19 +48,19 @@ class PressureCalc:
             # Find the GCp
             gcp = PressureCalc.roof_cc(self, area_eff, rpos[ind], rzone[ind], edition)
             # Calculate pressure at the zone:
-            p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
+            p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
             rps.append(p)
         return rps
 
-    def rmwfrs_capacity(self, wind_speed, exposure, edition, h_bldg, length, ratio):
+    def rmwfrs_capacity(self, wind_speed, exposure, edition, h_bldg, length, ratio, cat):
         # Determine GCpis for pressure calculation:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class='Enclosed')
         # Determine the velocity pressure:
         is_cc = False
         # Roof uplift pressures require qh:
-        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc)
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat)
         # Get the gust effect or gust response factor:
-        g = PressureCalc.get_g(self, edition, exposure, is_cc, alpha)
+        g = PressureCalc.get_g(self, edition, exposure, is_cc, alpha, h_bldg)
         # Set up to find Cp values:
         direction = 'parallel'
         pitch = 9
@@ -87,7 +87,7 @@ class PressureCalc:
             # Roof uplift pressures require qh:
             qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc)
             # Get the gust effect or gust response factor:
-            g = PressureCalc.get_g(self, edition, exposure, is_cc, alpha)
+            g = PressureCalc.get_g(self, edition, exposure, is_cc, alpha, h_bldg)
             # Set up to find Cp values:
             direction = 'parallel'
             pitch = 9
@@ -100,6 +100,11 @@ class PressureCalc:
                 gcp = g*cp[0][0] # Take the first Cp value for uplift calculations
                 # Calculate uplift pressure at the zone:
                 p = PressureCalc.calc_pressure(self, z, exposure, edition, is_cc, qh, gcp, gcpi)
+                # Minimum design pressure for roof MWFRS (ASCE 7-10):
+                if abs(p) < 8 and edition == 'ASCE 7-10':  # [psf]
+                    p = np.sign(p) * 8  # [psf]
+                else:
+                    pass
                 rmps.append(p)
         # Determine pressure for components and cladding:
         if w_cc or r_cc:
@@ -161,7 +166,7 @@ class PressureCalc:
 
         return gcpi
 
-    def get_g(self, edition, exposure, is_cc, alpha):
+    def get_g(self, edition, exposure, is_cc, alpha,z):
         alpha = 7.0  # Provide default value for Exposure B
         # Gust effect or gust response factor:
         if edition == 'ASCE 7-95':
@@ -196,7 +201,7 @@ class PressureCalc:
         # Pressure calc: will need to code in a procedure to determine both +/- cases for GCpi
         # ASCE 7-93:
         if is_cc:
-            if z <= 60 / 3.281:  # should be building height:
+            if z <= 60:  # [ft]
                 # Calculate pressure for the controlling case:
                 if gcp > 0:
                     p = q * (gcp + gcpi)
@@ -209,37 +214,38 @@ class PressureCalc:
                 p = 0.85 * p
             else:
                 pass
-            # Minimum design pressure for C&C:
-            if abs(p) / 1000 < 0.48:  # [kN/m^2]
-                p = np.sign(p) * 0.48 * 1000  # [N/m^2]
+            # Minimum design pressure for C&C (ASCE 7-10):
+            if abs(p) < 16 and edition == 'ASCE 7-10':  # [psf]
+                p = np.sign(p) * 16 # [psf]
             else:
                 pass
         else:
             p = q * gcp - q * gcpi  # q = qz for roof (at mean roof height)
+
         return p
 
-    def qz_calc(self, z, wind_speed, exposure, edition, is_cc):
+    def qz_calc(self, z, wind_speed, exposure, edition, is_cc, cat):
         hpr = True
         h_ocean = True
         # Every edition of ASCE 7 has a velocity exposure coefficient:
         kz, alpha = PressureCalc.get_kz(self, z, exposure, edition, is_cc)
         # Calculate the velocity pressure:
         if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
-            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean)
-            qz = 0.613 * kz * (imp * wind_speed) ** 2
+            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean, cat)
+            qz = 0.00256 * kz * (imp * wind_speed) ** 2
         elif edition == 'ASCE 7-95':
             kzt = 1.0
-            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean)
-            qz = 0.613 * kz * kzt * imp * wind_speed ** 2
+            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean, cat)
+            qz = 0.00256 * kz * kzt * imp * wind_speed ** 2
         elif edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
             kzt = 1.0
             kd = 0.85
-            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean)
-            qz = 0.613 * kz * kzt * kd * imp * wind_speed ** 2
+            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean, cat)
+            qz = 0.00256 * kz * kzt * kd * imp * wind_speed ** 2
         elif edition == 'ASCE 7-10' or edition == 'ASCE 7-16':
             kzt = 1.0
             kd = 0.85
-            qz = 0.613 * kz * kzt * kd * wind_speed ** 2
+            qz = 0.00256 * kz * kzt * kd * wind_speed ** 2
         return qz, alpha
 
     def get_kz(self, z, exposure, edition, is_cc):
@@ -256,26 +262,26 @@ class PressureCalc:
             pass
         # Given Exposure Category, select alpha and zg:
         if exposure == 'A':
-            zg = 1500 / 3.281
+            zg = 1500  # [ft]
             if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
                 alpha = 3.0
             else:
                 alpha = 5.0
         elif exposure == 'B':
-            zg = 1200 / 3.281
+            zg = 1200
             if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
                 alpha = 4.5
             else:
                 alpha = 7.0
         elif exposure == 'C':
-            zg = 900 / 3.281
+            zg = 900
             if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
                 alpha = 7.0
             else:
                 alpha = 9.5
         elif exposure == 'D':
             alpha = 11.5
-            zg = 700 / 3.281
+            zg = 700
             if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
                 alpha = 10.0
             else:
@@ -292,21 +298,19 @@ class PressureCalc:
         if is_cc:
             if exposure == 'B' and (
                     edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10'):
-                if z < 30 / 3.281:
-                    z = 30 / 3.281
+                if z < 30:
+                    z = 30  # [ft]
                 else:
                     pass
         # Calculate the velocity pressure coefficient:
-        if z <= 15 / 3.281:  # [m]
-            kz = factor * ((15 / 3.281) / zg) ** (2 / alpha)
-        elif 15 / 3.281 < z < zg:
+        if z <= 15:  # [ft]
+            kz = factor * (15 / zg) ** (2 / alpha)
+        elif 15 < z < zg:
             kz = factor * (z / zg) ** (2 / alpha)
         return kz, alpha
 
-    def get_i(self, z, wind_speed, hpr, h_ocean):
+    def get_i(self, z, wind_speed, hpr, h_ocean, cat):
         # Importance factor for ASCE 7-05 and older:
-        # Assume occupancy category is II for now (later add logic to identify tags for the region (MED, UNIV, etc.):
-        cat = 2
         if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
             if h_ocean:  # if building is at hurricane oceanline (ASCE 7-88 and 7-93)
                 categories = np.array([1.05, 1.11, 1.11, 1.00])
@@ -367,8 +371,7 @@ class PressureCalc:
         return Cps
 
     def roof_cc(self, area_eff, pos, zone, edition):
-        # Area_eff needs to be in units of ft^2
-        area_eff = area_eff * 10.764
+        # Assume effective wind area is in units of ft^2
         if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
             # Negative external pressure coefficients: ASCE 7-93, -88, and ANSI-A58.1-1982
             if zone == 1:
@@ -478,8 +481,7 @@ class PressureCalc:
         return gcp
 
     def wall_cc(self, area_eff, pos, zone, edition):
-        # Area_eff needs to be in units of ft^2
-        area_eff = area_eff * 10.764
+        # Assume effective wind area is in units of ft^2
         if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
             # Positive external pressure coefficients:
             # Zones 4 and 5
@@ -619,19 +621,19 @@ class PressureCalc:
         # Determine the effective area for a wall C&C:
         if ctype == 'mullion':
             if parcel_flag == 1:
-                if h_story <= 15/3.281:  # [m]
-                    area_eff = h_story*(5/3.281)  # [m^2]
+                if h_story <= 15:  # [ft]
+                    area_eff = h_story*5  # [ft^2]
                 else:
-                    area_eff = h_story*h_story/3  # [m^2]
+                    area_eff = h_story*h_story/3  # [ft^2]
             else:
                 pass
         elif ctype == 'glass curtain wall':
             if parcel_flag == 1:
-                area_eff = (h_story/2)*(5/3.281)  # [m^2]
+                area_eff = (h_story/2)*5  # [ft^2]
             else:
                 pass
         elif ctype == 'wall':
-            area_eff = h_story*h_story/3  # [m^2]
+            area_eff = h_story*h_story/3  # [ft^2]
 
         return area_eff
 
@@ -643,9 +645,9 @@ class PressureCalc:
 
     def base_bldg(self):
         # Base building parameters:
-        base_exposure = 'C'
-        base_story = 9/3.281 # [m]
-        base_height = 9/3.281 # [m]
+        base_exposure = 'B'
+        base_story = 9 # [ft]
+        base_height = 9 # [ft]
         return base_exposure, base_story, base_height
 
     def get_mwfrs_pressure(self, wind_speed, exposure, edition, h_story, h_bldg):
@@ -686,15 +688,17 @@ def func(x, a, b, c):
 
 
 # Case study #1: Same building, different wind speeds:
-base_exposure = 'C'
-base_story = 9 / 3.281  # [m]
-base_height = 9 / 3.281  # [m]
+base_exposure = 'B'
+base_story = 9  # [ft]
+base_height = 9  # [ft]
+# Assume occupancy category is II for now (later add logic to identify tags for the region (MED, UNIV, etc.):
+cat = 2
 # Define a range of wind speed values:
-wind_speed = np.linspace(90, 180, 18)/2.237 # [m]/[s]
+wind_speed = np.linspace(90, 180, 18) # [mph]
 # Create an instance of PressureCalc()
 pressures = PressureCalc()
 # Start with ASCE 7-10:
-edition = 'ASCE 7-10'
+edition = 'ASCE 7-88'
 # Set up a dataframe to compare values:
 df = pd.DataFrame(columns=['Zone 1', 'Zone 2', 'Zone 3'])
 # Play with roof mwfrs:
@@ -706,15 +710,17 @@ fig, ax = plt.subplots()
 # Set up placeholder:
 rmps_arr = np.array([])
 for speed in wind_speed:
-    rmps = pressures.rmwfrs_capacity(speed, base_exposure, edition, base_height, length, ratio)
+    rmps = pressures.rmwfrs_capacity(speed, base_exposure, edition, base_height, length, ratio, cat)
     # Add values to Dataframe:
     df = df.append({'Zone 1': rmps[0], 'Zone 2': rmps[1], 'Zone 3': rmps[2]}, ignore_index = True)
 # Plot the results:
 ax.plot(df['Zone 1'], wind_speed)
 ax.plot(df['Zone 2'], wind_speed)
 ax.plot(df['Zone 3'], wind_speed)
-#ax.plot(df['Zone 4']*0.020885, wind_speed * 2.237)
+#ax.plot(df['Zone 4'], wind_speed)
 #ax.legend(['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4'])
+# Percent difference across zones:
+print(df.pct_change(axis=1))
 
 # Set up .csv file:
 with open('Pressure_Sim.csv', 'a', newline = '') as csv_file:
@@ -746,7 +752,7 @@ plt.ylim(min(wind_speed), max(wind_speed))
 plt.show()
 
 # Get back the pressure for a specific wind speed:
-y = 120/2.237
+y = 120 # [mph]
 sim_pressure1, sim_pressure2 = pressures.get_sim_pressure(a, b, c-y)
 
 # Figure out the pressure difference between wind speeds:
@@ -760,7 +766,7 @@ print(df.pct_change(axis=1))
 # Set up a dataframe to compare values:
 dfh = pd.DataFrame()
 # Play with roof mwfrs:
-h_bldg = np.arange(base_height, 61/3.281, 1/3.281)
+h_bldg = np.arange(base_height, 61, 1)
 # Set up a matplotlib figure:
 fig, ax = plt.subplots()
 
@@ -769,9 +775,9 @@ fig, ax = plt.subplots()
 height_list = list()
 height_dict={}
 for num in h_bldg:
-    height_list.append(str(round(num*3.281))+' ft')
+    height_list.append(str(num)+' ft')
     # Create a dictionary of to write first row of csv file:
-    height_dict[str(round(num*3.281))+' ft'] = str(round(num*3.281))+' ft'
+    height_dict[str(num)+' ft'] = str(num)+' ft'
 
 with open('Height_Sim.csv', 'a', newline = '') as csv_file:
     fieldnames = height_list
@@ -783,19 +789,19 @@ for h in h_bldg:
     for speed in wind_speed:
         length = 2*h
         ratio = h/length
-        rmps = pressures.rmwfrs_capacity(speed, base_exposure, edition, h, length, ratio)
+        rmps = pressures.rmwfrs_capacity(speed, base_exposure, edition, h, length, ratio, cat)
         rmps_arr = np.append(rmps_arr, rmps[1])
     # Add values to DataFrame:
     col_name = str(h)
     dfh[col_name] = rmps_arr
     # Plot the results:
-    ax.plot(dfh[col_name] * 0.020885, wind_speed * 2.237)
+    ax.plot(dfh[col_name], wind_speed)
 # Plot the results:
 ax.legend(['h = 9.0 ft', 'h = 18.0 ft', 'h = 27.0 ft', 'h = 36.0 ft'])
 plt.title('Roof uplift pressures (MWFRS) for Zone 1 vs. Wind speed for various heights')
 plt.ylabel('Wind Speed [mph]')
 plt.xlabel('Pressure [psf]')
-plt.ylim(90, max(wind_speed)*2.237)
+plt.ylim(90, max(wind_speed))
 plt.show()
 
 # Calculate the percent change from the base height:
@@ -811,7 +817,7 @@ for index in range(0, len(row)):
     factor_lst.append(factor)
 
 # Try for a different exposure category:
-exposures = ['C', 'B', 'D']
+exposures = ['B', 'C', 'D']
 dfE = pd.DataFrame()
 fig, ax = plt.subplots()
 
@@ -820,23 +826,23 @@ for exp in exposures:
     for speed in wind_speed:
         length = 2 * base_height
         ratio = base_height / length
-        rmps = pressures.rmwfrs_capacity(speed, exp, edition, base_height, length, ratio)
+        rmps = pressures.rmwfrs_capacity(speed, exp, edition, base_height, length, ratio, cat)
         rmps_arr = np.append(rmps_arr, rmps[1])
     # Add values to DataFrame:
     dfE[exp] = rmps_arr
     # Plot the results:
-    ax.plot(dfE[exp] * 0.020885, wind_speed * 2.237)
+    ax.plot(dfE[exp], wind_speed)
 
 # Plot the results:
 ax.legend(['B', 'C', 'D'])
 plt.title('Roof uplift pressures (MWFRS) for Zone 1 vs. Wind speed for various exposures')
 plt.ylabel('Wind Speed [mph]')
 plt.xlabel('Pressure [psf]')
-plt.ylim(90, max(wind_speed)*2.237)
+plt.ylim(90, max(wind_speed))
 plt.show()
 
 # Check the percent change between Exposure categories:
-print('percent change in pressure by Exposure Categoery:')
+print('percent change in pressure by Exposure Category:')
 print(dfE.pct_change(axis=1))
 
 # Calculate the percent change from Exposure C:
