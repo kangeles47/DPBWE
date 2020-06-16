@@ -831,72 +831,60 @@ for index in range(0, len(row)):
 exposures = ['B', 'C', 'D']
 # Exposure effects change with height:
 h_bldg = np.arange(base_height, 61, 1)
-# Set up DataFrame to save pressure difference across exposure categories for various code editions:
-df_Efactor = pd.DataFrame(columns=exposures)
+# Specify code editions:
+edition = ['ASCE 7-95','ASCE 7-10']
+# Set up an empty list to store the dataframes:
+exp_list = list()
 
 for ed in edition:
-    dfE = pd.DataFrame()
-    #fig4, ax4 = plt.subplots()
-    for exp in exposures:
-        rmps_arr = np.array([])
-        for speed in wind_speed:
-            length = 2 * base_height
-            ratio = base_height / length
-            rmps = pressures.rmwfrs_capacity(speed, exp, ed, base_height, length, ratio, cat)
-            rmps_arr = np.append(rmps_arr, rmps[1])
-        # Add values to DataFrame:
-        dfE[exp] = rmps_arr
+    # Set up DataFrame to save pressure difference across exposure categories for various heights:
+    df_Efactor = pd.DataFrame(columns=exposures)
+    for h in h_bldg:
+        dfE = pd.DataFrame()
+        #fig4, ax4 = plt.subplots()
+        for exp in exposures:
+            rmps_arr = np.array([])
+            for speed in wind_speed:
+                length = 2 * h
+                ratio = h / length
+                rmps = pressures.rmwfrs_capacity(speed, exp, ed, h, length, ratio, cat)
+                rmps_arr = np.append(rmps_arr, rmps[1])
+            # Add values to DataFrame:
+            dfE[exp] = rmps_arr
+            # Plot the results (Exposures B, C, D for one height:
+            #ax4.plot(dfE[exp], wind_speed, label=exp)
         # Plot the results:
-        #ax4.plot(dfE[exp], wind_speed, label=exp)
-    # Plot the results:
-    #ax4.legend()
-    #plt.title('Roof uplift pressures (MWFRS) for Zone 1 vs. Wind speed for various exposures')
-    #plt.ylabel('Wind Speed [mph]')
-    #plt.xlabel('Pressure [psf]')
-    #plt.ylim(90, max(wind_speed))
-    #plt.show()
-    # Check the percent change between Exposure categories:
-    print('percent change in pressure by Exposure Category:', exp, ed)
-    print(dfE.pct_change(axis=1))
-    # Calculate the percent change from Exposure B:
-    row = dfE.iloc[0]
-    factor_list = list()
-    for index in range(0, len(row)):
-        if index == 0:
-            factor = 1.0
-        elif row[index] == row[0]:
-            factor = 1.0
-        else:
-            factor = (row[index] - row[0]) / row[0]
-        factor_list.append(factor)
-    df_Efactor = df_Efactor.append({'B': factor_list[0], 'C': factor_list[1], 'D': factor_list[2]}, ignore_index=True)
+        #ax4.legend()
+        #plt.title('Roof uplift pressures (MWFRS, Zone 1) and h = '+str(h)+ ' ft')
+        #plt.ylabel('Wind Speed [mph]')
+        #plt.xlabel('Pressure [psf]')
+        #plt.ylim(90, max(wind_speed))
+        #plt.show()
+        # Check the percent change between Exposure categories:
+        #print('percent change in pressure by Exposure Category by h:', h, exp)
+        #print(dfE.pct_change(axis=1))
+        # Calculate the percent change from Exposure B:
+        row = dfE.iloc[0]
+        factor_list = list()
+        for index in range(0, len(row)):
+            if index == 0:
+                factor = 1.0
+            elif row[index] == row[0]:
+                factor = 1.0
+            else:
+                factor = (row[index] - row[0]) / row[0]
+            factor_list.append(factor)
+        df_Efactor = df_Efactor.append({'B': factor_list[0], 'C': factor_list[1], 'D': factor_list[2]}, ignore_index=True)
+    # Set the index to the corresponding building heights:
+    # Add column:
+    df_Efactor['Height in ft'] = h_bldg
+    df_Efactor.set_index('Height in ft', inplace=True)
+    # Store the DataFrame of Exposure factors:
+    exp_list.append(df_Efactor)
 
-# Set the index to the corresponding code editions:
-# Add column:
-df_Efactor['Edition'] = edition
-df_Efactor.set_index('Edition', inplace=True)
 # Save the DataFrame to a .csv file for future reference:
 #df_Efactor.to_csv('Roof_MWFRS_Exp.csv')
 
-# Let's run a couple of test cases:
-# Case study #2: Taller building, different wind speeds:
-new_exposure = 'B'
-base_story = 12  # [ft]
-base_height = 18  # [ft]
-# Assume occupancy category is II for now (later add logic to identify tags for the region (MED, UNIV, etc.):
-cat = 2
-# Define a range of wind speed values:
-wind_speed = 100  # [mph]
-# Create an instance of PressureCalc()
-pressures = PressureCalc()
-# Create a vector of editions:
-edition = 'ASCE 7-10'
-# Set up a dataframe to compare values:
-#df = pd.DataFrame(columns=['Zone 1', 'Zone 2', 'Zone 3'], index=edition)
-# Play with roof mwfrs:
-length = 2*base_height
-ratio = base_height/length
-rmps_test = pressures.rmwfrs_capacity(wind_speed, new_exposure, edition, base_height, length, ratio, cat)
 
 # Check the difference between Exposure B and Exposure C:
 print((df['10.0']-df2['10.0'])/df['10.0'], (df['20.0']-df2['20.0'])/df['20.0'], (df['30.0']-df2['30.0'])/df['30.0'], (df['40.0']-df2['40.0'])/df['40.0'])
