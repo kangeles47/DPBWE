@@ -777,51 +777,44 @@ print(df.pct_change(axis=0))
 print('percent change in pressure by zone:')
 print(df.pct_change(axis=1))
 
-# Time to figure out the differences in height across zone pressures:
-# Set up a dataframe to compare values:
-dfh = pd.DataFrame()
+# Time to figure out the differences in height across zone pressures for h/L = 0.5 or wind direction = parallel:
+# Create an empty list that will hold DataFrames for each code edition:
+edh_list = list()
 # Play with roof mwfrs:
 h_bldg = np.arange(base_height, 61, 1)
-# Set up a matplotlib figure:
-fig, ax = plt.subplots()
 
-# Set up .csv file:
-# First create a list referring to each of the heights:
-height_list = list()
-height_dict={}
-for num in h_bldg:
-    height_list.append(str(num)+' ft')
-    # Create a dictionary of to write first row of csv file:
-    height_dict[str(num)+' ft'] = str(num)+' ft'
-
-with open('Height_Sim.csv', 'a', newline = '') as csv_file:
-    fieldnames = height_list
-    writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-    writer.writerow(height_dict)
-
-for h in h_bldg:
-    rmps_arr = np.array([])
-    for speed in wind_speed:
-        length = 2*h
-        ratio = h/length
-        rmps = pressures.rmwfrs_capacity(speed, base_exposure, edition, h, length, ratio, cat)
-        rmps_arr = np.append(rmps_arr, rmps[1])
-    # Add values to DataFrame:
-    col_name = str(h)
-    dfh[col_name] = rmps_arr
+for ed in edition:
+    # Set up a dataframe to compare values:
+    dfh = pd.DataFrame()
+    # Set up a matplotlib figure:
+    #fig3, ax3 = plt.subplots()
+    for h in h_bldg:
+        rmps_arr = np.array([])
+        for speed in wind_speed:
+            length = 2*h
+            ratio = h/length
+            rmps = pressures.rmwfrs_capacity(speed, base_exposure, ed, h, length, ratio, cat)
+            rmps_arr = np.append(rmps_arr, rmps[0])  # Zone 1 since variation across heights is the same for all zones
+        # Add values to DataFrame:
+        col_name = str(h) + ' ft'
+        dfh[col_name] = rmps_arr
+        # Plot the results:
+        #ax3.plot(dfh[col_name], wind_speed, label = str(h)+ ' ft')
+    # Add DataFrame to list:
+    edh_list.append(dfh)
     # Plot the results:
-    ax.plot(dfh[col_name], wind_speed)
-# Plot the results:
-ax.legend(['h = 9.0 ft', 'h = 18.0 ft', 'h = 27.0 ft', 'h = 36.0 ft'])
-plt.title('Roof uplift pressures (MWFRS) for Zone 1 vs. Wind speed for various heights')
-plt.ylabel('Wind Speed [mph]')
-plt.xlabel('Pressure [psf]')
-plt.ylim(90, max(wind_speed))
-plt.show()
+    #ax3.legend()
+    #plt.title('Roof uplift pressures (MWFRS) for Zone 1 vs. Wind speed for various heights')
+    #plt.ylabel('Wind Speed [mph]')
+    #plt.xlabel('Pressure [psf]')
+    #plt.ylim(90, max(wind_speed))
+    #plt.show()
+    # Print the percent change in pressure as height varies:
+    print('Percent change in pressure between heights:', ed, dfh.pct_change(axis=1))
 
-# Calculate the percent change from the base height:
-factor_lst = list()
-row = dfh.iloc[0]
+# Calculate the percent change in pressure (compared to base height):
+df_hfactor = pd.DataFrame()
+row = dfh.iloc[0] # Only need one since variation with height is same for all codes
 for index in range(0, len(row)):
     if index == 0:
         factor = 1.0
@@ -829,63 +822,59 @@ for index in range(0, len(row)):
         factor = 1.0
     else:
         factor = (row[index]-row[0])/row[0]
-    factor_lst.append(factor)
+    hcol_name = dfh.columns[index]
+    df_hfactor[hcol_name] = np.array([factor])
+# Save the DataFrame to a .csv file for future reference:
+#df_hfactor.to_csv('Roof_MWFRS_h.csv')
 
 # Try for a different exposure category:
 exposures = ['B', 'C', 'D']
-dfE = pd.DataFrame()
-fig, ax = plt.subplots()
+# Set up DataFrame to save pressure difference across exposure categories for various code editions:
+df_Efactor = pd.DataFrame(columns=exposures)
 
-for exp in exposures:
-    rmps_arr = np.array([])
-    for speed in wind_speed:
-        length = 2 * base_height
-        ratio = base_height / length
-        rmps = pressures.rmwfrs_capacity(speed, exp, edition, base_height, length, ratio, cat)
-        rmps_arr = np.append(rmps_arr, rmps[1])
-    # Add values to DataFrame:
-    dfE[exp] = rmps_arr
+for ed in edition:
+    dfE = pd.DataFrame()
+    fig4, ax4 = plt.subplots()
+    for exp in exposures:
+        rmps_arr = np.array([])
+        for speed in wind_speed:
+            length = 2 * base_height
+            ratio = base_height / length
+            rmps = pressures.rmwfrs_capacity(speed, exp, ed, base_height, length, ratio, cat)
+            rmps_arr = np.append(rmps_arr, rmps[1])
+        # Add values to DataFrame:
+        dfE[exp] = rmps_arr
+        # Plot the results:
+        ax4.plot(dfE[exp], wind_speed, label=exp)
     # Plot the results:
-    ax.plot(dfE[exp], wind_speed)
+    ax4.legend()
+    plt.title('Roof uplift pressures (MWFRS) for Zone 1 vs. Wind speed for various exposures')
+    plt.ylabel('Wind Speed [mph]')
+    plt.xlabel('Pressure [psf]')
+    plt.ylim(90, max(wind_speed))
+    plt.show()
+    # Check the percent change between Exposure categories:
+    print('percent change in pressure by Exposure Category:', exp, ed)
+    print(dfE.pct_change(axis=1))
+    # Calculate the percent change from Exposure B:
+    row = dfE.iloc[0]
+    factor_list = list()
+    for index in range(0, len(row)):
+        if index == 0:
+            factor = 1.0
+        elif row[index] == row[0]:
+            factor = 1.0
+        else:
+            factor = (row[index] - row[0]) / row[0]
+        factor_list.append(factor)
+    df_Efactor = df_Efactor.append({'B': factor_list[0], 'C': factor_list[1], 'D': factor_list[2]}, ignore_index=True)
 
-# Plot the results:
-ax.legend(['B', 'C', 'D'])
-plt.title('Roof uplift pressures (MWFRS) for Zone 1 vs. Wind speed for various exposures')
-plt.ylabel('Wind Speed [mph]')
-plt.xlabel('Pressure [psf]')
-plt.ylim(90, max(wind_speed))
-plt.show()
-
-# Check the percent change between Exposure categories:
-print('percent change in pressure by Exposure Category:')
-print(dfE.pct_change(axis=1))
-
-# Calculate the percent change from Exposure C:
-factor_elst = list()
-row = dfE.iloc[0]
-for index in range(0, len(row)):
-    if index == 0:
-        factor = 1.0
-    elif row[index] == row[0]:
-        factor = 1.0
-    else:
-        factor = (row[index]-row[0])/row[0]
-    factor_elst.append(factor)
-
-print(factor_elst)
-
-#for h in h_bldg:
-    #rmps_arr = np.array([])
-    #for speed in wind_speed:
-        #wps, rps, rmps = pressures.run(z, speed, exposure, edition, r_mwfrs, h, w_cc=False, r_cc=False, area_eff=None)
-        # Each row in rmps will contain as many pressures as zones identified:
-        #rmps[2] = rmps[2]*0.020885
-        #rmps_arr = np.append(rmps_arr, rmps[2])
-    # Append column of pressures for various wind speeds for this height:
-    #col_name = str(h*3.281)
-    #df2[col_name] = rmps_arr
-
-#print(df2)
+# Set the index to the corresponding code editions:
+# Add column:
+df_Efactor['Edition'] = edition
+df_Efactor.set_index('Edition', inplace=True)
+# Save the DataFrame to a .csv file for future reference:
+#df_Efactor.to_csv('Roof_MWFRS_Exp.csv')
 
 # Check the difference between Exposure B and Exposure C:
 print((df['10.0']-df2['10.0'])/df['10.0'], (df['20.0']-df2['20.0'])/df['20.0'], (df['30.0']-df2['30.0'])/df['30.0'], (df['40.0']-df2['40.0'])/df['40.0'])
