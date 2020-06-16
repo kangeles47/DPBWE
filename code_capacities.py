@@ -84,7 +84,7 @@ class PressureCalc:
 
         return rmps
 
-    def run(self, z, wind_speed, exposure, edition, r_mwfrs, h_bldg, w_cc, r_cc, area_eff=None):
+    def run(self, z, wind_speed, exposure, edition, r_mwfrs, h_bldg, w_cc, r_cc, area_eff, cat):
         # Determine GCpis for pressure calculation:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class='Enclosed')
         # Determine the MWFRS pressures for roof:
@@ -119,7 +119,7 @@ class PressureCalc:
             # C&C loads:
             is_cc = True
             # All components and cladding calculations require qh:
-            qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc)
+            qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat)
             # Get GCps and calculate the pressure for each zone:
             if w_cc:
                 wpos = [True, True, False, False]
@@ -696,7 +696,6 @@ def func(x, a, b, c):
 
 # Case study #1: Same building, different wind speeds:
 base_exposure = 'B'
-base_story = 9  # [ft]
 base_height = 9  # [ft]
 # Assume occupancy category is II for now (later add logic to identify tags for the region (MED, UNIV, etc.):
 cat = 2
@@ -885,38 +884,96 @@ for ed in edition:
 # Save the DataFrame to a .csv file for future reference:
 #df_Efactor.to_csv('Roof_MWFRS_Exp.csv')
 
+# Time to play with Wall C&C pressures --> Mullions:
+# Define the base building and site conditions:
+base_exposure = 'C'
+base_story = 9  # [ft]
+base_height = 9  # [ft]
+# Assume occupancy category is II for now (later add logic to identify tags for the region (MED, UNIV, etc.):
+cat = 2
+# Define a range of wind speed values:
+wind_speed = np.arange(90, 185, 5)  # [mph]
+# Create an instance of PressureCalc()
+pressures = PressureCalc()
+# Create a vector of editions:
+edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10']
 
-# Check the difference between Exposure B and Exposure C:
-print((df['10.0']-df2['10.0'])/df['10.0'], (df['20.0']-df2['20.0'])/df['20.0'], (df['30.0']-df2['30.0'])/df['30.0'], (df['40.0']-df2['40.0'])/df['40.0'])
+# Case 1: Base building against various wind speeds for various editions:
+# Determine the effective area using typical practice:
+ctype = 'mullion'
+parcel_flag = 1
+area_eff = pressures.get_warea(ctype, parcel_flag, base_story)
 
-# Set up a matplotlib figure:
-fig, ax = plt.subplots()
-line = ax.plot(rmps_arr, wind_speed*2.237)
-plt.ylim(90, max(wind_speed)*2.237)
-plt.show()
+# Create an empty list to hold all DataFrames:
+edw_list = list()
+for ed in edition:
+    # Create a new dataframe for each edition:
+    df_wcc = pd.DataFrame(columns=['Zone 4+', 'Zone 5+', 'Zone 4-', 'Zone 5-'])
+    # Set up plotting
+    #fig, ax = plt.subplots()
+    for speed in wind_speed:
+        # Calculate the pressure across various wind speeds for each code edition:
+        wps = pressures.wcc_capacity(speed, base_exposure, ed, base_height, area_eff)
+        # Add values to Dataframe:
+        df_wcc = df_wcc.append({'Zone 4+': wps[0], 'Zone 5+': wps[1], 'Zone 4-': wps[2], 'Zone 5-': wps[3]}, ignore_index=True)
+    # Add DataFrame to list:
+    edw_list.append(df_wcc)
+    # Plot Zone pressures for 1 case (Zones 4 and 5 (+) are equal):
+    #ax.plot(df_wcc['Zone 4+'], wind_speed)
+    #plt.ylim(90, max(wind_speed))
+    #plt.ylabel('Wind Speed [mph]')
+    #plt.xlabel('Pressure [psf]')
+    #plt.title('Mullion C&C pressures (+), Zones 4 and 5 for h_story = 9.0 ft')
+    #plt.show()
+    # Show the difference in pressure between zones for the typical effective wind area
+    print('percent change between zones:', ed, df_wcc.pct_change(axis=1))
+    print('percent change in wind speed:', ed, df_wcc.pct_change(axis=0))
+
+# Next step: Fit a curve to each zone for each code edition and save to a .csv:
+df_wparam = pd.DataFrame(columns=df.columns)
+for dwframe in edw_list:
+    # Plot the results:
+    #fig2, ax2 = plt.subplots()
+    param_lst = list()
+    for zone in range(0,3):
+        col_names = dwframe.columns
+        params = curve_fit(func, dwframe[col_names[zone]], wind_speed)
+        [a, b, c] = params[0]
+        #fit_curve = ax2.plot(dframe[col_names[zone]], func(dframe[col_names[zone]], a, b, c), label='Fitted Zone '+str(zone))
+        #real_curve = ax2.plot(dframe[col_names[zone]], wind_speed, label='Real Zone '+str(zone))
+        # Save parameters in list:
+        param_lst.append([a,b,c])
+    # Add parameters to DataFrame:
+    df_wparam = df_wparam.append({col_names[0]: param_lst[0], col_names[1]: param_lst[1], col_names[2]: param_lst[2]}, ignore_index=True)
+
+#pct_change = df_wcc.pct_change(axis=1)
+#print(df_wcc.pct_change(axis=1))
 
 
+# Base Building with effective wind areas using typical practice:
 df_wcc = pd.DataFrame()
+exposure = 'C'
+z= 9
 # Set up array of effective areas:
-area_eff= np.array([27, 90])/10.764
+area_eff= np.array([27, 45, 54, 90]) # [ft^2]
 # Set up empty numpy arrays to store wall and roof pressures:
 wall_pressures = np.empty((0, 4))
-roof_pressures = np.empty((0, 6))
+r_mwfrs = False
 w_cc = True
 r_cc = False
-h_bldg = 9 / 3.281
+h_bldg = 9 # [ft]
 count = 0
-fig2, ax2 = plt.subplots()
+fig, ax = plt.subplots()
+edition = 'ASCE 7-10'
+
 for area in area_eff:
     wall_pressures = np.empty((0, 4))
-    roof_pressures = np.empty((0, 6))
     for speed in wind_speed:
-        wps, rps, rmps = pressures.run(z, speed, exposure, edition, r_mwfrs, h_bldg, w_cc, r_cc, area)
+        wps = pressures.wcc_capacity(speed, base_exposure, edition, base_height, area)
         # Add to our empty array:
         wall_pressures = np.append(wall_pressures, np.array([wps]), axis=0)
-        #roof_pressures = np.append(roof_pressures, np.array([rps]), axis=0)
     count = count + 1
-    line = ax2.plot(wall_pressures[:,0]*0.020885, wind_speed*2.237, label='bound'+str(count))
+    line = ax.plot(wall_pressures[:,0], wind_speed, label=str(area)+ 'ft^2')
     # Append column of pressures for various wind speeds for this height:
     col_name = str(area)
     df_wcc[col_name] = wall_pressures[:,0]
@@ -924,47 +981,15 @@ for area in area_eff:
     #[a, b, c] = params[0]
     #fit_curve = ax.plot(wall_pressures[:, 3], func(wall_pressures[:,3], a, b, c), label=str(area * 10.7639))
 
-#ax.legend()
-#plt.ylim(90, max(wind_speed)*2.237)
 print('percent change in effective area:')
 print(df_wcc.pct_change(axis=1))
-ax2.legend()
-plt.ylim(90, max(wind_speed)*2.237)
-plt.title('Mullion C&C bounds (+), Zones 4 and 5 for h = ' + str(h_bldg*3.281)+ ' [ft]')
+ax.legend()
+plt.ylim(90, max(wind_speed))
+plt.title('Mullion C&C bounds (+), Zones 4 and 5 for h = ' + str(h_bldg)+ ' [ft]')
 plt.ylabel('Wind Speed [mph]')
 plt.xlabel('Pressure [psf]')
 plt.show()
 
-# First I need to determine the effective area for the component that I am interested in:
-ctype = 'mullion'
-parcel_flag = 1
-h_story = 10/3.281
-h_bldg = np.array([h_story, h_story*2, h_story*3, h_story*4, h_story*5, h_story*6])
-fig3, ax3 = plt.subplots()
-df_wccm = pd.DataFrame()
-
-for h in h_bldg:
-    wall_pressures = np.empty((0, 4))
-    area_eff = pressures.get_warea(ctype, parcel_flag, h_story)
-    for speed in wind_speed:
-        # Calculate the pressure across various wind speeds, heights, and exposures:
-        wps = pressures.wcc_capacity(speed, exposure, edition, h, area_eff)
-        wall_pressures = np.append(wall_pressures, np.array([wps]), axis=0)
-    line = ax3.plot(wall_pressures[:, 1] * 0.020885, wind_speed * 2.237, label= str(round(h*3.281))+ ' ft')
-    col_name = str(h*3.281)
-    df_wccm[col_name] = wall_pressures[:, 1]* 0.020885
-
-ax3.legend()
-plt.ylim(90, max(wind_speed)*2.237)
-plt.ylabel('Wind Speed [mph]')
-plt.xlabel('Pressure [psf]')
-plt.title('Mullion C&C pressures (-), Zone 5 for h_story = h_bldg')
-plt.show()
-
-pct_change = df_wccm.pct_change(axis=1)
-print(df_wccm.pct_change(axis=1))
-
-print((df_wccm['10.0']-df_wccm['60.0'])/df_wccm['10.0'])
 # Plot the range of pressures for all wind speeds:
 #plt.plot(wall_pressures[:,0], wind_speed)
 #plt.plot(wall_pressures[:,1], wind_speed)
