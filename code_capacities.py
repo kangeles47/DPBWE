@@ -738,30 +738,36 @@ for ed in edition:
 # Next step: Fit a curve to each zone for each code edition and save to a .csv:
 df_param = pd.DataFrame(columns=df.columns)
 for dframe in ed_list:
+    # Plot the results:
+    #fig2, ax2 = plt.subplots()
     param_lst = list()
     for zone in range(0,3):
         col_names = dframe.columns
         params = curve_fit(func, dframe[col_names[zone]], wind_speed)
         [a, b, c] = params[0]
-        #fit_curve = ax.plot(dframe[col_names[zone]], func(dframe[col_names[zone]], a, b, c))
+        #fit_curve = ax2.plot(dframe[col_names[zone]], func(dframe[col_names[zone]], a, b, c), label='Fitted Zone '+str(zone))
+        #real_curve = ax2.plot(dframe[col_names[zone]], wind_speed, label='Real Zone '+str(zone))
         # Save parameters in list:
         param_lst.append([a,b,c])
     # Add parameters to DataFrame:
     df_param = df_param.append({col_names[0]: param_lst[0], col_names[1]: param_lst[1], col_names[2]: param_lst[2]}, ignore_index=True)
+    # Uncomment to show curve fit for each zone
+    #ax2.legend()
+    #plt.title('Roof uplift pressures (MWFRS) for all zones vs. Wind speed for h=9.0 ft')
+    #plt.ylabel('Wind Speed [mph]')
+    #plt.xlabel('Pressure [psf]')
+    #plt.ylim(min(wind_speed), max(wind_speed))
+    #plt.show()
 
 # Set the index to the corresponding code editions:
 # Add column:
 df_param['Edition'] = edition
 df_param.set_index('Edition', inplace=True)
-
-plt.title('Roof uplift pressures (MWFRS) for all zones vs. Wind speed for h=9.0 ft')
-plt.ylabel('Wind Speed [mph]')
-plt.xlabel('Pressure [psf]')
-plt.ylim(min(wind_speed), max(wind_speed))
-plt.show()
+# Save the DataFrame to a .csv file for future reference:
+#df_param.to_csv('Roof_MWFRS_05.csv')
 
 # Get back the pressure for a specific wind speed:
-y = 120 # [mph]
+y = 120  # [mph]
 sim_pressure1, sim_pressure2 = pressures.get_sim_pressure(a, b, c-y)
 
 # Figure out the pressure difference between wind speeds:
