@@ -7,7 +7,7 @@ from code_pressures import PressureCalc
 # Purpose of this code is to provide a set of methods to populate Knowledge Base of Similitude factors for pressure calculations:
 
 # Roof MWFRS
-def run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_cat, wind_speed, exposure, edition, h_bldg, cat, use_case):
+def run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_cat, wind_speed, edition, cat, use_case):
     # Use Case 1: h/L = 0.5
     # Variation 1: Same building, different wind speeds:
     # Create an instance of PressureCalc()
