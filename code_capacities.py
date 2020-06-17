@@ -7,7 +7,7 @@ from scipy.optimize import curve_fit
 
 class PressureCalc:
 
-    def wcc_capacity(self, wind_speed, exposure, edition, h_bldg, area_eff):
+    def wcc_capacity(self, wind_speed, exposure, edition, h_bldg, area_eff, cat):
         # Determine GCpis for pressure calculation:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class='Enclosed')
         # Determine components and cladding pressure for building facade components:
@@ -93,7 +93,7 @@ class PressureCalc:
             rps = 0
             is_cc = False
             # Roof uplift pressures require qh:
-            qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc)
+            qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat)
             # Get the gust effect or gust response factor:
             g = PressureCalc.get_g(self, edition, exposure, is_cc, alpha, h_bldg)
             # Set up to find Cp values:
@@ -913,7 +913,7 @@ for ed in edition:
     #fig, ax = plt.subplots()
     for speed in wind_speed:
         # Calculate the pressure across various wind speeds for each code edition:
-        wps = pressures.wcc_capacity(speed, ref_exposure, ed, ref_height, area_eff)
+        wps = pressures.wcc_capacity(speed, ref_exposure, ed, ref_height, area_eff, cat)
         # Add values to Dataframe:
         df_wcc = df_wcc.append({'Zone 4+': wps[0], 'Zone 5+': wps[1], 'Zone 4-': wps[2], 'Zone 5-': wps[3]}, ignore_index=True)
     # Add DataFrame to list:
@@ -969,7 +969,7 @@ for ed in edition:
         wps_arr = np.array([])
         for speed in wind_speed:
             # Calculate the pressure across various wind speeds for each code edition:
-            wps = pressures.wcc_capacity(speed, ref_exposure, ed, h, area_eff)
+            wps = pressures.wcc_capacity(speed, ref_exposure, ed, h, area_eff, cat)
             wps_arr = np.append(wps_arr, wps[0])  # Zone 4+ since variation across heights is the same for all zones
         # Add values to DataFrame:
         col_name = str(h) + ' ft'
@@ -1007,7 +1007,54 @@ dfw_hfactor.set_index('Edition', inplace=True)
 # Save the DataFrame to a .csv file for future reference:
 #dfw_hfactor.to_csv('Mullion_RefH.csv')
 
+# Investigate effect of different exposure categories across heights:
+exposures = ['B', 'C', 'D']
+# Set up an empty list to store the dataframes:
+expw_list = list()
 
+for ed in edition:
+    # Set up DataFrame to save pressure difference across exposure categories for various heights:
+    dfw_Efactor = pd.DataFrame(columns=exposures)
+    for h in h_bldg:
+        dfwE = pd.DataFrame()
+        #fig4, ax4 = plt.subplots()
+        for exp in exposures:
+            wps_arr = np.array([])
+            for speed in wind_speed:
+                wps = pressures.wcc_capacity(speed, exp, ed, h, area_eff, cat)
+                wps_arr = np.append(wps_arr, wps[1])
+            # Add values to DataFrame:
+            dfwE[exp] = wps_arr
+            # Plot the results (Exposures B, C, D for one height:
+            #ax4.plot(dfwE[exp], wind_speed, label=exp)
+        # Plot the results:
+        #ax4.legend()
+        #plt.title('Mullion pressures (C&C, Zone 4+) and h = '+str(h)+ ' ft')
+        #plt.ylabel('Wind Speed [mph]')
+        #plt.xlabel('Pressure [psf]')
+        #plt.ylim(90, max(wind_speed))
+        #plt.show()
+        # Check the percent change between Exposure categories:
+        #print('percent change in pressure by Exposure Category by h:', h, exp)
+        #print(dfwE.pct_change(axis=1))
+        # Calculate the percent change from Exposure B:
+        row = dfwE.iloc[0]
+        factor_list = list()
+        for index in range(0, len(row)):
+            if index == 0:
+                factor = 1.0
+            elif row[index] == row[0]:
+                factor = 1.0
+            else:
+                factor = (row[index] - row[0]) / row[0]
+            factor_list.append(factor)
+        dfw_Efactor = dfw_Efactor.append({'B': factor_list[0], 'C': factor_list[1], 'D': factor_list[2]}, ignore_index=True)
+    # Set the index to the corresponding building heights:
+    # Add column:
+    dfw_Efactor['Height in ft'] = h_bldg
+    dfw_Efactor.set_index('Height in ft', inplace=True)
+    # Store the DataFrame of Exposure factors:
+    expw_list.append(dfw_Efactor)
 
 # Reference Building with range of effective wind areas using typical practice:
 df_wcc = pd.DataFrame()
@@ -1026,7 +1073,7 @@ edition = 'ASCE 7-10'
 for area in area_eff:
     wall_pressures = np.empty((0, 4))
     for speed in wind_speed:
-        wps = pressures.wcc_capacity(speed, ref_exposure, edition, ref_height, area)
+        wps = pressures.wcc_capacity(speed, ref_exposure, edition, ref_height, area, cat)
         # Add to our empty array:
         wall_pressures = np.append(wall_pressures, np.array([wps]), axis=0)
     count = count + 1
