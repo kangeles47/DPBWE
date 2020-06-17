@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import cmath
-import csv
 from scipy.optimize import curve_fit
 
 class PressureCalc:
