@@ -326,7 +326,7 @@ class PressureCalc:
                 categories = np.array([1.00, 1.07, 1.07, 0.95])
                 imp = categories[cat - 1]
         else:
-            if hpr and wind_speed > 100 / 2.237:  # wind speed in [m]/[s]
+            if hpr and wind_speed > 100:  # wind speed in [mph] - this rule is for ASCE 7-98 - 7-05
                 categories = np.array([0.77, 1.00, 1.15, 1.15])
                 imp = categories[cat - 1]
             else:
