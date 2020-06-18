@@ -624,7 +624,6 @@ class PressureCalc:
         return gcp
 
     def run_sim_rmwfrs(self, ref_exposure, ref_hbldg, ref_cat, wind_speed, edition, use_case):
-        # Variation 1: Same building, different wind speeds:
         # Figure out what Use Case is being populated, populate column names for DataFrame and set up h/L, wind direction, etc.:
         if use_case == 1: # Use Case 1: h/L = 0.5
             case_col = ['Zone 1', 'Zone 2', 'Zone 3']
@@ -632,32 +631,42 @@ class PressureCalc:
             ratio = ref_hbldg / length
         else:
             pass
-        # We are going to start by calculating the pressure at various wind speeds for each code edition:
+        # VARIATION 1: Reference building at various wind speeds:
+        # GOAL: Similitude between wind speeds: multiply reference pressure for each zone with a factor
         # Create an empty list that will hold DataFrames for each code edition:
         ed_list = list()
+        # Create an empty DataFrame to hold reference pressures:
+        df_pref = pd.DataFrame()
         for ed in edition:
-            # Create a new dataframe for each edition:
+            # Create a new DataFrame for each edition:
             df = pd.DataFrame(columns=case_col)
             for speed in wind_speed:
                 rmps = pressures.rmwfrs_capacity(speed, ref_exposure, ed, ref_hbldg, length, ratio, ref_cat)
-                # Create a quick dictionary:
+                # Pair zone names with zone pressures:
                 zone_dict = {df.columns[i]: rmps[i] for i in range(len(rmps))}
                 # Add values to Dataframe:
                 df = df.append(zone_dict, ignore_index=True)
             # Add DataFrame to list:
             ed_list.append(df)
-            # Plot the results:
+            # Extract reference pressures:
+            df_pref = df_pref.append(df.iloc[0], ignore_index=True) # First row corresponds to pressure at min(wind_speed)
+            # Uncomment to plot the zone pressures for this code edition:
             #fig, ax = plt.subplots()
             #for j in range(0, len(rmps)):
                 #zone_curve = ax.plot(df[case_col[j]], wind_speed, label=case_col[j])
-            #plt.title('Roof uplift pressures (MWFRS) for All Zones vs. Wind speed for ' + str(ref_hbldg) + ' ft')
+            #plt.title('Roof uplift pressures (MWFRS) for All Zones vs. Wind speed for ' + str(ref_hbldg) + ' ft ' + ed)
             #plt.ylabel('Wind Speed [mph]')
             #plt.xlabel('Pressure [psf]')
             #plt.show()
+            # Uncomment to show the percent change in pressure between zones and wind speeds:
             #print('percent change between zones:', df.pct_change(axis=1))
             #print('percent change between wind speeds:', df.pct_change(axis=0))
-        # To get pressure variation with height, we have two options:
-        # (1) Extract the reference pressure for each zone (for min(wind_speed) and then multiply by a wind speed factor
+        # Add column:
+        df_pref['Edition'] = edition
+        df_pref.set_index('Edition', inplace=True)
+        # Save the DataFrame to a .csv file for future reference:
+        df_pref.to_csv('Roof_MWFRS_ref' + str(use_case) + '.csv')
+        # Determine the appropriate multiplier by comparing to reference wind speed pressure:
         # Note: Variation in wind speed is the same across zones:
         df_Vfactor = pd.DataFrame()
         for dframe in ed_list:
@@ -665,7 +674,7 @@ class PressureCalc:
             col = dframe[dframe.columns[0]]
             vfactor_list = list()
             for index in range(0, len(col)):
-                if index == 0:
+                if index == 0:  # First index corresponds to pressure when V = min(wind_speed)
                     factor = 1.0
                 elif col[index] == col[0]:
                     factor = 1.0
@@ -681,45 +690,6 @@ class PressureCalc:
         df_Vfactor.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
         df_Vfactor.to_csv('Roof_MWFRS_v' + str(use_case)+'.csv')
-
-        # (2) Fit a curve for each zone and then plug in new wind speed to get new pressure
-        df_param = pd.DataFrame()
-        for dframe in ed_list:
-            vfactor_lst = list()
-            # Plot the results for curve fitting:
-            # fig2, ax2 = plt.subplots()
-            param_lst = list()
-            for zone in range(0, len(rmps)):
-                col_names = dframe.columns
-                params = curve_fit(func, dframe[col_names[zone]], wind_speed)
-                [a, b, c] = params[0]
-                # fit_curve = ax2.plot(dframe[col_names[zone]], func(dframe[col_names[zone]], a, b, c), label='Fitted Zone '+str(zone))
-                # real_curve = ax2.plot(dframe[col_names[zone]], wind_speed, label='Real Zone '+str(zone))
-                # Save parameters in list:
-                param_lst.append([a, b, c])
-            # Create a quick dictionary:
-            param_dict = {dframe.columns[k]: param_lst[k] for k in range(len(param_lst))}  # Pairs each key with array of [a, b, c]
-            # Add parameters to DataFrame:
-            df_param = df_param.append(param_dict, ignore_index=True)
-            # Uncomment to show curve fit for each zone
-            # ax2.legend()
-            # plt.title('Roof uplift pressures (MWFRS) for all zones vs. Wind speed for'  + str(ref_hbldg) + ' ft')
-            # plt.ylabel('Wind Speed [mph]')
-            # plt.xlabel('Pressure [psf]')
-            # plt.ylim(min(wind_speed), max(wind_speed))
-            # plt.show()
-        # Set the index to the corresponding code editions:
-        # Add column:
-        df_param['Edition'] = edition
-        df_param.set_index('Edition', inplace=True)
-        # Save the DataFrame to a .csv file for future reference:
-        #df_param.to_csv('Roof_MWFRS'+ str(use_case) + '.csv')
-        # Uncomment to show pressure difference between wind speeds:
-        # print('percent change in wind speed:')
-        # print(df.pct_change(axis=0))
-        # Uncomment to show pressure difference between zones:
-        # print('percent change in pressure by zone:')
-        # print(df.pct_change(axis=1))
 
         # Variation 2: Different building height, different wind speeds:
         # Create an empty list that will hold DataFrames for each code edition:
@@ -863,29 +833,30 @@ class PressureCalc:
             #print('percent change between zones:', ed, df_wcc.pct_change(axis=1))
             #print('percent change in wind speed:', ed, df_wcc.pct_change(axis=0))
 
-        # Next step: Fit a curve to each zone for each code edition and save to a .csv:
-        df_wparam = pd.DataFrame(columns=df_wcc.columns)
-        for dwframe in edw_list:
-            # Plot the results:
-            # fig2, ax2 = plt.subplots()
-            param_lst = list()
-            for zone in range(0, 3):
-                col_names = dwframe.columns
-                params = curve_fit(func, dwframe[col_names[zone]], wind_speed)
-                [a, b, c] = params[0]
-                # fit_curve = ax2.plot(dwframe[col_names[zone]], func(dwframe[col_names[zone]], a, b, c), label='Fitted Zone '+str(zone))
-                # real_curve = ax2.plot(dwframe[col_names[zone]], wind_speed, label='Real Zone '+str(zone))
-                # Save parameters in list:
-                param_lst.append([a, b, c])
-            # Add parameters to DataFrame:
-            df_wparam = df_wparam.append({col_names[0]: param_lst[0], col_names[1]: param_lst[1], col_names[2]: param_lst[2]}, ignore_index=True)
-
-        # Set the index to the corresponding code editions:
-        # Add column:
-        df_wparam['Edition'] = edition
-        df_wparam.set_index('Edition', inplace=True)
-        # Save the DataFrame to a .csv file for future reference:
-        # df_wparam.to_csv('Mullion_Ref.csv')
+            # Note: Variation in wind speed is the same across zones:
+            # Determine the appropriate multiplier by comparing to reference wind speed pressure:
+            df_Vfactor = pd.DataFrame()
+            for dframe in edw_list:
+                # Use Zone 4 pressures to calculate pressure differences due to change in wind speed:
+                col = dframe[dframe.columns[0]]
+                vfactor_list = list()
+                for index in range(0, len(col)):
+                    if index == 0:  # First index corresponds to pressure when V = min(wind_speed)
+                        factor = 1.0
+                    elif col[index] == col[0]:
+                        factor = 1.0
+                    else:
+                        factor = (col[index] - col[0]) / col[0]
+                    vfactor_list.append(factor)
+                vfactor_dict = {wind_speed[i]: vfactor_list[i] for i in range(len(vfactor_list))}  # Pairs each key (wind speed) with its corresponding factor
+                # Add to DataFrame:
+                df_Vfactor = df_Vfactor.append(vfactor_dict, ignore_index=True)
+            # Set the index to the corresponding code editions:
+            # Add column:
+            df_Vfactor['Edition'] = edition
+            df_Vfactor.set_index('Edition', inplace=True)
+            # Save the DataFrame to a .csv file for future reference:
+            df_Vfactor.to_csv('Mullions.csv')
 
         # Variation 2: Reference Building Story height, multiple stories, different wind speeds:
         # Define an array of building heights:
@@ -1069,7 +1040,7 @@ class PressureCalc:
     def get_mwfrs_pressure(self, wind_speed, exposure, edition, h_story, h_bldg):
         # Given the input building parameters, return the pressure for the specified component:
         # Base building parameters:
-        base_exposure, base_story, base_height = PressureCalc.base_bldg(self)
+        base_exposure, base_story, base_height = PressureCalc.ref_bldg(self)
         # Filter #1: Code editions:
         if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
             pass
