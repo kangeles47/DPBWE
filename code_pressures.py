@@ -625,9 +625,13 @@ class PressureCalc:
 
     def run_sim_rmwfrs(self, ref_exposure, ref_hbldg, ref_cat, wind_speed, edition, use_case):
         # Figure out what Use Case is being populated, populate column names for DataFrame and set up h/L, wind direction, etc.:
-        if use_case == 1: # Use Case 1: h/L = 0.5
-            case_col = ['Zone 1', 'Zone 2', 'Zone 3']
-            length = 2 * ref_hbldg
+        if use_case == 1: # theta < 10 or wind direction || to ridge AND h/L <= 0.5
+            case_col = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4']
+            length = 3 * ref_hbldg # Choose a length that gives ratio to return pressures for all zones
+            ratio = ref_hbldg / length
+        elif use_case == 2:  # theta < 10 or wind direction || to ridge AND 1.0 <= h/L
+            case_col = ['Zone 1', 'Zone 2']
+            length = ref_hbldg  # Choose a length that gives ratio to return pressures for all zones
             ratio = ref_hbldg / length
         else:
             pass
@@ -665,7 +669,7 @@ class PressureCalc:
         df_pref['Edition'] = edition
         df_pref.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        #df_pref.to_csv('Roof_MWFRS_ref' + str(use_case) + '.csv')
+        df_pref.to_csv('Roof_MWFRS_ref' + str(use_case) + '.csv')
         # Determine the appropriate multiplier by comparing to reference wind speed pressure:
         # Note: Variation in wind speed is the same across zones:
         df_Vfactor = pd.DataFrame()
@@ -801,7 +805,7 @@ class PressureCalc:
             # Store the DataFrame of Exposure factors:
             exp_list.append(df_Efactor)
             # Save the DataFrame for this code edition to a .csv file for future reference:
-            #df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
+            df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
 
     def run_sim_wcc(self, ref_exposure, ref_hbldg, ref_story, ref_cat, wind_speed, edition, ctype, parcel_flag):
         # VARIATION 1: Reference building at various wind speeds:
