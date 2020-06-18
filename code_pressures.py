@@ -661,7 +661,7 @@ class PressureCalc:
             # Uncomment to show the percent change in pressure between zones and wind speeds:
             #print('percent change between zones:', df.pct_change(axis=1))
             #print('percent change between wind speeds:', df.pct_change(axis=0))
-        # Add column:
+        # Add column for reference pressures DataFrame:
         df_pref['Edition'] = edition
         df_pref.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
@@ -689,7 +689,7 @@ class PressureCalc:
         df_Vfactor['Edition'] = edition
         df_Vfactor.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        df_Vfactor.to_csv('Roof_MWFRS_v' + str(use_case)+'.csv')
+        #df_Vfactor.to_csv('Roof_MWFRS_v' + str(use_case)+'.csv')
 
         # Variation 2: Different building height, different wind speeds:
         # Create an empty list that will hold DataFrames for each code edition:
@@ -744,11 +744,10 @@ class PressureCalc:
         # Uncomment to save the DataFrame to a .csv file for future reference:
         #df_hfactor.to_csv('Roof_MWFRS_h.csv')
 
-        # Variation 2: Different building height, different wind speeds, different exposures:
+        # Variation 3: Different building height, different wind speeds, different exposures:
         exposures = ['B', 'C', 'D']
         # Set up an empty list to store the dataframe for each code edition:
         exp_list = list()
-
         for ed in edition:
             # Set up DataFrame to save pressure difference across exposure categories for various heights:
             df_Efactor = pd.DataFrame(columns=exposures)
@@ -802,14 +801,18 @@ class PressureCalc:
             # Store the DataFrame of Exposure factors:
             exp_list.append(df_Efactor)
             # Save the DataFrame for this code edition to a .csv file for future reference:
-            #df_Efactor.to_csv('Roof_MWFRS_E_' + ed[-2:]+'.csv')
+            #df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
 
     def run_sim_wcc(self, ref_exposure, ref_hbldg, ref_story, ref_cat, wind_speed, edition, ctype, parcel_flag):
+        # VARIATION 1: Reference building at various wind speeds:
+        # GOAL: Similitude between wind speeds: multiply reference pressure for each zone with a factor
         # Variation 1: Same building, different wind speeds:
         # Get the effective wind area for the C&C type:
         area_eff = pressures.get_warea(ctype, parcel_flag, ref_story)
         # Create an empty list to hold all DataFrames:
         edw_list = list()
+        # Create an empty DataFrame to hold reference pressures:
+        dfw_pref = pd.DataFrame()
         for ed in edition:
             # Create a new dataframe for each edition:
             df_wcc = pd.DataFrame(columns=['Zone 4+', 'Zone 5+', 'Zone 4-', 'Zone 5-'])
@@ -822,6 +825,8 @@ class PressureCalc:
                 df_wcc = df_wcc.append({'Zone 4+': wps[0], 'Zone 5+': wps[1], 'Zone 4-': wps[2], 'Zone 5-': wps[3]}, ignore_index=True)
             # Add DataFrame to list:
             edw_list.append(df_wcc)
+            # Extract reference pressures:
+            dfw_pref = dfw_pref.append(df_wcc.iloc[0], ignore_index=True)  # First row corresponds to pressures at min(wind_speed)
             # Plot Zone pressures for 1 case (Zones 4 and 5 (+) are equal):
             # ax.plot(df_wcc['Zone 4+'], wind_speed)
             # plt.ylim(90, max(wind_speed))
@@ -832,31 +837,35 @@ class PressureCalc:
             # Uncomment to show the difference in pressure between zones and wind speeds for the typical effective wind area
             #print('percent change between zones:', ed, df_wcc.pct_change(axis=1))
             #print('percent change in wind speed:', ed, df_wcc.pct_change(axis=0))
-
-            # Note: Variation in wind speed is the same across zones:
-            # Determine the appropriate multiplier by comparing to reference wind speed pressure:
-            df_Vfactor = pd.DataFrame()
-            for dframe in edw_list:
-                # Use Zone 4 pressures to calculate pressure differences due to change in wind speed:
-                col = dframe[dframe.columns[0]]
-                vfactor_list = list()
-                for index in range(0, len(col)):
-                    if index == 0:  # First index corresponds to pressure when V = min(wind_speed)
-                        factor = 1.0
-                    elif col[index] == col[0]:
-                        factor = 1.0
-                    else:
-                        factor = (col[index] - col[0]) / col[0]
-                    vfactor_list.append(factor)
-                vfactor_dict = {wind_speed[i]: vfactor_list[i] for i in range(len(vfactor_list))}  # Pairs each key (wind speed) with its corresponding factor
-                # Add to DataFrame:
-                df_Vfactor = df_Vfactor.append(vfactor_dict, ignore_index=True)
-            # Set the index to the corresponding code editions:
-            # Add column:
-            df_Vfactor['Edition'] = edition
-            df_Vfactor.set_index('Edition', inplace=True)
-            # Save the DataFrame to a .csv file for future reference:
-            df_Vfactor.to_csv('Mullions.csv')
+        # Add column for reference pressures DataFrame:
+        dfw_pref['Edition'] = edition
+        dfw_pref.set_index('Edition', inplace=True)
+        # Save the DataFrame to a .csv file for future reference:
+        dfw_pref.to_csv('Wall_CC_ref_' + ctype + '.csv')
+        # Determine the appropriate multiplier by comparing to reference wind speed pressure:
+        # Note: Variation in wind speed is the same across zones:
+        df_Vfactor = pd.DataFrame()
+        for dframe in edw_list:
+            # Use Zone 4 pressures to calculate pressure differences due to change in wind speed:
+            col = dframe[dframe.columns[0]]
+            vfactor_list = list()
+            for index in range(0, len(col)):
+                if index == 0:  # First index corresponds to pressure when V = min(wind_speed)
+                    factor = 1.0
+                elif col[index] == col[0]:
+                    factor = 1.0
+                else:
+                    factor = (col[index] - col[0]) / col[0]
+                vfactor_list.append(factor)
+            vfactor_dict = {wind_speed[i]: vfactor_list[i] for i in range(len(vfactor_list))}  # Pairs each key (wind speed) with its corresponding factor
+            # Add to DataFrame:
+            df_Vfactor = df_Vfactor.append(vfactor_dict, ignore_index=True)
+        # Set the index to the corresponding code editions:
+        # Add column:
+        df_Vfactor['Edition'] = edition
+        df_Vfactor.set_index('Edition', inplace=True)
+        # Save the DataFrame to a .csv file for future reference:
+        #df_Vfactor.to_csv('Wall_CC_v.csv')
 
         # Variation 2: Reference Building Story height, multiple stories, different wind speeds:
         # Define an array of building heights:
@@ -870,7 +879,6 @@ class PressureCalc:
         # Percent change in pressure between heights is same for all Zones
         # Two groups: ASCE 7-95 and older vs. ASCE 7-98 and older, here we are going to collect all for easy access/comparison
         dfw_hfactor = pd.DataFrame()
-
         for ed in edition:
             # Set up a dataframe to compare values:
             dfwh = pd.DataFrame()
@@ -916,13 +924,12 @@ class PressureCalc:
         dfw_hfactor['Edition'] = edition
         dfw_hfactor.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        # dfw_hfactor.to_csv('Mullion_RefH.csv')
+        dfw_hfactor.to_csv('Wall_CC_h_' + ctype + '.csv')
 
-        # Investigate effect of different exposure categories across heights:
+        # Variation 3: Different building heights (same h_story), different wind speeds, different exposures:
         exposures = ['B', 'C', 'D']
         # Set up an empty list to store the dataframes:
         expw_list = list()
-
         for ed in edition:
             # Set up DataFrame to save pressure difference across exposure categories for various heights:
             dfw_Efactor = pd.DataFrame(columns=exposures)
@@ -966,7 +973,7 @@ class PressureCalc:
             dfw_Efactor.set_index('Height in ft', inplace=True)
             # Store the DataFrame of Exposure factors:
             expw_list.append(dfw_Efactor)
-
+        # Extra code to inform future considerations of variation in wind speed for C&C components:
         # Reference Building with range of effective wind areas using typical practice:
         #df_wcc = pd.DataFrame()
         # Set up array of effective areas:
