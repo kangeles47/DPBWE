@@ -1011,7 +1011,7 @@ class PressureCalc:
     def get_warea(self, ctype, parcel_flag, h_story):
         # Determine the effective area for a wall C&C:
         if ctype == 'mullion':
-            if parcel_flag == 1:
+            if parcel_flag:
                 if h_story <= 15:  # [ft]
                     area_eff = h_story*5  # [ft^2]
                 else:
@@ -1019,7 +1019,7 @@ class PressureCalc:
             else:
                 pass
         elif ctype == 'glass curtain wall':
-            if parcel_flag == 1:
+            if parcel_flag:
                 area_eff = (h_story/2)*5  # [ft^2]
             else:
                 pass
@@ -1035,7 +1035,7 @@ class PressureCalc:
 
 
     def ref_bldg(self):
-        # Base building parameters:
+        # Reference building parameters:
         ref_exposure = 'B'
         ref_hstory = 9 # [ft]
         ref_hbldg = 9 # [ft]
@@ -1065,7 +1065,7 @@ class PressureCalc:
         elif edition == 'ASCE 7-16':
             pass
 
-    def get_sim_pressure(self, a, b, c):
+    def get_psim(self, a, b, c):
         # Solve the quadratic equation ax**2 + bx + c = 0
         # Calculate the discriminant
         d = (b ** 2) - (4 * a * c)
@@ -1076,9 +1076,6 @@ class PressureCalc:
         print('The solution are {0} and {1}'.format(sol1, sol2))
         return sol1, sol2
 
-
-def func(x, a, b, c):
-    return a*(x**2)+b*x+c
 
 # Create an instance of PressureCalc()
 pressures = PressureCalc()
@@ -1107,6 +1104,6 @@ wind_speed = np.arange(70, 185, 5)  # [mph]
 edition = ['ASCE 7-93', 'ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
 # Populate similitude parameters for each case of Wall C&C:
 # Determine the effective area using typical practice:
-parcel_flag = 1
+parcel_flag = True
 ctype = 'mullion'
 pressures.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_cat, wind_speed, edition, ctype, parcel_flag)
