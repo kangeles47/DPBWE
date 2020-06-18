@@ -665,7 +665,7 @@ class PressureCalc:
         df_pref['Edition'] = edition
         df_pref.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        df_pref.to_csv('Roof_MWFRS_ref' + str(use_case) + '.csv')
+        #df_pref.to_csv('Roof_MWFRS_ref' + str(use_case) + '.csv')
         # Determine the appropriate multiplier by comparing to reference wind speed pressure:
         # Note: Variation in wind speed is the same across zones:
         df_Vfactor = pd.DataFrame()
@@ -841,7 +841,7 @@ class PressureCalc:
         dfw_pref['Edition'] = edition
         dfw_pref.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        dfw_pref.to_csv('Wall_CC_ref_' + ctype + '.csv')
+        #dfw_pref.to_csv('Wall_CC_ref_' + ctype + '.csv')
         # Determine the appropriate multiplier by comparing to reference wind speed pressure:
         # Note: Variation in wind speed is the same across zones:
         df_Vfactor = pd.DataFrame()
@@ -924,7 +924,7 @@ class PressureCalc:
         dfw_hfactor['Edition'] = edition
         dfw_hfactor.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        dfw_hfactor.to_csv('Wall_CC_h_' + ctype + '.csv')
+        #dfw_hfactor.to_csv('Wall_CC_h_' + ctype + '.csv')
 
         # Variation 3: Different building heights (same h_story), different wind speeds, different exposures:
         exposures = ['B', 'C', 'D']
@@ -973,6 +973,8 @@ class PressureCalc:
             dfw_Efactor.set_index('Height in ft', inplace=True)
             # Store the DataFrame of Exposure factors:
             expw_list.append(dfw_Efactor)
+            # Save the DataFrame for this code edition to a .csv file for future reference:
+            dfw_Efactor.to_csv('Wall_CC_exp_' + ctype + '_' + str(ref_story) + 'ft_'+ ed[-2:]+'.csv')
         # Extra code to inform future considerations of variation in wind speed for C&C components:
         # Reference Building with range of effective wind areas using typical practice:
         #df_wcc = pd.DataFrame()
