@@ -66,20 +66,27 @@ class PressureCalc:
         # Set up placeholders for Cp values:
         rmps = list()
         # Find the Cps:
-        cp = PressureCalc.get_cp_rmwfrs(self, h_bldg, direction, ratio, pitch, length)
-        for row in cp:
-            gcp = g * row[0]  # Take the first Cp value for uplift calculations
+        cp = PressureCalc.get_cp_rmwfrs(self, h_bldg, direction, ratio, pitch, length, edition)
+        if len(cp) == 1: # In cases when there is only one zone
+            gcp = g*cp[0]
             # Calculate uplift pressure at the zone:
             p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
-            # Minimum design pressures for roof MWFRS:
-            #if abs(p) < 10:
-                #if edition != 'ASCE 7-10':  # [psf]
-                    #p = np.sign(p) * 10  # [psf]
-                #elif abs(p) < 8 and edition == 'ASCE 7-10':
-                    #p = np.sign(p) * 8  # [psf]
-            #else:
-                #pass
+            # Add pressure to list:
             rmps.append(p)
+        else:
+            for row in cp:
+                gcp = g * row[0]  # Take the first Cp value for uplift calculations
+                # Calculate uplift pressure at the zone:
+                p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
+                # Minimum design pressures for roof MWFRS:
+                #if abs(p) < 10:
+                    #if edition != 'ASCE 7-10':  # [psf]
+                        #p = np.sign(p) * 10  # [psf]
+                    #elif abs(p) < 8 and edition == 'ASCE 7-10':
+                        #p = np.sign(p) * 8  # [psf]
+                #else:
+                    #pass
+                rmps.append(p)
 
         return rmps
 
@@ -102,7 +109,7 @@ class PressureCalc:
             # Set up placeholders for Cp values:
             rmps = list()
             # Find the Cps:
-            cp = PressureCalc.get_cp_rmwfrs(self, h_bldg, direction, ratio, pitch, length)
+            cp = PressureCalc.get_cp_rmwfrs(self, h_bldg, direction, ratio, pitch, length, edition)
             for row in cp:
                 gcp = g*cp[0][0] # Take the first Cp value for uplift calculations
                 # Calculate uplift pressure at the zone:
@@ -237,16 +244,16 @@ class PressureCalc:
         kz, alpha = PressureCalc.get_kz(self, z, exposure, edition, is_cc)
         # Calculate the velocity pressure:
         if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
-            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean, cat)
+            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean, cat, edition)
             qz = 0.00256 * kz * (imp * wind_speed) ** 2
         elif edition == 'ASCE 7-95':
             kzt = 1.0
-            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean, cat)
+            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean, cat, edition)
             qz = 0.00256 * kz * kzt * imp * wind_speed ** 2
         elif edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
             kzt = 1.0
             kd = 0.85
-            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean, cat)
+            imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean, cat, edition)
             qz = 0.00256 * kz * kzt * kd * imp * wind_speed ** 2
         elif edition == 'ASCE 7-10' or edition == 'ASCE 7-16':
             kzt = 1.0
@@ -302,12 +309,13 @@ class PressureCalc:
         # Case 1a for all components and cladding and (7-10 Chapter 30 Provisions)
         # z shall not be taken as less than 30 feet for Case 1 in Exposure B
         if is_cc:
-            if exposure == 'B' and (
-                    edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10'):
+            if exposure == 'B' and (edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10' or edition == 'ASCE 7-16'):
                 if z < 30:
                     z = 30  # [ft]
                 else:
                     pass
+        else:
+            pass
         # Calculate the velocity pressure coefficient:
         if z <= 15:  # [ft]
             kz = factor * (15 / zg) ** (2 / alpha)
@@ -315,7 +323,7 @@ class PressureCalc:
             kz = factor * (z / zg) ** (2 / alpha)
         return kz, alpha
 
-    def get_i(self, z, wind_speed, hpr, h_ocean, cat):
+    def get_i(self, z, wind_speed, hpr, h_ocean, cat, edition):
         # Importance factor for ASCE 7-05 and older:
         if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
             if h_ocean:  # if building is at hurricane oceanline (ASCE 7-88 and 7-93)
@@ -333,14 +341,14 @@ class PressureCalc:
                 imp = categories[cat - 1]
         return imp
 
-    def get_cp_rmwfrs(self, h_bldg, direction, ratio, pitch, length):
+    def get_cp_rmwfrs(self, h_bldg, direction, ratio, pitch, length, edition):
         # Identify roof MWFRS zones and pressure coefficients
         if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
             if direction == 'parallel':
                 if ratio <= 2.5:
-                    Cps = -0.7
+                    Cps = [-0.7]
                 elif ratio > 2.5:
-                    Cps = -0.8
+                    Cps = [-0.8]
             elif direction == 'normal':
                 pass
         else:
@@ -641,6 +649,14 @@ class PressureCalc:
             case_col = ['Zone 1', 'Zone 2']
             length = ref_hbldg  # Choose a length that gives ratio to return pressures for all zones
             ratio = ref_hbldg / length
+        elif use_case == 3:  # (ASCE 7-88/-93) wind direction || to ridge AND h/L <= 2.5
+            case_col = ['Zone 1']
+            length = ref_hbldg  # Choose a length that gives ratio <= 2.5
+            ratio = ref_hbldg / length
+        elif use_case == 4:  # (ASCE 7-88/-93) wind direction || to ridge AND h/L <= 2.5
+            case_col = ['Zone 1']
+            length = ref_hbldg/3  # Choose a length that gives ratio t> 2.5
+            ratio = ref_hbldg / length
         else:
             pass
         # VARIATION 1: Reference building at various wind speeds:
@@ -677,7 +693,7 @@ class PressureCalc:
         df_pref['Edition'] = edition
         df_pref.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        #df_pref.to_csv('Roof_MWFRS_ref' + str(use_case) + '.csv')
+        df_pref.to_csv('Roof_MWFRS_ref' + str(use_case) + '.csv')
         # Determine the appropriate multiplier by comparing to reference wind speed pressure:
         # Note: Variation in wind speed is the same across zones:
         df_Vfactor = pd.DataFrame()
@@ -701,7 +717,7 @@ class PressureCalc:
         df_Vfactor['Edition'] = edition
         df_Vfactor.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        #df_Vfactor.to_csv('Roof_MWFRS_v' + str(use_case)+'.csv')
+        df_Vfactor.to_csv('Roof_MWFRS_v' + str(use_case)+'.csv')
 
         # Variation 2: Different building height, different wind speeds:
         # Create an empty list that will hold DataFrames for each code edition:
@@ -757,7 +773,7 @@ class PressureCalc:
             hcol_name = dfh.columns[index]
             df_hfactor[hcol_name] = np.array([factor])
         # Uncomment to save the DataFrame to a .csv file for future reference:
-        #df_hfactor.to_csv('Roof_MWFRS_h.csv')
+        df_hfactor.to_csv('Roof_MWFRS_h_93.csv')
 
         # Variation 3: Different building height, different wind speeds, different exposures:
         exposures = ['B', 'C', 'D']
@@ -819,7 +835,7 @@ class PressureCalc:
             # Store the DataFrame of Exposure factors:
             exp_list.append(df_Efactor)
             # Save the DataFrame for this code edition to a .csv file for future reference:
-            # df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
+            df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
 
     def run_sim_wcc(self, ref_exposure, ref_hbldg, ref_story, ref_cat, wind_speed, edition, ctype, parcel_flag):
         # VARIATION 1: Reference building at various wind speeds:
@@ -1102,11 +1118,12 @@ pressures = PressureCalc()
 # Populate the reference building attributes:
 ref_exposure, ref_hstory, ref_hbldg, ref_cat, hpr, h_ocean = pressures.ref_bldg()
 # Create a vector of editions:
-edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
+#edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
+edition = ['ASCE 7-93']
 # Define a range of wind speed values:
 wind_speed = np.arange(70, 185, 5)  # [mph]
 # Define the use case
-use_case = 2
+use_case = 3
 # Populate similitude parameters for each case of Roof MWFRS:
 pressures.run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_cat, wind_speed, edition, use_case)
 
