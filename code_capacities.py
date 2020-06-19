@@ -35,16 +35,27 @@ def get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, dire
     elif edition == 'ASCE 7-88':
         edition = 'ASCE 7-93'
     # Step 3: Extract the respective reference pressure for the use case:
+    file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_MWFRS/Roof_MWFRS_'
     if use_case == 1:
-        pass
+        pref = pd.read_csv(file_path + 'ref1.csv')
     elif use_case == 2:
-        pass
+        pref = pd.read_csv(file_path + 'ref2.csv')
     elif use_case == 3:
-        pass
+        pref = pd.read_csv(file_path + 'ref3.csv')
     elif use_case == 4:
-        pass
+        pref = pd.read_csv(file_path + 'ref4.csv')
     # Step 3: Filter out any zones that are not needed for use cases 1 and 2:
     if use_case == 1 and ratio == 0.5:
-        zones = 3
+        pref = pref[pref.columns[0:2]] # Case with only 3 zones
     elif use_case == 2 and ratio == 1.0:
-        zones = 1
+        pref = pref[pref.columns[0:1]] # Case with only 1 zone
+
+# Test it out:
+edition = 'ASCE 7-02'
+h_bldg = 9
+length = 18
+exposure = 'B'
+wind_speed = 120
+direction = 'normal'
+pitch = 8
+get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, pitch)
