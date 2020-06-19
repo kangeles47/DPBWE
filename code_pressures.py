@@ -700,7 +700,7 @@ class PressureCalc:
             # plt.ylim(90, max(wind_speed))
             # plt.show()
             # Uncomment to show the percent change in pressure between heights:
-            print('Percent change in pressure between heights:', ed, dfh.pct_change(axis=1))
+            # print('Percent change in pressure between heights:', ed, dfh.pct_change(axis=1))
         # Calculate the percent change in pressure (compared to reference building height):
         df_hfactor = pd.DataFrame()
         row = dfh.iloc[0]  # Only need one since variation with height is same for all codes
@@ -955,7 +955,7 @@ class PressureCalc:
             # Store the DataFrame of Exposure factors:
             expw_list.append(dfw_Efactor)
             # Save the DataFrame for this code edition to a .csv file for future reference:
-            dfw_Efactor.to_csv('Wall_CC_exp_' + ctype + '_' + str(ref_story) + 'ft_'+ ed[-2:]+'.csv')
+            #dfw_Efactor.to_csv('Wall_CC_exp_' + ctype + '_' + str(ref_story) + 'ft_'+ ed[-2:]+'.csv')
         # Extra code to inform future considerations of variation in wind speed for C&C components:
         # Reference Building with range of effective wind areas using typical practice:
         #df_wcc = pd.DataFrame()
@@ -1026,7 +1026,8 @@ class PressureCalc:
         hpr = True  # Will later need to create the logic for these designations
         h_ocean = True # The entire Bay County is within 100 miles of the ocean
         encl_class = 'Enclosed'
-        return ref_exposure, ref_hstory, ref_hbldg, ref_cat, hpr, h_ocean, encl_class
+        ref_speed = 70 # [mph]
+        return ref_exposure, ref_hstory, ref_hbldg, ref_speed, ref_cat, hpr, h_ocean, encl_class
 
     def get_mwfrs_pressure(self, wind_speed, exposure, edition, h_story, h_bldg):
         # Given the input building parameters, return the pressure for the specified component:
@@ -1064,7 +1065,7 @@ class PressureCalc:
 # Create an instance of PressureCalc()
 pressures = PressureCalc()
 # Populate the reference building attributes:
-ref_exposure, ref_hstory, ref_hbldg, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
+ref_exposure, ref_hstory, ref_hbldg, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
 # Create a vector of editions:
 #edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
 edition = ['ASCE 7-93']
