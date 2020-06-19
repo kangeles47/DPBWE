@@ -51,7 +51,7 @@ class PressureCalc:
             rps.append(p)
         return rps
 
-    def rmwfrs_capacity(self, wind_speed, exposure, edition, h_bldg, length, ratio, cat):
+    def rmwfrs_pressure(self, wind_speed, exposure, edition, h_bldg, length, ratio, cat):
         # Determine GCpis for pressure calculation:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class='Enclosed')
         # Determine the velocity pressure:
@@ -66,7 +66,7 @@ class PressureCalc:
         # Set up placeholders for Cp values:
         rmps = list()
         # Find the Cps:
-        cp = PressureCalc.roof_mwfrs(self, h_bldg, direction, ratio, pitch, length)
+        cp = PressureCalc.get_cp_rmwfrs(self, h_bldg, direction, ratio, pitch, length)
         for row in cp:
             gcp = g * row[0]  # Take the first Cp value for uplift calculations
             # Calculate uplift pressure at the zone:
@@ -102,7 +102,7 @@ class PressureCalc:
             # Set up placeholders for Cp values:
             rmps = list()
             # Find the Cps:
-            cp = PressureCalc.roof_mwfrs(self, h_bldg, direction, ratio, pitch, length)
+            cp = PressureCalc.get_cp_rmwfrs(self, h_bldg, direction, ratio, pitch, length)
             for row in cp:
                 gcp = g*cp[0][0] # Take the first Cp value for uplift calculations
                 # Calculate uplift pressure at the zone:
@@ -333,46 +333,55 @@ class PressureCalc:
                 imp = categories[cat - 1]
         return imp
 
-    def roof_mwfrs(self, h_bldg, direction, ratio, pitch, length):
+    def get_cp_rmwfrs(self, h_bldg, direction, ratio, pitch, length):
         # Identify roof MWFRS zones and pressure coefficients
-        if (pitch < 10 or pitch == 'flat' or pitch == 'shallow' or pitch == 'flat or shallow') or direction == 'parallel':
-            if ratio <= 0.5:
-                Cp_full = np.array([[-0.9, -0.18], [-0.9, -0.18], [-0.5, -0.18], [-0.3, -0.18]])
-                if length <= 0.5*h_bldg:
-                    zones = 1
-                elif 0.5*h_bldg < length <= h_bldg:
-                    zones = 2
-                elif h_bldg < length <= 2*h_bldg:
-                    zones = 3
-                elif length > 2*h_bldg:
-                    zones = 4
-                # Get back all Cps for the identified zones:
-                Cps = Cp_full[0:zones]
-            elif ratio >= 1.0:
-                Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
-                if length <= 0.5*h_bldg:
-                    zones = 1
-                elif length > 0.5*h_bldg:
-                    zones = 2
-                # Get back all Cps for the identified zones:
-                Cps = Cp_full[0:zones]
+        if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
+            if direction == 'parallel':
+                if ratio <= 2.5:
+                    Cps = -0.7
+                elif ratio > 2.5:
+                    Cps = -0.8
+            elif direction == 'normal':
+                pass
         else:
-            if direction == 'windward':
-                angles = np.array([10, 15, 20, 25, 30, 35, 45, 60, 80])
-                if ratio <= 0.25:
-                    Cp_full = np.array([[-0.7, -0.18], [-0.5, 0.0], [-0.3, 0.2], [-0.2, 0.3], [-0.2, 0.3], [0.0, 0.4],[0.01, 0.01],[0.8, 0.8]])
-                    # Choose pressure coefficients given the load direction:
-                    Cps = Cp_full
-                elif ratio == 0.5:
-                    Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
-                    zones = np.array([0.5 * h_bldg, 0.50001 * h_bldg])
-                    num_zones = np.count_nonzero(zones <= ratio)
+            if (pitch < 10 or pitch == 'flat' or pitch == 'shallow' or pitch == 'flat or shallow') or direction == 'parallel':
+                if ratio <= 0.5:
+                    Cp_full = np.array([[-0.9, -0.18], [-0.9, -0.18], [-0.5, -0.18], [-0.3, -0.18]])
+                    if length <= 0.5*h_bldg:
+                        zones = 1
+                    elif 0.5*h_bldg < length <= h_bldg:
+                        zones = 2
+                    elif h_bldg < length <= 2*h_bldg:
+                        zones = 3
+                    elif length > 2*h_bldg:
+                        zones = 4
                     # Get back all Cps for the identified zones:
-                    Cps = Cp_full[0:num_zones]
+                    Cps = Cp_full[0:zones]
                 elif ratio >= 1.0:
-                    pass
-            elif direction == 'leeward':
-                angles = np.array([10, 15, 20])
+                    Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
+                    if length <= 0.5*h_bldg:
+                        zones = 1
+                    elif length > 0.5*h_bldg:
+                        zones = 2
+                    # Get back all Cps for the identified zones:
+                    Cps = Cp_full[0:zones]
+            else:
+                if direction == 'windward':
+                    angles = np.array([10, 15, 20, 25, 30, 35, 45, 60, 80])
+                    if ratio <= 0.25:
+                        Cp_full = np.array([[-0.7, -0.18], [-0.5, 0.0], [-0.3, 0.2], [-0.2, 0.3], [-0.2, 0.3], [0.0, 0.4],[0.01, 0.01],[0.8, 0.8]])
+                        # Choose pressure coefficients given the load direction:
+                        Cps = Cp_full
+                    elif ratio == 0.5:
+                        Cp_full = np.array([[-1.3, -0.18], [-0.7, -0.18]])
+                        zones = np.array([0.5 * h_bldg, 0.50001 * h_bldg])
+                        num_zones = np.count_nonzero(zones <= ratio)
+                        # Get back all Cps for the identified zones:
+                        Cps = Cp_full[0:num_zones]
+                    elif ratio >= 1.0:
+                        pass
+                elif direction == 'leeward':
+                    angles = np.array([10, 15, 20])
         return Cps
 
     def roof_cc(self, area_eff, pos, zone, edition):
@@ -644,7 +653,7 @@ class PressureCalc:
             # Create a new DataFrame for each edition:
             df = pd.DataFrame(columns=case_col)
             for speed in wind_speed:
-                rmps = pressures.rmwfrs_capacity(speed, ref_exposure, ed, ref_hbldg, length, ratio, ref_cat)
+                rmps = pressures.rmwfrs_pressure(speed, ref_exposure, ed, ref_hbldg, length, ratio, ref_cat)
                 # Pair zone names with zone pressures:
                 zone_dict = {df.columns[i]: rmps[i] for i in range(len(rmps))}
                 # Add values to Dataframe:
@@ -717,7 +726,7 @@ class PressureCalc:
                     pass
                 rmps_arr = np.array([])
                 for speed in wind_speed:
-                    rmps = pressures.rmwfrs_capacity(speed, ref_exposure, ed, h, length, ratio, ref_cat)
+                    rmps = pressures.rmwfrs_pressure(speed, ref_exposure, ed, h, length, ratio, ref_cat)
                     rmps_arr = np.append(rmps_arr, rmps[0])  # Zone 1 since variation across heights is the same for all zones
                 # Add values to DataFrame:
                 col_name = str(h) + ' ft'
@@ -772,7 +781,7 @@ class PressureCalc:
                 for exp in exposures:
                     rmps_arr = np.array([])
                     for speed in wind_speed:
-                        rmps = pressures.rmwfrs_capacity(speed, exp, ed, h, length, ratio, ref_cat)
+                        rmps = pressures.rmwfrs_pressure(speed, exp, ed, h, length, ratio, ref_cat)
                         rmps_arr = np.append(rmps_arr, rmps[0])
                     # Add values to DataFrame:
                     dfE[exp] = rmps_arr
