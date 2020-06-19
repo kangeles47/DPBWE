@@ -181,7 +181,6 @@ class PressureCalc:
         return gcpi
 
     def get_g(self, edition, exposure, is_cc, alpha,z):
-        alpha = 7.0  # Provide default value for Exposure B
         # Gust effect or gust response factor:
         if edition == 'ASCE 7-95':
             if exposure == 'A' or exposure == 'B':
@@ -658,7 +657,7 @@ class PressureCalc:
             length = ref_hbldg/3  # Choose a length that gives ratio t> 2.5
             ratio = ref_hbldg / length
         else:
-            pass
+            print('use case not supported')
         # VARIATION 1: Reference building at various wind speeds:
         # GOAL: Similitude between wind speeds: multiply reference pressure for each zone with a factor
         # Create an empty list that will hold DataFrames for each code edition:
@@ -693,7 +692,7 @@ class PressureCalc:
         df_pref['Edition'] = edition
         df_pref.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        df_pref.to_csv('Roof_MWFRS_ref' + str(use_case) + '.csv')
+        #df_pref.to_csv('Roof_MWFRS_ref' + str(use_case) + '.csv')
         # Determine the appropriate multiplier by comparing to reference wind speed pressure:
         # Note: Variation in wind speed is the same across zones:
         df_Vfactor = pd.DataFrame()
@@ -717,7 +716,7 @@ class PressureCalc:
         df_Vfactor['Edition'] = edition
         df_Vfactor.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        df_Vfactor.to_csv('Roof_MWFRS_v' + str(use_case)+'.csv')
+        #df_Vfactor.to_csv('Roof_MWFRS_v' + str(use_case)+'.csv')
 
         # Variation 2: Different building height, different wind speeds:
         # Create an empty list that will hold DataFrames for each code edition:
@@ -738,8 +737,14 @@ class PressureCalc:
                 elif use_case == 2:  # theta < 10 or wind direction || to ridge AND h/L >= 1.0
                     length = ref_hbldg  # Choose a length that gives ratio to return pressures for all zones
                     ratio = ref_hbldg / length
+                elif use_case == 3:  # (ASCE 7-88/-93) wind direction || to ridge AND h/L <= 2.5
+                    length = ref_hbldg  # Choose a length that gives ratio <= 2.5
+                    ratio = ref_hbldg / length
+                elif use_case == 4:  # (ASCE 7-88/-93) wind direction || to ridge AND h/L <= 2.5
+                    length = ref_hbldg / 3  # Choose a length that gives ratio t> 2.5
+                    ratio = ref_hbldg / length
                 else:
-                    pass
+                    print('use case not supported')
                 rmps_arr = np.array([])
                 for speed in wind_speed:
                     rmps = pressures.rmwfrs_pressure(speed, ref_exposure, ed, h, length, ratio, ref_cat)
@@ -773,7 +778,7 @@ class PressureCalc:
             hcol_name = dfh.columns[index]
             df_hfactor[hcol_name] = np.array([factor])
         # Uncomment to save the DataFrame to a .csv file for future reference:
-        df_hfactor.to_csv('Roof_MWFRS_h_93.csv')
+        #df_hfactor.to_csv('Roof_MWFRS_h_93.csv')
 
         # Variation 3: Different building height, different wind speeds, different exposures:
         exposures = ['B', 'C', 'D']
@@ -791,8 +796,14 @@ class PressureCalc:
                 elif use_case == 2:  # theta < 10 or wind direction || to ridge AND h/L >= 1.0
                     length = ref_hbldg  # Choose a length that gives ratio to return pressures for all zones
                     ratio = ref_hbldg / length
+                elif use_case == 3:  # (ASCE 7-88/-93) wind direction || to ridge AND h/L <= 2.5
+                    length = ref_hbldg  # Choose a length that gives ratio <= 2.5
+                    ratio = ref_hbldg / length
+                elif use_case == 4:  # (ASCE 7-88/-93) wind direction || to ridge AND h/L <= 2.5
+                    length = ref_hbldg / 3  # Choose a length that gives ratio t> 2.5
+                    ratio = ref_hbldg / length
                 else:
-                    pass
+                    print('use case not supported')
                 # fig4, ax4 = plt.subplots()
                 for exp in exposures:
                     rmps_arr = np.array([])
@@ -835,7 +846,7 @@ class PressureCalc:
             # Store the DataFrame of Exposure factors:
             exp_list.append(df_Efactor)
             # Save the DataFrame for this code edition to a .csv file for future reference:
-            df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
+            #df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
 
     def run_sim_wcc(self, ref_exposure, ref_hbldg, ref_story, ref_cat, wind_speed, edition, ctype, parcel_flag):
         # VARIATION 1: Reference building at various wind speeds:
