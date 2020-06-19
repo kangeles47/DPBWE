@@ -131,6 +131,12 @@ class PressureCalc:
                 d0 = 0.005
             elif exposure == 'D':
                 d0 = 0.003
+            # Adjust the height if necessary:
+            if z < 15:  # [ft]
+                z = 15
+            else:
+                pass
+            # Calculate the gust reponse factor
             if is_cc:  # Gz and Gh are calculated the exact same way, except that Gz uses the mean roof height
                 tz = (2.35 * (d0) ** (1 / 2)) / ((z /30) ** (1 / alpha))
                 g = 0.65 + 3.65 * tz
@@ -616,13 +622,13 @@ class PressureCalc:
             #plt.xlabel('Pressure [psf]')
             #plt.show()
             # Uncomment to show the percent change in pressure between zones and wind speeds:
-            print('percent change between zones:', df.pct_change(axis=1))
-            print('percent change between wind speeds:', df.pct_change(axis=0))
+            #print('percent change between zones:', df.pct_change(axis=1))
+            #print('percent change between wind speeds:', df.pct_change(axis=0))
         # Add column for reference pressures DataFrame:
         df_pref['Edition'] = edition
         df_pref.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        df_pref.to_csv('Roof_MWFRS_ref' + str(use_case) + '.csv')
+        #df_pref.to_csv('Roof_MWFRS_ref' + str(use_case) + '.csv')
         # Determine the appropriate multiplier by comparing to reference wind speed pressure:
         # Note: Variation in wind speed is the same across zones:
         df_Vfactor = pd.DataFrame()
@@ -646,7 +652,7 @@ class PressureCalc:
         df_Vfactor['Edition'] = edition
         df_Vfactor.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        df_Vfactor.to_csv('Roof_MWFRS_v' + str(use_case)+'.csv')
+        #df_Vfactor.to_csv('Roof_MWFRS_v' + str(use_case)+'.csv')
 
         # Variation 2: Different building height, different wind speeds:
         # Create an empty list that will hold DataFrames for each code edition:
@@ -678,9 +684,7 @@ class PressureCalc:
                 rmps_arr = np.array([])
                 for speed in wind_speed:
                     rmps = pressures.rmwfrs_pressure(speed, ref_exposure, ed, h, length, ratio, ref_cat, hpr, h_ocean, encl_class)
-                    print(rmps)
                     rmps_arr = np.append(rmps_arr, rmps[0])  # Zone 1 since variation across heights is the same for all zones
-                    print(speed, h)
                 # Add values to DataFrame:
                 col_name = str(h) + ' ft'
                 dfh[col_name] = rmps_arr
@@ -710,7 +714,7 @@ class PressureCalc:
             hcol_name = dfh.columns[index]
             df_hfactor[hcol_name] = np.array([factor])
         # Uncomment to save the DataFrame to a .csv file for future reference:
-        df_hfactor.to_csv('Roof_MWFRS_h.csv')
+        #df_hfactor.to_csv('Roof_MWFRS_h_93.csv')
 
         # Variation 3: Different building height, different wind speeds, different exposures:
         exposures = ['B', 'C', 'D']
@@ -754,8 +758,8 @@ class PressureCalc:
                 # plt.ylim(90, max(wind_speed))
                 # plt.show()
                 # Check the percent change between Exposure categories:
-                print('percent change in pressure by Exposure Category by h:', h, exp)
-                print(dfE.pct_change(axis=1))
+                #print('percent change in pressure by Exposure Category by h:', h, exp)
+                #print(dfE.pct_change(axis=1))
                 # Calculate the percent change from Exposure B:
                 row = dfE.iloc[0]
                 factor_list = list()
@@ -778,7 +782,7 @@ class PressureCalc:
             # Store the DataFrame of Exposure factors:
             exp_list.append(df_Efactor)
             # Save the DataFrame for this code edition to a .csv file for future reference:
-            df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
+            #df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
 
     def run_sim_wcc(self, ref_exposure, ref_hbldg, ref_story, ref_cat, wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class):
         # VARIATION 1: Reference building at various wind speeds:
@@ -1062,12 +1066,12 @@ pressures = PressureCalc()
 # Populate the reference building attributes:
 ref_exposure, ref_hstory, ref_hbldg, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
 # Create a vector of editions:
-edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
-#edition = ['ASCE 7-93']
+#edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
+edition = ['ASCE 7-93']
 # Define a range of wind speed values:
 wind_speed = np.arange(70, 185, 5)  # [mph]
 # Define the use case
-use_case = 2
+use_case = 3
 # Populate similitude parameters for each case of Roof MWFRS:
 pressures.run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_cat, wind_speed, edition, use_case, hpr, h_ocean, encl_class)
 
