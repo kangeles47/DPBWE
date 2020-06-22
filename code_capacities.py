@@ -84,7 +84,7 @@ def get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, dire
         if exposure == ref_exposure:
             pass
         else:
-            efactor = pd.read_csv(file_path + 'h.csv')[edition][exposure]
+            efactor = pd.read_csv(file_path + 'h.csv', index_col='Edition').loc[[edition],exposure]
     # Step 6: Apply the similitude parameters to get the final pressures for each zone:
     psim = pref.loc[0]*vfactor*hfactor*efactor
     print('reference pressure:', pref)

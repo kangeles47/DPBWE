@@ -138,11 +138,12 @@ class PressureCalc:
                 pass
             # Calculate the gust reponse factor
             if is_cc:  # Gz and Gh are calculated the exact same way, except that Gz uses the mean roof height
-                tz = (2.35 * (d0) ** (1 / 2)) / ((z /30) ** (1 / alpha))
+                tz = (2.35 * (d0) ** (1 / 2)) / ((z /30) ** (1 / alpha)) # Gz calc
                 g = 0.65 + 3.65 * tz
             else:
-                tz = (2.35 * (d0) ** (1 / 2)) / ((z /30) ** (1 / alpha))
+                tz = (2.35 * (d0) ** (1 / 2)) / ((z /30) ** (1 / alpha)) # Gh calc
                 g = 0.65 + 3.65 * tz
+                print('height:', z, 'Gz:', g)
         else:  # All other editions of ASCE 7
             g = 0.85
         return g
@@ -284,7 +285,7 @@ class PressureCalc:
                     Cps = [-0.7]
                 elif ratio > 2.5:
                     Cps = [-0.8]
-            elif direction == 'normal':
+            else:
                 pass
         else:
             if (pitch < 10 or pitch == 'flat' or pitch == 'shallow' or pitch == 'flat or shallow') or direction == 'parallel':
@@ -700,10 +701,11 @@ class PressureCalc:
             # plt.ylim(90, max(wind_speed))
             # plt.show()
             # Uncomment to show the percent change in pressure between heights:
-            # print('Percent change in pressure between heights:', ed, dfh.pct_change(axis=1))
+            a= dfh.pct_change(axis=1)
+            print('Percent change in pressure between heights:', ed, dfh.pct_change(axis=1))
         # Calculate the percent change in pressure (compared to reference building height):
         df_hfactor = pd.DataFrame()
-        row = dfh.iloc[0]  # Only need one since variation with height is same for all codes
+        row = dfh.iloc[0]  # Only need one since variation with height is same for across wind speeds
         for index in range(0, len(row)):
             if index == 0:
                 factor = 1.0
@@ -1028,27 +1030,6 @@ class PressureCalc:
         encl_class = 'Enclosed'
         ref_speed = 70 # [mph]
         return ref_exposure, ref_hstory, ref_hbldg, ref_speed, ref_cat, hpr, h_ocean, encl_class
-
-    def get_mwfrs_pressure(self, wind_speed, exposure, edition, h_story, h_bldg):
-        # Given the input building parameters, return the pressure for the specified component:
-        # Base building parameters:
-        base_exposure, base_story, base_height = PressureCalc.ref_bldg(self)
-        # Filter #1: Code editions:
-        if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
-            pass
-        elif edition == 'ASCE 7-95':
-            pass
-        elif edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
-            pass
-        elif edition == 'ASCE 7-10':
-            if h_story == base_story and exposure == base_exposure and h_bldg == base_height:
-                # Quadratic function parameters:
-                a = 1
-                b = 2
-                c = 3 - wind_speed
-
-        elif edition == 'ASCE 7-16':
-            pass
 
     def get_psim(self, a, b, c):
         # Solve the quadratic equation ax**2 + bx + c = 0
