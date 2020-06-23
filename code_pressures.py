@@ -784,7 +784,7 @@ class PressureCalc:
             # Store the DataFrame of Exposure factors:
             exp_list.append(df_Efactor)
             # Save the DataFrame for this code edition to a .csv file for future reference:
-            #df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
+            df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
 
     def run_sim_wcc(self, ref_exposure, ref_hbldg, ref_story, ref_cat, wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class):
         # VARIATION 1: Reference building at various wind speeds:
@@ -1053,7 +1053,7 @@ edition = ['ASCE 7-93']
 # Define a range of wind speed values:
 wind_speed = np.arange(70, 185, 5)  # [mph]
 # Define the use case
-use_case = 3
+use_case = 4
 # Populate similitude parameters for each case of Roof MWFRS:
 pressures.run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_cat, wind_speed, edition, use_case, hpr, h_ocean, encl_class)
 
