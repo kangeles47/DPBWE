@@ -143,7 +143,6 @@ class PressureCalc:
             else:
                 tz = (2.35 * (d0) ** (1 / 2)) / ((z /30) ** (1 / alpha)) # Gh calc
                 g = 0.65 + 3.65 * tz
-                print('height:', z, 'Gz:', g)
         else:  # All other editions of ASCE 7
             g = 0.85
         return g
@@ -784,7 +783,7 @@ class PressureCalc:
             # Store the DataFrame of Exposure factors:
             exp_list.append(df_Efactor)
             # Save the DataFrame for this code edition to a .csv file for future reference:
-            df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
+            #df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
 
     def run_sim_wcc(self, ref_exposure, ref_hbldg, ref_story, ref_cat, wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class):
         # VARIATION 1: Reference building at various wind speeds:
