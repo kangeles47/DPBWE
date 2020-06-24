@@ -94,33 +94,30 @@ def get_wcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, pitc
         file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Wall_CC/RBLDG1/'
     else:
         pass
-    # Step 4: Extract the reference pressures for the component type:
-    if ctype == 'mullion':
-        pref = pd.read_csv(file_path + ctype + '/ref.csv', index_col='Edition').loc[[edition], :]
-    else:
-        pass
+    # Step 4: Extract the reference pressures for the component type
+    pref = pd.read_csv(file_path + ctype + '/ref.csv', index_col='Edition').loc[[edition], :]
     # Step 5: Extract similitude parameters for wind speed, height, and exposure
     # Similitude in wind speed:
     if wind_speed == ref_speed:
         vfactor = 0.0
     else:
         if edition == 'ASCE 7-93':
-            vfactor = pd.read_csv(file_path + '_v93_' + ctype + '.csv', index_col='Edition')[str(wind_speed)][edition]
+            vfactor = pd.read_csv(file_path + ctype + '/v93.csv', index_col='Edition')[str(wind_speed)][edition]
         else:
-            vfactor = pd.read_csv(file_path + '_v_' + ctype + '.csv', index_col='Edition')[str(wind_speed)][edition]
+            vfactor = pd.read_csv(file_path + ctype + '/v.csv', index_col='Edition')[str(wind_speed)][edition]
     # Similitude in height:
     if h_bldg == ref_hbldg:
         hfactor = 0.0
     else:
         if edition == 'ASCE 7-93':
-            hfactor = pd.read_csv(file_path + 'h_93.csv')[str(h_bldg) + ' ft'][0]
+            hfactor = pd.read_csv(file_path + ctype + '/h93.csv')[str(h_bldg) + ' ft'][0]
         else:
-            hfactor = pd.read_csv(file_path + 'h.csv')[str(h_bldg) + ' ft'][0]
+            hfactor = pd.read_csv(file_path + ctype + '/h.csv')[str(h_bldg) + ' ft'][0]
     # Similitude in exposure categories:
     if exposure == ref_exposure:
         efactor = 0.0
     else:
-        efactor = pd.read_csv(file_path + 'exp_' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][h_bldg]
+        efactor = pd.read_csv(file_path + ctype + '/e' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][h_bldg]
     # Step 6: Apply the similitude parameters to get the final pressures for each zone:
     factor_lst = [vfactor, hfactor, efactor]
     psim = pref.loc[edition]
