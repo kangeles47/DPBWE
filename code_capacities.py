@@ -53,38 +53,27 @@ def get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, dire
     pressures = PressureCalc()
     ref_exposure, ref_hstory, ref_hbldg, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
     # Step 5: Extract similitude parameters for wind speed, height, and exposure
-    if edition == 'ASCE 7-93':
-        # Similitude in wind speed:
-        if wind_speed == ref_speed:
-            pass
-        else:
-            pass
-        # Similitude in height:
-        if h_bldg == ref_hbldg:
-            pass
-        else:
-            pass
-        # Similitude in exposure categories:
-        if exposure == ref_exposure:
-            pass
-        else:
-            pass
+    # Similitude in wind speed:
+    if wind_speed == ref_speed:
+        vfactor = 1.0
     else:
-        # Similitude in wind speed:
-        if wind_speed == ref_speed:
-            vfactor = 1.0
+        if edition == 'ASCE 7-93':
+            vfactor = pd.read_csv(file_path + 'v3.csv', index_col='Edition')[str(wind_speed)][edition]
         else:
             vfactor = pd.read_csv(file_path + 'v1.csv', index_col='Edition')[str(wind_speed)][edition] # Leave here for now, for regional simulation will probably want to load everything somewhere outside
-        # Similitude in height:
-        if h_bldg == ref_hbldg:
-            hfactor = 1.0
+    # Similitude in height:
+    if h_bldg == ref_hbldg:
+        hfactor = 1.0
+    else:
+        if edition == 'ASCE 7-93':
+            hfactor = pd.read_csv(file_path + 'h_93.csv')[str(h_bldg) + ' ft'][0]
         else:
             hfactor = pd.read_csv(file_path + 'h.csv')[str(h_bldg) + ' ft'][0]
-        # Similitude in exposure categories:
-        if exposure == ref_exposure:
-            efactor = 1.0
-        else:
-            efactor = pd.read_csv(file_path + 'exp_' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][h_bldg]
+    # Similitude in exposure categories:
+    if exposure == ref_exposure:
+        efactor = 1.0
+    else:
+        efactor = pd.read_csv(file_path + 'exp_' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][h_bldg]
     # Step 6: Apply the similitude parameters to get the final pressures for each zone:
     factor_lst = [vfactor, hfactor, efactor]
     psim = pref.loc[edition]
@@ -93,9 +82,6 @@ def get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, dire
             psim = factor*psim
         else:
             psim = factor*psim + psim
-    print('reference pressure:', pref)
-    print('sim pressure:', psim)
-    print('vfactor:', vfactor, 'hfactor:', hfactor, 'efactor:', efactor)
     return psim
 
 
