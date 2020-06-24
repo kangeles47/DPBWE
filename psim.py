@@ -125,7 +125,7 @@ def run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_cat, wind_speed, edition, cat, u
         hcol_name = dfh.columns[index]
         df_hfactor[hcol_name] = np.array([factor])
     # Save the DataFrame to a .csv file for future reference:
-    # df_hfactor.to_csv('Roof_MWFRS_h.csv')
+    # df_hfactor.to_csv('h.csv')
 
     # Variation 2: Different building height, different wind speeds, different exposures:
     exposures = ['B', 'C', 'D']
