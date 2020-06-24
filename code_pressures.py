@@ -636,9 +636,9 @@ class PressureCalc:
             vfactor_list = list()
             for index in range(0, len(col)):
                 if index == 0:  # First index corresponds to pressure when V = min(wind_speed)
-                    factor = 1.0
+                    factor = 0.0
                 elif col[index] == col[0]:
-                    factor = 1.0
+                    factor = 0.0
                 else:
                     factor = (col[index] - col[0]) / col[0]
                 vfactor_list.append(factor)
@@ -705,9 +705,9 @@ class PressureCalc:
         row = dfh.iloc[0]  # Only need one since variation with height is same for across wind speeds
         for index in range(0, len(row)):
             if index == 0:
-                factor = 1.0
+                factor = 0.0
             elif row[index] == row[0]:
-                factor = 1.0
+                factor = 0.0
             else:
                 factor = (row[index] - row[0]) / row[0]
             hcol_name = dfh.columns[index]
@@ -764,9 +764,9 @@ class PressureCalc:
                 factor_list = list()
                 for index in range(0, len(row)):
                     if index == 0:
-                        factor = 1.0
+                        factor = 0.0
                     elif row[index] == row[0]:
-                        factor = 1.0
+                        factor = 0.0
                     else:
                         factor = (row[index] - row[0]) / row[0]
                     factor_list.append(factor)
@@ -821,7 +821,7 @@ class PressureCalc:
         dfw_pref['Edition'] = edition
         dfw_pref.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        dfw_pref.to_csv('Wall_CC_ref_' + ctype + '.csv')
+        #dfw_pref.to_csv('Wall_CC_ref_' + ctype + '.csv')
         # Determine the appropriate multiplier by comparing to reference wind speed pressure:
         # Note: Variation in wind speed is the same across zones:
         df_Vfactor = pd.DataFrame()
@@ -831,9 +831,9 @@ class PressureCalc:
             vfactor_list = list()
             for index in range(0, len(col)):
                 if index == 0:  # First index corresponds to pressure when V = min(wind_speed)
-                    factor = 1.0
+                    factor = 0.0
                 elif col[index] == col[0]:
-                    factor = 1.0
+                    factor = 0.0
                 else:
                     factor = (col[index] - col[0]) / col[0]
                 vfactor_list.append(factor)
@@ -845,7 +845,7 @@ class PressureCalc:
         df_Vfactor['Edition'] = edition
         df_Vfactor.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        df_Vfactor.to_csv('Wall_CC_v_'+ ctype+ '.csv')
+        #df_Vfactor.to_csv('Wall_CC_v_'+ ctype+ '.csv')
 
         # Variation 2: Reference Building Story height, multiple stories, different wind speeds:
         # Define an array of building heights:
@@ -904,7 +904,7 @@ class PressureCalc:
         dfw_hfactor['Edition'] = edition
         dfw_hfactor.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        dfw_hfactor.to_csv('Wall_CC_h_' + ctype + '.csv')
+        #dfw_hfactor.to_csv('Wall_CC_h_' + ctype + '.csv')
 
         # Variation 3: Different building heights (same h_story), different wind speeds, different exposures:
         exposures = ['B', 'C', 'D']
@@ -940,9 +940,9 @@ class PressureCalc:
                 factor_list = list()
                 for index in range(0, len(row)):
                     if index == 0:
-                        factor = 1.0
+                        factor = 0.0
                     elif row[index] == row[0]:
-                        factor = 1.0
+                        factor = 0.0
                     else:
                         factor = (row[index] - row[0]) / row[0]
                     factor_list.append(factor)
