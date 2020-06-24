@@ -954,7 +954,7 @@ class PressureCalc:
             # Store the DataFrame of Exposure factors:
             expw_list.append(dfw_Efactor)
             # Save the DataFrame for this code edition to a .csv file for future reference:
-            dfw_Efactor.to_csv('Wall_CC_exp_' + ctype + '_' + str(ref_story) + 'ft_'+ ed[-2:]+'.csv')
+            #dfw_Efactor.to_csv('Wall_CC_exp_' + ctype + '_' + str(ref_story) + 'ft_'+ ed[-2:]+'.csv')
         # Extra code to inform future considerations of variation in wind speed for C&C components:
         # Reference Building with range of effective wind areas using typical practice:
         #df_wcc = pd.DataFrame()
