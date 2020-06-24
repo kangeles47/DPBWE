@@ -51,7 +51,7 @@ def get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, dire
         pref = pref[pref.columns[0:1]] # Case with only 1 zone
     # Similitude parameters require comparison to a reference building:
     pressures = PressureCalc()
-    ref_exposure, ref_hstory, ref_hbldg, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
+    ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
     # Step 5: Extract similitude parameters for wind speed, height, and exposure
     # Similitude in wind speed:
     if wind_speed == ref_speed:
@@ -93,25 +93,25 @@ ratio = h_bldg/length
 exposure = 'B'
 wind_speed = 120
 direction = 'parallel'
-pitch = None
+ref_pitch = 9
 ref_cat =2
 hpr = True
 h_ocean = True
 encl_class = 'Enclosed'
 # Difference in wind speed:
-psim = get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, pitch)
+psim = get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, ref_pitch)
 pressures = PressureCalc()
-rmps = pressures.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, length, ratio, ref_cat, hpr, h_ocean, encl_class)
+rmps = pressures.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
 print('change in wind speed:', rmps)
 # Difference in height:
 h_bldg = 27
 length = 27
 ratio = h_bldg/length
-hpsim = get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, pitch)
-hrmps = pressures.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, length, ratio, ref_cat, hpr, h_ocean, encl_class)
+hpsim = get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, ref_pitch)
+hrmps = pressures.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
 print('change in height:', hrmps)
 # Difference in exposure categories:
 exposure = 'C'
-epsim = get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, pitch)
-ermps = pressures.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, length, ratio, ref_cat, hpr, h_ocean, encl_class)
+epsim = get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, ref_pitch)
+ermps = pressures.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
 print('change in exposure:', ermps)
