@@ -137,16 +137,36 @@ encl_class = 'Enclosed'
 psim = get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, ref_pitch)
 pressures = PressureCalc()
 rmps = pressures.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
-print('real pressure:', rmps, 'change in wind speed:', rmps)
+print('real pressure:', rmps, 'change in wind speed:', psim)
 # Difference in height:
 h_bldg = 27
 length = 27
 ratio = h_bldg/length
 hpsim = get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, ref_pitch)
 hrmps = pressures.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
-print('real pressure:', hrmps, 'change in height:', hrmps)
+print('real pressure:', hrmps, 'change in height:', hpsim)
 # Difference in exposure categories:
 exposure = 'C'
 epsim = get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, ref_pitch)
 ermps = pressures.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
-print('real pressure:', ermps, 'change in exposure:', ermps)
+print('real pressure:', ermps, 'change in exposure:', epsim)
+
+# Wall C&C:
+edition = 'ASCE 7-02'
+h_bldg = 9
+h_story = 9
+exposure = 'B'
+wind_speed = 120
+ref_pitch = 9
+ref_cat =2
+ctype = 'mullion'
+parcel_flag = True
+hpr = True
+h_ocean = True
+encl_class = 'Enclosed'
+# Difference in wind speed:
+psim = get_wcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, ref_pitch)
+pressures = PressureCalc()
+area_eff = pressures.get_warea(ctype, parcel_flag, h_story)
+wmps = pressures.wcc_pressure(wind_speed, exposure, edition, h_bldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
+print('real pressure:', wmps, 'change in wind speed:', psim)
