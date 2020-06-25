@@ -845,7 +845,7 @@ class PressureCalc:
         df_Vfactor['Edition'] = edition
         df_Vfactor.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        #df_Vfactor.to_csv('Wall_CC_v_'+ ctype+ '.csv')
+        df_Vfactor.to_csv('Wall_CC_v_'+ ctype+ '.csv')
 
         # Variation 2: Reference Building Story height, multiple stories, different wind speeds:
         # Define an array of building heights:
@@ -1066,7 +1066,7 @@ cat = 2
 # Define a range of wind speed values:
 wind_speed = np.arange(70, 185, 5)  # [mph]
 # Create a vector of editions:
-edition = ['ASCE 7-16']
+edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
 # Populate similitude parameters for each case of Wall C&C:
 # Determine the effective area using typical practice:
 parcel_flag = True

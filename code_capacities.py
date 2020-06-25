@@ -106,7 +106,7 @@ def get_wcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, pitc
         if edition == 'ASCE 7-93':
             hfactor = pd.read_csv(file_path + ctype + '/h93.csv')[str(h_bldg) + ' ft'][0]
         else:
-            hfactor = pd.read_csv(file_path + ctype + '/h.csv')[str(h_bldg) + ' ft'][0]
+            hfactor = pd.read_csv(file_path + ctype + '/h.csv', index_col='Edition')[str(h_bldg) + ' ft'][edition]
     # Similitude in exposure categories:
     if exposure == ref_exposure:
         efactor = 0.0
@@ -170,3 +170,13 @@ pressures = PressureCalc()
 area_eff = pressures.get_warea(ctype, parcel_flag, h_story)
 wmps = pressures.wcc_pressure(wind_speed, exposure, edition, h_bldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
 print('real pressure:', wmps, 'change in wind speed:', psim)
+# Difference in height:
+h_bldg = 27
+hpsim = get_wcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, ref_pitch)
+hwmps = pressures.wcc_pressure(wind_speed, exposure, edition, h_bldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
+print('real pressure:', hwmps, 'change in wind speed:', hpsim)
+# Difference in exposure categories:
+exposure = 'C'
+epsim = get_wcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, ref_pitch)
+ewmps = pressures.wcc_pressure(wind_speed, exposure, edition, h_bldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
+print('real pressure:', ewmps, 'change in wind speed:', epsim)
