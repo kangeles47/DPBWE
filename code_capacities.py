@@ -1,5 +1,8 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from geopy import distance
+from shapely.geometry import Polygon
 from code_pressures import PressureCalc
 
 # Goal of this code is to extract the information necessary to assign the correct pressure to building components
@@ -119,6 +122,35 @@ def get_wcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, pitc
         psim = factor*psim + psim
     return psim
 
+def get_zone_width(bldg):
+    # This function determines the zone width, a, for a given building:
+    # a is determined as max(min(0.1*least horizontal dimension, 0.4*h_bldg), 0.4*least horizontal direction, 3 ft)
+    # Create an equivalent rectangle for the building:
+    xcoords, ycoords = bldg.footprint["geometry"].exterior.xy
+    envelope = bldg.footprint["geometry"].envelope
+    xenvelope, yenvelope = envelope.exterior.xy
+    rect = bldg.footprint["geometry"].minimum_rotated_rectangle
+    xrect, yrect = rect.exterior.xy
+    plt.plot(xcoords, ycoords, xrect, yrect, xenvelope, yenvelope)
+    plt.show()
+    rect = Polygon([(max(xcoords), max(ycoords)), (max(xcoords), min(ycoords)), (min(xcoords), min(ycoords), min(xcoords), max(ycoords))])
+    xrect, yrect = rect.exterior.xy
+    # Convert coordinates into numpy arrays:
+    xrect = np.array(xrect)
+    yrect = np.array(yrect)
+    # Find the least horizontal dimension of the building:
+    for ind in range(0, len(xcoords)):
+        hnew = distance.distance((ycoords[ind], xcoords[ind]), (ycoords[ind+1], xcoords[ind+1])).miles*5280  # [ft]
+        if ind == 0:
+            hdist = hnew
+        else:
+            if hnew < hdist:
+                hdist = hnew
+            else:
+                pass
+    a = max(min(0.1*hdist, 0.4*h_bldg), 0.4*hdist, 3)
+
+    return a
 
 # Test it out:
 edition = 'ASCE 7-02'
