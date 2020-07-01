@@ -7,14 +7,15 @@ class BldgCode:
 
     def __init__(self, parcel, desc_flag):
         # Building codes have editions:
-        desc_flag = 1
+        desc_flag = True
         self.edition = self.get_edition(parcel, desc_flag)
 
     def get_edition(self, parcel, desc_flag):
         # Get the code edition considering parcel location, year built
         # For code-based rulesets (Parcels):
-        if desc_flag == 1:
+        if desc_flag:
             if parcel.state == "FL":
+                # Create an instance of FBC and assign its edition:
                 if parcel.is_comm:
                     if parcel.yr_built > 1988 & parcel.yr_built <= 1991:
                         if parcel.county != 'Broward' or parcel.county != 'Dade':
@@ -60,7 +61,7 @@ class BldgCode:
                         edition = '2017 FBC - Residential'
                     else:
                         print('Building code and edition currently not supported', parcel.yr_built)
-        elif desc_flag == 0:
+        else:
             # For code-informed capacities using ASCE 7:
             if parcel.yr_built <= 1988:
                 edition = 'ASCE 7-88'
@@ -82,33 +83,35 @@ class BldgCode:
                 edition = 'ASCE 7-16'
         return edition
 
+
 class FBC(BldgCode):
 
     def __init__(self, parcel, desc_flag):
         BldgCode.__init__(self, parcel, desc_flag)  # Bring in building code attributes (edition)
+        self.bldg_attributes(parcel)
 
-    def bldg_attributes(self, edition, parcel):
+    def bldg_attributes(self, parcel):
         # Knowing the code edition, populate this building-level code-informed attributes for the parcel:
         if parcel.state == "FL":
             if parcel.is_comm:
-                if 'FBC' in edition or edition == '1988 SBC':
+                if 'FBC' in self.edition or self.edition == '1988 SBC':
                     # 9 ft standard ceiling height
-                    parcel.h_story = np.arange(9, 9 * parcel.num_stories, parcel.num_stories)/3.281  # story elevations (meters)
-                    parcel.h_bldg = parcel.num_stories * 9/3.281  # min. ceiling height used to calculate building height (meters)
+                    parcel.h_story = np.arange(9, 9 * parcel.num_stories, parcel.num_stories)  # story elevations [ft]
+                    parcel.h_bldg = parcel.num_stories * 9  # min. ceiling height used to calculate building height [ft]
                     parcel.num_rooms = 6 #assigning number of rooms based off of occupancy, structural system
                     #self.roof_survey_data(self.edition, parcel) #populate missing data for the parcel from national survey (CBECS)
                 else:
                     print('Building level attributes currently not supported')
             else:
-                if 'FBC' in edition:
+                if 'FBC' in self.edition:
                     # Story height, building height, number of rooms
                     # 9 ft standard ceiling height
-                    parcel.h_story = np.arange(9, 9*parcel.num_stories, parcel.num_stories)/3.281  # story elevations (meters)
-                    parcel.h_bldg = parcel.num_stories * 9/3.281  # min. ceiling height used to calculate building height
-                elif 'CABO' in edition:
+                    parcel.h_story = np.arange(9, 9*parcel.num_stories, parcel.num_stories)  # story elevations [ft]
+                    parcel.h_bldg = parcel.num_stories * 9  # min. ceiling height used to calculate building height
+                elif 'CABO' in self.edition:
                     # 8 ft standard ceiling height for older construction
-                    parcel.h_story = np.arange(9, 9 * parcel.num_stories, parcel.num_stories)/3.281
-                    parcel.h_bldg = parcel.num_stories * 9/3.281
+                    parcel.h_story = np.arange(9, 9 * parcel.num_stories, parcel.num_stories)
+                    parcel.h_bldg = parcel.num_stories * 9
 
     def roof_attributes(self, edition, parcel, survey):
 

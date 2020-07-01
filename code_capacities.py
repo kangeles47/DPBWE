@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from geopy import distance
 from shapely.geometry import Polygon
 from code_pressures import PressureCalc
+from BIM import Parcel
+import math
 
 # Goal of this code is to extract the information necessary to assign the correct pressure to building components
 # General sequence:
@@ -126,21 +128,14 @@ def get_zone_width(bldg):
     # This function determines the zone width, a, for a given building:
     # a is determined as max(min(0.1*least horizontal dimension, 0.4*h_bldg), 0.4*least horizontal direction, 3 ft)
     # Create an equivalent rectangle for the building:
-    xcoords, ycoords = bldg.footprint["geometry"].exterior.xy
-    envelope = bldg.footprint["geometry"].envelope
-    xenvelope, yenvelope = envelope.exterior.xy
-    rect = bldg.footprint["geometry"].minimum_rotated_rectangle
-    xrect, yrect = rect.exterior.xy
-    plt.plot(xcoords, ycoords, xrect, yrect, xenvelope, yenvelope)
-    plt.show()
-    rect = Polygon([(max(xcoords), max(ycoords)), (max(xcoords), min(ycoords)), (min(xcoords), min(ycoords), min(xcoords), max(ycoords))])
+    rect = bldg.footprint["geometry"].minimum_rotated_rectangle  # Note: min rect. (not constrained || to coord axis)
     xrect, yrect = rect.exterior.xy
     # Convert coordinates into numpy arrays:
-    xrect = np.array(xrect)
-    yrect = np.array(yrect)
+    #xrect = np.array(xrect)
+    #yrect = np.array(yrect)
     # Find the least horizontal dimension of the building:
-    for ind in range(0, len(xcoords)):
-        hnew = distance.distance((ycoords[ind], xcoords[ind]), (ycoords[ind+1], xcoords[ind+1])).miles*5280  # [ft]
+    for ind in range(0, len(xrect)-1):
+        hnew = distance.distance((yrect[ind], xrect[ind]), (yrect[ind+1], xrect[ind+1])).miles * 5280  # [ft]
         if ind == 0:
             hdist = hnew
         else:
@@ -148,9 +143,13 @@ def get_zone_width(bldg):
                 hdist = hnew
             else:
                 pass
-    a = max(min(0.1*hdist, 0.4*h_bldg), 0.4*hdist, 3)
-
+    a = max(min(0.1*hdist, 0.4*bldg.h_bldg), 0.4*hdist, 3)
     return a
+
+lon = -85.676188
+lat = 30.190142
+test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
+a = get_zone_width(test)
 
 # Test it out:
 edition = 'ASCE 7-02'

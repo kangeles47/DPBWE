@@ -5,7 +5,7 @@ from shapely.geometry import Point, Polygon
 from scipy import spatial
 import matplotlib.pyplot as plt
 from assembly import RoofAssem, WallAssem, FloorAssem, CeilingAssem
-from bldg_code import BldgCode
+import bldg_code
 from survey_data import SurveyData
 from geopy import distance
 
@@ -67,7 +67,11 @@ class Parcel(BIM):
         # Building footprint:
         self.assign_footprint(self)
         # Create an instance of the BldgCode class and populate building-level code-informed attributes for the parcel:
-        code_informed = BldgCode(self)
+        desc_flag = True  # Need to access a building code that will give us code-based descriptions
+        if self.state == 'FL':
+            code_informed = bldg_code.FBC(self, desc_flag)
+        else:
+            pass
         # Generate a preliminary set of assemblies:
         self.prelim_assem(self)
         # Populate instance attributes informed by national survey data:
