@@ -130,9 +130,6 @@ def get_zone_width(bldg):
     # Create an equivalent rectangle for the building:
     rect = bldg.footprint["geometry"].minimum_rotated_rectangle  # Note: min rect. (not constrained || to coord axis)
     xrect, yrect = rect.exterior.xy
-    # Convert coordinates into numpy arrays:
-    #xrect = np.array(xrect)
-    #yrect = np.array(yrect)
     # Find the least horizontal dimension of the building:
     for ind in range(0, len(xrect)-1):
         hnew = distance.distance((yrect[ind], xrect[ind]), (yrect[ind+1], xrect[ind+1])).miles * 5280  # [ft]
@@ -145,6 +142,13 @@ def get_zone_width(bldg):
                 pass
     a = max(min(0.1*hdist, 0.4*bldg.h_bldg), 0.4*hdist, 3)
     return a
+
+def assign_zone_pressures(bldg, ctype, zone_width, pressures):
+    # Assign C&C pressures given the component type and its location (zone)
+    # For each floor, figure out which surfaces have the given ctype:
+    for story in range(0, bldg.num_stories):
+        # Figure out which walls are contained within the specified story:
+        pass
 
 lon = -85.676188
 lat = 30.190142
