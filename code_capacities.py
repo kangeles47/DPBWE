@@ -143,12 +143,35 @@ def get_zone_width(bldg):
     a = max(min(0.1*hdist, 0.4*bldg.h_bldg), 0.4*hdist, 3)
     return a
 
-def assign_zone_pressures(bldg, ctype, zone_width, pressures):
-    # Assign C&C pressures given the component type and its location (zone)
+def assign_zone_pressures(bldg, ctype, zone_width, exposure, wind_speed):
+    # Use the building footprint to find the lon, lat points for zone boundaries around perimeter:
+    xcoords, ycoords = bldg.footprint["geometry"].exterior.xy
+    for coords in range(0, len(xcoords)):
+        # Building footprint coordinates are in longitude, latitude --> must convert zone width
+        # Use the first point as the reference point and find angle between two points:
+        y = ycoords[coords+1] - ycoords[coords]
+        x = xcoords[coords+1] - xcoords[coords]
+        rad = math.atan2(y, x)  # angle (in rad)
+        # Use zone width and reference point to define a new coordinate:
+        new_pt = distance.distance(miles=zone_width/5280).destination((xcoords[coords], ycoords[coords]), 90)
+        print('geopy new lon point:', new_pt)
+        # Find the zone boundary point:
+        xnew, ynew = new_pt.xy
+    # Assign C&C pressures given the component type and its location (zone):
+    # Get a list of all wall types:
+    ctype_lst = []
+    for wall in bldg.walls:
+        ctype_lst.append(wall.type)
+    ctype_lst = set(ctype_lst)
+    # Determine the Wall C&C pressures:
+    wcc_plist = []
+    for ctype in ctype_lst:
+        wcc_pressure = get_wcc_pressure(edition, bldg.h_bldg, bldg.h_story, ctype, exposure, wind_speed, bldg.roof.pitch)
+        wcc_plist.append(wcc_pressure)
     # For each floor, figure out which surfaces have the given ctype:
-    for story in range(0, bldg.num_stories):
+    #for story in range(0, bldg.num_stories):
         # Figure out which walls are contained within the specified story:
-        pass
+       # pass
 
 lon = -85.676188
 lat = 30.190142
