@@ -143,20 +143,30 @@ def get_zone_width(bldg):
     a = max(min(0.1*hdist, 0.4*bldg.h_bldg), 0.4*hdist, 3)
     return a
 
-def assign_zone_pressures(bldg, ctype, zone_width, exposure, wind_speed):
+def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
     # Use the building footprint to find the lon, lat points for zone boundaries around perimeter:
     xcoords, ycoords = bldg.footprint["geometry"].exterior.xy
+    zone_pts = []
     for coords in range(0, len(xcoords)):
         # Building footprint coordinates are in longitude, latitude --> must convert zone width
         # Use the first point as the reference point and find angle between two points:
         y = ycoords[coords+1] - ycoords[coords]
         x = xcoords[coords+1] - xcoords[coords]
         rad = math.atan2(y, x)  # angle (in rad)
-        # Use zone width and reference point to define a new coordinate:
-        new_pt = distance.distance(miles=zone_width/5280).destination((xcoords[coords], ycoords[coords]), 90)
-        print('geopy new lon point:', new_pt)
+        print('derived angle:', math.degrees(rad))
+        # Plot the two points
+        plt.plot(xcoords[coords:coords+2], ycoords[coords:coords+2])
+        plt.show()
+        # Need to create exceptions for 0, 90, 180, and 270:
+        new_pt = distance.distance(miles=zone_width/5280).destination((ycoords[coords], xcoords[coords]), 90)
+        print('geopy new zone point:', new_pt)
         # Find the zone boundary point:
         xnew, ynew = new_pt.xy
+        xdist = xnew - xcoords[coords]
+        ydist = xdist*math.tan(rad)
+        # Append the new coordinates to list:
+        print('derived points:', xnew, ydist + ycoords[coords])
+        zone_pts.append([xnew, ydist+ycoords[coords]])
     # Assign C&C pressures given the component type and its location (zone):
     # Get a list of all wall types:
     ctype_lst = []
@@ -177,6 +187,7 @@ lon = -85.676188
 lat = 30.190142
 test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
 a = get_zone_width(test)
+assign_zone_pressures(test, a, 'B', 100)
 
 # Test it out:
 edition = 'ASCE 7-02'
