@@ -145,28 +145,31 @@ def get_zone_width(bldg):
 
 def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
     # Use the building footprint to find the lon, lat points for zone boundaries around perimeter:
-    xcoords, ycoords = bldg.footprint["geometry"].exterior.xy
+    xs, ys = bldg.footprint["geometry"].exterior.xy
     zone_pts = []
-    for coords in range(0, len(xcoords)):
-        # Building footprint coordinates are in longitude, latitude --> must convert zone width
+    for ind in range(0, len(xs)):
+        # Building footprint coordinates are in longitude, latitude and zone width [ft]
+        # Step 1: Find the angle between two consecutive points:
         # Use the first point as the reference point and find angle between two points:
-        y = ycoords[coords+1] - ycoords[coords]
-        x = xcoords[coords+1] - xcoords[coords]
-        rad = math.atan2(y, x)  # angle (in rad)
-        print('derived angle:', math.degrees(rad))
-        # Plot the two points
-        plt.plot(xcoords[coords:coords+2], ycoords[coords:coords+2])
+        ya = ys[ind+1] - ys[ind]
+        xa = xs[ind+1] - xs[ind]
+        angle = math.degrees(math.atan2(ya, xa))  # angle (in rad)
+        print(angle)
+        # Step 2: Find the points marking the various zones:
+        # Quadrant I:
+        if 0 <= angle <= 90:
+            zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 270-angle)
+            zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind], xs[ind]), 90 - angle)
+        # Quadrant II:
+        elif 90 < angle <= 180:
+            zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 270-angle)
+            zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind], xs[ind]), 90 + angle)
+        else:
+            new_pt = distance.distance(miles=zone_width / 5280).destination((ys[ind], xs[ind]), 270)
+        plt.scatter(zpt_1.longitude, zpt_1.latitude)
+        plt.scatter(zpt_2.longitude, zpt_2.latitude)
+        plt.plot(xs[ind:ind+2], ys[ind:ind+2])
         plt.show()
-        # Need to create exceptions for 0, 90, 180, and 270:
-        new_pt = distance.distance(miles=zone_width/5280).destination((ycoords[coords], xcoords[coords]), 90)
-        print('geopy new zone point:', new_pt)
-        # Find the zone boundary point:
-        xnew, ynew = new_pt.xy
-        xdist = xnew - xcoords[coords]
-        ydist = xdist*math.tan(rad)
-        # Append the new coordinates to list:
-        print('derived points:', xnew, ydist + ycoords[coords])
-        zone_pts.append([xnew, ydist+ycoords[coords]])
     # Assign C&C pressures given the component type and its location (zone):
     # Get a list of all wall types:
     ctype_lst = []
