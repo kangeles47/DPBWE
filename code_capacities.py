@@ -160,16 +160,21 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
         # Step 2: Find the points marking the various zones:
         # Quadrant I:
         if 0 <= angle <= 90:
-            zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 270-angle)
-            zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind], xs[ind]), 90 - angle)
+            zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90 - angle)
+            zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), 270-angle)
+            #Print the distance between the two points to verify:
+            dist = distance.distance((ys[ind], xs[ind]), (zpt_1.latitude, zpt_1.longitude)).miles * 5280
+            print('dist:', dist)
         # Quadrant II:
         elif 90 < angle <= 180:
             zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 270-angle)
-            zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind], xs[ind]), 90 + angle)
+            zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), 90 + angle)
         else:
             new_pt = distance.distance(miles=zone_width / 5280).destination((ys[ind], xs[ind]), 270)
+        plt.scatter(xs[ind], ys[ind])
+        plt.scatter(xs[ind+1], ys[ind+1])
         plt.scatter(zpt_1.longitude, zpt_1.latitude)
-        plt.scatter(zpt_2.longitude, zpt_2.latitude)
+        #plt.scatter(zpt_2.longitude, zpt_2.latitude)
         plt.plot(xs[ind:ind+2], ys[ind:ind+2])
         plt.show()
     # Assign C&C pressures given the component type and its location (zone):
