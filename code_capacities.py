@@ -166,30 +166,63 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
         yc.append(ydist)
     plt.plot(xc,yc)
     plt.show()
-    zone_pts = []
-    for ind in range(0, len(xs)):
-        # Building footprint coordinates are in longitude, latitude and zone width [ft]
+    # Find points along building footprint corresponding to zone start/end
+    zones = pd.DataFrame()
+    for j in range(0, len(xc)):
         # Step 1: Find the angle between two consecutive points:
         # Use the first point as the reference point and find angle between two points:
-        ya = ys[ind+1] - ys[ind]
-        xa = xs[ind+1] - xs[ind]
+        ya = yc[j+1] - yc[j]
+        xa = xc[j+1] - xc[j]
         angle = math.degrees(math.atan2(ya, xa))  # angle (in degrees)
         print(angle)
         # Step 2: Find the points marking the various zones:
-        # Quadrant I:
-        if 0 <= angle <= 90:
-            zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90 - angle)
-            zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), 270-angle)
-        # Quadrant II:
-        elif 90 < angle <= 180:
-            zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90+angle)
-            zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), angle)
-        # Quadrant III:
-        elif -90 < angle < 0:
-            zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90+abs(angle))
-            zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), 270+abs(angle))
-        else:
-            new_pt = distance.distance(miles=zone_width / 5280).destination((ys[ind], xs[ind]), 270)
+        # Step 2a: Use cases - same latitude/longitude:
+        if angle == 0:
+            x1 = xc[j] + zone_width
+            x2 = xc[j+1] - zone_width
+            y1 = yc[j]
+            y2 = yc[j+1]
+        elif angle == -180 or angle == 180:
+            x1 = xc[j] - zone_width
+            x2 = xc[j + 1] + zone_width
+            y1 = yc[j]
+            y2 = yc[j + 1]
+        elif angle == 90:
+            x1 = xc[j]
+            x2 = xc[j + 1]
+            y1 = yc[j] + zone_width
+            y2 = yc[j + 1] - zone_width
+        elif angle == -90 or angle == 270:
+            x1 = xc[j]
+            x2 = xc[j + 1]
+            y1 = yc[j] - zone_width
+            y2 = yc[j + 1] + zone_width
+        else:  # All other angles:
+            angle2 = 180-angle-90
+            if angle > 0:
+                if xc[j] < xc[j+1]:
+                    x1 = xc[j] + zone_width*math.cos(math.radians(angle))
+                    x2 = xc[j + 1] - zone_width*math.sin(math.radians(angle2))
+                    y1 = yc[j] + zone_width*math.sin(math.radians(angle))
+                    y2 = yc[j + 1] - zone_width*math.cos(math.radians(angle2))
+                else:
+                    x1 = xc[j] - zone_width * math.cos(math.radians(angle))
+                    x2 = xc[j + 1] + zone_width * math.sin(math.radians(angle2))
+                    y1 = yc[j] - zone_width * math.sin(math.radians(angle))
+                    y2 = yc[j + 1] + zone_width * math.cos(math.radians(angle2))
+            if 0 <= angle <= 90:
+                zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90 - angle)
+                zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), 270-angle)
+            # Quadrant II:
+            elif 90 < angle <= 180:
+                zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90+angle)
+                zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), angle)
+            # Quadrant III:
+            elif -90 < angle < 0:
+                zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90+abs(angle))
+                zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), 270+abs(angle))
+            else:
+                new_pt = distance.distance(miles=zone_width / 5280).destination((ys[ind], xs[ind]), 270)
         # Print the distance between the two points to verify:
         pdist = distance.distance((ys[ind], xs[ind]), (ys[ind+1], xs[ind+1])).miles * 5280
         print('distance between segment:', pdist)
