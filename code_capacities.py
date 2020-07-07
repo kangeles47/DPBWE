@@ -146,6 +146,8 @@ def get_zone_width(bldg):
 def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
     # Use the building footprint to find the lon, lat points for zone boundaries around perimeter:
     xs, ys = bldg.footprint["geometry"].exterior.xy
+    plt.plot(xs,ys)
+    plt.show()
     zone_pts = []
     for ind in range(0, len(xs)):
         # Building footprint coordinates are in longitude, latitude and zone width [ft]
