@@ -146,7 +146,25 @@ def get_zone_width(bldg):
 def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
     # Use the building footprint to find the lon, lat points for zone boundaries around perimeter:
     xs, ys = bldg.footprint["geometry"].exterior.xy
-    plt.plot(xs,ys)
+    # Find the distance between exterior points and the building centroid (origin) to define a new coordinate system:
+    origin = bldg.footprint['geometry'].centroid
+    xc = []
+    yc = []
+    for ind in range(0, len(xs)):
+        # Find the distance between x, y at origin and x, y for each point:
+        xdist = distance.distance((origin.y, origin.x), (origin.y, xs[ind])).miles * 5280  # [ft]
+        ydist = distance.distance((origin.y, origin.x), (ys[ind], origin.x)).miles * 5280  # [ft]
+        if xs[ind] < origin.x:
+            xdist = -1*xdist
+        else:
+            pass
+        if ys[ind] < origin.y:
+            ydist = -1*ydist
+        else:
+            pass
+        xc.append(xdist)
+        yc.append(ydist)
+    plt.plot(xc,yc)
     plt.show()
     zone_pts = []
     for ind in range(0, len(xs)):
@@ -155,27 +173,33 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
         # Use the first point as the reference point and find angle between two points:
         ya = ys[ind+1] - ys[ind]
         xa = xs[ind+1] - xs[ind]
-        angle = math.degrees(math.atan2(ya, xa))  # angle (in rad)
+        angle = math.degrees(math.atan2(ya, xa))  # angle (in degrees)
         print(angle)
         # Step 2: Find the points marking the various zones:
         # Quadrant I:
         if 0 <= angle <= 90:
             zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90 - angle)
             zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), 270-angle)
-            #Print the distance between the two points to verify:
-            dist = distance.distance((ys[ind], xs[ind]), (zpt_1.latitude, zpt_1.longitude)).miles * 5280
-            print('dist:', dist)
         # Quadrant II:
         elif 90 < angle <= 180:
-            zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 270-angle)
-            zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), 90 + angle)
+            zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90+angle)
+            zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), angle)
+        # Quadrant III:
+        elif -90 < angle < 0:
+            zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90+abs(angle))
+            zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), 270+abs(angle))
         else:
             new_pt = distance.distance(miles=zone_width / 5280).destination((ys[ind], xs[ind]), 270)
+        # Print the distance between the two points to verify:
+        pdist = distance.distance((ys[ind], xs[ind]), (ys[ind+1], xs[ind+1])).miles * 5280
+        print('distance between segment:', pdist)
+        dist = distance.distance((ys[ind], xs[ind]), (zpt_1.latitude, zpt_1.longitude)).miles * 5280
+        print('dist:', dist, 'zone width:', zone_width)
+        plt.plot(xs[ind:ind + 2], ys[ind:ind + 2])
         plt.scatter(xs[ind], ys[ind])
         plt.scatter(xs[ind+1], ys[ind+1])
         plt.scatter(zpt_1.longitude, zpt_1.latitude)
-        #plt.scatter(zpt_2.longitude, zpt_2.latitude)
-        plt.plot(xs[ind:ind+2], ys[ind:ind+2])
+        plt.scatter(zpt_2.longitude, zpt_2.latitude)
         plt.show()
     # Assign C&C pressures given the component type and its location (zone):
     # Get a list of all wall types:
@@ -192,10 +216,30 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
     #for story in range(0, bldg.num_stories):
         # Figure out which walls are contained within the specified story:
        # pass
+def dist_calc(lon1, lat1, lon2, lat2):
+    # Calculate distance between two longitude, latitude points using the Haversine formula:
+    earth_radius = 3958.8*5280  # radius of Earth in [ft]
+    phi_1 = math.radians(lat1)
+    phi_2 = math.radians(lat2)
 
-lon = -85.676188
-lat = 30.190142
-test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+
+    a = math.sin(delta_phi / 2.0) ** 2 + math.cos(phi_1) * math.cos(phi_2) * math.sin(delta_lambda / 2.0) ** 2
+
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    dist = earth_radius * c  # output distance in [ft]
+
+    return dist
+
+
+#lon = -85.676188
+#lat = 30.190142
+#test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
+lon = -85.666162
+lat = 30.19953
+test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
 a = get_zone_width(test)
 assign_zone_pressures(test, a, 'B', 100)
 
