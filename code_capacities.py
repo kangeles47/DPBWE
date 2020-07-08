@@ -150,7 +150,7 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
     origin = bldg.footprint['geometry'].centroid
     xc = []
     yc = []
-    for ind in range(0, len(xs)):
+    for ind in range(0, len(xs)-1):
         # Find the distance between x, y at origin and x, y for each point:
         xdist = distance.distance((origin.y, origin.x), (origin.y, xs[ind])).miles * 5280  # [ft]
         ydist = distance.distance((origin.y, origin.x), (ys[ind], origin.x)).miles * 5280  # [ft]
@@ -164,11 +164,9 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
             pass
         xc.append(xdist)
         yc.append(ydist)
-    plt.plot(xc,yc)
-    plt.show()
     # Find points along building footprint corresponding to zone start/end
     zones = pd.DataFrame()
-    for j in range(0, len(xc)):
+    for j in range(0, len(xc)-1):
         # Step 1: Find the angle between two consecutive points:
         # Use the first point as the reference point and find angle between two points:
         ya = yc[j+1] - yc[j]
@@ -197,8 +195,8 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
             x2 = xc[j + 1]
             y1 = yc[j] - zone_width
             y2 = yc[j + 1] + zone_width
-        else:  # All other angles:
-            angle2 = 180-angle-90
+        else:  # Step 2b: All other angles - Use similar triangles
+            angle2 = 180 - abs(angle)-90
             if angle > 0:
                 if xc[j] < xc[j+1]:
                     x1 = xc[j] + zone_width*math.cos(math.radians(angle))
@@ -206,34 +204,29 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
                     y1 = yc[j] + zone_width*math.sin(math.radians(angle))
                     y2 = yc[j + 1] - zone_width*math.cos(math.radians(angle2))
                 else:
-                    x1 = xc[j] - zone_width * math.cos(math.radians(angle))
-                    x2 = xc[j + 1] + zone_width * math.sin(math.radians(angle2))
-                    y1 = yc[j] - zone_width * math.sin(math.radians(angle))
+                    x1 = xc[j] + zone_width * math.cos(math.radians(angle))
+                    x2 = xc[j + 1] - zone_width * math.sin(math.radians(angle2))
+                    y1 = yc[j] + zone_width * math.sin(math.radians(angle))
+                    y2 = yc[j + 1] - zone_width * math.cos(math.radians(angle2))
+            elif angle < 0:
+                if xc[j] < xc[j+1]:
+                    x1 = xc[j] + zone_width*math.cos(math.radians(angle))
+                    x2 = xc[j + 1] - zone_width*math.sin(math.radians(angle2))
+                    y1 = yc[j] + zone_width*math.sin(math.radians(angle))
+                    y2 = yc[j + 1] + zone_width*math.cos(math.radians(angle2))
+                else:
+                    x1 = xc[j] + zone_width * math.cos(math.radians(angle))
+                    x2 = xc[j + 1] - zone_width * math.sin(math.radians(angle2))
+                    y1 = yc[j] + zone_width * math.sin(math.radians(angle))
                     y2 = yc[j + 1] + zone_width * math.cos(math.radians(angle2))
-            if 0 <= angle <= 90:
-                zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90 - angle)
-                zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), 270-angle)
-            # Quadrant II:
-            elif 90 < angle <= 180:
-                zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90+angle)
-                zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), angle)
-            # Quadrant III:
-            elif -90 < angle < 0:
-                zpt_1 = distance.distance(miles=zone_width/5280).destination((ys[ind], xs[ind]), 90+abs(angle))
-                zpt_2 = distance.distance(miles=zone_width / 5280).destination((ys[ind+1], xs[ind+1]), 270+abs(angle))
-            else:
-                new_pt = distance.distance(miles=zone_width / 5280).destination((ys[ind], xs[ind]), 270)
-        # Print the distance between the two points to verify:
-        pdist = distance.distance((ys[ind], xs[ind]), (ys[ind+1], xs[ind+1])).miles * 5280
-        print('distance between segment:', pdist)
-        dist = distance.distance((ys[ind], xs[ind]), (zpt_1.latitude, zpt_1.longitude)).miles * 5280
-        print('dist:', dist, 'zone width:', zone_width)
-        plt.plot(xs[ind:ind + 2], ys[ind:ind + 2])
-        plt.scatter(xs[ind], ys[ind])
-        plt.scatter(xs[ind+1], ys[ind+1])
-        plt.scatter(zpt_1.longitude, zpt_1.latitude)
-        plt.scatter(zpt_2.longitude, zpt_2.latitude)
-        plt.show()
+        # Organize the points:
+        xlist = [xc[j], x1, x2, xc[j+1]]
+        ylist = [yc[j], y1, y2, yc[j+1]]
+        # Plot to verify:
+        plt.plot(xc[j:j + 2], yc[j:j + 2])
+        for ind in range(0,len(xlist)):
+            plt.scatter(xlist[ind], ylist[ind])
+    plt.show()
     # Assign C&C pressures given the component type and its location (zone):
     # Get a list of all wall types:
     ctype_lst = []
@@ -267,13 +260,13 @@ def dist_calc(lon1, lat1, lon2, lat2):
     return dist
 
 
-#lon = -85.676188
-#lat = 30.190142
-#test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
-lon = -85.666162
-lat = 30.19953
-test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
-a = get_zone_width(test)
+lon = -85.676188
+lat = 30.190142
+test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
+#lon = -85.666162
+#lat = 30.19953
+#test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
+a = 3
 assign_zone_pressures(test, a, 'B', 100)
 
 # Test it out:
