@@ -150,7 +150,7 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
     origin = bldg.footprint['geometry'].centroid
     xc = []
     yc = []
-    for ind in range(0, len(xs)-1):
+    for ind in range(0, len(xs)):
         # Find the distance between x, y at origin and x, y for each point:
         xdist = distance.distance((origin.y, origin.x), (origin.y, xs[ind])).miles * 5280  # [ft]
         ydist = distance.distance((origin.y, origin.x), (ys[ind], origin.x)).miles * 5280  # [ft]
@@ -219,13 +219,17 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
                     x2 = xc[j + 1] - zone_width * math.sin(math.radians(angle2))
                     y1 = yc[j] + zone_width * math.sin(math.radians(angle))
                     y2 = yc[j + 1] + zone_width * math.cos(math.radians(angle2))
+        # Print distance between points:
+        #d1 = math.sqrt((xc[j]-x1)**2+(yc[j]-y1)**2)
+        #d2 = math.sqrt((xc[j+1] - x2) ** 2 + (yc[j+1] - y2) ** 2)
+        #print('distance 1:', d1, 'distance 2:', d2)
         # Organize the points:
         xlist = [xc[j], x1, x2, xc[j+1]]
         ylist = [yc[j], y1, y2, yc[j+1]]
         # Plot to verify:
-        plt.plot(xc[j:j + 2], yc[j:j + 2])
         for ind in range(0,len(xlist)):
             plt.scatter(xlist[ind], ylist[ind])
+    plt.plot(xc, yc)
     plt.show()
     # Assign C&C pressures given the component type and its location (zone):
     # Get a list of all wall types:
@@ -260,13 +264,13 @@ def dist_calc(lon1, lat1, lon2, lat2):
     return dist
 
 
-lon = -85.676188
-lat = 30.190142
-test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
-#lon = -85.666162
-#lat = 30.19953
-#test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
-a = 3
+#lon = -85.676188
+#lat = 30.190142
+#test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
+lon = -85.666162
+lat = 30.19953
+test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
+a = get_zone_width(test)
 assign_zone_pressures(test, a, 'B', 100)
 
 # Test it out:
