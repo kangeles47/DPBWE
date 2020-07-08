@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from geopy import distance
-from shapely.geometry import Polygon
+from shapely.geometry import Point, LineString, Polygon
 from code_pressures import PressureCalc
 from BIM import Parcel
 import math
@@ -140,7 +140,7 @@ def get_zone_width(bldg):
                 hdist = hnew
             else:
                 pass
-    a = max(min(0.1*hdist, 0.4*bldg.h_bldg), 0.4*hdist, 3)
+    a = max(min(0.1*hdist, 0.4*bldg.h_bldg), 0.04*hdist, 3)
     return a
 
 def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
@@ -165,8 +165,15 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
         xc.append(xdist)
         yc.append(ydist)
     # Find points along building footprint corresponding to zone start/end
-    zones = pd.DataFrame()
+    zone_pts = pd.DataFrame(columns=['LinePoint1', 'Zone4Start', 'Zone4End', 'LinePoint2'])
     for j in range(0, len(xc)-1):
+        # Try other option: Define two lines and ask for point back:
+        line1 = LineString([(xc[j], yc[j]), (xc[j+1], yc[j+1])])
+        line2 = LineString([(xc[j+1], yc[j+1]), (xc[j], yc[j])])
+        point1 = line1.interpolate(zone_width)
+        point2 = line2.interpolate(zone_width)
+        print('Zone4Start:', point1.xy)
+        print('Zone4End:', point2.xy)
         # Step 1: Find the angle between two consecutive points:
         # Use the first point as the reference point and find angle between two points:
         ya = yc[j+1] - yc[j]
@@ -223,6 +230,11 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
         #d1 = math.sqrt((xc[j]-x1)**2+(yc[j]-y1)**2)
         #d2 = math.sqrt((xc[j+1] - x2) ** 2 + (yc[j+1] - y2) ** 2)
         #print('distance 1:', d1, 'distance 2:', d2)
+        # Create Shapely Point Objects and store in DataFrame:
+        zone_pts = zone_pts.append({'LinePoint1': Point(xc[j], yc[j]), 'Zone4Start': Point(x1, y1), 'Zone4End': Point(x2, y2), 'LinePoint2': Point(xc[j+1], yc[j+1])}, ignore_index=True)
+        #Print comparison:
+        print('*Zone4Start:', x1, y1)
+        print('*Zone4End:', x2, y2)
         # Organize the points:
         xlist = [xc[j], x1, x2, xc[j+1]]
         ylist = [yc[j], y1, y2, yc[j+1]]
@@ -231,17 +243,19 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
             plt.scatter(xlist[ind], ylist[ind])
     plt.plot(xc, yc)
     plt.show()
+
+    return zone_pts
     # Assign C&C pressures given the component type and its location (zone):
     # Get a list of all wall types:
-    ctype_lst = []
-    for wall in bldg.walls:
-        ctype_lst.append(wall.type)
-    ctype_lst = set(ctype_lst)
+    #ctype_lst = []
+    #for wall in bldg.walls:
+        #ctype_lst.append(wall.type)
+    #ctype_lst = set(ctype_lst)
     # Determine the Wall C&C pressures:
-    wcc_plist = []
-    for ctype in ctype_lst:
-        wcc_pressure = get_wcc_pressure(edition, bldg.h_bldg, bldg.h_story, ctype, exposure, wind_speed, bldg.roof.pitch)
-        wcc_plist.append(wcc_pressure)
+    #wcc_plist = []
+    #for ctype in ctype_lst:
+        #wcc_pressure = get_wcc_pressure(edition, bldg.h_bldg, bldg.h_story, ctype, exposure, wind_speed, bldg.roof.pitch)
+        #wcc_plist.append(wcc_pressure)
     # For each floor, figure out which surfaces have the given ctype:
     #for story in range(0, bldg.num_stories):
         # Figure out which walls are contained within the specified story:
@@ -271,6 +285,7 @@ lon = -85.666162
 lat = 30.19953
 test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
 a = get_zone_width(test)
+print('zone width in ft:', a)
 assign_zone_pressures(test, a, 'B', 100)
 
 # Test it out:
