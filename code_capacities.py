@@ -143,8 +143,8 @@ def get_zone_width(bldg):
     a = max(min(0.1*hdist, 0.4*bldg.h_bldg), 0.04*hdist, 3)
     return a
 
-def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
-    # Use the building footprint to find the lon, lat points for zone boundaries around perimeter:
+def find_zone_points(bldg, zone_width):
+    # Use the building footprint to find zone boundaries around perimeter:
     xs, ys = bldg.footprint["geometry"].exterior.xy
     # Find the distance between exterior points and the building centroid (origin) to define a new coordinate system:
     origin = bldg.footprint['geometry'].centroid
@@ -167,83 +167,20 @@ def assign_zone_pressures(bldg, zone_width, exposure, wind_speed):
     # Find points along building footprint corresponding to zone start/end
     zone_pts = pd.DataFrame(columns=['LinePoint1', 'Zone4Start', 'Zone4End', 'LinePoint2'])
     for j in range(0, len(xc)-1):
-        # Try other option: Define two lines and ask for point back:
+        # Leverage Shapely LineStrings to find zone start/end points:
         line1 = LineString([(xc[j], yc[j]), (xc[j+1], yc[j+1])])
         line2 = LineString([(xc[j+1], yc[j+1]), (xc[j], yc[j])])
         point1 = line1.interpolate(zone_width)
         point2 = line2.interpolate(zone_width)
-        print('Zone4Start:', point1.xy)
-        print('Zone4End:', point2.xy)
-        # Step 1: Find the angle between two consecutive points:
-        # Use the first point as the reference point and find angle between two points:
-        ya = yc[j+1] - yc[j]
-        xa = xc[j+1] - xc[j]
-        angle = math.degrees(math.atan2(ya, xa))  # angle (in degrees)
-        print(angle)
-        # Step 2: Find the points marking the various zones:
-        # Step 2a: Use cases - same latitude/longitude:
-        if angle == 0:
-            x1 = xc[j] + zone_width
-            x2 = xc[j+1] - zone_width
-            y1 = yc[j]
-            y2 = yc[j+1]
-        elif angle == -180 or angle == 180:
-            x1 = xc[j] - zone_width
-            x2 = xc[j + 1] + zone_width
-            y1 = yc[j]
-            y2 = yc[j + 1]
-        elif angle == 90:
-            x1 = xc[j]
-            x2 = xc[j + 1]
-            y1 = yc[j] + zone_width
-            y2 = yc[j + 1] - zone_width
-        elif angle == -90 or angle == 270:
-            x1 = xc[j]
-            x2 = xc[j + 1]
-            y1 = yc[j] - zone_width
-            y2 = yc[j + 1] + zone_width
-        else:  # Step 2b: All other angles - Use similar triangles
-            angle2 = 180 - abs(angle)-90
-            if angle > 0:
-                if xc[j] < xc[j+1]:
-                    x1 = xc[j] + zone_width*math.cos(math.radians(angle))
-                    x2 = xc[j + 1] - zone_width*math.sin(math.radians(angle2))
-                    y1 = yc[j] + zone_width*math.sin(math.radians(angle))
-                    y2 = yc[j + 1] - zone_width*math.cos(math.radians(angle2))
-                else:
-                    x1 = xc[j] + zone_width * math.cos(math.radians(angle))
-                    x2 = xc[j + 1] - zone_width * math.sin(math.radians(angle2))
-                    y1 = yc[j] + zone_width * math.sin(math.radians(angle))
-                    y2 = yc[j + 1] - zone_width * math.cos(math.radians(angle2))
-            elif angle < 0:
-                if xc[j] < xc[j+1]:
-                    x1 = xc[j] + zone_width*math.cos(math.radians(angle))
-                    x2 = xc[j + 1] - zone_width*math.sin(math.radians(angle2))
-                    y1 = yc[j] + zone_width*math.sin(math.radians(angle))
-                    y2 = yc[j + 1] + zone_width*math.cos(math.radians(angle2))
-                else:
-                    x1 = xc[j] + zone_width * math.cos(math.radians(angle))
-                    x2 = xc[j + 1] - zone_width * math.sin(math.radians(angle2))
-                    y1 = yc[j] + zone_width * math.sin(math.radians(angle))
-                    y2 = yc[j + 1] + zone_width * math.cos(math.radians(angle2))
-        # Print distance between points:
-        #d1 = math.sqrt((xc[j]-x1)**2+(yc[j]-y1)**2)
-        #d2 = math.sqrt((xc[j+1] - x2) ** 2 + (yc[j+1] - y2) ** 2)
-        #print('distance 1:', d1, 'distance 2:', d2)
         # Create Shapely Point Objects and store in DataFrame:
-        zone_pts = zone_pts.append({'LinePoint1': Point(xc[j], yc[j]), 'Zone4Start': Point(x1, y1), 'Zone4End': Point(x2, y2), 'LinePoint2': Point(xc[j+1], yc[j+1])}, ignore_index=True)
-        #Print comparison:
-        print('*Zone4Start:', x1, y1)
-        print('*Zone4End:', x2, y2)
-        # Organize the points:
-        xlist = [xc[j], x1, x2, xc[j+1]]
-        ylist = [yc[j], y1, y2, yc[j+1]]
-        # Plot to verify:
-        for ind in range(0,len(xlist)):
-            plt.scatter(xlist[ind], ylist[ind])
-    plt.plot(xc, yc)
+        zone_pts = zone_pts.append({'LinePoint1': Point(xc[j], yc[j]), 'Zone4Start': point1, 'Zone4End': point2, 'LinePoint2': Point(xc[j+1], yc[j+1])}, ignore_index=True)
+        # Plot points:
+        plt.scatter(point1.x, point1.y)
+        plt.scatter(point2.x, point2.y)
+        # Plot line segment:
+        lx, ly = line1.xy
+        plt.plot(lx,ly)
     plt.show()
-
     return zone_pts
     # Assign C&C pressures given the component type and its location (zone):
     # Get a list of all wall types:
@@ -286,7 +223,7 @@ lat = 30.19953
 test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
 a = get_zone_width(test)
 print('zone width in ft:', a)
-assign_zone_pressures(test, a, 'B', 100)
+zone_pts = find_zone_points(test, a)
 
 # Test it out:
 edition = 'ASCE 7-02'
