@@ -182,21 +182,49 @@ def find_zone_points(bldg, zone_width):
         plt.plot(lx,ly)
     plt.show()
     return zone_pts
+
+def assign_wcc_pressures(bldg, zone_pts, exposure, wind_speed):
     # Assign C&C pressures given the component type and its location (zone):
-    # Get a list of all wall types:
-    #ctype_lst = []
-    #for wall in bldg.walls:
-        #ctype_lst.append(wall.type)
-    #ctype_lst = set(ctype_lst)
-    # Determine the Wall C&C pressures:
-    #wcc_plist = []
-    #for ctype in ctype_lst:
-        #wcc_pressure = get_wcc_pressure(edition, bldg.h_bldg, bldg.h_story, ctype, exposure, wind_speed, bldg.roof.pitch)
-        #wcc_plist.append(wcc_pressure)
-    # For each floor, figure out which surfaces have the given ctype:
-    #for story in range(0, bldg.num_stories):
-        # Figure out which walls are contained within the specified story:
-       # pass
+    for story in bldg.h_bldg:
+        # Create a list of all Wall C&C types within this story
+        wcc_lst = pd.DataFrame(columns=['Element', 'Type'])
+        for elem in bldg.has_element['Walls']:
+            if elem.is_exterior == True and elem.is_loadbearing == False:
+                wcc_lst = wcc_lst.append({'Element': elem, 'Type': elem.type}, ignore_index=True)
+            else:
+                pass
+        # Find all unique C&C types and calculate (+)/(-) pressures at each zone:
+        zone_pressures = pd.DataFrame(columns=['Type', 'Pressures'])
+        for type in wcc_lst['Type'].unique():
+            # (+)/(-) pressures:
+            psim = get_wcc_pressure(edition, bldg.h_bldg, bldg.h_story, type, exposure, wind_speed, bldg.roof.pitch)
+            zone_pressures = zone_pressures.append({'Type': type, 'Pressures': psim}, ignore_index=True)
+        # Assign zone pressures to each Wall C&C Element
+        for elem in wcc_lst['Element']:
+            zone4_flag = False
+            # Use Zone 4 points and element coordinates to assign pressure
+            for seg in zone_pts['Zone4Start']:
+                if zone4_flag == False:
+                    # Create a line segment using zone 4 points
+                    zline = LineString([zone_pts['Zone4Start'][seg], zone_pts['Zone4End'][seg]])
+                    # Check if element falls within the zone or is exactly at zone points or is outsidezone 4:
+                    if elem.has_2Dgeometry[0].within(zline) and elem.has_2Dgeometry[1].within(zline):
+                        zone4_flag = True
+                    elif elem.has_2Dgeometry[0] == zone_pts['Zone4Start'][seg] and elem.has_2Dgeometry[1] ==zone_pts['Zone4End'][seg]:
+                        zone4_flag = True
+                    else:
+                        pass
+                else:
+                    break
+            # Find the index where zone_pressures['Type'] matches the C&C type:
+            type_ind = zone_pressures.loc[zone_pressures['Type']==elem.has_type]
+            if zone4_flag:
+                elem.has_capacity['Positive'] = zone_pressures['Pressures'][type_ind]['Zone4+']
+                elem.has_capacity['Negative'] = zone_pressures['Pressures'][type_ind]['Zone4-']
+            else:
+                elem.has_capacity['Positive'] = zone_pressures['Pressures'][type_ind]['Zone5+']
+                elem.has_capacity['Negative'] = zone_pressures['Pressures'][type_ind]['Zone5-']
+            
 def dist_calc(lon1, lat1, lon2, lat2):
     # Calculate distance between two longitude, latitude points using the Haversine formula:
     earth_radius = 3958.8*5280  # radius of Earth in [ft]
