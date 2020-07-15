@@ -21,66 +21,90 @@ class Zone:
 
 class Site(Zone):
     # Sub-class of Zone
-    def __init__(self):
+    def __init__(self, bldg_list, num_sites):
         Zone.__init__(self)
-        # Sites contain one or more buildings
-        self.hasBuilding = []
-        # Sites can be adjacent to/intersect with other sites (which are zones)
-        self.adjacentZone = None
-        self.intersectsZone = None
-        # Sites contain all of the zones, spaces, elements, etc. within the building model:
-        self.containsZone = []
+        # Sites contain one or more buildings:
+        self.hasBuilding = {}
+        # Sites contain all of the zones, spaces, elements, etc. within each building model:
+        self.containsZone = {}
+        self.hasStorey = {}
+        self.hasSpace = {}
+        self.containsElement = {}
+        # Given the number of buildings, create instances of Building and pull attributes
+        for i in range(0, len(bldg_list)):
+            bldg_name = 'Building' + str(i)
+            self.hasBuilding[bldg_name] = Building(num_stories)
+            self.containsZone.update(Building.containsZone)
+            self.hasStorey.update(Building.hasStorey)
+            self.hasSpace.update(Building.hasSpace)
+            self.containsElement.update(Building.containsElement)
+        # Sites can be adjacent to/intersect with other sites (which are also zones)
+        if num_sites > 0:
+            self.adjacentZone = None
+            self.intersectsZone = None
+        else:
+            pass
 
 class Building(Zone):
     # Sub-class of Zone
     def __init__(self, num_stories):
         Zone.__init__(self)
-        # Given the number of stories, create instances of story:
-        self.hasStorey = []
+        # Buildings have Storeys:
+        self.hasStorey = {}
+        # Buildings contain all of the zones, spaces, elements, etc. within each storey:
+        self.containsZone = {}
+        self.hasSpace = {}
+        self.containsElement = {}
+        # Given the number of stories, create instances of Storey and pull attributes:
+        for i in range(0, num_stories):
+            storey_name = 'Storey' + str(i)
+            self.hasStorey[storey_name] = Storey
+            self.containsZone.update(Storey.containsZone)
+            self.hasSpace.update(Storey.hasSpace)
+            self.containsElement.update(Storey.containsElement)
         # Buildings can be adjacent to other buildings
         self.adjacentZone = None
-        # Buildings contain all of the zones, spaces, elements, etc. within each storey:
-        self.containsZone = []
-        # Buildings have an origin:
+        # Attribute outside of BOT: Building Footprint:
+        self.footprint = None
+        # BOT: Buildings have an origin (should be assigned using appropriate ontology in future use):
         self.hasZeroPoint = None
 
 class Storey(Zone):
     # Sub-class of Zone
-    def __init__(self, num_stories):
+    def __init__(self, element_lst):
         Zone.__init__(self)
         # Base set of elements:
-        self.hasElement = []
+        self.containsElement = []
         # Storeys can be adjacent to other storeys
         self.adjacentZone = None
+        self.adjacentElement = None
         # Storeys contain zones, spaces, elements, etc.:
         self.containsZone = []
         self.hasSpace = []
 
 class Space(Zone):
     # Sub-class of Zone
-    def __init__(self, num_stories):
+    def __init__(self, storey):
         Zone.__init__(self)
         # Spaces contain elements:
-        self.hasElement = []
-        # Spaces can be adjacent to other spaces
+        self.containsElement = []
+        # Spaces can be adjacent to other spaces/elements
         self.adjacentZone = None
+        self.adjacentElement = None
 
 class Element:
-    def __init__(self, num_stories):
-        Zone.__init__(self)
-        # Spaces contain elements:
-        self.hasElement = []
-        # Spaces can be adjacent to other spaces
+    def __init__(self, storey):
+        # Element type:
+        self.type = None
+        # Elements can have subelements:
+        self.hasSubElement = []
+        # Elements can be adjacent to other elements
         self.adjacentZone = None
 
 class Interface:
-    # Sub-class of Zone
-    def __init__(self, num_stories):
-        Zone.__init__(self)
-        # Spaces contain elements:
-        self.hasElement = []
-        # Spaces can be adjacent to other spaces
-        self.adjacentZone = None
+    def __init__(self, first_instance, second_instance):
+        # An interface is the surface where two building elements: 2 zones or 1 element + 1 zone meet
+        self.interfaceOf = []
 
 
 class BIM:
