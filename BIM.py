@@ -4,7 +4,7 @@ import geopandas as gpd
 from shapely.geometry import Point, Polygon
 from scipy import spatial
 import matplotlib.pyplot as plt
-from element import RoofAssem, WallAssem, FloorAssem, CeilingAssem
+from element import Roof, Wall, Floor, Ceiling
 import bldg_code
 from survey_data import SurveyData
 from geopy import distance

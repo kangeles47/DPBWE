@@ -4,7 +4,7 @@ import geopandas as gpd
 from shapely.geometry import Point, Polygon
 from scipy import spatial
 import matplotlib.pyplot as plt
-from element import RoofAssem, WallAssem, FloorAssem, CeilingAssem
+from element import Roof, Wall, Floor, Ceiling
 import bldg_code
 from survey_data import SurveyData
 from geopy import distance
@@ -37,7 +37,7 @@ class Site(Zone):
         # Given the number of buildings, create instances of Building and pull attributes
         for i in range(0, len(bldg_list)):
             bldg_name = 'Building' + str(i)
-            self.hasBuilding[bldg_name] = Building(bldg_name, pid, num_stories, occupancy, yr_built, address, area, lon, lat)
+            self.hasBuilding[bldg_name] = Building(bldg_name, pid, num_stories, occupancy, yr_built, address, area, lon, lat) # These attributes come from building list
             self.containsZone.append(Building.containsZone)
             self.hasStorey.update(Building.hasStorey)
             self.hasSpace.update(Building.hasSpace)
