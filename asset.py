@@ -4,7 +4,7 @@ import geopandas as gpd
 from shapely.geometry import Point, Polygon
 from scipy import spatial
 import matplotlib.pyplot as plt
-from assembly import RoofAssem, WallAssem, FloorAssem, CeilingAssem
+from element import RoofAssem, WallAssem, FloorAssem, CeilingAssem
 import bldg_code
 from survey_data import SurveyData
 from geopy import distance
@@ -273,17 +273,6 @@ class Space(Zone):
         # Spaces can be adjacent to other spaces/elements
         self.adjacentZone = None
         self.adjacentElement = None
-
-class Element:
-    def __init__(self, storey, parcel_flag):
-        # Element type:
-        self.type = None
-        # Elements can have subelements:
-        self.hasSubElement = None
-        # Elements can be adjacent to other elements
-        self.adjacentZone = None
-        # Elements can be modeled as well:
-        self.has3DModel = None
 
 class Interface:
     def __init__(self, first_instance, second_instance):
