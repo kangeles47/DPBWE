@@ -69,16 +69,12 @@ class Building(Zone):
         # Create Storey instances:
         for i in range(0, num_stories):
             storey_name = 'Storey' + str(i)
-            self.hasStorey[storey_name] = Storey(element_lst, storey_name)
+            self.hasStorey[storey_name] = Storey(storey_name)
             self.containsZone.update(Storey.containsZone)
             self.hasSpace.update(Storey.hasSpace)
             self.containsElement.update(Storey.containsElement)
         # Buildings can be adjacent to other buildings
         self.adjacentZone = None
-        # Attribute outside of BOT: Building Footprint:
-        self.footprint = None  # Maybe add to has3DModel attribute
-        # BOT: Buildings have an origin (should be assigned using appropriate ontology in future use):
-        self.hasZeroPoint = Point(lon, lat)
         # Attributes outside of BOT:
         self.hasPID = pid
         self.hasOccupancy = occupancy
@@ -92,13 +88,15 @@ class Building(Zone):
         self.hasStruct_sys = []
         self.hasCeilings = []
         self.hasFootprint = {'type': None, 'geometry': None}
+        # BOT: Buildings have an origin (should be assigned using appropriate ontology in future use, using lon, lat for now):
+        self.hasZeroPoint = Point(lon, lat)
 
         # Using basic building attributes, set up building metavariables:
         # 1) Tag the building as "commercial" or "not commercial"
-        if self.occupancy == "PROFESSION" or self.occupancy == "HOTEL" or self.occupancy == "MOTEL" or self.occupancy == "FINANCIAL":
-            self.is_comm = True
+        if self.hasOccupancy == "PROFESSION" or self.hasOccupancy == "HOTEL" or self.hasOccupancy == "MOTEL" or self.hasOccupancy == "FINANCIAL":
+            self.isComm = True
         else:
-            self.is_comm = False
+            self.isComm = False
 
         # 2) Define additional attributes regarding the building location:
         self.location_data(self)
@@ -116,116 +114,16 @@ class Building(Zone):
         else:
             print('County and State Information not currently supported')
 
-class Storey(Zone):
-    # Sub-class of Zone
-    def __init__(self, element_lst, storey_name):
-        # Zone Name for the Storey:
-        zone_name = storey_name
-        Zone.__init__(self, zone_name)
-        # Base set of elements:
-        self.containsElement = {}
-        # Storeys can be adjacent to other storeys
-        self.adjacentZone = None
-        self.adjacentElement = None
-        # Storeys contain zones, spaces, elements, etc.:
-        self.hasSpace = {}
-        # Attributes outside of BOT Ontology:
-        self.hasHeight = None
-        self.hasLayout = None  # Floor plan geometry
+class Parcel(Building):
 
-class Space(Zone):
-    # Sub-class of Zone
-    def __init__(self, parcel_flag):
-        # Zone Name for the Space:
-        zone_name = space_name
-        Zone.__init__(self, zone_name)
-        # Spaces contain elements:
-        self.containsElement = None
-        # Spaces can be adjacent to other spaces/elements
-        self.adjacentZone = None
-        self.adjacentElement = None
-
-class Element:
-    def __init__(self, storey, parcel_flag):
-        # Element type:
-        self.type = None
-        # Elements can have subelements:
-        self.hasSubElement = None
-        # Elements can be adjacent to other elements
-        self.adjacentZone = None
-        # Elements can be modeled as well:
-        self.has3DModel = None
-
-class Interface:
-    def __init__(self, first_instance, second_instance):
-        # An interface is the surface where two building elements: 2 zones or 1 element + 1 zone meet
-        self.interfaceOf = None
-        # Attributes outside of the BOT Ontology:
-        # Interfaces like connections can have a 3D Model and capacity:
-        self.has3DModel = None
-        self.hasCapacity = None
-
-
-class BIM:
-
-    # Here we might have to write some sort of function that parses the .JSON file from the SimCenter BIM Model
-
-    def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
-        self.pid = pid
-        # Exception for single family homes:
-        if num_stories == 0:
-            self.num_stories = int(num_stories) + 1
-        else:
-            self.num_stories = int(num_stories)
-        self.occupancy = occupancy
-        self.yr_built = int(yr_built)
-        self.address = address
-        self.lon = float(lon)
-        self.lat = float(lat)
-        self.area = float(area)/10.764 # sq feet to sq meters
-        self.h_bldg = None  # every building has a height, fidelity will determine value
-        self.walls = []
-        self.roof = None
-        self.floors = []
-        self.struct_sys = []
-        self.ceilings = []
-        self.footprint = {'type': None, 'geometry': None}
-
-        # Using basic building attributes, set up building metavariables:
-        # 1) Tag the building as "commercial" or "not commercial"
-        if self.occupancy == "PROFESSION" or self.occupancy == "HOTEL" or self.occupancy == "MOTEL" or self.occupancy == "FINANCIAL":
-            self.is_comm = True
-        else:
-            self.is_comm = False
-
-        # 2) Define additional attributes regarding the building location:
-        self.location_data(self)
-
-    def location_data(self, Building):
-        # Here is where we are going to populate any characteristics relevant to the parcel's location:
-        # What we get back from the parcel data is the address and zip code:
-        zipcode = int(BIM.address.split()[-1])
-        BayCountyZipCodes = np.arange(32401, 32418)
-        BayCountyZipCodes = np.append(BayCountyZipCodes, [32438, 32444, 32466])
-
-        if zipcode in BayCountyZipCodes:
-            BIM.state = 'FL'
-            BIM.county = 'Bay'
-        else:
-            print('County and State Information not currently supported')
-
-# Now that we have defined the BIM superclass, it is time to define the Parcel subclass (we want all of our parcels to inherit the basic attributes outlined above)
-
-class Parcel(BIM):
-
-    def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
-        BIM.__init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat) #Bring in all of the attributes that are defined in the BIM class for the parcel model
+    def __init__(self, bldg_name, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
+        Building.__init__(self, bldg_name, pid, num_stories, occupancy, yr_built, address, area, lon, lat) #Bring in all of the attributes that are defined in the BIM class for the parcel model
         # Define building-level attributes that are specific to parcel models
         # Building footprint:
-        self.assign_footprint(self)
+        self.assign_footprint(self, num_stories)
         # Create an instance of the BldgCode class and populate building-level code-informed attributes for the parcel:
         desc_flag = True  # Need to access a building code that will give us code-based descriptions
-        if self.state == 'FL':
+        if self.hasLocation['State'] == 'FL':
             code_informed = bldg_code.FBC(self, desc_flag)
         else:
             pass
@@ -240,9 +138,9 @@ class Parcel(BIM):
         else:
             pass
 
-    def assign_footprint(self, parcel):
+    def assign_footprint(self, parcel, num_stories):
         # Access file with region's building footprint information:
-        if parcel.state == 'FL' and parcel.county == 'Bay':
+        if parcel.hasLocation['State'] == 'FL' and parcel.hasLocation['County'] == 'Bay':
             jFile = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/Geojson/BayCounty.geojson'
         else:
             print('Footprints for this region currently not supported')
@@ -253,19 +151,19 @@ class Parcel(BIM):
 
         # Need to access Polygon geometry in order to determine if the parcel's location is within that polygon:
         # Create a Point object with the parcel's lon, lat coordinates:
-        p1 = Point(parcel.lon, parcel.lat)
+        ref_pt = parcel.hasLocation['Geodesic']
 
         # Loop through dataset to find the parcel's corresponding footprint:
-        for row in range(0, len(data["geometry"])):
+        for row in range(0, len(data['geometry'])):
             # Check if point is within the polygon in this row:
             poly = data['geometry'][row]
-            if p1.within(poly):
+            if ref_pt.within(poly):
                 parcel.footprint['geometry'] = poly
                 parcel.footprint['type'] = 'open data'
             else:
                 pass
         # If the lon, lat of the parcel does not fall within bounds of any of the footprints, assign nearest neighbor:
-        if parcel.footprint["type"] is None:
+        if parcel.footprint['type'] is None:
             # Populate the KD tree using the centroids of the building footprints:
             centroids = data['geometry'].apply(lambda ind: [ind.centroid.x, ind.centroid.y]).tolist()
             kdtree = spatial.KDTree(centroids)
@@ -274,7 +172,7 @@ class Parcel(BIM):
             # Find the nearest neighbors within the radius (increase until neighbors are present):
             neigh_list = []
             for rad in radii:
-                neigh_list.append(kdtree.query_ball_point([parcel.lon, parcel.lat], r=rad))
+                neigh_list.append(kdtree.query_ball_point([ref_pt.x, ref_pt.y], r=rad))
                 if len(neigh_list) > 1:
                     break
                 else:
@@ -293,19 +191,12 @@ class Parcel(BIM):
             pass
         else:
             parcel.footprint['type'] = 'default'
-            length = (sqrt(self.area/self.num_stories))*(1/(2*sin(pi/4))) # Divide total building area by number of stories and take square root, divide by 2
-            p1 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 45)
-            p2 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 135)
-            p3 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 225)
-            p4 = distance.distance(kilometers=length/1000).destination((parcel.lat, parcel.lon), 315)
+            length = (sqrt(self.hasArea/num_stories))*(1/(2*sin(pi/4))) # Divide total building area by number of stories and take square root, divide by 2
+            p1 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 45)
+            p2 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 135)
+            p3 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 225)
+            p4 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 315)
             parcel.footprint['geometry'] = Polygon([(p1.longitude, p1.latitude), (p2.longitude, p2.latitude), (p3.longitude, p3.latitude), (p4.longitude, p4.latitude)])
-            x,y = parcel.footprint['geometry'].exterior.xy
-            #fig, ax = plt.subplots()
-            #ax.plot(x,y)
-            #plt.plot(x,y)
-            #ax.axis('equal')
-            #plt.show()
-            #a = 0
 
     def prelim_assem(self, parcel):
         #IF statements here may be unnecessary but keeping them for now
@@ -353,6 +244,57 @@ class Parcel(BIM):
                 new_ceiling = CeilingAssem(parcel)
                 parcel.floors[idx].append(new_floor) #Add a floor instance to each placeholder
                 parcel.ceilings[idx].append(new_ceiling) #Add a ceiling instance to each placeholder
+
+class Storey(Zone):
+    # Sub-class of Zone
+    def __init__(self, storey_name):
+        # Zone Name for the Storey:
+        zone_name = storey_name
+        Zone.__init__(self, zone_name)
+        # Base set of elements:
+        self.containsElement = {}
+        # Storeys can be adjacent to other storeys
+        self.adjacentZone = None
+        self.adjacentElement = None
+        # Storeys contain zones, spaces, elements, etc.:
+        self.hasSpace = {}
+        # Attributes outside of BOT Ontology:
+        self.hasHeight = None
+        self.hasLayout = None  # Floor plan geometry
+
+class Space(Zone):
+    # Sub-class of Zone
+    def __init__(self, parcel_flag):
+        # Zone Name for the Space:
+        zone_name = space_name
+        Zone.__init__(self, zone_name)
+        # Spaces contain elements:
+        self.containsElement = None
+        # Spaces can be adjacent to other spaces/elements
+        self.adjacentZone = None
+        self.adjacentElement = None
+
+class Element:
+    def __init__(self, storey, parcel_flag):
+        # Element type:
+        self.type = None
+        # Elements can have subelements:
+        self.hasSubElement = None
+        # Elements can be adjacent to other elements
+        self.adjacentZone = None
+        # Elements can be modeled as well:
+        self.has3DModel = None
+
+class Interface:
+    def __init__(self, first_instance, second_instance):
+        # An interface is the surface where two building elements: 2 zones or 1 element + 1 zone meet
+        self.interfaceOf = None
+        # Attributes outside of the BOT Ontology:
+        # Interfaces like connections can have a 3D Model and capacity:
+        self.has3DModel = None
+        self.hasCapacity = None
+
+
 
 #lon = -85.676188
 #lat = 30.190142
