@@ -37,7 +37,7 @@ class Site(Zone):
         # Given the number of buildings, create instances of Building and pull attributes
         for i in range(0, len(bldg_list)):
             bldg_name = 'Building' + str(i)
-            self.hasBuilding[bldg_name] = Building(num_stories, i)
+            self.hasBuilding[bldg_name] = Building(bldg_name, pid, num_stories, occupancy, yr_built, address, area, lon, lat)
             self.containsZone.append(Building.containsZone)
             self.hasStorey.update(Building.hasStorey)
             self.hasSpace.update(Building.hasSpace)
@@ -51,7 +51,7 @@ class Site(Zone):
 
 class Building(Zone):
     # Sub-class of Zone
-    def __init__(self, num_stories, bldg_name):
+    def __init__(self, bldg_name, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
         # Zone Name for the Building:
         zone_name = bldg_name
         Zone.__init__(self, zone_name)
@@ -61,6 +61,12 @@ class Building(Zone):
         self.hasSpace = {}
         self.containsElement = {}
         # Given the number of stories, create instances of Storey and pull attributes:
+        # Exception for single family homes:
+        if num_stories == 0:
+            num_stories = int(num_stories) + 1
+        else:
+            num_stories = int(num_stories)
+        # Create Storey instances:
         for i in range(0, num_stories):
             storey_name = 'Storey' + str(i)
             self.hasStorey[storey_name] = Storey(element_lst, storey_name)
@@ -72,7 +78,43 @@ class Building(Zone):
         # Attribute outside of BOT: Building Footprint:
         self.footprint = None  # Maybe add to has3DModel attribute
         # BOT: Buildings have an origin (should be assigned using appropriate ontology in future use):
-        self.hasZeroPoint = None
+        self.hasZeroPoint = Point(lon, lat)
+        # Attributes outside of BOT:
+        self.hasPID = pid
+        self.hasOccupancy = occupancy
+        self.hasYearBuilt = int(yr_built)
+        self.hasLocation = {'Address': address, 'State': None, 'County': None, 'Geodesic': Point(lon, lat)}
+        self.hasArea = float(area) # sq feet
+        self.hasHeight = None  # every building has a height, fidelity will determine value
+        self.hasWalls = []
+        self.hasRoof = None
+        self.hasFloors = []
+        self.hasStruct_sys = []
+        self.hasCeilings = []
+        self.hasFootprint = {'type': None, 'geometry': None}
+
+        # Using basic building attributes, set up building metavariables:
+        # 1) Tag the building as "commercial" or "not commercial"
+        if self.occupancy == "PROFESSION" or self.occupancy == "HOTEL" or self.occupancy == "MOTEL" or self.occupancy == "FINANCIAL":
+            self.is_comm = True
+        else:
+            self.is_comm = False
+
+        # 2) Define additional attributes regarding the building location:
+        self.location_data(self)
+
+    def location_data(self, Building):
+        # Here is where we are going to populate any characteristics relevant to the parcel's location:
+        # What we get back from the parcel data is the address and zip code:
+        zipcode = int(Building.hasLocation['Address'].split()[-1])
+        BayCountyZipCodes = np.arange(32401, 32418)
+        BayCountyZipCodes = np.append(BayCountyZipCodes, [32438, 32444, 32466])
+
+        if zipcode in BayCountyZipCodes:
+            Building.hasLocation['State'] = 'FL'
+            Building.hasLocation['County'] = 'Bay'
+        else:
+            print('County and State Information not currently supported')
 
 class Storey(Zone):
     # Sub-class of Zone
@@ -159,7 +201,7 @@ class BIM:
         # 2) Define additional attributes regarding the building location:
         self.location_data(self)
 
-    def location_data(self, BIM):
+    def location_data(self, Building):
         # Here is where we are going to populate any characteristics relevant to the parcel's location:
         # What we get back from the parcel data is the address and zip code:
         zipcode = int(BIM.address.split()[-1])
