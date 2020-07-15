@@ -16,25 +16,29 @@ from geopy import distance
 class Zone:
     # Zones represent any 3D geometry
     # Sub-classes include Site, Building, Storey, Space
-    def __init__(self):
-        self.zoneName = 'Zone Number'
+    def __init__(self, zone_name):
+        self.containsZone = []
+        self.containsZone.append(zone_name)
+        self.has3DModel = None
 
 class Site(Zone):
     # Sub-class of Zone
-    def __init__(self, bldg_list, num_sites):
-        Zone.__init__(self)
+    def __init__(self, bldg_list, site_num, num_sites):
+        # Zone Name for the Site:
+        zone_name = 'Site' + str(site_num)
+        # Populate Zone attributes:
+        Zone.__init__(self, zone_name)
         # Sites contain one or more buildings:
         self.hasBuilding = {}
         # Sites contain all of the zones, spaces, elements, etc. within each building model:
-        self.containsZone = {}
         self.hasStorey = {}
         self.hasSpace = {}
         self.containsElement = {}
         # Given the number of buildings, create instances of Building and pull attributes
         for i in range(0, len(bldg_list)):
             bldg_name = 'Building' + str(i)
-            self.hasBuilding[bldg_name] = Building(num_stories)
-            self.containsZone.update(Building.containsZone)
+            self.hasBuilding[bldg_name] = Building(num_stories, i)
+            self.containsZone.append(Building.containsZone)
             self.hasStorey.update(Building.hasStorey)
             self.hasSpace.update(Building.hasSpace)
             self.containsElement.update(Building.containsElement)
@@ -47,64 +51,77 @@ class Site(Zone):
 
 class Building(Zone):
     # Sub-class of Zone
-    def __init__(self, num_stories):
-        Zone.__init__(self)
+    def __init__(self, num_stories, bldg_name):
+        # Zone Name for the Building:
+        zone_name = bldg_name
+        Zone.__init__(self, zone_name)
         # Buildings have Storeys:
         self.hasStorey = {}
         # Buildings contain all of the zones, spaces, elements, etc. within each storey:
-        self.containsZone = {}
         self.hasSpace = {}
         self.containsElement = {}
         # Given the number of stories, create instances of Storey and pull attributes:
         for i in range(0, num_stories):
             storey_name = 'Storey' + str(i)
-            self.hasStorey[storey_name] = Storey
+            self.hasStorey[storey_name] = Storey(element_lst, storey_name)
             self.containsZone.update(Storey.containsZone)
             self.hasSpace.update(Storey.hasSpace)
             self.containsElement.update(Storey.containsElement)
         # Buildings can be adjacent to other buildings
         self.adjacentZone = None
         # Attribute outside of BOT: Building Footprint:
-        self.footprint = None
+        self.footprint = None  # Maybe add to has3DModel attribute
         # BOT: Buildings have an origin (should be assigned using appropriate ontology in future use):
         self.hasZeroPoint = None
 
 class Storey(Zone):
     # Sub-class of Zone
-    def __init__(self, element_lst):
-        Zone.__init__(self)
+    def __init__(self, element_lst, storey_name):
+        # Zone Name for the Storey:
+        zone_name = storey_name
+        Zone.__init__(self, zone_name)
         # Base set of elements:
-        self.containsElement = []
+        self.containsElement = {}
         # Storeys can be adjacent to other storeys
         self.adjacentZone = None
         self.adjacentElement = None
         # Storeys contain zones, spaces, elements, etc.:
-        self.containsZone = []
-        self.hasSpace = []
+        self.hasSpace = {}
+        # Attributes outside of BOT Ontology:
+        self.hasHeight = None
+        self.hasLayout = None  # Floor plan geometry
 
 class Space(Zone):
     # Sub-class of Zone
-    def __init__(self, storey):
-        Zone.__init__(self)
+    def __init__(self, parcel_flag):
+        # Zone Name for the Space:
+        zone_name = space_name
+        Zone.__init__(self, zone_name)
         # Spaces contain elements:
-        self.containsElement = []
+        self.containsElement = None
         # Spaces can be adjacent to other spaces/elements
         self.adjacentZone = None
         self.adjacentElement = None
 
 class Element:
-    def __init__(self, storey):
+    def __init__(self, storey, parcel_flag):
         # Element type:
         self.type = None
         # Elements can have subelements:
-        self.hasSubElement = []
+        self.hasSubElement = None
         # Elements can be adjacent to other elements
         self.adjacentZone = None
+        # Elements can be modeled as well:
+        self.has3DModel = None
 
 class Interface:
     def __init__(self, first_instance, second_instance):
         # An interface is the surface where two building elements: 2 zones or 1 element + 1 zone meet
-        self.interfaceOf = []
+        self.interfaceOf = None
+        # Attributes outside of the BOT Ontology:
+        # Interfaces like connections can have a 3D Model and capacity:
+        self.has3DModel = None
+        self.hasCapacity = None
 
 
 class BIM:
