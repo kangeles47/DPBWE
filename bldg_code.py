@@ -1,4 +1,4 @@
-# from parcel import parcel
+#from asset import Parcel
 import numpy as np
 import random
 
@@ -8,78 +8,78 @@ class BldgCode:
     def __init__(self, parcel, desc_flag):
         # Building codes have editions:
         desc_flag = True
-        self.edition = self.get_edition(parcel, desc_flag)
+        self.hasEdition = self.get_edition(parcel, desc_flag)
 
     def get_edition(self, parcel, desc_flag):
         # Get the code edition considering parcel location, year built
         # For code-based rulesets (Parcels):
         if desc_flag:
-            if parcel.state == "FL":
+            if parcel.hasLocation['State'] == 'FL':
                 # Create an instance of FBC and assign its edition:
-                if parcel.is_comm:
-                    if parcel.yr_built > 1988 & parcel.yr_built <= 1991:
-                        if parcel.county != 'Broward' or parcel.county != 'Dade':
+                if parcel.isComm:
+                    if parcel.hasYearBuilt > 1988 & parcel.hasYearBuilt <= 1991:
+                        if parcel.hasLocation['County'] != 'Broward' or parcel.hasLocation['County'] != 'Dade':
                             edition = '1988 SBC'
                         else:
                             edition = '1988 SFBC'
-                    elif parcel.yr_built > 2001 & parcel.yr_built <= 2004:
+                    elif parcel.hasYearBuilt > 2001 & parcel.hasYearBuilt <= 2004:
                         edition = '2001 FBC - Building'
-                    elif parcel.yr_built > 2004 & parcel.yr_built <= 2008:
+                    elif parcel.hasYearBuilt > 2004 & parcel.hasYearBuilt <= 2008:
                         edition = '2004 FBC - Building'
-                    elif parcel.yr_built > 2008 & parcel.yr_built <= 2011:
+                    elif parcel.hasYearBuilt > 2008 & parcel.hasYearBuilt <= 2011:
                         edition = '2007 FBC - Building'
-                    elif parcel.yr_built > 2011 & parcel.yr_built <= 2014:
+                    elif parcel.hasYearBuilt > 2011 & parcel.hasYearBuilt <= 2014:
                         edition = '2010 FBC - Building'
-                    elif parcel.yr_built > 2014 & parcel.yr_built <= 2017:
+                    elif parcel.hasYearBuilt > 2014 & parcel.hasYearBuilt <= 2017:
                         edition = '2014 FBC - Building'
-                    elif parcel.yr_built > 2017 & parcel.yr_built <= 2020:
+                    elif parcel.hasYearBuilt > 2017 & parcel.hasYearBuilt <= 2020:
                         edition = '2017 FBC - Building'
                     else:
-                        print('Building code and edition currently not supported', parcel.yr_built)
+                        print('Building code and edition currently not supported', parcel.hasYearBuilt)
                 else:
-                    if parcel.yr_built > 1983 & parcel.yr_built <= 1986:
+                    if parcel.hasYearBuilt > 1983 & parcel.hasYearBuilt <= 1986:
                         edition = '1983 CABO'
-                    elif parcel.yr_built > 1986 & parcel.yr_built <= 1989:
+                    elif parcel.hasYearBuilt > 1986 & parcel.hasYearBuilt <= 1989:
                         edition = '1986 CABO'
-                    elif parcel.yr_built > 1989 & parcel.yr_built <= 1991:
+                    elif parcel.hasYearBuilt > 1989 & parcel.hasYearBuilt <= 1991:
                         edition = '1989 CABO'
-                    elif parcel.yr_built > 1991 & parcel.yr_built <= 1995:
+                    elif parcel.hasYearBuilt > 1991 & parcel.hasYearBuilt <= 1995:
                         edition = '1992 CABO'
-                    elif parcel.yr_built > 1995 & parcel.yr_built <= 2001:
+                    elif parcel.hasYearBuilt > 1995 & parcel.hasYearBuilt <= 2001:
                         edition = '1995 CABO'
-                    elif parcel.yr_built > 2001 & parcel.yr_built <= 2004:
+                    elif parcel.hasYearBuilt > 2001 & parcel.hasYearBuilt <= 2004:
                         edition = '2001 FBC - Residential'
-                    elif parcel.yr_built > 2004 & parcel.yr_built <= 2008:
+                    elif parcel.hasYearBuilt > 2004 & parcel.hasYearBuilt <= 2008:
                         edition = '2004 FBC - Residential'
-                    elif parcel.yr_built > 2008 & parcel.yr_built <= 2011:
+                    elif parcel.hasYearBuilt > 2008 & parcel.hasYearBuilt <= 2011:
                         edition = '2007 FBC - Residential'
-                    elif parcel.yr_built > 2011 & parcel.yr_built <= 2014:
+                    elif parcel.hasYearBuilt > 2011 & parcel.hasYearBuilt <= 2014:
                         edition = '2010 FBC - Residential'
-                    elif parcel.yr_built > 2014 & parcel.yr_built <= 2017:
+                    elif parcel.hasYearBuilt > 2014 & parcel.hasYearBuilt <= 2017:
                         edition = '2014 FBC - Residential'
-                    elif parcel.yr_built > 2017 & parcel.yr_built <= 2020:
+                    elif parcel.hasYearBuilt > 2017 & parcel.hasYearBuilt <= 2020:
                         edition = '2017 FBC - Residential'
                     else:
-                        print('Building code and edition currently not supported', parcel.yr_built)
+                        print('Building code and edition currently not supported', parcel.hasYearBuilt)
         else:
             # For code-informed capacities using ASCE 7:
-            if parcel.yr_built <= 1988:
+            if parcel.hasYearBuilt <= 1988:
                 edition = 'ASCE 7-88'
-            elif 1988 < parcel.yr_built <= 1993:
+            elif 1988 < parcel.hasYearBuilt <= 1993:
                 edition = 'ASCE 7-88'
-            elif 1993 < parcel.yr_built <= 1995:
+            elif 1993 < parcel.hasYearBuilt <= 1995:
                 edition = 'ASCE 7-93'
-            elif 1995 < parcel.yr_built <= 1998:
+            elif 1995 < parcel.hasYearBuilt <= 1998:
                 edition = 'ASCE 7-95'
-            elif 1998 < parcel.yr_built <= 2002:
+            elif 1998 < parcel.hasYearBuilt <= 2002:
                 edition = 'ASCE 7-98'
-            elif 2002 < parcel.yr_built <= 2005:
+            elif 2002 < parcel.hasYearBuilt <= 2005:
                 edition = 'ASCE 7-02'
-            elif 2005 < parcel.yr_built <= 2010:
+            elif 2005 < parcel.hasYearBuilt <= 2010:
                 edition = 'ASCE 7-05'
-            elif 2010 < parcel.yr_built <= 2016:
+            elif 2010 < parcel.hasYearBuilt <= 2016:
                 edition = 'ASCE 7-10'
-            elif parcel.yr_built > 2016:
+            elif parcel.hasYearBuilt > 2016:
                 edition = 'ASCE 7-16'
         return edition
 
@@ -92,26 +92,21 @@ class FBC(BldgCode):
 
     def bldg_attributes(self, parcel):
         # Knowing the code edition, populate this building-level code-informed attributes for the parcel:
-        if parcel.state == "FL":
-            if parcel.is_comm:
-                if 'FBC' in self.edition or self.edition == '1988 SBC':
-                    # 9 ft standard ceiling height
-                    parcel.h_story = np.arange(9, 9 * parcel.num_stories, parcel.num_stories)  # story elevations [ft]
-                    parcel.h_bldg = parcel.num_stories * 9  # min. ceiling height used to calculate building height [ft]
-                    parcel.num_rooms = 6 #assigning number of rooms based off of occupancy, structural system
-                    #self.roof_survey_data(self.edition, parcel) #populate missing data for the parcel from national survey (CBECS)
-                else:
-                    print('Building level attributes currently not supported')
+        if parcel.hasLocation['State'] == 'FL':
+            if 'FBC' in self.hasEdition or self.hasEdition == '1988 SBC':
+                # 9 ft standard ceiling height - Add to each Storey in Building:
+                for i in range(0, len(parcel.hasStorey)):
+                    parcel.hasStorey[i].hasElevation = [9*i, 9*(i+1)]
+                    parcel.hasStorey[i].hasHeight = 9
+                parcel.hasHeight = len(parcel.hasStorey) * 9  # min. ceiling height used to calculate building height [ft]
+            elif 'CABO' in self.hasEdition:
+                # 8 ft standard ceiling height for older construction
+                parcel.h_story = np.arange(9, 9 * parcel.num_stories, parcel.num_stories)
+                parcel.h_bldg = parcel.num_stories * 9
             else:
-                if 'FBC' in self.edition:
-                    # Story height, building height, number of rooms
-                    # 9 ft standard ceiling height
-                    parcel.h_story = np.arange(9, 9*parcel.num_stories, parcel.num_stories)  # story elevations [ft]
-                    parcel.h_bldg = parcel.num_stories * 9  # min. ceiling height used to calculate building height
-                elif 'CABO' in self.edition:
-                    # 8 ft standard ceiling height for older construction
-                    parcel.h_story = np.arange(9, 9 * parcel.num_stories, parcel.num_stories)
-                    parcel.h_bldg = parcel.num_stories * 9
+                print('Building level attributes currently not supported')
+        else:
+            print('Building level attributes currently not supported')
 
     def roof_attributes(self, edition, parcel, survey):
 
