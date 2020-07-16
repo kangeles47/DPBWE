@@ -17,35 +17,44 @@ from code_capacities import get_zone_width,find_zone_points
 class Zone:
     # Zones represent any 3D geometry
     # Sub-classes include Site, Building, Storey, Space
-    def __init__(self, zone_name):
-        self.containsZone = []
-        self.containsZone.append(zone_name)
+    def __init__(self):
+        # Zones can be adjacent to other zones:
+        self.adjacentZone = {}
+        # Zones can intersect:
+        self.intersectsZone = {}
+        # Zones contain themselves and can contain other zones
+        # hasBuilding, hasStorey, and hasSpace are sub-properties of containsZone
+        self.hasBuilding = {}
+        self.hasStorey = {}
+        self.hasSpace = {}
+        self.containsZone = [self.hasBuilding.values(), self.hasStorey.values(), self.hasSpace.values()]
+        # Zones have elements (hasElement). The following are subproperties of hasElement:
+        self.containsElement = {}
+        self.adjacentElement = []  # Adjacent building elements contribute to bounding the zone
+        self.intersectingElement = []  # Building elements that intersect the zone
+        self.hasElement = self.containsElement.values()
         self.has3DModel = None
 
 class Site(Zone):
     # Sub-class of Zone
     def __init__(self, bldg_list, site_num, num_sites):
-        # Zone Name for the Site:
-        zone_name = 'Site' + str(site_num)
         # Populate Zone attributes:
-        Zone.__init__(self, zone_name)
-        # Sites contain one or more buildings:
-        self.hasBuilding = {}
+        Zone.__init__(self)
+        # Sites contain one or more buildings
         # Sites contain all of the zones, spaces, elements, etc. within each building model:
-        self.hasStorey = {}
-        self.hasSpace = {}
-        self.containsElement = {}
         # Given the number of buildings, create instances of Building and pull attributes
         for i in range(0, len(bldg_list)):
             bldg_name = 'Building' + str(i)
+            # Sites contain one or more buildings
             self.hasBuilding[bldg_name] = Building(bldg_name, pid, num_stories, occupancy, yr_built, address, area, lon, lat) # These attributes come from building list
+            # Sites contain all of the zones, spaces, elements, etc. within each building model:
             self.containsZone.append(Building.containsZone)
             self.hasStorey.update(Building.hasStorey)
             self.hasSpace.update(Building.hasSpace)
             self.containsElement.update(Building.containsElement)
         # Sites can be adjacent to/intersect with other sites (which are also zones)
         if num_sites > 0:
-            self.adjacentZone = None
+            self.adjacentZone = None # Update these for future regional analysis
             self.intersectsZone = None
         else:
             pass
@@ -53,14 +62,7 @@ class Site(Zone):
 class Building(Zone):
     # Sub-class of Zone
     def __init__(self, bldg_name, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
-        # Zone Name for the Building:
-        zone_name = bldg_name
-        Zone.__init__(self, zone_name)
-        # Buildings have Storeys:
-        self.hasStorey = {}
-        # Buildings contain all of the zones, spaces, elements, etc. within each storey:
-        self.hasSpace = {}
-        self.containsElement = {}
+        Zone.__init__(self)
         # Given the number of stories, create instances of Storey and pull attributes:
         # Exception for single family homes:
         if num_stories == 0:
@@ -69,13 +71,13 @@ class Building(Zone):
             num_stories = int(num_stories)
         # Create Storey instances:
         for i in range(0, num_stories):
+            # Buildings have Storeys:
             storey_name = 'Storey' + str(i)
             self.hasStorey[storey_name] = Storey(storey_name)
+            # Buildings contain all of the zones, spaces, elements, etc. within each storey:
             self.containsZone.update(Storey.containsZone)
             self.hasSpace.update(Storey.hasSpace)
             self.containsElement.update(Storey.containsElement)
-        # Buildings can be adjacent to other buildings
-        self.adjacentZone = None
         # Attributes outside of BOT:
         self.hasPID = pid
         self.hasOccupancy = occupancy
@@ -83,11 +85,6 @@ class Building(Zone):
         self.hasLocation = {'Address': address, 'State': None, 'County': None, 'Geodesic': Point(lon, lat)}
         self.hasArea = float(area) # sq feet
         self.hasHeight = None  # every building has a height, fidelity will determine value
-        self.hasWalls = []
-        self.hasRoof = None
-        self.hasFloors = []
-        self.hasStruct_sys = []
-        self.hasCeilings = []
         self.hasFootprint = {'type': None, 'geometry': None}
         # BOT: Buildings have an origin (should be assigned using appropriate ontology in future use, using lon, lat for now):
         self.hasZeroPoint = Point(lon, lat)
@@ -201,11 +198,30 @@ class Parcel(Building):
 
     def parcel_elem(self, parcel):
         # Generate parcel elements with (default) attributes:
+        # Floor, Ceiling, and Roof Instances - These are conducted by storey to facilitate "hasElement" assignment
         # Exterior Walls - Geometries are derived considering zone locations on the building footprint:
         a = get_zone_width(parcel)  # Determine the zone width
         zone_pts = find_zone_points(parcel, a)  # Coordinates for start/end of zone locations
         # Assume that walls span one story for now:
         for storey in parcel.hasStorey:
+            # Generate floor and ceiling instance(s):
+            new_floor_list = []
+            new_floor1 = Floor(parcel, storey, parcel_flag=True)
+            new_floor1.hasElevation = storey.hasElevation[0]
+            new_floor_list.append(new_floor1)
+            new_ceiling = Ceiling(parcel, storey, parcel_flag=True)
+            if storey == parcel.hasStorey[-1]:
+                new_roof = [Roof(parcel, storey, parcel_flag=True)]
+                # Add roof to the storey:
+                storey.containsElement.update({'Roof': new_roof})
+            else:
+                new_floor2 = Floor(parcel, storey, parcel_flag=True)
+                new_floor2.hasElevation = storey.hasElevation[1]
+                new_floor_list.append(new_floor2)
+            # Add elements to the storey:
+            storey.containsElement.update({'Floors': new_floor_list, 'Ceiling': new_ceiling})
+            # Populate relational attributes for storey:
+            storey.adjacentElement
             # Loop through zone_pts and assign geometries to wall elements:
             for row in zone_pts:
                 # Parcel models will have three "walls" by default, corresponding to each zone on a side of the building:
@@ -219,37 +235,12 @@ class Parcel(Building):
                     ext_wall.hasLength = ext_wall.has1DModel.length
                     new_wall_list.append(ext_wall)
             # Add new exterior walls to the storey "hasElement" attribute:
-            storey.hasElement.update({'Walls': new_wall_list})
-        # Roof Element
-        parcel.hasStorey[-1] = Roof(parcel, storey, parcel_flag=True)
-
-
-        #Generate floor and ceiling instances:
-        if len(parcel.floors) == 0 and len(parcel.ceilings) == 0:
-            # Create placeholders: This will give one list per story
-            for num in range(0, parcel.num_stories - 1):
-                empty_floor = []
-                empty_ceiling = []
-                parcel.floors.append(empty_floor)
-                parcel.ceilings.append(empty_ceiling)
-
-            for idx in range(0, len(parcel.floors)): #for every list
-                new_floor = FloorAssem(parcel)
-                new_ceiling = CeilingAssem(parcel)
-                parcel.floors[idx].append(new_floor) #Add a floor instance to each placeholder
-                parcel.ceilings[idx].append(new_ceiling) #Add a ceiling instance to each placeholder
+            storey.containsElement.update({'Walls': new_wall_list})
 
 class Storey(Zone):
     # Sub-class of Zone
     def __init__(self, storey_name):
-        # Zone Name for the Storey:
-        zone_name = storey_name
-        Zone.__init__(self, zone_name)
-        # Base set of elements:
-        self.containsElement = {}
-        # Storeys can be adjacent to other storeys
-        self.adjacentZone = None
-        self.adjacentElement = None
+        Zone.__init__(self)
         # Storeys contain zones, spaces, elements, etc.:
         self.hasSpace = {}
         # Attributes outside of BOT Ontology:
@@ -259,14 +250,7 @@ class Storey(Zone):
 class Space(Zone):
     # Sub-class of Zone
     def __init__(self, parcel_flag):
-        # Zone Name for the Space:
-        zone_name = space_name
-        Zone.__init__(self, zone_name)
-        # Spaces contain elements:
-        self.containsElement = None
-        # Spaces can be adjacent to other spaces/elements
-        self.adjacentZone = None
-        self.adjacentElement = None
+        Zone.__init__(self)
 
 class Interface:
     def __init__(self, first_instance, second_instance):

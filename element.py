@@ -31,6 +31,7 @@ class Roof(Element):
         self.hasPitch = None
         self.hasCover = None
         self.hasHeight = None
+        self.hasElevation = None
 
 
 class Floor(Element):
@@ -38,6 +39,7 @@ class Floor(Element):
         Element.__init__(self, storey, parcel_flag)
         # Add in roof instance attributes:
         self.isLoadbearing = True
+        self.hasElevation = None
 
 
 
@@ -46,6 +48,7 @@ class Ceiling(Element):
         Element.__init__(self, storey, parcel_flag)
         # Add in roof instance attributes:
         self.isLoadbearing = False
+        self.hasElevation = None
 
 
 class StructSys(Element):
