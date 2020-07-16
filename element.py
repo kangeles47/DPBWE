@@ -3,7 +3,7 @@ class Element:
         # Elements can have subelements:
         self.hasSubElement = None
         # Elements can be adjacent to other elements
-        self.adjacentZone = None
+        self.adjacentElement = None
         # Elements can be modeled as well:
         self.has3DModel = None
         # Attributes outside of BOT Ontology:
@@ -12,7 +12,6 @@ class Element:
         self.hasLength = None
         self.hasMatls = None
         self.hasThickness = None
-        self.has2DLocation = None  # Update with building-specific coordinates
         self.hasCapacity = None
 
 class Wall(Element):
@@ -22,7 +21,7 @@ class Wall(Element):
         self.isImpactResistant = None
         self.hasHeight = None
         self.isExterior = None
-        # Note: need to make sure this being linked back to specific story/stories
+        self.has1DModel = None
 
 
 class Roof(Element):

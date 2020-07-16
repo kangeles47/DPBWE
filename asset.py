@@ -1,13 +1,14 @@
 import numpy as np
 from math import sqrt, pi, sin
 import geopandas as gpd
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point, Polygon, LineString
 from scipy import spatial
 import matplotlib.pyplot as plt
 from element import Roof, Wall, Floor, Ceiling
 import bldg_code
 from survey_data import SurveyData
 from geopy import distance
+from code_capacities import get_zone_width,find_zone_points
 
 # The Building Topology Ontology (BOT) is a minimal ontology for describing the core topological concepts of a building.
 # BOT representation (logic) is used to organize asset(s) description(s)
@@ -127,8 +128,8 @@ class Parcel(Building):
             code_informed = bldg_code.FBC(self, desc_flag)
         else:
             pass
-        # Generate a preliminary set of assemblies:
-        self.prelim_assem(self)
+        # Generate a set of building elements (with default attributes) for the parcel:
+        self.parcel_elements(self)
         # Populate instance attributes informed by national survey data:
         survey_data = SurveyData()  # create an instance of the survey data class
         survey_data.run(self)  # populate the parcel information
@@ -198,37 +199,30 @@ class Parcel(Building):
             p4 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 315)
             parcel.footprint['geometry'] = Polygon([(p1.longitude, p1.latitude), (p2.longitude, p2.latitude), (p3.longitude, p3.latitude), (p4.longitude, p4.latitude)])
 
-    def prelim_assem(self, parcel):
-        #IF statements here may be unnecessary but keeping them for now
-        # Generate preliminary instances of walls - 4 for every floor
-        if len(parcel.walls) == 0 and parcel.footprint['type'] == 'regular':
-            # Create placeholders: This will give one list per story
-            for number in range(0, parcel.num_stories-1):
-                empty = []
-                parcel.walls.append(empty)
+    def parcel_elem(self, parcel):
+        # Generate parcel elements with (default) attributes:
+        # Exterior Walls - Geometries are derived considering zone locations on the building footprint:
+        a = get_zone_width(parcel)  # Determine the zone width
+        zone_pts = find_zone_points(parcel, a)  # Coordinates for start/end of zone locations
+        # Assume that walls span one story for now:
+        for storey in parcel.hasStorey:
+            # Loop through zone_pts and assign geometries to wall elements:
+            for row in zone_pts:
+                # Parcel models will have three "walls" by default, corresponding to each zone on a side of the building:
+                new_wall_list = []
+                for col in range(0, len(row)):
+                    # Create a new Wall Instance:
+                    ext_wall = Wall(parcel, storey, parcel_flag=True)
+                    ext_wall.isExterior = True
+                    ext_wall.hasHeight = storey.hasHeight
+                    ext_wall.has1DModel = LineString([row[col], row[col+1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
+                    ext_wall.hasLength = ext_wall.has1DModel.length
+                    new_wall_list.append(ext_wall)
+            # Add new exterior walls to the storey "hasElement" attribute:
+            storey.hasElement.update({'Walls': new_wall_list})
+        # Roof Element
+        parcel.hasStorey[-1] = Roof(parcel, storey, parcel_flag=True)
 
-            # Assign one wall for each side on each story:
-            for lst in range(0,4):  # four sides
-                for index in range(0, len(parcel.walls)): #for every list (story)
-                    ext_wall = WallAssem(parcel)
-                    ext_wall.is_exterior = 1
-                    ext_wall.height = parcel.h_story[0]
-                    ext_wall.base_floor = index
-                    ext_wall.top_floor = index+1
-                    ext_wall.location = lst+1 # adding 1 since Python indexing starts at 0
-                    if lst % 2 == 0:
-                        ext_wall.length = parcel.footprint['geometry']['breadth']
-                    else:
-                        ext_wall.length = parcel.footprint['geometry']['depth']
-                    # Add the wall to its corresponding list:
-                    parcel.walls[index].append(ext_wall) # Add a wall instance to each placeholder
-
-        # Generate roof instance
-        if parcel.roof == None:
-            # Create a roof instance for the parcel:
-            parcel.roof = RoofAssem(parcel)
-        else:
-            print('A roof is already defined for this parcel')
 
         #Generate floor and ceiling instances:
         if len(parcel.floors) == 0 and len(parcel.ceilings) == 0:
