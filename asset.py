@@ -18,16 +18,26 @@ from code_capacities import get_zone_width,find_zone_points
 class Zone:
     # Zones represent any 3D geometry
     # Sub-classes include Site, Building, Storey, Space
-    def __init__(self):
+    def __init__(self, new_zone):
         # Zones can be adjacent to other zones:
         self.adjacentZone = []
         # Zones can intersect:
         self.intersectsZone = []
         # Zones contain themselves and can contain other zones
         # hasBuilding, hasStorey, and hasSpace are sub-properties of containsZone
-        self.hasBuilding = []
-        self.hasStorey = []
-        self.hasSpace = []
+        if isinstance(new_zone, Site):
+            self.hasBuilding = []
+        else:
+            pass
+        if isinstance(new_zone, Building):
+            self.hasStorey = []
+            self.hasSpace = []
+        else:
+            pass
+        if isinstance(new_zone, Storey):
+            self.hasSpace = []
+        else:
+            pass
         self.containsZone = []
         # Zones have elements (hasElement). The following are subproperties of hasElement:
         self.containsElement = {}
@@ -38,12 +48,21 @@ class Zone:
 
     def update_zones(self):
         # Simple function to easily update containsZone assignment
-        for bldg in self.hasBuilding:
-            self.containsZone.append(bldg)
-        for storey in self.hasStorey:
-            self.containsZone.append(storey)
-        for space in self.hasSpace:
-            self.containsZone.append(space)
+        try:
+            for bldg in self.hasBuilding:
+                self.containsZone.append(bldg)
+        except AttributeError:
+            pass
+        try:
+            for storey in self.hasStorey:
+                self.containsZone.append(storey)
+        except AttributeError:
+            pass
+        try:
+            for space in self.hasSpace:
+                self.containsZone.append(space)
+        except AttributeError:
+            pass
 
     def update_elements(self):
         # Simple function to easily update hasElement assignment
@@ -91,7 +110,7 @@ class Building(Zone):
         # Create Storey instances:
         for i in range(0, num_stories):
             # Buildings have Storeys:
-            new_storey = Storey
+            new_storey = Storey()
             new_storey.hasName = 'Storey' + str(i)
             self.hasStorey.append(new_storey)
         # Buildings contain all of the zones, spaces, elements, etc. within each storey:
