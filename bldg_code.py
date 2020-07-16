@@ -101,8 +101,10 @@ class FBC(BldgCode):
                 parcel.hasHeight = len(parcel.hasStorey) * 9  # min. ceiling height used to calculate building height [ft]
             elif 'CABO' in self.hasEdition:
                 # 8 ft standard ceiling height for older construction
-                parcel.h_story = np.arange(9, 9 * parcel.num_stories, parcel.num_stories)
-                parcel.h_bldg = parcel.num_stories * 9
+                for i in range(0, len(parcel.hasStorey)):
+                    parcel.hasStorey[i].hasElevation = [8*i, 8*(i+1)]
+                    parcel.hasStorey[i].hasHeight = 8
+                parcel.hasHeight = len(parcel.hasStorey) * 8  # min. ceiling height used to calculate building height [ft]
             else:
                 print('Building level attributes currently not supported')
         else:
@@ -113,42 +115,42 @@ class FBC(BldgCode):
         #Populate roof attributes for this instance (parcel)
         if edition == '2001 FBC' and survey == 'CBECS' and parcel.yr_built < 2003:
             # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
-            if parcel.roof.cover == 'Built-up' or 'Concrete' or 'Plastic/rubber/synthetic sheeting':
-                parcel.roof.pitch = 'flat'  # roof slopes under 2:12
-            elif parcel.roof.cover == 'Slate or tile shingles':
-                parcel.roof.pitch = 'steeper'  # roof slopes 4:12 and greater
-            elif parcel.roof.cover == 'Metal surfacing':
-                parcel.roof.pitch = 'flat or shallow'  # roof slopes up to 4:12
-            elif parcel.roof.cover == 'Asphalt/fiberglass/other shingles' or 'Wood shingles/shakes/other wood':
-                parcel.roof.pitch = 'shallow or steeper'  # roof slopes 2:12 and greater
+            if parcel.hasElement['Roof'].hasCover == 'Built-up' or 'Concrete' or 'Plastic/rubber/synthetic sheeting':
+                parcel.hasElement['Roof'].hasPitch = 'flat'  # roof slopes under 2:12
+            elif parcel.hasElement['Roof'].hasCover == 'Slate or tile shingles':
+                parcel.hasElement['Roof'].hasPitch = 'steeper'  # roof slopes 4:12 and greater
+            elif parcel.hasElement['Roof'].hasCover == 'Metal surfacing':
+                parcel.hasElement['Roof'].hasPitch = 'flat or shallow'  # roof slopes up to 4:12
+            elif parcel.hasElement['Roof'].hasCover == 'Asphalt/fiberglass/other shingles' or 'Wood shingles/shakes/other wood':
+                parcel.hasElement['Roof'].hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
             else:
-                parcel.roof.pitch = 'unknown'
+                parcel.hasElement['Roof'].hasPitch = 'unknown'
 
 
-            if parcel.roof.cover == None:
-                if parcel.roof.pitch == 'flat':
+            if parcel.hasElement['Roof'].hasCover == None:
+                if parcel.hasElement['Roof'].hasPitch == 'flat':
                     roof_matls = ['Builtup', 'Concrete', 'Metal Surfacing', 'Synthetic or Rubber']
                     roof_weights = [211, 0, 244, 78]
-                    parcel.roof.type = random.choices(roof_matls, roof_weights)
-                elif parcel.roof.pitch == 'shallow':
+                    parcel.hasElement['Roof'].hasType = random.choices(roof_matls, roof_weights)
+                elif parcel.hasElement['Roof'].hasPitch == 'shallow':
                     roof_matls = ['Shingles (Not Wood)','Metal Surfacing', 'Wooden Materials']
                     roof_weights = [234, 244, 0]
-                    parcel.roof.type = random.choices(roof_matls, roof_weights)
-                elif parcel.roof.pitch == 'steeper':
+                    parcel.hasElement['Roof'].hasType = random.choices(roof_matls, roof_weights)
+                elif parcel.hasElement['Roof'].hasPitch == 'steeper':
                     roof_matls = ['Shingles (Not Wood)', 'Slate or Tile', 'Wooden Materials']
                     roof_weights = [234, 66, 0]
-                    parcel.roof.type = random.choices(roof_matls, roof_weights)
+                    parcel.hasElement['Roof'].hasType = random.choices(roof_matls, roof_weights)
                 else:
                     print('Roof pitch not supported')
             else:
-                if parcel.roof.cover == 'Built-up' or 'Concrete' or 'Synthetic or Rubber':
-                    parcel.roof.pitch = 'flat' #roof slopes under 2:12
-                elif parcel.roof.cover == 'Slate or tile':
-                    parcel.roof.pitch = 'steeper' #roof slopes 4:12 and greater
-                elif parcel.roof.cover == 'Metal Surfacing':
-                    parcel.roof.pitch = 'flat or shallow' #roof slopes up to 4:12
-                elif parcel.roof.cover == 'Shingles (Not Wood)' or 'Wooden Materials':
-                    parcel.roof.pitch = 'shallow or steeper' #roof slopes 2:12 and greater
+                if parcel.hasElement['Roof'].hasCover == 'Built-up' or 'Concrete' or 'Synthetic or Rubber':
+                    parcel.hasElement['Roof'].hasPitch = 'flat' #roof slopes under 2:12
+                elif parcel.hasElement['Roof'].hasCover == 'Slate or tile':
+                    parcel.hasElement['Roof'].hasPitch = 'steeper' #roof slopes 4:12 and greater
+                elif parcel.hasElement['Roof'].hasCover == 'Metal Surfacing':
+                    parcel.hasElement['Roof'].hasPitch = 'flat or shallow' #roof slopes up to 4:12
+                elif parcel.hasElement['Roof'].hasCover == 'Shingles (Not Wood)' or 'Wooden Materials':
+                    parcel.hasElement['Roof'].hasPitch = 'shallow or steeper' #roof slopes 2:12 and greater
                 else:
                     print('Roof cover not supported')
         else:
