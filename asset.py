@@ -73,14 +73,15 @@ class Site(Zone):
     # Sub-class of Zone
     def __init__(self, bldg_list, site_num, num_sites):
         # Populate Zone attributes:
-        Zone.__init__(self)
+        new_zone = self
+        Zone.__init__(self, new_zone)
         # Sites contain one or more buildings
         # Sites contain all of the zones, spaces, elements, etc. within each building model:
         # Given the number of buildings, create instances of Building and pull attributes
         for i in range(0, len(bldg_list)):
             # Sites contain one or more buildings
             new_bldg = Building(pid, num_stories, occupancy, yr_built, address, area, lon, lat) # These attributes come from building list
-            self.hasBuilding[new_bldg.hasPID] = new_bldg
+            self.hasBuilding.append(new_bldg)
             # Sites contain all of the zones, spaces, elements, etc. within each building model:
             self.update_zones()
             self.update_elements()
@@ -98,7 +99,8 @@ class Site(Zone):
 class Building(Zone):
     # Sub-class of Zone
     def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
-        Zone.__init__(self)
+        new_zone = self
+        Zone.__init__(self, new_zone)
         # Add the Building as a Zone:
         self.containsZone.append(self)
         # Given the number of stories, create instances of Storey and pull attributes:
@@ -280,7 +282,9 @@ class Parcel(Building):
 class Storey(Zone):
     # Sub-class of Zone
     def __init__(self):
-        Zone.__init__(self)
+        # Populate zone properties:
+        new_zone = self
+        Zone.__init__(self, new_zone)
         # Attributes outside of BOT Ontology:
         self.hasName = None
         self.hasElevation = []
@@ -291,7 +295,9 @@ class Storey(Zone):
 class Space(Zone):
     # Sub-class of Zone
     def __init__(self, parcel_flag):
-        Zone.__init__(self)
+        # Populate zone properties:
+        new_zone = self
+        Zone.__init__(self, new_zone)
 
 
 class Interface:
