@@ -128,7 +128,7 @@ def get_zone_width(bldg):
     # This function determines the zone width, a, for a given building:
     # a is determined as max(min(0.1*least horizontal dimension, 0.4*h_bldg), 0.4*least horizontal direction, 3 ft)
     # Create an equivalent rectangle for the building:
-    rect = bldg.footprint["geometry"].minimum_rotated_rectangle  # Note: min rect. (not constrained || to coord axis)
+    rect = bldg.hasFootprint['geometry'].minimum_rotated_rectangle  # Note: min rect. (not constrained || to coord axis)
     xrect, yrect = rect.exterior.xy
     # Find the least horizontal dimension of the building:
     for ind in range(0, len(xrect)-1):
@@ -145,9 +145,9 @@ def get_zone_width(bldg):
 
 def find_zone_points(bldg, zone_width):
     # Use the building footprint to find zone boundaries around perimeter:
-    xs, ys = bldg.footprint["geometry"].exterior.xy
+    xs, ys = bldg.hasFootprint['geometry'].exterior.xy
     # Find the distance between exterior points and the building centroid (origin) to define a new coordinate system:
-    origin = bldg.footprint['geometry'].centroid
+    origin = bldg.hasFootprint['geometry'].centroid
     xc = []
     yc = []
     for ind in range(0, len(xs)):
