@@ -9,41 +9,48 @@ class SurveyData:
     def run(self, parcel):
         # Check what survey this parcel needs data from:
         if parcel.is_comm:
-            self.survey = 'CBECS'
+            self.isSurvey = 'CBECS'
         else:
-            self.survey = 'RECS - currently not supported'
+            self.isSurvey = 'RECS - currently not supported'
 
         # Determine the census division for the CBECS and RECS surveys:
-        if self.survey == 'CBECS' or self.survey == 'RECS':
-            census_div = self.census_division(parcel)
+        if self.isSurvey == 'CBECS' or self.isSurvey == 'RECS':
+            census_div = self.hasCensusDivision(parcel)
 
         # Call function that populates building attributes using the CBECS:
-        if self.survey == 'CBECS':
+        if self.isSurvey == 'CBECS':
             self.cbecs_attrib(census_div, parcel)
         else:
             pass
 
     def census_division(self, parcel):
         # Census division for CBECS/RECS:
-        if parcel.state == 'FL' or 'DE' or 'DC' or 'GA' or 'MD' or 'NC' or 'SC' or 'VA' or 'WV':
-            census_div = 5 # South Atlantic
+        sa_list = ['FL', 'DE', 'DC', 'GA', 'MD', 'NC', 'SC', 'VA', 'WV']
+        if parcel.hasLocation['State'] in sa_list:
+            census_div = 5  # South Atlantic
             census_region = 'South'
-        elif parcel.state == 'AL' or 'KY' or 'MS' or 'TN':
-            census_div = 6 # East South Central
-            census_region = 'South'
-        elif parcel.state == 'AR' or 'LA' or 'OK' or 'TX':
-            census_div = 7 # West South Central
-            census_region = 'South'
+        else:
+            esc_list = ['AL', 'KY', 'MS', 'TN']
+            if parcel.hasLocation['State'] in esc_list:
+                census_div = 6  # East South Central
+                census_region = 'South'
+            else:
+                wsc_list = ['AR', 'LA', 'OK', 'TX']
+                if parcel.hasLocation['State'] in wsc_list:
+                    census_div = 7  # West South Central
+                    census_region = 'South'
+                else:
+                    print('Census division/region currently not supported')
         return census_div
 
 
     def CBECS(self, census_div, parcel):
         # Determine survey year and populate type attributes:
-        if parcel.yr_built > 2012 and parcel.yr_built <= 2018:
+        if 2012 < parcel.hasYearBuilt <= 2018:
             data_yr = 2018
-        elif parcel.yr_built <= 2012 and parcel.yr_built > 2003:
+        elif 2012 >= parcel.hasYearBuilt > 2003:
             data_yr = 2012
-        elif parcel.yr_built <= 2003 and parcel.yr_built > 1999:
+        elif 2003 >= parcel.hasYearBuilt > 1999:
             data_yr = 2003
             # Pull the building data relevant to this survey year:
             if census_div == 'South Atlantic':
@@ -52,23 +59,21 @@ class SurveyData:
                              'Slate or Tile']
                 roof_weights = [211, 234, 244, 78, 66]
                 roof_choice = random.choices(roof_type, roof_weights)
-                parcel.roof.cover = roof_choice[0]
+                parcel.hasElements['Roof'].hasCover = roof_choice[0]
 
                 # Wall attributes:
                 wall_type = ['Brick, Stone, or Stucco', 'Concrete (Block or Poured)', 'Concrete Panels',
                              'Siding or shingles', 'Metal Panels']
                 wall_weights = [418, 175, 16, 117, 136]
                 choice = random.choices(wall_type, wall_weights)
-
-                for lst in range(0, 4):  # starting with four walls per floor
-                    for index in range(0, len(parcel.walls)):  # for every list (story)
-                        parcel.walls[index][lst].type = choice
+                for storey in parcel.hasStorey:
+                    for wall in storey.containsElements['Walls']:
+                        wall.hasType = choice
 
                 # Window attributes
                 window_type = ['Multipaned windows', 'Tinted Window Glass', 'Reflective Window Glass']
                 window_weights = [379, 294, 53]
                 #parcel.windows.type = random.choices(window_type, window_weights)
-
             else:
                 print('census division not currently supported')
         elif parcel.yr_built <= 1999 and parcel.yr_built > 1995:
@@ -98,101 +103,101 @@ class SurveyData:
         # (3) Conduct a random choice to assign attributes to the parcel
 
         # Find the dataset year, corresponding year identifier, and value for "Year Constructed" tag:
-        if parcel.yr_built <= 1989 and parcel.yr_built > 1986:
+        if 1989 >= parcel.hasYearBuilt > 1986:
             data_yr = 1989
             yr_id = '4'
             # Value for Year Constructed tag:
-            if parcel.yr_built >= 1987 and parcel.yr_built <= 1989:
+            if 1987 <= parcel.hasYearBuilt <= 1989:
                 value_yrconc = 9
-            elif parcel.yr_built >= 1984 and parcel.yr_built <= 1986:
+            elif 1984 <= parcel.hasYearBuilt <= 1986:
                 value_yrconc = 8
-            elif parcel.yr_built >= 1980 and parcel.yr_built <= 1983:
+            elif 1980 <= parcel.hasYearBuilt <= 1983:
                 value_yrconc = 7
-            elif parcel.yr_built >= 1970 and parcel.yr_built <= 1979:
+            elif 1970 <= parcel.hasYearBuilt <= 1979:
                 value_yrconc = 6
-            elif parcel.yr_built >= 1960 and parcel.yr_built <= 1969:
+            elif 1960 <= parcel.hasYearBuilt <= 1969:
                 value_yrconc = 5
-            elif parcel.yr_built >= 1946 and parcel.yr_built <= 1959:
+            elif 1946 <= parcel.hasYearBuilt <= 1959:
                 value_yrconc = 4
-            elif parcel.yr_built >= 1920 and parcel.yr_built <= 1945:
+            elif 1920 <= parcel.hasYearBuilt <= 1945:
                 value_yrconc = 3
-            elif parcel.yr_built >= 1900 and parcel.yr_built <= 1919:
+            elif 1900 <= parcel.hasYearBuilt <= 1919:
                 value_yrconc = 2
-            elif parcel.yr_built <= 1899:
+            elif parcel.hasYearBuilt <= 1899:
                 value_yrconc = 1
             else:
                 print('CBECS year constructed code not supported')
-        elif parcel.yr_built <= 2003 and parcel.yr_built > 1999:
+        elif 2003 >= parcel.hasYearBuilt > 1999:
             data_yr = 2003
             yr_id = '8'
             # Value for Year Constructed Tag
-            if parcel.yr_built == 2004:
+            if parcel.hasYearBuilt == 2004:
                 value_yrconc = 9
-            elif parcel.yr_built >= 2000 and parcel.yr_built <= 2003:
+            elif 2000 <= parcel.hasYearBuilt <= 2003:
                 value_yrconc = 8
-            elif parcel.yr_built >= 1990 and parcel.yr_built <= 1999:
+            elif 1990 <= parcel.hasYearBuilt <= 1999:
                 value_yrconc = 7
-            elif parcel.yr_built >= 1980 and parcel.yr_built <= 1989:
+            elif 1980 <= parcel.hasYearBuilt <= 1989:
                 value_yrconc = 6
-            elif parcel.yr_built >= 1970 and parcel.yr_built <= 1979:
+            elif 1970 <= parcel.hasYearBuilt <= 1979:
                 value_yrconc = 5
-            elif parcel.yr_built >= 1960 and parcel.yr_built <= 1969:
+            elif 1960 <= parcel.hasYearBuilt <= 1969:
                 value_yrconc = 4
-            elif parcel.yr_built >= 1946 and parcel.yr_built <= 1959:
+            elif 1946 <= parcel.hasYearBuilt <= 1959:
                 value_yrconc = 3
-            elif parcel.yr_built >= 1920 and parcel.yr_built <= 1945:
+            elif 1920 <= parcel.hasYearBuilt <= 1945:
                 value_yrconc = 2
-            elif parcel.yr_built < 1920:
+            elif parcel.hasYearBuilt < 1920:
                 value_yrconc = 1
             else:
                 print('Year Built not supported')
-        elif parcel.yr_built <= 2012 and parcel.yr_built > 2003:
+        elif 2012 >= parcel.hasYearBuilt > 2003:
             data_yr = 2012
             yr_id = None
             # Value for Year Constructed Tag
-            if parcel.yr_built >= 2010 and parcel.yr_built <= 2012:
+            if 2010 <= parcel.hasYearBuilt <= 2012:
                 value_yrconc = 10
-            elif parcel.yr_built >= 2004 and parcel.yr_built <= 2007:
+            elif 2004 <= parcel.hasYearBuilt <= 2007:
                 value_yrconc = 9
-            elif parcel.yr_built >= 2000 and parcel.yr_built <= 2003:
+            elif 2000 <= parcel.hasYearBuilt <= 2003:
                 value_yrconc = 8
-            elif parcel.yr_built >= 1990 and parcel.yr_built <= 1999:
+            elif 1990 <= parcel.hasYearBuilt <= 1999:
                 value_yrconc = 7
-            elif parcel.yr_built >= 1980 and parcel.yr_built <= 1989:
+            elif 1980 <= parcel.hasYearBuilt <= 1989:
                 value_yrconc = 6
-            elif parcel.yr_built >= 1970 and parcel.yr_built <= 1979:
+            elif 1970 <= parcel.hasYearBuilt <= 1979:
                 value_yrconc = 5
-            elif parcel.yr_built >= 1960 and parcel.yr_built <= 1969:
+            elif 1960 <= parcel.hasYearBuilt <= 1969:
                 value_yrconc = 4
-            elif parcel.yr_built >= 1946 and parcel.yr_built <= 1959:
+            elif 1946 <= parcel.hasYearBuilt <= 1959:
                 value_yrconc = 3
-            elif parcel.yr_built >= 1920 and parcel.yr_built <= 1945:
+            elif 1920 <= parcel.hasYearBuilt <= 1945:
                 value_yrconc = 2
-            elif parcel.yr_built < 1920:
+            elif parcel.hasYearBuilt < 1920:
                 value_yrconc = 1
             else:
                 print('Year Built not supported')
 
-        # Value for square footage tag (consistent across datasets): dividing here by 10.764 to get square meters
-        if parcel.area <= 1000/10.764:
+        # Value for square footage tag (consistent across datasets):
+        if parcel.hasArea <= 1000:
             value_area = 1
-        elif parcel.area > 1000/10.764 and parcel.area <= 5000/10.764:
+        elif 1000 < parcel.hasArea <= 5000:
             value_area = 2
-        elif parcel.area > 5000/10.764 and parcel.area <= 10000/10.764:
+        elif 5000 < parcel.hasArea <= 10000:
             value_area = 3
-        elif parcel.area > 10000/10.764 and parcel.area <= 25000/10.764:
+        elif 10000 < parcel.hasArea <= 25000:
             value_area = 4
-        elif parcel.area > 25000/10.764 and parcel.area <= 50000/10.764:
+        elif 25000 < parcel.hasArea <= 50000:
             value_area = 5
-        elif parcel.area > 50000/10.764 and parcel.area <= 10000/10.764:
+        elif 50000 < parcel.hasArea <= 10000:
             value_area = 6
-        elif parcel.area > 100000/10.764 and parcel.area <= 20000/10.764:
+        elif 100000 < parcel.hasArea <= 20000:
             value_area = 7
-        elif parcel.area > 200000/10.764 and parcel.area <= 500000/10.764:
+        elif 200000 < parcel.hasArea <= 500000:
             value_area = 8
-        elif parcel.area > 500000/10.764 and parcel.area <= 1000000/10.764:
+        elif 500000 < parcel.hasArea <= 1000000:
             value_area = 9
-        elif parcel.area > 1000000/10.764:
+        elif parcel.hasArea > 1000000:
             value_area = 10
         else:
             print('CBECS square footage code not determined')
@@ -316,69 +321,69 @@ class SurveyData:
             print('Survey year currently not supported')
 
         # Assign wall type description to every exterior wall for the parcel:
-        for lst in range(0, 4):  # starting with four walls per floor
-            for index in range(0, len(parcel.walls)):  # for every list (story)
-                parcel.walls[index][lst].type = wtype
+        for storey in parcel.hasStorey:
+            for wall in storey.containsElements['Walls']:
+                wall.hasType = wtype
 
         # Roof type descriptions:
         if data_yr == 1989:
             if roof_choice == 1:
-                parcel.roof.cover = 'Wooden materials'
+                storey.containsElement['Roof'].hasCover = 'Wooden materials'
             elif roof_choice == 2:
-                parcel.roof.cover = 'Slate or tile'
+                storey.containsElement['Roof'].hasCover = 'Slate or tile'
             elif roof_choice == 3:
-                parcel.roof.cover = 'Shingles (not wood)'
+                storey.containsElement['Roof'].hasCover = 'Shingles (not wood)'
             elif roof_choice == 4:
-                parcel.roof.cover = 'Built-up'
+                storey.containsElement['Roof'].hasCover = 'Built-up'
             elif roof_choice == 5:
-                parcel.roof.cover = 'Metal surfacing'
+                storey.containsElement['Roof'].hasCover = 'Metal surfacing'
             elif roof_choice == 6:
-                parcel.roof.cover = 'Single/multiple ply'
+                storey.containsElement['Roof'].hasCover = 'Single/multiple ply'
             elif roof_choice == 7:
-                parcel.roof.cover = 'Concrete roof'
+                storey.containsElement['Roof'].hasCover = 'Concrete roof'
             elif roof_choice == 8:
-                parcel.roof.cover = 'Other'
+                storey.containsElement['Roof'].hasCover = 'Other'
             elif roof_choice == 9:
-                parcel.roof.cover = 'Metal & rubber'
+                storey.containsElement['Roof'].hasCover = 'Metal & rubber'
             elif roof_choice == 10:
-                parcel.roof.cover = 'Cement & asphalt'
+                storey.containsElement['Roof'].hasCover = 'Cement & asphalt'
             elif roof_choice == 11:
-                parcel.roof.cover = 'Composite'
+                storey.containsElement['Roof'].hasCover = 'Composite'
             elif roof_choice == 12:
-                parcel.roof.cover = 'Glass'
+                storey.containsElement['Roof'].hasCover = 'Glass'
             elif roof_choice == 13:
-                parcel.roof.cover = 'Shingles & metal'
+                storey.containsElement['Roof'].hasCover = 'Shingles & metal'
             elif roof_choice == 14:
-                parcel.roof.cover = 'Slate & built-up'
+                storey.containsElement['Roof'].hasCover = 'Slate & built-up'
             elif roof_choice == 15:
-                parcel.roof.cover = 'Built-up & metal'
+                storey.containsElement['Roof'].hasCover = 'Built-up & metal'
             elif roof_choice == 16:
-                parcel.roof.cover = 'Built-up & s/m ply'
+                storey.containsElement['Roof'].hasCover = 'Built-up & s/m ply'
             else:
                 print('Roof construction not supported')
         elif data_yr == 2003 or data_yr == 2012:
             if roof_choice == 1:
-                parcel.roof.cover = 'Built-up'
+                storey.containsElement['Roof'].hasCover = 'Built-up'
             elif roof_choice == 2:
-                parcel.roof.cover = 'Slate or tile shingles'
+                storey.containsElement['Roof'].hasCover = 'Slate or tile shingles'
             elif roof_choice == 3:
-                parcel.roof.cover = 'Wood shingles/shakes/other wood'
+                storey.containsElement['Roof'].hasCover = 'Wood shingles/shakes/other wood'
             elif roof_choice == 4:
-                parcel.roof.cover = 'Asphalt/fiberglass/other shingles'
+                storey.containsElement['Roof'].hasCover = 'Asphalt/fiberglass/other shingles'
             elif roof_choice == 5:
-                parcel.roof.cover = 'Metal surfacing'
+                storey.containsElement['Roof'].hasCover = 'Metal surfacing'
             elif roof_choice == 6:
-                parcel.roof.cover = 'Plastic/rubber/synthetic sheeting'
+                storey.containsElement['Roof'].hasCover = 'Plastic/rubber/synthetic sheeting'
             elif roof_choice == 7:
-                parcel.roof.cover = 'Concrete'
+                storey.containsElement['Roof'].hasCover = 'Concrete'
             elif roof_choice == 8:
-                parcel.roof.cover = 'No one major type'
+                storey.containsElement['Roof'].hasCover = 'No one major type'
             elif roof_choice == 9:
-                parcel.roof.cover = 'Other'
+                storey.containsElement['Roof'].hasCover = 'Other'
         else:
             print('Survey year currently not supported')
 
-        print(parcel.roof.cover)
+        print(storey.containsElement['Roof'].hasCover)
 
         # For CBECS 2003 and 2012, additional attributes are available:
         if data_yr == 2003 or data_yr == 2012:
@@ -424,11 +429,11 @@ class SurveyData:
                 # Choose roof tilt:
                 rtilt_choice = random.choices(rtilt_options, rtilt_weights)[0]
                 if rtilt_choice == 1:
-                    parcel.roof.pitch = 'Flat'
+                    storey.containsElement['Roof'].hasPitch = 'Flat'
                 elif rtilt_choice == 2:
-                    parcel.roof.pitch = 'Shallow pitch'
+                    storey.containsElement['Roof'].hasPitch = 'Shallow pitch'
                 elif rtilt_choice == 3:
-                    parcel.roof.pitch = 'Steeper pitch'
+                    storey.containsElement['Roof'].hasPitch = 'Steeper pitch'
             else:
                 pass
         else:
