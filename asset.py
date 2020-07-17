@@ -245,38 +245,41 @@ class Parcel(Building):
         zone_pts = find_zone_points(parcel, a)  # Coordinates for start/end of zone locations
         # Assume that walls span one story for now:
         for storey in parcel.hasStorey:
+            # Create an empty list to hold all elements:
+            element_list = []
             # Generate floor and ceiling instance(s):
             new_floor_list = []
             new_floor1 = Floor(parcel, storey, parcel_flag=True)
             new_floor1.hasElevation = storey.hasElevation[0]
             new_floor_list.append(new_floor1)
+            element_list.append(new_floor1)
             new_ceiling = Ceiling(parcel, storey, parcel_flag=True)
             if storey == parcel.hasStorey[-1]:
                 new_roof = [Roof(parcel, storey, parcel_flag=True)]
                 # Add roof to the storey:
                 storey.containsElement.update({'Roof': new_roof})
+                element_list.append(new_roof)
             else:
                 new_floor2 = Floor(parcel, storey, parcel_flag=True)
                 new_floor2.hasElevation = storey.hasElevation[1]
                 new_floor_list.append(new_floor2)
-            # Add elements to the storey:
-            storey.containsElement.update({'Floors': new_floor_list, 'Ceiling': new_ceiling})
-            # Populate relational attributes for storey:
-            storey.adjacentElement.update()
+                element_list.append(new_floor2)
             # Loop through zone_pts and assign geometries to wall elements:
-            for row in zone_pts:
-                # Parcel models will have three "walls" by default, corresponding to each zone on a side of the building:
-                new_wall_list = []
-                for col in range(0, len(row)):
+            # Parcel models will have three "walls" by default, corresponding to each zone on a side of the building:
+            new_wall_list = []
+            for ind in zone_pts.index:
+                for col in range(0, len(zone_pts.loc[ind])-1):
                     # Create a new Wall Instance:
                     ext_wall = Wall(parcel, storey, parcel_flag=True)
                     ext_wall.isExterior = True
                     ext_wall.hasHeight = storey.hasHeight
-                    ext_wall.has1DModel = LineString([row[col], row[col+1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
+                    ext_wall.has1DModel = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[ind, col+1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
                     ext_wall.hasLength = ext_wall.has1DModel.length
                     new_wall_list.append(ext_wall)
-            # Add new exterior walls to the storey "hasElement" attribute:
-            storey.containsElement.update({'Walls': new_wall_list})
+            # Add all elements to the storey's "hasElement" attribute:
+            storey.containsElement.update({'Floors': new_floor_list, 'Ceiling': new_ceiling, 'Walls': new_wall_list})
+            # Populate relational attributes for elements in this storey:
+            storey.adjacentElement.append(element_list)  # Note: Ceilings do not bound storey zones; they bound spaces
 
 
 class Storey(Zone):
