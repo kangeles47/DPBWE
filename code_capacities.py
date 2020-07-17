@@ -140,7 +140,7 @@ def get_zone_width(bldg):
                 hdist = hnew
             else:
                 pass
-    a = max(min(0.1*hdist, 0.4*bldg.h_bldg), 0.04*hdist, 3)
+    a = max(min(0.1*hdist, 0.4*bldg.hasHeight), 0.04*hdist, 3)
     return a
 
 def find_zone_points(bldg, zone_width):
@@ -185,7 +185,7 @@ def find_zone_points(bldg, zone_width):
 
 def assign_wcc_pressures(bldg, zone_pts, exposure, wind_speed):
     # Assign C&C pressures given the component type and its location (zone):
-    for story in bldg.h_bldg:
+    for story in bldg.hasStorey:
         # Create a list of all Wall C&C types within this story
         wcc_lst = pd.DataFrame(columns=['Element', 'Type'])
         for elem in bldg.has_element['Walls']:

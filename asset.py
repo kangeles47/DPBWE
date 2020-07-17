@@ -66,8 +66,24 @@ class Zone:
 
     def update_elements(self):
         # Simple function to easily update hasElement assignment
-        for k, v in self.containsElement:
-            self.hasElement.append(v)
+        if isinstance(self, Site):
+            for bldg in self.hasBuilding:
+                for k, v in bldg.containsElement:
+                    self.hasElement.append(v)
+        elif isinstance(self, Building):
+            for storey in self.hasStorey:
+                for k, v in storey.containsElement:
+                    self.hasElement.append(v)
+        elif isinstance(self, Storey):
+            for space in self.hasSpace:
+                for k, v in space.containsElement:
+                    self.hasElement.append(v)
+            # Remove repetitive elements:
+            new_set = set(self.hasElement)
+            elem_update = []
+            for elem in new_set:
+                    elem_update.append(elem)
+            self.hasElement = elem_update
 
 class Site(Zone):
     # Sub-class of Zone
@@ -131,7 +147,7 @@ class Building(Zone):
 
         # Using basic building attributes, set up building metavariables:
         # 1) Tag the building as "commercial" or "not commercial"
-        if self.hasOccupancy == "PROFESSION" or self.hasOccupancy == "HOTEL" or self.hasOccupancy == "MOTEL" or self.hasOccupancy == "FINANCIAL":
+        if self.hasOccupancy == "Profession" or self.hasOccupancy == "Hotel" or self.hasOccupancy == "Motel" or self.hasOccupancy == "Financial":
             self.isComm = True
         else:
             self.isComm = False
@@ -170,12 +186,15 @@ class Parcel(Building):
         self.parcel_elements(self)
         # Populate instance attributes informed by national survey data:
         survey_data = SurveyData()  # create an instance of the survey data class
-        survey_data.run(self)  # populate the parcel information
-        if survey_data.survey == 'CBECS':
-            # Fill in code-informed assembly-level information
-            code_informed.roof_attributes(code_informed.edition, self, survey_data.survey)
+        survey_data.run(self)  # populate the component-level attributes using survey data
+        if survey_data.isSurvey == 'CBECS':
+            # Populate code-informed component-level information
+            code_informed.roof_attributes(code_informed.hasEdition, self, survey_data.isSurvey)
         else:
             pass
+        # Final step: Update elements for the Parcel:
+        self.update_elements()
+        print(self)
 
     def assign_footprint(self, parcel, num_stories):
         # Access file with region's building footprint information:
