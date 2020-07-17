@@ -274,66 +274,67 @@ class SurveyData:
                 wall.hasType = wtype
 
         # Roof type descriptions:
+        roof_storey = parcel.hasStorey[-1]
         if data_yr == 1989:
             if roof_choice == 1:
-                storey.containsElement['Roof'].hasCover = 'Wooden materials'
+                roof_storey.containsElement['Roof'].hasCover = 'Wooden materials'
             elif roof_choice == 2:
-                storey.containsElement['Roof'].hasCover = 'Slate or tile'
+                roof_storey.containsElement['Roof'].hasCover = 'Slate or tile'
             elif roof_choice == 3:
-                storey.containsElement['Roof'].hasCover = 'Shingles (not wood)'
+                roof_storey.containsElement['Roof'].hasCover = 'Shingles (not wood)'
             elif roof_choice == 4:
-                storey.containsElement['Roof'].hasCover = 'Built-up'
+                roof_storey.containsElement['Roof'].hasCover = 'Built-up'
             elif roof_choice == 5:
-                storey.containsElement['Roof'].hasCover = 'Metal surfacing'
+                roof_storey.containsElement['Roof'].hasCover = 'Metal surfacing'
             elif roof_choice == 6:
-                storey.containsElement['Roof'].hasCover = 'Single/multiple ply'
+                roof_storey.containsElement['Roof'].hasCover = 'Single/multiple ply'
             elif roof_choice == 7:
-                storey.containsElement['Roof'].hasCover = 'Concrete roof'
+                roof_storey.containsElement['Roof'].hasCover = 'Concrete roof'
             elif roof_choice == 8:
-                storey.containsElement['Roof'].hasCover = 'Other'
+                roof_storey.containsElement['Roof'].hasCover = 'Other'
             elif roof_choice == 9:
-                storey.containsElement['Roof'].hasCover = 'Metal & rubber'
+                roof_storey.containsElement['Roof'].hasCover = 'Metal & rubber'
             elif roof_choice == 10:
-                storey.containsElement['Roof'].hasCover = 'Cement & asphalt'
+                roof_storey.containsElement['Roof'].hasCover = 'Cement & asphalt'
             elif roof_choice == 11:
-                storey.containsElement['Roof'].hasCover = 'Composite'
+                roof_storey.containsElement['Roof'].hasCover = 'Composite'
             elif roof_choice == 12:
-                storey.containsElement['Roof'].hasCover = 'Glass'
+                roof_storey.containsElement['Roof'].hasCover = 'Glass'
             elif roof_choice == 13:
-                storey.containsElement['Roof'].hasCover = 'Shingles & metal'
+                roof_storey.containsElement['Roof'].hasCover = 'Shingles & metal'
             elif roof_choice == 14:
-                storey.containsElement['Roof'].hasCover = 'Slate & built-up'
+                roof_storey.containsElement['Roof'].hasCover = 'Slate & built-up'
             elif roof_choice == 15:
-                storey.containsElement['Roof'].hasCover = 'Built-up & metal'
+                roof_storey.containsElement['Roof'].hasCover = 'Built-up & metal'
             elif roof_choice == 16:
-                storey.containsElement['Roof'].hasCover = 'Built-up & s/m ply'
+                roof_storey.containsElement['Roof'].hasCover = 'Built-up & s/m ply'
             else:
                 print('Roof construction not supported')
         elif data_yr == 2003 or data_yr == 2012:
             if roof_choice == 1:
-                storey.containsElement['Roof'].hasCover = 'Built-up'
+                roof_storey.containsElement['Roof'].hasCover = 'Built-up'
             elif roof_choice == 2:
-                storey.containsElement['Roof'].hasCover = 'Slate or tile shingles'
+                roof_storey.containsElement['Roof'].hasCover = 'Slate or tile shingles'
             elif roof_choice == 3:
-                storey.containsElement['Roof'].hasCover = 'Wood shingles/shakes/other wood'
+                roof_storey.containsElement['Roof'].hasCover = 'Wood shingles/shakes/other wood'
             elif roof_choice == 4:
-                storey.containsElement['Roof'].hasCover = 'Asphalt/fiberglass/other shingles'
+                roof_storey.containsElement['Roof'].hasCover = 'Asphalt/fiberglass/other shingles'
             elif roof_choice == 5:
-                storey.containsElement['Roof'].hasCover = 'Metal surfacing'
+                roof_storey.containsElement['Roof'].hasCover = 'Metal surfacing'
             elif roof_choice == 6:
-                storey.containsElement['Roof'].hasCover = 'Plastic/rubber/synthetic sheeting'
+                roof_storey.containsElement['Roof'].hasCover = 'Plastic/rubber/synthetic sheeting'
             elif roof_choice == 7:
-                storey.containsElement['Roof'].hasCover = 'Concrete'
+                roof_storey.containsElement['Roof'].hasCover = 'Concrete'
             elif roof_choice == 8:
-                storey.containsElement['Roof'].hasCover = 'No one major type'
+                roof_storey.containsElement['Roof'].hasCover = 'No one major type'
             elif roof_choice == 9:
-                storey.containsElement['Roof'].hasCover = 'Other'
+                roof_storey.containsElement['Roof'].hasCover = 'Other'
         else:
             print('Survey year currently not supported')
 
-        print(storey.containsElement['Roof'].hasCover)
+        print(roof_storey.containsElement['Roof'].hasCover)
 
-        # For CBECS 2003 and 2012, additional attributes are available:
+        # For CBECS 2003 and 2012, additional attributes are available for building glass percentage and window type:
         if data_yr == 2003 or data_yr == 2012:
             # Building glass percentage:
             glsspc_weights = []
@@ -369,6 +370,11 @@ class SurveyData:
                 win_type = 'Combination of single layer and multi-layer glass'
             elif win_choice == 4:
                 win_type = 'No windows'
+            # Add windows to wall elements:
+            if win_choice != 4:
+                for storey in parcel.hasStorey:
+                    wall = storey.containsElement['Wall']
+                    wall.hasSubElement = 'Window: ' + win_type
             # Additional "roof tilt" attribute for 2012 CBECS:
             if data_yr == 2012:
                 rtilt_weights = []
@@ -377,11 +383,11 @@ class SurveyData:
                 # Choose roof tilt:
                 rtilt_choice = random.choices(rtilt_options, rtilt_weights)[0]
                 if rtilt_choice == 1:
-                    storey.containsElement['Roof'].hasPitch = 'Flat'
+                    roof_storey.containsElement['Roof'].hasPitch = 'Flat'
                 elif rtilt_choice == 2:
-                    storey.containsElement['Roof'].hasPitch = 'Shallow pitch'
+                    roof_storey.containsElement['Roof'].hasPitch = 'Shallow pitch'
                 elif rtilt_choice == 3:
-                    storey.containsElement['Roof'].hasPitch = 'Steeper pitch'
+                    roof_storey.containsElement['Roof'].hasPitch = 'Steeper pitch'
             else:
                 pass
         else:
