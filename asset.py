@@ -147,15 +147,12 @@ class Building(Zone):
         self.hasFootprint = {'type': None, 'geometry': None}
         # BOT: Buildings have an origin (should be assigned using appropriate ontology in future use, using lon, lat for now):
         self.hasZeroPoint = Point(lon, lat)
-
-        # Using basic building attributes, set up building metavariables:
-        # 1) Tag the building as "commercial" or "not commercial"
+        # Tag the building as "commercial" or "not commercial"
         if self.hasOccupancy == "Profession" or self.hasOccupancy == "Hotel" or self.hasOccupancy == "Motel" or self.hasOccupancy == "Financial":
             self.isComm = True
         else:
             self.isComm = False
-
-        # 2) Define additional attributes regarding the building location:
+        # Define additional attributes regarding the building location:
         self.location_data(self)
 
     def location_data(self, Building):
@@ -295,6 +292,11 @@ class Parcel(Building):
                     ext_wall.has1DModel = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[ind, col+1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
                     ext_wall.hasLength = ext_wall.has1DModel.length
                     new_wall_list.append(ext_wall)
+            # Each wall shares interfaces with the walls before and after it:
+            for w in range(0, len(new_wall_list)-1):
+                # Create new Interface instance
+                new_interface = Interface(new_wall_list[w], new_wall_list[w+1])
+                storey.hasInterface.append(new_interface)
             # Add all elements to the storey's "hasElement" attribute:
             storey.containsElement.update({'Floors': new_floor_list, 'Ceiling': new_ceiling, 'Walls': new_wall_list})
             # Populate relational attributes for elements in this storey:
@@ -314,6 +316,8 @@ class Storey(Zone):
         self.hasElevation = []
         self.hasHeight = None
         self.hasLayout = None  # Floor plan geometry
+        # Add a placeholder for Interface objects
+        self.hasInterface = []
 
 
 class Space(Zone):
@@ -327,7 +331,7 @@ class Space(Zone):
 class Interface:
     def __init__(self, first_instance, second_instance):
         # An interface is the surface where two building elements: 2 zones or 1 element + 1 zone meet
-        self.interfaceOf = None
+        self.interfaceOf = [first_instance, second_instance]
         # Attributes outside of the BOT Ontology:
         # Interfaces like connections can have a 3D Model and capacity:
         self.has3DModel = None
