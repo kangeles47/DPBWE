@@ -274,7 +274,7 @@ class SurveyData:
                 wall.hasType = wtype
 
         # Roof type descriptions:
-        roof_element = parcel.hasStorey[-1].containsElement['Roof'][0]
+        roof_element = parcel.hasStorey[-1].containsElement['Roof']
         if data_yr == 1989:
             if roof_choice == 1:
                 roof_element.hasCover = 'Wooden materials'
