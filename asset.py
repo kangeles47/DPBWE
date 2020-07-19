@@ -71,19 +71,22 @@ class Zone:
                 for k, v in bldg.containsElement:
                     self.hasElement.append(v)
         elif isinstance(self, Building):
-            for storey in self.hasStorey:
-                for k, v in storey.containsElement:
-                    self.hasElement.append(v)
+            if len(self.hasElement) == len(self.hasStorey):
+                print('Elements in this building are already up to date')
+            else:
+                for storey in self.hasStorey:
+                    self.hasElement.append(storey.hasElement)
         elif isinstance(self, Storey):
-            for space in self.hasSpace:
-                for k, v in space.containsElement:
-                    self.hasElement.append(v)
+            self.hasElement.append(list(self.containsElement.values()))
+            #for space in self.hasSpace:
+                #for k, v in space.containsElement:
+                    #self.hasElement.append(v)
             # Remove repetitive elements:
-            new_set = set(self.hasElement)
-            elem_update = []
-            for elem in new_set:
-                    elem_update.append(elem)
-            self.hasElement = elem_update
+            #new_set = set(self.hasElement)
+            #elem_update = []
+            #for elem in new_set:
+                    #elem_update.append(elem)
+            #self.hasElement = elem_update
 
 class Site(Zone):
     # Sub-class of Zone
@@ -192,9 +195,6 @@ class Parcel(Building):
             code_informed.roof_attributes(code_informed.hasEdition, self, survey_data.isSurvey)
         else:
             pass
-        # Final step: Update elements for the Parcel:
-        self.update_elements()
-        print(self)
 
     def assign_footprint(self, parcel, num_stories):
         # Access file with region's building footprint information:
@@ -274,7 +274,7 @@ class Parcel(Building):
             element_list.append(new_floor1)
             new_ceiling = Ceiling(parcel, storey, parcel_flag=True)
             if storey == parcel.hasStorey[-1]:
-                new_roof = [Roof(parcel, storey, parcel_flag=True)]
+                new_roof = Roof(parcel, storey, parcel_flag=True)
                 # Add roof to the storey:
                 storey.containsElement.update({'Roof': new_roof})
                 element_list.append(new_roof)
@@ -299,6 +299,8 @@ class Parcel(Building):
             storey.containsElement.update({'Floors': new_floor_list, 'Ceiling': new_ceiling, 'Walls': new_wall_list})
             # Populate relational attributes for elements in this storey:
             storey.adjacentElement.append(element_list)  # Note: Ceilings do not bound storey zones; they bound spaces
+            # Update hasElement attribute for the storey:
+            storey.update_elements()
 
 
 class Storey(Zone):
