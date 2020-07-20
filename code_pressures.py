@@ -1006,12 +1006,25 @@ class PressureCalc:
             # Create a new dataframe for each edition:
             df_rcc = pd.DataFrame(columns=['Zone 1+', 'Zone 2+', 'Zone 3+', 'Zone 1-', 'Zone 2-', 'Zone 3-'])
             # Set up plotting
-            #fig, ax = plt.subplots()
-            for speed in wind_speed:
-                # Calculate the pressure across various wind speeds for each code edition:
-                rps = self.rcc_pressure(speed, ref_exposure, ed, ref_hbldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
-                # Add values to Dataframe:
-                df_rcc = df_rcc.append({'Zone 1+': rps[0], 'Zone 2+': rps[1], 'Zone 3+': rps[2], 'Zone 1-': rps[3], 'Zone 2-': rps[4], 'Zone 3-': rps[5]}, ignore_index=True)
+            fig, ax = plt.subplots()
+            emp_list = []
+            for area in area_eff:
+                # Create a new dataframe for each edition:
+                df_rcc = pd.DataFrame(columns=['Zone 1+', 'Zone 2+', 'Zone 3+', 'Zone 1-', 'Zone 2-', 'Zone 3-'])
+                for speed in wind_speed:
+                    # Calculate the pressure across various wind speeds for each code edition:
+                    rps = self.rcc_pressure(speed, ref_exposure, ed, ref_hbldg, ref_pitch, area, ref_cat, hpr, h_ocean, encl_class)
+                    # Add values to Dataframe:
+                    df_rcc = df_rcc.append({'Zone 1+': rps[0], 'Zone 2+': rps[1], 'Zone 3+': rps[2], 'Zone 1-': rps[3], 'Zone 2-': rps[4], 'Zone 3-': rps[5]}, ignore_index=True)
+                # Plot the pressures for the areas:
+                ax.plot(df_rcc['Zone 3-'], wind_speed)
+                emp_list.append(df_rcc['Zone 2-'])
+            plt.ylim(90, max(wind_speed))
+            plt.ylabel('Wind Speed [mph]')
+            plt.xlabel('Pressure [psf]')
+            plt.title('Metal Deck C&C pressures (+), Zone 1, 2, and 3 for h_story = 9.0 ft')
+            plt.show()
+            print((emp_list[0]-emp_list[1])/emp_list[0])
             # Add DataFrame to list:
             edr_list.append(df_rcc)
             # Extract reference pressures:
@@ -1234,7 +1247,7 @@ class PressureCalc:
         ref_exposure = 'B'
         ref_hstory = 9 # [ft]
         ref_hbldg = 9 # [ft]
-        ref_pitch = 9  # Choose a roof pitch <= 10 degrees
+        ref_pitch = 6  # Choose a roof pitch <= 10 and (7) degrees
         ref_cat = 2 # Category for Importance Factor
         hpr = True  # Will later need to create the logic for these designations
         h_ocean = True # The entire Bay County is within 100 miles of the ocean
@@ -1275,3 +1288,11 @@ class PressureCalc:
         ctype = ['mullion', 'glass panel', 'wall']
         for component in ctype:
             self.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat, wind_speed, edition, component, parcel_flag, hpr, h_ocean, encl_class)
+
+pressures = PressureCalc()
+wind_speed = np.arange(70, 185, 5)
+ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
+edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
+parcel_flag = True
+ctype = 'Metal deck'
+rcc = pressures.run_sim_rcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat,  wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class)
