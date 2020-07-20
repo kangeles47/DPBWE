@@ -30,7 +30,7 @@ class PressureCalc:
 
         return wps
 
-    def rcc_pressure(self, wind_speed, exposure, edition, h_bldg, area_eff, hpr, h_ocean, encl_class):
+    def rcc_pressure(self, wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class):
         # Determine GCpis for pressure calculation:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class)
         # Determine components and cladding pressure for building roof components:
@@ -43,7 +43,7 @@ class PressureCalc:
         rps = list()
         for ind in range(0, len(rpos)):
             # Find the GCp
-            gcp = PressureCalc.get_roof_gcp(self, area_eff, rpos[ind], rzone[ind], edition)
+            gcp = PressureCalc.get_roof_gcp(self, pitch, area_eff, rpos[ind], rzone[ind], edition)
             # Calculate pressure at the zone:
             p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
             rps.append(p)
@@ -324,113 +324,116 @@ class PressureCalc:
                     angles = np.array([10, 15, 20])
         return Cps
 
-    def get_roof_gcp(self, area_eff, pos, zone, edition):
+    def get_roof_gcp(self, pitch, area_eff, pos, zone, edition):
         # Assume effective wind area is in units of ft^2
-        if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
-            # Negative external pressure coefficients: ASCE 7-93, -88, and ANSI-A58.1-1982
-            if zone == 1:
-                if area_eff <= 10:  # [ft^2]
-                    gcp = -1.4
-                elif 10 < area_eff <= 20:
-                    m = (-1.3 - -1.4) / (20 - 10)
-                    gcp = m * (area_eff - 10) - 1.4
-                elif 20 < area_eff <= 50:
-                    m = (-1.275 - -1.3) / (50 - 20)
-                    gcp = m * (area_eff - 20) - 1.3
-                elif 50 < area_eff <= 100:
-                    m = (-1.2 - -1.275) / (100 - 50)
-                    gcp = m * (area_eff - 50) - 1.275
-                elif area_eff > 100:
-                    gcp = -1.2
-            elif zone == 2:
-                if area_eff <= 10:
-                    gcp = -2.6
-                elif 10 < area_eff <= 20:
-                    m = (-2.25 - -2.6) / (20 - 10)
-                    gcp = m * (area_eff - 10) - 2.6
-                elif 20 < area_eff <= 50:
-                    m = (-1.75 - -2.25) / (50 - 20)
-                    gcp = m * (area_eff - 20) - 2.25
-                elif 50 < area_eff <= 100:
-                    m = (-1.5 - -1.75) / (100 - 50)
-                    gcp = m * (area_eff - 50) - 1.75
-                elif area_eff > 100:
-                    gcp = -1.5
-            elif zone == 3:
-                if area_eff <= 10:  # [ft^2]
-                    gcp = -4.0
-                elif 10 < area_eff <= 20:
-                    m = (-3.25 - -4.0) / (20 - 10)
-                    gcp = m * (area_eff - 10) - 4.0
-                elif 20 < area_eff <= 50:
-                    m = (-2.25 - -3.25) / (50 - 20)
-                    gcp = m * (area_eff - 20) - 3.25
-                elif 50 < area_eff <= 100:
-                    m = (-1.5 - -2.25) / (100 - 50)
-                    gcp = m * (area_eff - 50) - 2.25
-                elif area_eff > 100:
-                    gcp = -1.5
-        else:
-            # Positive external pressure coefficients:
-            # Zones 1, 2, and 3
-            if pos:
-                if area_eff <= 10:  # [ft^2]
-                    gcp = 0.3
-                elif 10 < area_eff <= 20:
-                    m = (0.25 - 0.3) / (20 - 10)
-                    gcp = m * (area_eff - 10) + 0.3
-                elif 20 < area_eff <= 50:
-                    m = (0.225 - 0.25) / (50 - 20)
-                    gcp = m * (area_eff - 20) + 0.25
-                elif 50 < area_eff <= 100:
-                    m = (0.2 - 0.225) / (100 - 50)
-                    gcp = m * (area_eff - 50) + 0.225
-                elif area_eff > 100:
-                    gcp = 0.2
-            else:
-                # Negative external pressure coefficients:
+        if pitch < 7:
+            if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
+                # Negative external pressure coefficients: ASCE 7-93, -88, and ANSI-A58.1-1982
                 if zone == 1:
                     if area_eff <= 10:  # [ft^2]
-                        gcp = -1.0
+                        gcp = -1.4
                     elif 10 < area_eff <= 20:
-                        m = (-0.975 - -1.0) / (20 - 10)
-                        gcp = m * (area_eff - 10) - 1.0
+                        m = (-1.3 - -1.4) / (20 - 10)
+                        gcp = m * (area_eff - 10) - 1.4
                     elif 20 < area_eff <= 50:
-                        m = (-0.95 - -0.975) / (50 - 20)
-                        gcp = m * (area_eff - 20) - 0.975
+                        m = (-1.275 - -1.3) / (50 - 20)
+                        gcp = m * (area_eff - 20) - 1.3
                     elif 50 < area_eff <= 100:
-                        m = (-0.9 - -0.95) / (100 - 50)
-                        gcp = m * (area_eff - 50) - 0.95
+                        m = (-1.2 - -1.275) / (100 - 50)
+                        gcp = m * (area_eff - 50) - 1.275
                     elif area_eff > 100:
-                        gcp = -0.9
+                        gcp = -1.2
                 elif zone == 2:
                     if area_eff <= 10:
-                        gcp = -1.8
+                        gcp = -2.6
                     elif 10 < area_eff <= 20:
-                        m = (-1.6 - -1.8) / (20 - 10)
-                        gcp = m * (area_eff - 10) - 1.8
+                        m = (-2.25 - -2.6) / (20 - 10)
+                        gcp = m * (area_eff - 10) - 2.6
                     elif 20 < area_eff <= 50:
-                        m = (-1.325 - -1.6) / (50 - 20)
-                        gcp = m * (area_eff - 20) - 1.6
+                        m = (-1.75 - -2.25) / (50 - 20)
+                        gcp = m * (area_eff - 20) - 2.25
                     elif 50 < area_eff <= 100:
-                        m = (-1.1 - -1.325) / (100 - 50)
-                        gcp = m * (area_eff - 50) - 1.325
+                        m = (-1.5 - -1.75) / (100 - 50)
+                        gcp = m * (area_eff - 50) - 1.75
                     elif area_eff > 100:
-                        gcp = -1.1
+                        gcp = -1.5
                 elif zone == 3:
                     if area_eff <= 10:  # [ft^2]
-                        gcp = -2.8
+                        gcp = -4.0
                     elif 10 < area_eff <= 20:
-                        m = (-2.3 - -2.8) / (20 - 10)
-                        gcp = m * (area_eff - 10) - 2.8
+                        m = (-3.25 - -4.0) / (20 - 10)
+                        gcp = m * (area_eff - 10) - 4.0
                     elif 20 < area_eff <= 50:
-                        m = (-1.6 - -2.3) / (50 - 20)
-                        gcp = m * (area_eff - 20) - 2.3
+                        m = (-2.25 - -3.25) / (50 - 20)
+                        gcp = m * (area_eff - 20) - 3.25
                     elif 50 < area_eff <= 100:
-                        m = (-1.1 - -1.6) / (100 - 50)
-                        gcp = m * (area_eff - 50) - 1.6
+                        m = (-1.5 - -2.25) / (100 - 50)
+                        gcp = m * (area_eff - 50) - 2.25
                     elif area_eff > 100:
-                        gcp = -1.1
+                        gcp = -1.5
+            else:
+                # Positive external pressure coefficients:
+                # Zones 1, 2, and 3
+                if pos:
+                    if area_eff <= 10:  # [ft^2]
+                        gcp = 0.3
+                    elif 10 < area_eff <= 20:
+                        m = (0.25 - 0.3) / (20 - 10)
+                        gcp = m * (area_eff - 10) + 0.3
+                    elif 20 < area_eff <= 50:
+                        m = (0.225 - 0.25) / (50 - 20)
+                        gcp = m * (area_eff - 20) + 0.25
+                    elif 50 < area_eff <= 100:
+                        m = (0.2 - 0.225) / (100 - 50)
+                        gcp = m * (area_eff - 50) + 0.225
+                    elif area_eff > 100:
+                        gcp = 0.2
+                else:
+                    # Negative external pressure coefficients:
+                    if zone == 1:
+                        if area_eff <= 10:  # [ft^2]
+                            gcp = -1.0
+                        elif 10 < area_eff <= 20:
+                            m = (-0.975 - -1.0) / (20 - 10)
+                            gcp = m * (area_eff - 10) - 1.0
+                        elif 20 < area_eff <= 50:
+                            m = (-0.95 - -0.975) / (50 - 20)
+                            gcp = m * (area_eff - 20) - 0.975
+                        elif 50 < area_eff <= 100:
+                            m = (-0.9 - -0.95) / (100 - 50)
+                            gcp = m * (area_eff - 50) - 0.95
+                        elif area_eff > 100:
+                            gcp = -0.9
+                    elif zone == 2:
+                        if area_eff <= 10:
+                            gcp = -1.8
+                        elif 10 < area_eff <= 20:
+                            m = (-1.6 - -1.8) / (20 - 10)
+                            gcp = m * (area_eff - 10) - 1.8
+                        elif 20 < area_eff <= 50:
+                            m = (-1.325 - -1.6) / (50 - 20)
+                            gcp = m * (area_eff - 20) - 1.6
+                        elif 50 < area_eff <= 100:
+                            m = (-1.1 - -1.325) / (100 - 50)
+                            gcp = m * (area_eff - 50) - 1.325
+                        elif area_eff > 100:
+                            gcp = -1.1
+                    elif zone == 3:
+                        if area_eff <= 10:  # [ft^2]
+                            gcp = -2.8
+                        elif 10 < area_eff <= 20:
+                            m = (-2.3 - -2.8) / (20 - 10)
+                            gcp = m * (area_eff - 10) - 2.8
+                        elif 20 < area_eff <= 50:
+                            m = (-1.6 - -2.3) / (50 - 20)
+                            gcp = m * (area_eff - 20) - 2.3
+                        elif 50 < area_eff <= 100:
+                            m = (-1.1 - -1.6) / (100 - 50)
+                            gcp = m * (area_eff - 50) - 1.6
+                        elif area_eff > 100:
+                            gcp = -1.1
+        else:
+            print('Roof pitch GCp values currently not supported')
 
         return gcp
 
@@ -1219,7 +1222,11 @@ class PressureCalc:
     def get_rarea(self, ctype, parcel_flag, h_story):
         # Determine the effective area for roof C&C:
         if ctype == 'Metal deck':
-            pass
+            if parcel_flag:
+                area_eff = [8.33, 16]  # [ft^2]
+            else:
+                pass
+        return area_eff
 
 
     def ref_bldg(self):
