@@ -782,12 +782,12 @@ class PressureCalc:
             # Save the DataFrame for this code edition to a .csv file for future reference:
             #df_Efactor.to_csv('Roof_MWFRS_exp_' + ed[-2:]+'.csv')
 
-    def run_sim_wcc(self, ref_exposure, ref_hbldg, ref_story, ref_pitch, ref_cat,  wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class):
+    def run_sim_wcc(self, ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat,  wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class):
         # VARIATION 1: Reference building at various wind speeds:
         # GOAL: Similitude between wind speeds: multiply reference pressure for each zone with a factor
         # Variation 1: Same building, different wind speeds:
         # Get the effective wind area for the C&C type:
-        area_eff = pressures.get_warea(ctype, parcel_flag, ref_story)
+        area_eff = self.get_warea(ctype, parcel_flag, ref_hstory)
         # Create an empty list to hold all DataFrames:
         edw_list = list()
         # Create an empty DataFrame to hold reference pressures:
@@ -799,7 +799,7 @@ class PressureCalc:
             #fig, ax = plt.subplots()
             for speed in wind_speed:
                 # Calculate the pressure across various wind speeds for each code edition:
-                wps = pressures.wcc_pressure(speed, ref_exposure, ed, ref_hbldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
+                wps = self.wcc_pressure(speed, ref_exposure, ed, ref_hbldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
                 # Add values to Dataframe:
                 df_wcc = df_wcc.append({'Zone 4+': wps[0], 'Zone 5+': wps[1], 'Zone 4-': wps[2], 'Zone 5-': wps[3]}, ignore_index=True)
             # Add DataFrame to list:
@@ -867,7 +867,7 @@ class PressureCalc:
                 wps_arr = np.array([])
                 for speed in wind_speed:
                     # Calculate the pressure across various wind speeds for each code edition:
-                    wps = pressures.wcc_pressure(speed, ref_exposure, ed, h, ref_pitch, area_eff, cat, hpr, h_ocean, encl_class)
+                    wps = self.wcc_pressure(speed, ref_exposure, ed, h, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
                     wps_arr = np.append(wps_arr, wps[0])  # Zone 4+ since variation across heights is the same for all zones
                 # Add values to DataFrame:
                 col_name = str(h) + ' ft'
@@ -918,7 +918,7 @@ class PressureCalc:
                 for exp in exposures:
                     wps_arr = np.array([])
                     for speed in wind_speed:
-                        wps = pressures.wcc_pressure(speed, exp, ed, h, ref_pitch, area_eff, cat, hpr, h_ocean, encl_class)
+                        wps = self.wcc_pressure(speed, exp, ed, h, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
                         wps_arr = np.append(wps_arr, wps[1])
                     # Add values to DataFrame:
                     dfwE[exp] = wps_arr
@@ -953,7 +953,7 @@ class PressureCalc:
             # Store the DataFrame of Exposure factors:
             expw_list.append(dfw_Efactor)
             # Save the DataFrame for this code edition to a .csv file for future reference:
-            dfw_Efactor.to_csv('Wall_CC_exp_' + ctype + '_' + str(ref_story) + 'ft_'+ ed[-2:]+'.csv')
+            dfw_Efactor.to_csv('Wall_CC_exp_' + ctype + '_' + str(ref_hstory) + 'ft_'+ ed[-2:]+'.csv')
         # Extra code to inform future considerations of variation in wind speed for C&C components:
         # Reference Building with range of effective wind areas using typical practice:
         #df_wcc = pd.DataFrame()
@@ -1028,41 +1028,36 @@ class PressureCalc:
         ref_speed = 70 # [mph]
         return ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class
 
-
-# Create an instance of PressureCalc()
-pressures = PressureCalc()
-# Populate the reference building attributes:
-ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-# Create a vector of editions:
-#edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
-edition = ['ASCE 7-93']
-# Define a range of wind speed values:
-wind_speed = np.arange(70, 185, 5)  # [mph]
-# Define the use case
-use_case = 4
-# Populate similitude parameters for each case of Roof MWFRS:
-pressures.run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_pitch, ref_cat, wind_speed, edition, use_case, hpr, h_ocean, encl_class)
-
-# Populate similitude parameters for each case of Wall C&C:
-# Define the reference building and site conditions:
-ref_exposure = 'B'
-ref_hstory = 9  # [ft]
-ref_hbldg = 9  # [ft]
-# Assume occupancy category is II for now (later add logic to identify tags for the region (MED, UNIV, etc.):
-cat = 2
-# Define a range of wind speed values:
-wind_speed = np.arange(70, 185, 5)  # [mph]
-# Create a vector of editions:
-edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
-# Populate similitude parameters for each case of Wall C&C:
-# Determine the effective area using typical practice:
-parcel_flag = True
-# Mullions:
-ctype = 'mullion'
-pressures.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat, wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class)
-# Glass Panels:
-ctype = 'glass panel'
-pressures.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat, wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class)
-# Walls:
-ctype = 'wall'
-pressures.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat, wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class)
+    def populate_sim_parameters(self):
+        # Run this function to output all of the files related to initial development:
+        # This includes:
+        # (1) Roof MWFRS for use case 1-4, all code editions
+        # (2) Wall C&C for mullion, glass panel, wall, all code editions (except ASCE 7-93)
+        # Define a range of wind speed values:
+        wind_speed = np.arange(70, 185, 5)  # [mph]
+        # Populate the reference building attributes:
+        ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = self.ref_bldg()
+        # (1) Roof MWFRS for use case 1-4, all code editions
+        # Create a vector of editions:
+        edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
+        # Define use cases:
+        use_case = [1, 2]
+        # Populate similitude parameters for each case of Roof MWFRS:
+        for case in use_case:
+            self.run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_pitch, ref_cat, wind_speed, edition, case, hpr, h_ocean, encl_class)
+        # ASCE 7-93/88 use cases
+        edition = ['ASCE 7-93']
+        # Define use cases:
+        use_case = [3, 4]
+        # Populate similitude parameters for each case of Roof MWFRS:
+        for case in use_case:
+            self.run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_pitch, ref_cat, wind_speed, edition, case, hpr, h_ocean, encl_class)
+        # (2) Wall C&C for mullion, glass panel, wall, all code editions (except ASCE 7-93)
+        # Create a vector of editions:
+        edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
+        # Determine the effective area using typical practice:
+        parcel_flag = True
+        # C&C Types:
+        ctype = ['mullion', 'glass panel', 'wall']
+        for component in ctype:
+            self.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat, wind_speed, edition, component, parcel_flag, hpr, h_ocean, encl_class)
