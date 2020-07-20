@@ -151,7 +151,7 @@ def get_zone_width(bldg):
     a = max(min(0.1*hdist, 0.4*bldg.hasHeight), 0.04*hdist, 3)
     return a
 
-def find_zone_points(bldg, zone_width):
+def find_zone_points(bldg, zone_width, wall_flag, roof_flag):
     # Use the building footprint to find zone boundaries around perimeter:
     xs, ys = bldg.hasFootprint['geometry'].exterior.xy
     # Find the distance between exterior points and the building centroid (origin) to define a new coordinate system:
@@ -173,7 +173,7 @@ def find_zone_points(bldg, zone_width):
         xc.append(xdist)
         yc.append(ydist)
     # Find points along building footprint corresponding to zone start/end
-    zone_pts = pd.DataFrame(columns=['LinePoint1', 'Zone4Start', 'Zone4End', 'LinePoint2'])
+    zone_pts = pd.DataFrame(columns=['LinePoint1', 'NewZoneStart', 'NewZoneEnd', 'LinePoint2'])
     for j in range(0, len(xc)-1):
         # Leverage Shapely LineStrings to find zone start/end points:
         line1 = LineString([(xc[j], yc[j]), (xc[j+1], yc[j+1])])
@@ -181,7 +181,7 @@ def find_zone_points(bldg, zone_width):
         point1 = line1.interpolate(zone_width)
         point2 = line2.interpolate(zone_width)
         # Create Shapely Point Objects and store in DataFrame:
-        zone_pts = zone_pts.append({'LinePoint1': Point(xc[j], yc[j]), 'Zone4Start': point1, 'Zone4End': point2, 'LinePoint2': Point(xc[j+1], yc[j+1])}, ignore_index=True)
+        zone_pts = zone_pts.append({'LinePoint1': Point(xc[j], yc[j]), 'NewZoneStart': point1, 'NewZoneEnd': point2, 'LinePoint2': Point(xc[j+1], yc[j+1])}, ignore_index=True)
         # Plot points:
         plt.scatter(point1.x, point1.y)
         plt.scatter(point2.x, point2.y)
@@ -189,7 +189,36 @@ def find_zone_points(bldg, zone_width):
         lx, ly = line1.xy
         plt.plot(lx,ly)
     plt.show()
-    return zone_pts
+    # Change column labels to explicit zones for Wall C&C vs. Roof C&C:
+    if wall_flag:
+        wlabels = ['LinePoint1', 'Zone4Start', 'Zone4End', 'LinePoint2']
+        new_dict = {}
+        for label in range(0, len(wlabels)):
+            new_dict.update({zone_pts.columns[label]: wlabels[label]})
+        wzone_pts = zone_pts.rename(columns=new_dict)
+        print(wzone_pts)
+    else:
+        wzone_pts = None
+    if roof_flag:
+        rlabels = ['LinePoint1', 'Zone2Start', 'Zone2End', 'LinePoint2']
+        new_dict = {}
+        for label in range(0, len(rlabels)):
+            new_dict.update({zone_pts.columns[label]: rlabels[label]})
+        rzone_pts = zone_pts.rename(columns=new_dict)
+        # Roof C&C have an additional zone (Zone 1)
+        new_poly = Polygon([xc, yc])
+        # To find the coordinates for Zone 1 Polygon, need points for building footprint and zone points before/after
+        point_before = []
+        p_index = len(zone_pts['LinePoint2'])
+        for p in range(0, p_index):
+            point_before.append(zone_pts['LinePoint2'][p_index-p])
+        points = pd.DataFrame({'Main': zone_pts['LinePoint1'], 'PointAfter': zone_pts['Zone2Start'], 'PointBefore': point_before})
+
+    else:
+        rzone_pts = None
+
+
+    return wzone_pts, rzone_pts
 
 
 def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
