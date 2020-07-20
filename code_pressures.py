@@ -43,7 +43,7 @@ class PressureCalc:
         rps = list()
         for ind in range(0, len(rpos)):
             # Find the GCp
-            gcp = PressureCalc.roof_cc(self, area_eff, rpos[ind], rzone[ind], edition)
+            gcp = PressureCalc.get_roof_gcp(self, area_eff, rpos[ind], rzone[ind], edition)
             # Calculate pressure at the zone:
             p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
             rps.append(p)
@@ -324,7 +324,7 @@ class PressureCalc:
                     angles = np.array([10, 15, 20])
         return Cps
 
-    def roof_cc(self, area_eff, pos, zone, edition):
+    def get_roof_gcp(self, area_eff, pos, zone, edition):
         # Assume effective wind area is in units of ft^2
         if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
             # Negative external pressure coefficients: ASCE 7-93, -88, and ANSI-A58.1-1982
@@ -968,7 +968,7 @@ class PressureCalc:
         #for area in area_eff:
             #wall_pressures = np.empty((0, 4))
             #for speed in wind_speed:
-                #wps = pressures.wcc_capacity(speed, ref_exposure, edition, ref_hbldg, area, cat)
+                #wps = pressures.wcc_pressure(speed, exp, ed, h, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
                 # Add to our empty array:
                 #wall_pressures = np.append(wall_pressures, np.array([wps]), axis=0)
             #count = count + 1
@@ -1001,14 +1001,14 @@ class PressureCalc:
         dfr_pref = pd.DataFrame()
         for ed in edition:
             # Create a new dataframe for each edition:
-            df_rcc = pd.DataFrame(columns=['Zone 4+', 'Zone 5+', 'Zone 4-', 'Zone 5-'])
+            df_rcc = pd.DataFrame(columns=['Zone 1+', 'Zone 2+', 'Zone 3+', 'Zone 1-', 'Zone 2-', 'Zone 3-'])
             # Set up plotting
             #fig, ax = plt.subplots()
             for speed in wind_speed:
                 # Calculate the pressure across various wind speeds for each code edition:
                 rps = self.rcc_pressure(speed, ref_exposure, ed, ref_hbldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
                 # Add values to Dataframe:
-                df_rcc = df_rcc.append({'Zone 4+': rps[0], 'Zone 5+': rps[1], 'Zone 4-': rps[2], 'Zone 5-': rps[3]}, ignore_index=True)
+                df_rcc = df_rcc.append({'Zone 1+': rps[0], 'Zone 2+': rps[1], 'Zone 3+': rps[2], 'Zone 1-': rps[3], 'Zone 2-': rps[4], 'Zone 3-': rps[5]}, ignore_index=True)
             # Add DataFrame to list:
             edr_list.append(df_rcc)
             # Extract reference pressures:
