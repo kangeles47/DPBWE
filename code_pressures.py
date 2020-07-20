@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import cmath
-from scipy.optimize import curve_fit
 
 class PressureCalc:
 
@@ -19,7 +18,7 @@ class PressureCalc:
         wps = list()
         for ind in range(0, len(wpos)):
             # Find the GCp
-            gcp = PressureCalc.wall_cc(self, area_eff, wpos[ind], wzone[ind], edition)
+            gcp = PressureCalc.get_wcc_gcp(self, area_eff, wpos[ind], wzone[ind], edition)
             # Reduce GCp for walls if roof pitch is <= 10 degrees:
             if pitch <= 10:
                 gcp = 0.9 * gcp
@@ -31,7 +30,7 @@ class PressureCalc:
 
         return wps
 
-    def rcc_capacity(self, wind_speed, exposure, edition, h_bldg, area_eff, hpr, h_ocean, encl_class):
+    def rcc_pressure(self, wind_speed, exposure, edition, h_bldg, area_eff, hpr, h_ocean, encl_class):
         # Determine GCpis for pressure calculation:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class)
         # Determine components and cladding pressure for building roof components:
@@ -435,7 +434,7 @@ class PressureCalc:
 
         return gcp
 
-    def wall_cc(self, area_eff, pos, zone, edition):
+    def get_wcc_gcp(self, area_eff, pos, zone, edition):
         # Assume effective wind area is in units of ft^2
         if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
             # Positive external pressure coefficients:
@@ -797,7 +796,7 @@ class PressureCalc:
             # Create a new dataframe for each edition:
             df_wcc = pd.DataFrame(columns=['Zone 4+', 'Zone 5+', 'Zone 4-', 'Zone 5-'])
             # Set up plotting
-            # fig, ax = plt.subplots()
+            #fig, ax = plt.subplots()
             for speed in wind_speed:
                 # Calculate the pressure across various wind speeds for each code edition:
                 wps = pressures.wcc_pressure(speed, ref_exposure, ed, ref_hbldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
@@ -808,12 +807,12 @@ class PressureCalc:
             # Extract reference pressures:
             dfw_pref = dfw_pref.append(df_wcc.iloc[0], ignore_index=True)  # First row corresponds to pressures at min(wind_speed)
             # Plot Zone pressures for 1 case (Zones 4 and 5 (+) are equal):
-            # ax.plot(df_wcc['Zone 4+'], wind_speed)
-            # plt.ylim(90, max(wind_speed))
-            # plt.ylabel('Wind Speed [mph]')
-            # plt.xlabel('Pressure [psf]')
-            # plt.title('Mullion C&C pressures (+), Zones 4 and 5 for h_story = 9.0 ft')
-            # plt.show()
+            #ax.plot(df_wcc['Zone 4+'], wind_speed)
+            #plt.ylim(90, max(wind_speed))
+            #plt.ylabel('Wind Speed [mph]')
+            #plt.xlabel('Pressure [psf]')
+            #plt.title('Mullion C&C pressures (+), Zones 4 and 5 for h_story = 9.0 ft')
+            #plt.show()
             # Uncomment to show the difference in pressure between zones and wind speeds for the typical effective wind area
             #print('percent change between zones:', ed, df_wcc.pct_change(axis=1))
             #print('percent change in wind speed:', ed, df_wcc.pct_change(axis=0))
@@ -821,7 +820,7 @@ class PressureCalc:
         dfw_pref['Edition'] = edition
         dfw_pref.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        #dfw_pref.to_csv('Wall_CC_ref_' + ctype + '.csv')
+        dfw_pref.to_csv('Wall_CC_ref_' + ctype + '.csv')
         # Determine the appropriate multiplier by comparing to reference wind speed pressure:
         # Note: Variation in wind speed is the same across zones:
         df_Vfactor = pd.DataFrame()
@@ -889,9 +888,9 @@ class PressureCalc:
             factor_list = list()
             for index in range(0, len(row)):
                 if index == 0:
-                    factor = 1.0
+                    factor = 0.0
                 elif row[index] == row[0]:
-                    factor = 1.0
+                    factor = 0.0
                 else:
                     factor = (row[index] - row[0]) / row[0]
                 factor_list.append(factor)
@@ -904,7 +903,7 @@ class PressureCalc:
         dfw_hfactor['Edition'] = edition
         dfw_hfactor.set_index('Edition', inplace=True)
         # Save the DataFrame to a .csv file for future reference:
-        #dfw_hfactor.to_csv('Wall_CC_h_' + ctype + '.csv')
+        dfw_hfactor.to_csv('Wall_CC_h_' + ctype + '.csv')
 
         # Variation 3: Different building heights (same h_story), different wind speeds, different exposures:
         exposures = ['B', 'C', 'D']
@@ -954,7 +953,7 @@ class PressureCalc:
             # Store the DataFrame of Exposure factors:
             expw_list.append(dfw_Efactor)
             # Save the DataFrame for this code edition to a .csv file for future reference:
-            #dfw_Efactor.to_csv('Wall_CC_exp_' + ctype + '_' + str(ref_story) + 'ft_'+ ed[-2:]+'.csv')
+            dfw_Efactor.to_csv('Wall_CC_exp_' + ctype + '_' + str(ref_story) + 'ft_'+ ed[-2:]+'.csv')
         # Extra code to inform future considerations of variation in wind speed for C&C components:
         # Reference Building with range of effective wind areas using typical practice:
         #df_wcc = pd.DataFrame()
@@ -1000,12 +999,12 @@ class PressureCalc:
                     area_eff = h_story*h_story/3  # [ft^2]
             else:
                 pass
-        elif ctype == 'glass curtain wall':
+        elif ctype == 'glass panel':
             if parcel_flag:
                 area_eff = (h_story/2)*5  # [ft^2]
             else:
                 pass
-        elif ctype == 'wall':
+        elif ctype == 'wall':  # Later change to: if ctype in wall list
             area_eff = h_story*h_story/3  # [ft^2]
 
         return area_eff
@@ -1029,17 +1028,6 @@ class PressureCalc:
         ref_speed = 70 # [mph]
         return ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class
 
-    def get_psim(self, a, b, c):
-        # Solve the quadratic equation ax**2 + bx + c = 0
-        # Calculate the discriminant
-        d = (b ** 2) - (4 * a * c)
-        # Find two solutions
-        sol1 = (-b - cmath.sqrt(d)) / (2 * a)
-        sol2 = (-b + cmath.sqrt(d)) / (2 * a)
-
-        print('The solution are {0} and {1}'.format(sol1, sol2))
-        return sol1, sol2
-
 
 # Create an instance of PressureCalc()
 pressures = PressureCalc()
@@ -1056,7 +1044,6 @@ use_case = 4
 pressures.run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_pitch, ref_cat, wind_speed, edition, use_case, hpr, h_ocean, encl_class)
 
 # Populate similitude parameters for each case of Wall C&C:
-# Mullions:
 # Define the reference building and site conditions:
 ref_exposure = 'B'
 ref_hstory = 9  # [ft]
@@ -1070,5 +1057,12 @@ edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
 # Populate similitude parameters for each case of Wall C&C:
 # Determine the effective area using typical practice:
 parcel_flag = True
+# Mullions:
 ctype = 'mullion'
+pressures.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat, wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class)
+# Glass Panels:
+ctype = 'glass panel'
+pressures.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat, wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class)
+# Walls:
+ctype = 'wall'
 pressures.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat, wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class)
