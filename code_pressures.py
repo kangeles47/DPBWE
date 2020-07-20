@@ -601,7 +601,7 @@ class PressureCalc:
             # Create a new DataFrame for each edition:
             df = pd.DataFrame(columns=case_col)
             for speed in wind_speed:
-                rmps = pressures.rmwfrs_pressure(speed, ref_exposure, ed, ref_hbldg, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
+                rmps = self.rmwfrs_pressure(speed, ref_exposure, ed, ref_hbldg, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
                 # Pair zone names with zone pressures:
                 zone_dict = {df.columns[i]: rmps[i] for i in range(len(rmps))}
                 # Add values to Dataframe:
@@ -680,7 +680,7 @@ class PressureCalc:
                     print('use case not supported')
                 rmps_arr = np.array([])
                 for speed in wind_speed:
-                    rmps = pressures.rmwfrs_pressure(speed, ref_exposure, ed, h, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
+                    rmps = self.rmwfrs_pressure(speed, ref_exposure, ed, h, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
                     rmps_arr = np.append(rmps_arr, rmps[0])  # Zone 1 since variation across heights is the same for all zones
                 # Add values to DataFrame:
                 col_name = str(h) + ' ft'
@@ -742,7 +742,7 @@ class PressureCalc:
                 for exp in exposures:
                     rmps_arr = np.array([])
                     for speed in wind_speed:
-                        rmps = pressures.rmwfrs_pressure(speed, exp, ed, h, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
+                        rmps = self.rmwfrs_pressure(speed, exp, ed, h, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
                         rmps_arr = np.append(rmps_arr, rmps[0])
                     # Add values to DataFrame:
                     dfE[exp] = rmps_arr
@@ -985,6 +985,213 @@ class PressureCalc:
         #ax.legend()
         #plt.ylim(90, max(wind_speed))
         #plt.title('Mullion C&C bounds (+), Zones 4 and 5 for h = ' + str(h_bldg) + ' [ft]')
+        #plt.ylabel('Wind Speed [mph]')
+        #plt.xlabel('Pressure [psf]')
+        #plt.show()
+
+    def run_sim_rcc(self, ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat,  wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class):
+        # VARIATION 1: Reference building at various wind speeds:
+        # GOAL: Similitude between wind speeds: multiply reference pressure for each zone with a factor
+        # Variation 1: Same building, different wind speeds:
+        # Get the effective wind area for the C&C type:
+        area_eff = self.get_rarea(ctype, parcel_flag, ref_hstory)
+        # Create an empty list to hold all DataFrames:
+        edr_list = list()
+        # Create an empty DataFrame to hold reference pressures:
+        dfr_pref = pd.DataFrame()
+        for ed in edition:
+            # Create a new dataframe for each edition:
+            df_rcc = pd.DataFrame(columns=['Zone 4+', 'Zone 5+', 'Zone 4-', 'Zone 5-'])
+            # Set up plotting
+            #fig, ax = plt.subplots()
+            for speed in wind_speed:
+                # Calculate the pressure across various wind speeds for each code edition:
+                rps = self.rcc_pressure(speed, ref_exposure, ed, ref_hbldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
+                # Add values to Dataframe:
+                df_rcc = df_rcc.append({'Zone 4+': rps[0], 'Zone 5+': rps[1], 'Zone 4-': rps[2], 'Zone 5-': rps[3]}, ignore_index=True)
+            # Add DataFrame to list:
+            edr_list.append(df_rcc)
+            # Extract reference pressures:
+            dfr_pref = dfr_pref.append(df_rcc.iloc[0], ignore_index=True)  # First row corresponds to pressures at min(wind_speed)
+            # Plot Zone pressures for 1 case (Zones 4 and 5 (+) are equal):
+            #ax.plot(df_wcc['Zone 4+'], wind_speed)
+            #plt.ylim(90, max(wind_speed))
+            #plt.ylabel('Wind Speed [mph]')
+            #plt.xlabel('Pressure [psf]')
+            #plt.title('Mullion C&C pressures (+), Zones 4 and 5 for h_story = 9.0 ft')
+            #plt.show()
+            # Uncomment to show the difference in pressure between zones and wind speeds for the typical effective wind area
+            #print('percent change between zones:', ed, df_wcc.pct_change(axis=1))
+            #print('percent change in wind speed:', ed, df_wcc.pct_change(axis=0))
+        # Add column for reference pressures DataFrame:
+        dfr_pref['Edition'] = edition
+        dfr_pref.set_index('Edition', inplace=True)
+        # Save the DataFrame to a .csv file for future reference:
+        dfr_pref.to_csv('Roof_CC_ref_' + ctype + '.csv')
+        # Determine the appropriate multiplier by comparing to reference wind speed pressure:
+        # Note: Variation in wind speed is the same across zones:
+        df_Vfactor = pd.DataFrame()
+        for dframe in edr_list:
+            # Use Zone 4 pressures to calculate pressure differences due to change in wind speed:
+            col = dframe[dframe.columns[0]]
+            vfactor_list = list()
+            for index in range(0, len(col)):
+                if index == 0:  # First index corresponds to pressure when V = min(wind_speed)
+                    factor = 0.0
+                elif col[index] == col[0]:
+                    factor = 0.0
+                else:
+                    factor = (col[index] - col[0]) / col[0]
+                vfactor_list.append(factor)
+            vfactor_dict = {wind_speed[i]: vfactor_list[i] for i in range(len(vfactor_list))}  # Pairs each key (wind speed) with its corresponding factor
+            # Add to DataFrame:
+            df_Vfactor = df_Vfactor.append(vfactor_dict, ignore_index=True)
+        # Set the index to the corresponding code editions:
+        # Add column:
+        df_Vfactor['Edition'] = edition
+        df_Vfactor.set_index('Edition', inplace=True)
+        # Save the DataFrame to a .csv file for future reference:
+        df_Vfactor.to_csv('Roof_CC_v_'+ ctype+ '.csv')
+
+        # Variation 2: Reference Building Story height, multiple stories, different wind speeds:
+        # Define an array of building heights:
+        h_bldg = np.arange(ref_hbldg * 1, ref_hbldg * 7, ref_hbldg)  # [ft], multiply by seven for parcels
+        if ref_hstory > 9:
+            # Take only values less than or equal to 60 ft:
+            check = h_bldg <= 60  # [ft]
+            h_bldg = h_bldg[check]
+        else:
+            pass
+        # Percent change in pressure between heights is same for all Zones
+        # Two groups: ASCE 7-95 and older vs. ASCE 7-98 and older, here we are going to collect all for easy access/comparison
+        dfr_hfactor = pd.DataFrame()
+        for ed in edition:
+            # Set up a dataframe to compare values:
+            dfrh = pd.DataFrame()
+            # Set up a matplotlib figure:
+            # fig3, ax3 = plt.subplots()
+            for h in h_bldg:
+                rps_arr = np.array([])
+                for speed in wind_speed:
+                    # Calculate the pressure across various wind speeds for each code edition:
+                    rps = self.rcc_pressure(speed, ref_exposure, ed, h, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
+                    rps_arr = np.append(rps_arr, rps[0])  # Zone 4+ since variation across heights is the same for all zones
+                # Add values to DataFrame:
+                col_name = str(h) + ' ft'
+                dfrh[col_name] = rps_arr
+                # Plot the results:
+                # ax3.plot(dfwh[col_name], wind_speed, label = str(h)+ ' ft')
+            # Plot the results:
+            # ax3.legend()
+            # plt.title('Mullion Pressures (C&C) for Zone 4 (+) vs. Wind speed for various building heights')
+            # plt.ylabel('Wind Speed [mph]')
+            # plt.xlabel('Pressure [psf]')
+            # plt.ylim(90, max(wind_speed))
+            # plt.show()
+            # Uncomment to show the percent change in pressure as height varies:
+            #print('Percent change in pressure between heights:', ed, dfwh.pct_change(axis=1))
+            # Determine the percent change in pressure (compared to reference height) for each code edition:
+            row = dfrh.iloc[0]  # Get first row of each DataFrame to find variation with height (same for all wind speeds)
+            factor_list = list()
+            for index in range(0, len(row)):
+                if index == 0:
+                    factor = 0.0
+                elif row[index] == row[0]:
+                    factor = 0.0
+                else:
+                    factor = (row[index] - row[0]) / row[0]
+                factor_list.append(factor)
+            # Create a quick dictionary:
+            factor_dict = {dfrh.columns[i]: factor_list[i] for i in range(len(factor_list))}
+            dfr_hfactor = dfr_hfactor.append(factor_dict, ignore_index=True)
+
+        # Set the index to the corresponding code editions:
+        # Add column:
+        dfr_hfactor['Edition'] = edition
+        dfr_hfactor.set_index('Edition', inplace=True)
+        # Save the DataFrame to a .csv file for future reference:
+        dfr_hfactor.to_csv('Roof_CC_h_' + ctype + '.csv')
+
+        # Variation 3: Different building heights (same h_story), different wind speeds, different exposures:
+        exposures = ['B', 'C', 'D']
+        # Set up an empty list to store the dataframes:
+        expr_list = list()
+        for ed in edition:
+            # Set up DataFrame to save pressure difference across exposure categories for various heights:
+            dfr_Efactor = pd.DataFrame(columns=exposures)
+            for h in h_bldg:
+                dfrE = pd.DataFrame()
+                # fig4, ax4 = plt.subplots()
+                for exp in exposures:
+                    rps_arr = np.array([])
+                    for speed in wind_speed:
+                        rps = self.rcc_pressure(speed, exp, ed, h, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
+                        rps_arr = np.append(rps_arr, rps[1])
+                    # Add values to DataFrame:
+                    dfrE[exp] = rps_arr
+                    # Plot the results (Exposures B, C, D for one height:
+                    # ax4.plot(dfwE[exp], wind_speed, label=exp)
+                # Plot the results:
+                # ax4.legend()
+                # plt.title('Mullion pressures (C&C, Zone 4+) and h = '+str(h)+ ' ft')
+                # plt.ylabel('Wind Speed [mph]')
+                # plt.xlabel('Pressure [psf]')
+                # plt.ylim(90, max(wind_speed))
+                # plt.show()
+                # Check the percent change between Exposure categories:
+                # print('percent change in pressure by Exposure Category by h:', h, exp)
+                # print(dfwE.pct_change(axis=1))
+                # Calculate the percent change from Exposure B:
+                row = dfrE.iloc[0]
+                factor_list = list()
+                for index in range(0, len(row)):
+                    if index == 0:
+                        factor = 0.0
+                    elif row[index] == row[0]:
+                        factor = 0.0
+                    else:
+                        factor = (row[index] - row[0]) / row[0]
+                    factor_list.append(factor)
+                dfr_Efactor = dfr_Efactor.append({'B': factor_list[0], 'C': factor_list[1], 'D': factor_list[2]}, ignore_index=True)
+            # Set the index to the corresponding building heights:
+            # Add column:
+            dfr_Efactor['Height in ft'] = h_bldg
+            dfr_Efactor.set_index('Height in ft', inplace=True)
+            # Store the DataFrame of Exposure factors:
+            expr_list.append(dfr_Efactor)
+            # Save the DataFrame for this code edition to a .csv file for future reference:
+            dfr_Efactor.to_csv('Roof_CC_exp_' + ctype + '_' + str(ref_hstory) + 'ft_'+ ed[-2:]+'.csv')
+        # Extra code to inform future considerations of variation in wind speed for C&C components:
+        # Reference Building with range of effective wind areas using typical practice:
+        #df_rcc = pd.DataFrame()
+        # Set up array of effective areas:
+        #area_eff = np.array([27, 45, 54, 90])  # [ft^2]
+        # Set up empty numpy arrays to store wall and roof pressures:
+        #roof_pressures = np.empty((0, 4))
+        #count = 0
+        #fig, ax = plt.subplots()
+        #edition = 'ASCE 7-10'
+
+        #for area in area_eff:
+            #roof_pressures = np.empty((0, 4))
+            #for speed in wind_speed:
+                #rps = pressures.rcc_capacity(speed, ref_exposure, edition, ref_hbldg, area, cat)
+                # Add to our empty array:
+                #roof_pressures = np.append(roof_pressures, np.array([wps]), axis=0)
+            #count = count + 1
+            #line = ax.plot(roof_pressures[:, 0], wind_speed, label=str(area) + ' sq ft')
+            # Append column of pressures for various wind speeds for this height:
+            #col_name = str(area)
+            #df_rcc[col_name] = roof_pressures[:, 0]
+            # params = curve_fit(func, roof_pressures[:,3], wind_speed)
+            # [a, b, c] = params[0]
+            # fit_curve = ax.plot(roof_pressures[:, 3], func(roof_pressures[:,3], a, b, c), label=str(area))
+
+        #print('percent change in effective area:')
+        #print(df_rcc.pct_change(axis=1))
+        #ax.legend()
+        #plt.ylim(90, max(wind_speed))
+        #plt.title('Roof C&C bounds (+), Zones 4 and 5 for h = ' + str(h_bldg) + ' [ft]')
         #plt.ylabel('Wind Speed [mph]')
         #plt.xlabel('Pressure [psf]')
         #plt.show()
