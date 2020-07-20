@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from geopy import distance
 from shapely.geometry import Point, LineString, Polygon
 from code_pressures import PressureCalc
-from BIM import Parcel
+from asset import Parcel
 import math
 
 # Goal of this code is to extract the information necessary to assign the correct pressure to building components
@@ -15,13 +15,21 @@ import math
 #   a) Access the correct reference pressures
 #   b) Conduct the necessary similitude mappings
 #   c) Assign pressures for each zone to the appropriate locations for the building model
-def get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, pitch):
+def get_roof_uplift_pressure(edition, bldg, h_bldg, length, exposure, wind_speed, direction, pitch):
     # Step 1: Determine which reference building is needed and the file path:
     pressures = PressureCalc()  # Create an instance of PressureCalc to pull reference building parameters
+    pitch = bldg.hasStorey[-1].containsElement['Roof'].hasPitch
     if direction == 'parallel' or (direction == 'normal' and pitch < 10):
         ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
         file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_MWFRS/RBLDG1/'
     # Step 2: Determine the use case:
+    if direction == 'parallel':
+        # Pull up minimum rotated rectangle and grab the dimension
+        pass
+    else:
+        # grab the other dimension
+        pass
+    ratio = bldg.hasHeight / length
     ratio = h_bldg/length
     if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
         if direction == 'parallel':
