@@ -230,6 +230,14 @@ def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
         for ctype in wcc_lst['Type'].unique():
             # (+)/(-) pressures:
             psim = get_wcc_pressure(edition, bldg.hasHeight, storey.hasHeight, ctype, exposure, wind_speed, bldg.hasStorey[-1].containsElement['Roof'].hasPitch)
+            # Incorporate pressure minimums:
+            if bldg.hasYearBuilt > 2010 and (abs(psim) < 16):  # [lb]/[ft^2]
+                if psim < 0:
+                    psim = -16
+                else:
+                    psim = 16
+            else:
+                pass
             zone_pressures = zone_pressures.append({'Type': ctype, 'Pressures': psim}, ignore_index=True)
         # Assign zone pressures to each Wall C&C Element
         for elem in wcc_lst['Element']:
