@@ -161,11 +161,6 @@ class PressureCalc:
                 p = 0.85 * p
             else:
                 pass
-            # Minimum design pressure for C&C (ASCE 7-10):
-            #if abs(p) < 16 and edition == 'ASCE 7-10':  # [psf]
-                #p = np.sign(p) * 16 # [psf]
-            #elif abs(p) < 10 and edition != 'ASCE 7-10':
-                #p = np.sign(p) * 10  # [psf]
         else:
             p = q * gcp - q * gcpi  # q = qz for roof (at mean roof height)
 
@@ -1226,7 +1221,7 @@ class PressureCalc:
             else:
                 print('C&C type currently not supported')
                 ctype = None
-        elif isinstance(self, Roof):
+        elif isinstance(component, Roof):
             # Determine the ctype for the component:
             mtl_ctype = ['Metal surfacing', 'Built-up', 'Built-up and metal']
             if component.hasType in mtl_ctype:
