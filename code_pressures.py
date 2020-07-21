@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from element import Wall, Roof
 
 class PressureCalc:
 
@@ -1210,17 +1211,33 @@ class PressureCalc:
         #plt.ylabel('Wind Speed [mph]')
         #plt.xlabel('Pressure [psf]')
         #plt.show()
-
-    def get_warea(self, component, parcel_flag, h_story):
+    def get_ctype(self, component):
         # Determine the ctype for the component:
-        wall_ctype = ['Masonry', 'Masonry and metal', 'Masonry and siding', 'Window glass and masonry', 'Steel frame and masonry', 'Concrete panels', 'Window glass and concrete', 'Concrete and siding', 'Pre-cast concrete panels', 'Brick, stone, or stucco', 'Concrete block or poured concrete']
-        cwall_ctype = ['Window/vision glass', 'Decor./construction glass', 'Window and construction glass', 'Window or vision glass', 'Decorative or construction glass']
-        if component.hasType in wall_ctype:
-            ctype = 'wall'
-        elif component.hasType in cwall_ctype:
-            ctype = 'glass panel'
-        else:
-            ctype = None
+        if isinstance(component, Wall):
+            wall_ctype = ['Masonry', 'Masonry and metal', 'Masonry and siding', 'Window glass and masonry',
+                      'Steel frame and masonry', 'Concrete panels', 'Window glass and concrete', 'Concrete and siding',
+                      'Pre-cast concrete panels', 'Brick, stone, or stucco', 'Concrete block or poured concrete']
+            cwall_ctype = ['Window/vision glass', 'Decor./construction glass', 'Window and construction glass',
+                       'Window or vision glass', 'Decorative or construction glass']
+            if component.hasType in wall_ctype:
+                ctype = 'wall'
+            elif component.hasType in cwall_ctype:
+                ctype = 'glass panel'
+            else:
+                print('C&C type currently not supported')
+                ctype = None
+        elif isinstance(self, Roof):
+            # Determine the ctype for the component:
+            mtl_ctype = ['Metal surfacing', 'Built-up', 'Built-up and metal']
+            if component.hasType in mtl_ctype:
+                ctype = 'Metal deck'
+            else:
+                print('C&C type currently not supported')
+                ctype = None
+        return ctype
+
+
+    def get_warea(self, ctype, parcel_flag, h_story):
         # Determine the effective area for a wall C&C:
         if ctype == 'mullion':
             if parcel_flag:
@@ -1242,13 +1259,7 @@ class PressureCalc:
 
         return area_eff
 
-    def get_rarea(self, component, parcel_flag, h_story):
-        # Determine the ctype for the component:
-        mtl_ctype = ['Metal surfacing', 'Built-up', 'Built-up and metal']
-        if component.hasType in mtl_ctype:
-            ctype = 'Metal deck'
-        else:
-            ctype = None
+    def get_rarea(self, ctype, parcel_flag, h_story):
         # Determine the effective area for roof C&C:
         if ctype == 'Metal deck':
             if parcel_flag:
