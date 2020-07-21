@@ -151,7 +151,7 @@ def get_zone_width(bldg):
     a = max(min(0.1*hdist, 0.4*bldg.hasHeight), 0.04*hdist, 3)
     return a
 
-def find_zone_points(bldg, zone_width, wall_flag, roof_flag):
+def find_zone_points(bldg, zone_width, roof_flag):
     # Use the building footprint to find zone boundaries around perimeter:
     xs, ys = bldg.hasFootprint['geometry'].exterior.xy
     # Find the distance between exterior points and the building centroid (origin) to define a new coordinate system:
@@ -189,36 +189,28 @@ def find_zone_points(bldg, zone_width, wall_flag, roof_flag):
         lx, ly = line1.xy
         plt.plot(lx,ly)
     plt.show()
-    # Change column labels to explicit zones for Wall C&C vs. Roof C&C:
-    if wall_flag:
-        wlabels = ['LinePoint1', 'Zone4Start', 'Zone4End', 'LinePoint2']
-        new_dict = {}
-        for label in range(0, len(wlabels)):
-            new_dict.update({zone_pts.columns[label]: wlabels[label]})
-        wzone_pts = zone_pts.rename(columns=new_dict)
-        print(wzone_pts)
-    else:
-        wzone_pts = None
+    # Note: zone_pts returns planar coordinates of zone locations
+    # Apply to walls with 'NewZoneStart/End' corresponding to Start/End of Zone 4 locations
+    # Apply to roof with 'NewZoneStart/End' corresponding to Start/End of Zone 2 locations
+    # Roof C&C components additionally have an "interior" zone --> Zone 1
     if roof_flag:
-        rlabels = ['LinePoint1', 'Zone2Start', 'Zone2End', 'LinePoint2']
-        new_dict = {}
-        for label in range(0, len(rlabels)):
-            new_dict.update({zone_pts.columns[label]: rlabels[label]})
-        rzone_pts = zone_pts.rename(columns=new_dict)
-        # Roof C&C have an additional zone (Zone 1)
-        new_poly = Polygon([xc, yc])
-        # To find the coordinates for Zone 1 Polygon, need points for building footprint and zone points before/after
-        point_before = []
-        p_index = len(zone_pts['LinePoint2'])
-        for p in range(0, p_index):
-            point_before.append(zone_pts['LinePoint2'][p_index-p])
-        points = pd.DataFrame({'Main': zone_pts['LinePoint1'], 'PointAfter': zone_pts['Zone2Start'], 'PointBefore': point_before})
+        # Derive Zone 1 points from original bldg footprint:
+        point_list = []
+        for coord in range(0, len(xc)):
+            point_list.append(Point(xc[coord], yc[coord]))
+        bldg_poly = Polygon(point_list)
+        int_poly = bldg_poly.buffer(distance=-1*zone_width, resolution=200, join_style=2)
+        # Leave as poly - can easily check if component in/out of geometry
+        # Plot for reference
+        xpoly, ypoly = int_poly.exterior.xy
+        plt.plot(xc,yc)
+        plt.plot(xpoly, ypoly)
+        plt.show()
 
     else:
-        rzone_pts = None
+        int_poly = None
 
-
-    return wzone_pts, rzone_pts
+    return zone_pts, int_poly
 
 
 def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
@@ -281,15 +273,15 @@ def dist_calc(lon1, lat1, lon2, lat2):
     return dist
 
 
-#lon = -85.676188
-#lat = 30.190142
-#test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
+lon = -85.676188
+lat = 30.190142
+test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
 #lon = -85.666162
 #lat = 30.19953
 #test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
-#a = get_zone_width(test)
-#print('zone width in ft:', a)
-#zone_pts = find_zone_points(test, a)
+a = get_zone_width(test)
+print('zone width in ft:', a)
+zone_pts = find_zone_points(test, a, wall_flag=True, roof_flag=True)
 
 # Test it out:
 #edition = 'ASCE 7-02'
