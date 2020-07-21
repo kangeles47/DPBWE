@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import cmath
 
 class PressureCalc:
 
@@ -1212,7 +1211,16 @@ class PressureCalc:
         #plt.xlabel('Pressure [psf]')
         #plt.show()
 
-    def get_warea(self, ctype, parcel_flag, h_story):
+    def get_warea(self, component, parcel_flag, h_story):
+        # Determine the ctype for the component:
+        wall_ctype = ['Masonry', 'Masonry and metal', 'Masonry and siding', 'Window glass and masonry', 'Steel frame and masonry', 'Concrete panels', 'Window glass and concrete', 'Concrete and siding', 'Pre-cast concrete panels', 'Brick, stone, or stucco', 'Concrete block or poured concrete']
+        cwall_ctype = ['Window/vision glass', 'Decor./construction glass', 'Window and construction glass', 'Window or vision glass', 'Decorative or construction glass']
+        if component.hasType in wall_ctype:
+            ctype = 'wall'
+        elif component.hasType in cwall_ctype:
+            ctype = 'glass panel'
+        else:
+            ctype = None
         # Determine the effective area for a wall C&C:
         if ctype == 'mullion':
             if parcel_flag:
@@ -1229,16 +1237,26 @@ class PressureCalc:
                 pass
         elif ctype == 'wall':  # Later change to: if ctype in wall list
             area_eff = h_story*h_story/3  # [ft^2]
+        elif ctype is None:
+            print('C&C type currently not supported')
 
         return area_eff
 
-    def get_rarea(self, ctype, parcel_flag, h_story):
+    def get_rarea(self, component, parcel_flag, h_story):
+        # Determine the ctype for the component:
+        mtl_ctype = ['Metal surfacing', 'Built-up', 'Built-up and metal']
+        if component.hasType in mtl_ctype:
+            ctype = 'Metal deck'
+        else:
+            ctype = None
         # Determine the effective area for roof C&C:
         if ctype == 'Metal deck':
             if parcel_flag:
                 area_eff = [8.33, 16]  # [ft^2]
             else:
                 pass
+        elif ctype is None:
+            print('C&C type currently not supported')
         return area_eff
 
 
@@ -1289,10 +1307,10 @@ class PressureCalc:
         for component in ctype:
             self.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat, wind_speed, edition, component, parcel_flag, hpr, h_ocean, encl_class)
 
-pressures = PressureCalc()
-wind_speed = np.arange(70, 185, 5)
-ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
-parcel_flag = True
-ctype = 'Metal deck'
-rcc = pressures.run_sim_rcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat,  wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class)
+#pressures = PressureCalc()
+#wind_speed = np.arange(70, 185, 5)
+#ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
+#edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
+#parcel_flag = True
+#ctype = 'Metal deck'
+#rcc = pressures.run_sim_rcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat,  wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class)
