@@ -1,11 +1,13 @@
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+from asset import Parcel
+from code_capacities import get_zone_width, find_zone_points, assign_wcc_pressures
 
 # Initialization script for data-driven workflow:
 
 # Asset Description
 # Parcel Models
+lon = -85.676188
+lat = 30.190142
+test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
 
 # Hazard Characterization
 # Here is where we provide wind speed, location, etc. for data-driven roughness length
@@ -14,12 +16,14 @@ import matplotlib.pyplot as plt
 
 # Asset Representation
 # Populate component capacities:
-if 'Parcel' in model:
-    # Populate code-informed capacities (includes typical practice) for a given set of components:
-    for assem in Parcel_assemblies:
-        assem.capacity = function
-else:
-    pass
+a = get_zone_width(test)
+print('zone width in ft:', a)
+zone_pts, int_poly = find_zone_points(test, a, roof_flag=False)
+edition = 'ASCE 7-10'
+exposure = 'B'
+wind_speed = 120
+assign_wcc_pressures(test, zone_pts, edition, exposure, wind_speed)
+print(exposure)
 
 # Response Simulation
 
