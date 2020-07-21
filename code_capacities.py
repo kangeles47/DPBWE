@@ -212,21 +212,25 @@ def find_zone_points(bldg, zone_width, roof_flag):
 
 
 def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
+    # Create an instance of PressureCalc:
+    pressures = PressureCalc()
     # Assign C&C pressures given the component type and its location (zone):
     for storey in bldg.hasStorey:
         # Create a list of all Wall C&C types within this story
         wcc_lst = pd.DataFrame(columns=['Element', 'Type'])
         for elem in bldg.has_element['Walls']:
             if elem.isExterior and not elem.isLoadbearing:
-                wcc_lst = wcc_lst.append({'Element': elem, 'Type': elem.hasType}, ignore_index=True)
+                # Figure out what ctype the wall component is:
+                ctype = pressures.get_ctype(elem)
+                wcc_lst = wcc_lst.append({'Element': elem, 'Type': ctype}, ignore_index=True)
             else:
                 pass
         # Find all unique C&C types and calculate (+)/(-) pressures at each zone:
         zone_pressures = pd.DataFrame(columns=['Type', 'Pressures'])
-        for wtype in wcc_lst['Type'].unique():
+        for ctype in wcc_lst['Type'].unique():
             # (+)/(-) pressures:
-            psim = get_wcc_pressure(edition, bldg.hasHeight, storey.hasHeight, wtype, exposure, wind_speed, bldg.hasStorey[-1].containsElement['Roof'].hasPitch)
-            zone_pressures = zone_pressures.append({'Type': wtype, 'Pressures': psim}, ignore_index=True)
+            psim = get_wcc_pressure(edition, bldg.hasHeight, storey.hasHeight, ctype, exposure, wind_speed, bldg.hasStorey[-1].containsElement['Roof'].hasPitch)
+            zone_pressures = zone_pressures.append({'Type': ctype, 'Pressures': psim}, ignore_index=True)
         # Assign zone pressures to each Wall C&C Element
         for elem in wcc_lst['Element']:
             zone4_flag = False
@@ -244,8 +248,9 @@ def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
                         pass
                 else:
                     break
-            # Find the index where zone_pressures['Type'] matches the C&C type:
-            type_ind = zone_pressures.loc[zone_pressures['Type'] == elem.hasType]
+            # Find the index where zone_pressures['Type'] matches the element's C&C type:
+            etype_ind = wcc_lst.loc[wcc_lst['Element'] == elem]
+            type_ind = zone_pressures.loc[zone_pressures['Type'] == wcc_lst['Type'][etype_ind]]
             if zone4_flag:
                 elem.hasCapacity['Positive'] = zone_pressures['Pressures'][type_ind]['Zone4+']
                 elem.hasCapacity['Negative'] = zone_pressures['Pressures'][type_ind]['Zone4-']
