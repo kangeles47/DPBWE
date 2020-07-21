@@ -94,6 +94,12 @@ def get_wcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, pitc
         edition = 'ASCE 7-93'
     # Step 2: Access the appropriate reference building and determine the file path:
     pressures = PressureCalc()
+    # Semantic translation for survey data:
+    if pitch == 'flat':
+        # Assign angle considering 2:12 slope
+        pitch = math.degrees(math.atan(2/12))
+    else:
+        pitch = 11
     if h_story == 9 and pitch <= 10:  #[ft]
         ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
         file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Wall_CC/RBLDG1/'
@@ -107,22 +113,22 @@ def get_wcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, pitc
         vfactor = 0.0
     else:
         if edition == 'ASCE 7-93':
-            vfactor = pd.read_csv(file_path + ctype + '/v93.csv', index_col='Edition')[str(wind_speed)][edition]
+            vfactor = pd.read_csv(file_path + '/v93.csv', index_col='Edition')[str(wind_speed)][edition]
         else:
-            vfactor = pd.read_csv(file_path + ctype + '/v.csv', index_col='Edition')[str(wind_speed)][edition]
+            vfactor = pd.read_csv(file_path + '/v.csv', index_col='Edition')[str(wind_speed)][edition]
     # Similitude in height:
     if h_bldg == ref_hbldg:
         hfactor = 0.0
     else:
         if edition == 'ASCE 7-93':
-            hfactor = pd.read_csv(file_path + ctype + '/h93.csv')[str(h_bldg) + ' ft'][0]
+            hfactor = pd.read_csv(file_path + '/h93.csv')[str(h_bldg) + ' ft'][0]
         else:
-            hfactor = pd.read_csv(file_path + ctype + '/h.csv', index_col='Edition')[str(h_bldg) + ' ft'][edition]
+            hfactor = pd.read_csv(file_path + '/h.csv', index_col='Edition')[str(h_bldg) + ' ft'][edition]
     # Similitude in exposure categories:
     if exposure == ref_exposure:
         efactor = 0.0
     else:
-        efactor = pd.read_csv(file_path + ctype + '/e' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][h_bldg]
+        efactor = pd.read_csv(file_path + '/e' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][h_bldg]
     # Step 6: Apply the similitude parameters to get the final pressures for each zone:
     factor_lst = [vfactor, hfactor, efactor]
     psim = pref.loc[edition]
@@ -218,7 +224,7 @@ def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
     for storey in bldg.hasStorey:
         # Create a list of all Wall C&C types within this story
         wcc_lst = pd.DataFrame(columns=['Element', 'Type'])
-        for elem in bldg.has_element['Walls']:
+        for elem in storey.containsElement['Walls']:
             if elem.isExterior and not elem.isLoadbearing:
                 # Figure out what ctype the wall component is:
                 ctype = pressures.get_ctype(elem)
@@ -243,28 +249,29 @@ def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
         for elem in wcc_lst['Element']:
             zone4_flag = False
             # Use Zone 4 points and element coordinates to assign pressure
-            for seg in zone_pts['NewZoneStart']:
+            for seg in range(0, len(zone_pts['NewZoneStart'])):
                 if not zone4_flag:
                     # Create a line segment using zone 4 points
                     zline = LineString([zone_pts['NewZoneStart'][seg], zone_pts['NewZoneEnd'][seg]])
                     # Check if element falls within the zone or is exactly at zone points or is outsidezone 4:
-                    if elem.has1DModel[0].within(zline) and elem.has1DModel[1].within(zline):
+                    if Point(elem.has1DModel.coords[0]).within(zline) and Point(elem.has1DModel.coords[1]).within(zline):
                         zone4_flag = True
-                    elif elem.has1DModel[0] == zone_pts['NewZoneStart'][seg] and elem.has1DModel[1] == zone_pts['NewZoneEnd'][seg]:
+                    elif Point(elem.has1DModel.coords[0]) == zone_pts['NewZoneStart'][seg] and Point(elem.has1DModel.coords[1]) == zone_pts['NewZoneEnd'][seg]:
                         zone4_flag = True
                     else:
                         pass
                 else:
                     break
-            # Find the index where zone_pressures['Type'] matches the element's C&C type:
-            etype_ind = wcc_lst.loc[wcc_lst['Element'] == elem]
-            type_ind = zone_pressures.loc[zone_pressures['Type'] == wcc_lst['Type'][etype_ind]]
+            # Find the element's C&C type:
+            ectype = wcc_lst.loc[wcc_lst['Element'] == elem, 'Type'].iloc[0]
+            # Find the index where the element C&C type matches with unique types in zone_pressures:
+            utype_ind = zone_pressures[zone_pressures['Type'] == ectype].index.values
             if zone4_flag:
-                elem.hasCapacity['Positive'] = zone_pressures['Pressures'][type_ind]['Zone4+']
-                elem.hasCapacity['Negative'] = zone_pressures['Pressures'][type_ind]['Zone4-']
+                elem.hasCapacity['Positive'] = zone_pressures.iloc[utype_ind]['Pressures'][0]['Zone 4+']
+                elem.hasCapacity['Negative'] = zone_pressures.iloc[utype_ind]['Pressures'][0]['Zone 4-']
             else:
-                elem.hasCapacity['Positive'] = zone_pressures['Pressures'][type_ind]['Zone5+']
-                elem.hasCapacity['Negative'] = zone_pressures['Pressures'][type_ind]['Zone5-']
+                elem.hasCapacity['Positive'] = zone_pressures.iloc[utype_ind]['Pressures'][0]['Zone 5+']
+                elem.hasCapacity['Negative'] = zone_pressures.iloc[utype_ind]['Pressures'][0]['Zone 5-']
 
 def assign_rcc_pressures(bldg, zone_pts, int_poly, edition, exposure, wind_speed):
     # Create an instance of PressureCalc:
@@ -348,16 +355,6 @@ def dist_calc(lon1, lat1, lon2, lat2):
 
     return dist
 
-
-#lon = -85.676188
-#lat = 30.190142
-#test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
-#lon = -85.666162
-#lat = 30.19953
-#test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
-#a = get_zone_width(test)
-#print('zone width in ft:', a)
-#zone_pts = find_zone_points(test, a, wall_flag=True, roof_flag=True)
 
 # Test it out:
 #edition = 'ASCE 7-02'
