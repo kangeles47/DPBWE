@@ -22,6 +22,7 @@ class Wall(Element):
         self.hasHeight = None
         self.isExterior = None
         self.has1DModel = None
+        self.hasCapacity = {}
 
 
 class Roof(Element):
