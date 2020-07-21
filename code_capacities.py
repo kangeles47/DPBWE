@@ -1,10 +1,8 @@
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from geopy import distance
 from shapely.geometry import Point, LineString, Polygon
 from code_pressures import PressureCalc
-from asset import Parcel
 import math
 
 # Goal of this code is to extract the information necessary to assign the correct pressure to building components
@@ -225,22 +223,22 @@ def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
                 pass
         # Find all unique C&C types and calculate (+)/(-) pressures at each zone:
         zone_pressures = pd.DataFrame(columns=['Type', 'Pressures'])
-        for type in wcc_lst['Type'].unique():
+        for wtype in wcc_lst['Type'].unique():
             # (+)/(-) pressures:
-            psim = get_wcc_pressure(edition, bldg.hasHeight, storey.hasHeight, type, exposure, wind_speed, bldg.hasStorey[-1].containsElement['Roof'].hasPitch)
-            zone_pressures = zone_pressures.append({'Type': type, 'Pressures': psim}, ignore_index=True)
+            psim = get_wcc_pressure(edition, bldg.hasHeight, storey.hasHeight, wtype, exposure, wind_speed, bldg.hasStorey[-1].containsElement['Roof'].hasPitch)
+            zone_pressures = zone_pressures.append({'Type': wtype, 'Pressures': psim}, ignore_index=True)
         # Assign zone pressures to each Wall C&C Element
         for elem in wcc_lst['Element']:
             zone4_flag = False
             # Use Zone 4 points and element coordinates to assign pressure
             for seg in zone_pts['Zone4Start']:
-                if zone4_flag == False:
+                if not zone4_flag:
                     # Create a line segment using zone 4 points
                     zline = LineString([zone_pts['Zone4Start'][seg], zone_pts['Zone4End'][seg]])
                     # Check if element falls within the zone or is exactly at zone points or is outsidezone 4:
                     if elem.has1DModel[0].within(zline) and elem.has1DModel[1].within(zline):
                         zone4_flag = True
-                    elif elem.has1DModel[0] == zone_pts['Zone4Start'][seg] and elem.has1DModel[1] ==zone_pts['Zone4End'][seg]:
+                    elif elem.has1DModel[0] == zone_pts['Zone4Start'][seg] and elem.has1DModel[1] == zone_pts['Zone4End'][seg]:
                         zone4_flag = True
                     else:
                         pass
@@ -273,15 +271,15 @@ def dist_calc(lon1, lat1, lon2, lat2):
     return dist
 
 
-lon = -85.676188
-lat = 30.190142
-test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
+#lon = -85.676188
+#lat = 30.190142
+#test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
 #lon = -85.666162
 #lat = 30.19953
 #test = Parcel('12989-113-000', 1, 'SINGLE FAM', 1974, '2820  STATE AVE   PANAMA CITY 32405', 3141, lon, lat)
-a = get_zone_width(test)
-print('zone width in ft:', a)
-zone_pts = find_zone_points(test, a, wall_flag=True, roof_flag=True)
+#a = get_zone_width(test)
+#print('zone width in ft:', a)
+#zone_pts = find_zone_points(test, a, wall_flag=True, roof_flag=True)
 
 # Test it out:
 #edition = 'ASCE 7-02'
