@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from geopy import distance
 from shapely.geometry import Point, LineString, Polygon
+from shapely.ops import nearest_points
 from code_pressures import PressureCalc
 import math
 
@@ -136,7 +137,7 @@ def get_wcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, pitc
         psim = factor*psim + psim
     return psim
 
-def get_rcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, pitch):
+def get_rcc_pressure(edition, h_bldg, ctype, exposure, wind_speed, pitch):
     # Step 1: Semantic translation of roof pitch:
     if pitch == 'flat':
         # Code editions ASCE 7-98 and earlier use 10 degrees for first use case
@@ -153,21 +154,20 @@ def get_rcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, pitc
         edition = 'ASCE 7-93'
     # Step 2: Access the appropriate reference building and determine the file path:
     pressures = PressureCalc()
-    if h_story == 9:  #[ft]   NOTE: Might need to modify logic here once we add more reference buildings
-        if edition == 'ASCE 7-98' or edition == 'ASCE 7-93':
-            if pitch <= 10:
-                use_case = 1
-                ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-                file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
-        else:
-            if (edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and pitch <= 7:  # Still including this logic for non-Parcel models
-                use_case = 1
-                ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-                file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
-            elif (edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and pitch > 7:
-                print('Roof use case currently not supported')
+    # NOTE: Might need to modify logic here once we add more reference buildings
+    if edition == 'ASCE 7-98' or edition == 'ASCE 7-93':
+        if pitch <= 10:
+            use_case = 1
+            ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
+            file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
     else:
-        print('Story height case currently not supported')
+        if (edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and pitch <= 7:  # Still including this logic for non-Parcel models
+            use_case = 1
+            ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
+            file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
+        elif (edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and 7 < pitch <= 27:
+            use_case = 2
+            print('Roof use case currently not supported')
     # Step 4: Extract the reference pressures for the component type -- COME BACK AND CHECK FOR WHEN WE EXPAND TO OTHER USE CASES
     pref = pd.read_csv(file_path + ctype + '/ref' + str(use_case) + '.csv', index_col='Edition').loc[[edition], :]
     # Step 5: Extract similitude parameters for wind speed, height, and exposure
@@ -266,10 +266,27 @@ def find_zone_points(bldg, zone_width, roof_flag):
         for coord in range(0, len(xc)):
             point_list.append(Point(xc[coord], yc[coord]))
         bldg_poly = Polygon(point_list)
-        int_poly = bldg_poly.buffer(distance=-1*zone_width, resolution=200, join_style=2)
+        int_poly = bldg_poly.buffer(distance=-1*zone_width, resolution=300, join_style=2)
         # Leave as poly - can easily check if component in/out of geometry
         # Plot for reference
         xpoly, ypoly = int_poly.exterior.xy
+        plt.plot(xc,yc)
+        plt.plot(xpoly, ypoly)
+        plt.show()
+        # Find geometries for Zone 3 Locations
+        z3polys = []
+        for row in range(0, len(zone_pts)):
+            # Create a polygon object using the points before and after a vertex on the bldg footprint:
+            vpoly = Polygon([zone_pts['LinePoint1'].iloc[row], zone_pts['NewZoneStart'].iloc[row], zone_pts['NewZoneEnd'].iloc[row-1]])
+            # Find the nearest point between vpoly and int_poly:
+            npoint = nearest_points(vpoly, int_poly)[1]
+            # Create a new polygon using points in vpoly and npoint:
+            zpoly = Polygon([zone_pts['LinePoint1'].iloc[row], zone_pts['NewZoneStart'].iloc[row], npoint, zone_pts['NewZoneEnd'].iloc[row-1]])
+            z3polys.append(zpoly)
+            # Plotting:
+            xz, yz = zpoly.exterior.xy
+            plt.plot(xz, yz)
+        # Plot int_poly
         plt.plot(xc,yc)
         plt.plot(xpoly, ypoly)
         plt.show()
@@ -358,7 +375,7 @@ def assign_rcc_pressures(bldg, zone_pts, int_poly, edition, exposure, wind_speed
     zone_pressures = pd.DataFrame(columns=['Type', 'Pressures'])
     for ctype in rcc_lst['Type'].unique():
         # (+)/(-) pressures:
-        psim = get_rcc_pressure(edition, bldg.hasHeight, storey.hasHeight, ctype, exposure, wind_speed, bldg.hasStorey[-1].containsElement['Roof'].hasPitch)
+        psim = get_rcc_pressure(edition, bldg.hasHeight, ctype, exposure, wind_speed, roof_elem.hasPitch)
         # Incorporate pressure minimums:
         if bldg.hasYearBuilt > 2010 and (abs(psim) < 16):  # [lb]/[ft^2]
             if psim < 0:
