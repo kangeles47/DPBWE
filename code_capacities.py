@@ -14,7 +14,7 @@ import math
 #   a) Access the correct reference pressures
 #   b) Conduct the necessary similitude mappings
 #   c) Assign pressures for each zone to the appropriate locations for the building model
-def get_roof_uplift_pressure(edition, bldg, h_bldg, length, exposure, wind_speed, direction, pitch):
+def get_roof_uplift_pressure(edition, bldg, length, exposure, wind_speed, direction):
     # Step 1: Determine which reference building is needed and the file path:
     pressures = PressureCalc()  # Create an instance of PressureCalc to pull reference building parameters
     pitch = bldg.hasStorey[-1].containsElement['Roof'].hasPitch
@@ -22,14 +22,7 @@ def get_roof_uplift_pressure(edition, bldg, h_bldg, length, exposure, wind_speed
         ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
         file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_MWFRS/RBLDG1/'
     # Step 2: Determine the use case:
-    if direction == 'parallel':
-        # Pull up minimum rotated rectangle and grab the dimension
-        pass
-    else:
-        # grab the other dimension
-        pass
     ratio = bldg.hasHeight / length
-    ratio = h_bldg/length
     if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
         if direction == 'parallel':
             if ratio <= 2.5:
@@ -68,18 +61,18 @@ def get_roof_uplift_pressure(edition, bldg, h_bldg, length, exposure, wind_speed
         else:
             vfactor = pd.read_csv(file_path + 'v.csv', index_col='Edition')[str(wind_speed)][edition] # Leave here for now, for regional simulation will probably want to load everything somewhere outside
     # Similitude in height:
-    if h_bldg == ref_hbldg:
+    if bldg.hasHeight == ref_hbldg:
         hfactor = 0.0
     else:
         if edition == 'ASCE 7-93':
-            hfactor = pd.read_csv(file_path + 'h93.csv')[str(h_bldg) + ' ft'][0]
+            hfactor = pd.read_csv(file_path + 'h93.csv')[str(bldg.hasHeight) + ' ft'][0]
         else:
-            hfactor = pd.read_csv(file_path + 'h.csv')[str(h_bldg) + ' ft'][0]
+            hfactor = pd.read_csv(file_path + 'h.csv')[str(bldg.hasHeight) + ' ft'][0]
     # Similitude in exposure categories:
     if exposure == ref_exposure:
         efactor = 0.0
     else:
-        efactor = pd.read_csv(file_path + 'e' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][h_bldg]
+        efactor = pd.read_csv(file_path + 'e' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][bldg.hasHeight]
     # Step 6: Apply the similitude parameters to get the final pressures for each zone:
     factor_lst = [vfactor, hfactor, efactor]
     psim = pref.loc[edition]
@@ -199,7 +192,7 @@ def get_rcc_pressure(edition, h_bldg, ctype, exposure, wind_speed, pitch):
         psim = factor*psim + psim
     return psim
 
-def get_zone_width(bldg):
+def get_cc_zone_width(bldg):
     # This function determines the zone width, a, for a given building:
     # a is determined as max(min(0.1*least horizontal dimension, 0.4*h_bldg), 0.4*least horizontal direction, 3 ft)
     # Create an equivalent rectangle for the building:
@@ -218,7 +211,7 @@ def get_zone_width(bldg):
     a = max(min(0.1*hdist, 0.4*bldg.hasHeight), 0.04*hdist, 3)
     return a
 
-def find_zone_points(bldg, zone_width, roof_flag):
+def find_cc_zone_points(bldg, zone_width, roof_flag, edition):
     # Use the building footprint to find zone boundaries around perimeter:
     xs, ys = bldg.hasFootprint['geometry'].exterior.xy
     # Find the distance between exterior points and the building centroid (origin) to define a new coordinate system:
@@ -261,41 +254,79 @@ def find_zone_points(bldg, zone_width, roof_flag):
     # Apply to roof with 'NewZoneStart/End' corresponding to Start/End of Zone 2 locations
     # Roof C&C components additionally have an "interior" zone --> Zone 1
     if roof_flag:
-        # Derive Zone 1 points from original bldg footprint:
-        point_list = []
-        for coord in range(0, len(xc)):
-            point_list.append(Point(xc[coord], yc[coord]))
-        bldg_poly = Polygon(point_list)
-        int_poly = bldg_poly.buffer(distance=-1*zone_width, resolution=300, join_style=2)
-        # Leave as poly - can easily check if component in/out of geometry
-        # Plot for reference
-        xpoly, ypoly = int_poly.exterior.xy
-        plt.plot(xc,yc)
-        plt.plot(xpoly, ypoly)
-        plt.show()
-        # Find geometries for Zone 3 Locations
-        z3polys = []
-        for row in range(0, len(zone_pts)):
-            # Create a polygon object using the points before and after a vertex on the bldg footprint:
-            vpoly = Polygon([zone_pts['LinePoint1'].iloc[row], zone_pts['NewZoneStart'].iloc[row], zone_pts['NewZoneEnd'].iloc[row-1]])
-            # Find the nearest point between vpoly and int_poly:
-            npoint = nearest_points(vpoly, int_poly)[1]
-            # Create a new polygon using points in vpoly and npoint:
-            zpoly = Polygon([zone_pts['LinePoint1'].iloc[row], zone_pts['NewZoneStart'].iloc[row], npoint, zone_pts['NewZoneEnd'].iloc[row-1]])
-            z3polys.append(zpoly)
-            # Plotting:
-            xz, yz = zpoly.exterior.xy
-            plt.plot(xz, yz)
-        # Plot int_poly
-        plt.plot(xc,yc)
-        plt.plot(xpoly, ypoly)
-        plt.show()
-
+        if edition != 'ASCE 7-16':
+            # Derive Zone 1 points from original bldg footprint:
+            point_list = []
+            for coord in range(0, len(xc)):
+                point_list.append(Point(xc[coord], yc[coord]))
+            bldg_poly = Polygon(point_list)
+            int_poly = bldg_poly.buffer(distance=-1*zone_width, resolution=300, join_style=2)
+            # Leave as poly - can easily check if component in/out of geometry
+            # Plot for reference
+            xpoly, ypoly = int_poly.exterior.xy
+            plt.plot(xc,yc)
+            plt.plot(xpoly, ypoly)
+            plt.show()
+            # Find geometries for Zone 3 Locations
+            z3polys = []
+            for row in range(0, len(zone_pts)):
+                # Create a polygon object using the points before and after a vertex on the bldg footprint:
+                vpoly = Polygon([zone_pts['LinePoint1'].iloc[row], zone_pts['NewZoneStart'].iloc[row], zone_pts['NewZoneEnd'].iloc[row-1]])
+                # Find the nearest point between vpoly and int_poly:
+                npoint = nearest_points(vpoly, int_poly)[1]
+                # Create a new polygon using points in vpoly and npoint:
+                zpoly = Polygon([zone_pts['LinePoint1'].iloc[row], zone_pts['NewZoneStart'].iloc[row], npoint, zone_pts['NewZoneEnd'].iloc[row-1]])
+                z3polys.append(zpoly)
+                # Plotting:
+                xz, yz = zpoly.exterior.xy
+                plt.plot(xz, yz)
+            # Plot int_poly
+            plt.plot(xc,yc)
+            plt.plot(xpoly, ypoly)
+            plt.show()
+        elif edition == 'ASCE 7-16':
+            print('Code edition currently not supported for Roof MWFRS considerations')
     else:
         int_poly = None
 
     return zone_pts, int_poly
 
+def find_rmwfrs_zones(bldg, edition):
+    # Equivalent rectangle:
+    rect = bldg.hasFootprint['geometry'].minimum_rotated_rectangle
+    xrect, yrect = rect.exterior.xy
+
+
+def assign_rmwfrs_pressures(bldg, rzone_pts, edition, exposure, wind_speed):
+    # Create an instance of PressureCalc:
+    pressures = PressureCalc()
+    # Assign MWFRS pressures for the roof:
+    # Parameters to determine use case:
+    # Roof pitch
+    roof_elem = bldg.hasStorey[-1].containsElements['Roof']
+    if isinstance(roof_elem.hasPitch, str):
+        if roof_elem.hasPitch == 'flat':
+            # Assign angle considering 2:12 slope (from code)
+            pitch = math.degrees(math.atan(2 / 12))
+    else:
+        pass
+    # Length:
+    # Calculate the minimum rotated rectangle for the building footprint:
+    rect = bldg.hasFootprint['geometry'].minimum_rotated_rectangle
+    xrect, yrect = rect.exterior.xy
+    lengths = []
+    for ind in range(0, 4):  # First four points give back lengths of both rectangle sides
+        lnew = distance.distance((yrect[ind], xrect[ind]), (yrect[ind + 1], xrect[ind + 1])).miles * 5280  # [ft]
+        lengths.append(lnew)
+    # Access pressures:
+    if edition != 'ASCE 7-93' or edition != 'ASCE 7-88':
+        if pitch < 10:
+            # Two sets of pressures - One for parallel, one for perpendicular
+            psims = []
+            direction = 'normal'  # For theta < 0, distinction does not change available pressures
+            for length in lengths:
+                psim = get_roof_uplift_pressure(edition, bldg, length, exposure, wind_speed, direction)
+                psims.append(psim)
 
 def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
     # Create an instance of PressureCalc:
