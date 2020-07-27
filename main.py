@@ -16,9 +16,9 @@ test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405',
 
 # Asset Representation
 # Populate component capacities:
-a = get_zone_width(test)
+a = get_cc_zone_width(test)
 print('zone width in ft:', a)
-zone_pts, int_poly = find_zone_points(test, a, roof_flag=False)
+zone_pts, int_poly = find_cc_zone_points(test, a, roof_flag=True)
 edition = 'ASCE 7-10'
 exposure = 'B'
 wind_speed = 120
