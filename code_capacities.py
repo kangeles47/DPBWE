@@ -297,13 +297,13 @@ def find_rmwfrs_zones(bldg, edition):
     xrect, yrect = rect.exterior.xy
 
 
-def assign_rmwfrs_pressures(bldg, rzone_pts, edition, exposure, wind_speed):
+def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed, wind_direction):
     # Create an instance of PressureCalc:
     pressures = PressureCalc()
     # Assign MWFRS pressures for the roof:
     # Parameters to determine use case:
     # Roof pitch
-    roof_elem = bldg.hasStorey[-1].containsElements['Roof']
+    roof_elem = bldg.hasStorey[-1].containsElement['Roof']
     if isinstance(roof_elem.hasPitch, str):
         if roof_elem.hasPitch == 'flat':
             # Assign angle considering 2:12 slope (from code)
@@ -314,17 +314,39 @@ def assign_rmwfrs_pressures(bldg, rzone_pts, edition, exposure, wind_speed):
     # Calculate the minimum rotated rectangle for the building footprint:
     rect = bldg.hasFootprint['geometry'].minimum_rotated_rectangle
     xrect, yrect = rect.exterior.xy
-    lengths = []
-    for ind in range(0, 4):  # First four points give back lengths of both rectangle sides
-        lnew = distance.distance((yrect[ind], xrect[ind]), (yrect[ind + 1], xrect[ind + 1])).miles * 5280  # [ft]
-        lengths.append(lnew)
+    plt.plot(xrect, yrect)
+    plt.show()
+    # Find the orientation and corresponding lengths of the building footprint:
+    info_rmwfrs = {'theta': [], 'length': [], 'direction': []}
+    for idx in range(0,2):  # Need two sides of the rectangle to figure this out
+        if xrect[idx] == xrect[idx+1]:
+            theta = 0  # slope = 0 or slope is undefined
+            lnew = abs(xrect[idx] - xrect[idx+1])
+        elif yrect[idx] == yrect[idx+1]:
+            theta = 360  # Choose an angle we know we are not going to get back
+            lnew = abs(yrect[idx] - yrect[idx+1])
+        else:
+            # Calculate the theta:
+            xdist = xrect[idx+1]-xrect[idx]
+            ydist = yrect[idx+1]-yrect[idx]
+            theta = math.degrees(math.atan2(ydist, xdist))
+            lnew = math.sqrt((xdist**2) + (ydist**2))
+        info_rmwfrs['theta'].append(theta)
+        info_rmwfrs['length'].append(lnew)
+        # Determine if wind direction is parallel or perpendicular to the specified side of the building:
+        if wind_direction == (abs(theta) + 90):
+            direction = 'parallel'
+        elif wind_direction == abs(theta) or wind_direction == (abs(theta) + 180):
+            direction = 'perpendicular'
+        else:
+            print('Error in determining wind direction. Please choose parallel or perpendicular angle')
     # Access pressures:
     if edition != 'ASCE 7-93' or edition != 'ASCE 7-88':
         if pitch < 10:
             # Two sets of pressures - One for parallel, one for perpendicular
             psims = []
             direction = 'normal'  # For theta < 0, distinction does not change available pressures
-            for length in lengths:
+            for length in info_rmwfrs['length']:
                 psim = get_roof_uplift_pressure(edition, bldg, length, exposure, wind_speed, direction)
                 psims.append(psim)
 
