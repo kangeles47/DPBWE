@@ -8,7 +8,7 @@ from element import Roof, Wall, Floor, Ceiling
 import bldg_code
 from survey_data import SurveyData
 from geopy import distance
-from code_capacities import get_zone_width, find_zone_points
+from code_capacities import get_cc_zone_width, find_cc_zone_points
 
 # The Building Topology Ontology (BOT) is a minimal ontology for describing the core topological concepts of a building.
 # BOT representation (logic) is used to organize asset(s) description(s)
@@ -257,8 +257,8 @@ class Parcel(Building):
         # Generate parcel elements with (default) attributes:
         # Floor, Ceiling, and Roof Instances - These are conducted by storey to facilitate "hasElement" assignment
         # Exterior Walls - Geometries are derived considering zone locations on the building footprint:
-        a = get_zone_width(parcel)  # Determine the zone width
-        zone_pts, int_poly = find_zone_points(parcel, a, roof_flag=True)  # Coordinates for start/end of zone locations
+        a = get_cc_zone_width(parcel)  # Determine the zone width
+        zone_pts, int_poly = find_cc_zone_points(parcel, a, roof_flag=True, edition=None)  # Coordinates for start/end of zone locations
         # Assume that walls span one story for now:
         for storey in parcel.hasStorey:
             # Create an empty list to hold all elements:
