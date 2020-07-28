@@ -1,5 +1,5 @@
 from asset import Parcel
-from code_capacities import get_zone_width, find_zone_points, assign_wcc_pressures
+from code_capacities import get_cc_zone_width, find_cc_zone_points, assign_wcc_pressures, assign_rmwfrs_pressures
 
 # Initialization script for data-driven workflow:
 
@@ -16,12 +16,14 @@ test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405',
 
 # Asset Representation
 # Populate component capacities:
-a = get_cc_zone_width(test)
-print('zone width in ft:', a)
-zone_pts, int_poly = find_cc_zone_points(test, a, roof_flag=True)
 edition = 'ASCE 7-10'
 exposure = 'B'
 wind_speed = 120
+p = assign_rmwfrs_pressures(test, edition, exposure, wind_speed)
+a = get_cc_zone_width(test)
+print('zone width in ft:', a)
+roof_flag = True
+zone_pts, int_poly = find_cc_zone_points(test, a, roof_flag, edition)
 assign_wcc_pressures(test, zone_pts, edition, exposure, wind_speed)
 print(exposure)
 
