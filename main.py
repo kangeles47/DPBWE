@@ -1,5 +1,5 @@
 from asset import Parcel
-from code_capacities import get_cc_zone_width, find_cc_zone_points, assign_wcc_pressures, assign_rmwfrs_pressures
+from code_capacities import get_cc_zone_width, find_cc_zone_points, assign_wcc_pressures, assign_rmwfrs_pressures, get_rmwfrs_info
 
 # Initialization script for data-driven workflow:
 
@@ -19,7 +19,9 @@ test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405',
 edition = 'ASCE 7-10'
 exposure = 'B'
 wind_speed = 120
-p = assign_rmwfrs_pressures(test, edition, exposure, wind_speed)
+info_rmwfrs = get_rmwfrs_info(test)
+wind_direction = 0
+p = assign_rmwfrs_pressures(test, edition, exposure, wind_speed, wind_direction)
 a = get_cc_zone_width(test)
 print('zone width in ft:', a)
 roof_flag = True
