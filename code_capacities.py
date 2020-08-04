@@ -298,87 +298,69 @@ def find_rmwfrs_zones(bldg, edition):
     xrect, yrect = rect.exterior.xy
 
 
-def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed, wind_direction):
+def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
     # Create an instance of PressureCalc:
     pressures = PressureCalc()
     # Assign MWFRS pressures for the roof:
-    # Parameters to get pressures:
-    # Roof pitch
+    # Set up parameters to access pressures:
+    # (1) Roof pitch
     roof_elem = bldg.hasStorey[-1].containsElement['Roof']
     if isinstance(roof_elem.hasPitch, str):
         if roof_elem.hasPitch == 'flat':
             # Assign angle based on 2:12 slope
             pitch = math.degrees(math.atan2(2, 12))
-            ridge = False
         else:
             print('Roof (str) pitch currently not supported')
     else:
         pass
-    # Determine if wind direction is parallel or perpendicular to the specified side of the building:
-    if wind_direction == (abs(theta) + 90) or wind_direction == (abs(theta) - 90) or wind_direction == (abs(theta) + 270):
-        direction = 'parallel'
-    elif wind_direction == abs(theta) or wind_direction == (abs(theta) + 180):
-        direction = 'perpendicular'
-    else:
-        print('Error in determining wind direction. Please choose parallel or perpendicular angle')
-    info_rmwfrs['direction'] = direction
-    # Access pressures:
-    psim = get_roof_uplift_pressure(edition, bldg, lnew, exposure, wind_speed, direction)
-    info_rmwfrs['pressures'] = psim
-
-def get_rmwfrs_info(bldg):
-    # Roof MWFRS pressure assignements require knowledge of the building aspect ratio for a given wind direction
-    # This function finds orientation of building footprint using a rectangle and calculates lengths of each side
+    # (2) Direction
+    # Roof MWFRS pressure assignments require knowledge of the building aspect ratio for a given "wind direction"
+    # Use an equivalent (rotated) rectangle to find lengths
+    # BONUS: Find the orientation of the building footprint
     # Find the minimum rotated rectangle for the building footprint:
     rect = bldg.hasFootprint['geometry'].minimum_rotated_rectangle
     xrect, yrect = rect.exterior.xy
     plt.plot(xrect, yrect)
     plt.show()
     # Find the orientation and corresponding lengths of the building footprint:
-    info_rmwfrs = {'theta': [], 'length': [], 'direction': []}
-    for idx in range(0,2):  # Need two sides of the rectangle to figure this out
-        # Calculate the theta:
-        xdist = xrect[idx+1]-xrect[idx]
-        ydist = yrect[idx+1]-yrect[idx]
-        theta = math.degrees(math.atan2(ydist, xdist))
+    info_rmwfrs = {'bldg orientation': [], 'side length': [], 'wind direction': [], 'direction length': [], 'pressures': []}
+    for idx in range(0, 2):  # Only need two sides of the rectangle
+        # Calculate the building orientation:
+        if idx == 0:
+            xdist = xrect[idx + 1] - xrect[idx]
+            ydist = yrect[idx + 1] - yrect[idx]
+            theta = math.degrees(math.atan2(ydist, xdist))
+        else:
+            theta = info_rmwfrs['theta'][0]
         if theta < 0:
             # Find the equivalent positive angle:
             theta = 360 + theta
         else:
             pass
-        lnew = math.sqrt((xdist**2) + (ydist**2))
-        info_rmwfrs['theta'].append(theta)
-        info_rmwfrs['length'].append(lnew)
-    # Decision to break up get_rmwfrs_info and assign_rmwfrs_pressures:
-    # User can choose a wind direction parallel or perpendicular to the building (if they know what direction the ridge is facing)
-    if edition != 'ASCE 7-93' or edition != 'ASCE 7-88':
-        if pitch < 7:
-            use_case = 1
+        # Calculate the length for each side:
+        lnew = math.sqrt((xdist ** 2) + (ydist ** 2))
+        # Add values:
+        info_rmwfrs['bldg orientation'].append(theta)
+        info_rmwfrs['side length'].append(lnew)
+    # Given the orientation of the building, find a set of parallel and normal wind directions:
+    # Assume that the ridge runs along the longer dimension of the building:
+    for bldg_length in range(0,2):
+        if info_rmwfrs['length'][bldg_length] == max(info_rmwfrs['length']):
+            direction = 'parallel'
+            dlength = min(info_rmwfrs['length'])
+            # For possible future uses: Real possible wind directions
+            real_directions = [90 - info_rmwfrs['theta'][bldg_length], 270 + info_rmwfrs['theta'][bldg_length]]
         else:
-            print('use case not supported')
-    else:
-        if pitch < 10:
-            use_case = 1
-        else:
-            print('use case not supported')
-    if use_case == 1:
-        for length in range(0, len(info_rmwfrs['length'])):
-            direction = 'perpendicular'
-            if length == 0:
-                input_length = info_rmwfrs['length'][length+1]
-            else:
-                input_length = info_rmwfrs['length'][length - 1]
-    elif use_case == 'other':  # case when theta is greater than specified in use case 1:
-        # assume ridge coincides with longer side
-        for length in range(0, len(info_rmwfrs['length'])):
-            if info_rmwfrs['length'][length] == max(info_rmwfrs['length']):
-                direction = 'parallel'
-                input_length = max(info_rmwfrs['length'])
-            else:
-                direction = 'perpendicular'
-                input_length = min(info_rmwfrs['length'])
-
-    return info_rmwfrs
+            direction = 'normal'
+            dlength = max(info_rmwfrs['length'])
+            real_directions = [info_rmwfrs['theta'][bldg_length], 180 + info_rmwfrs['theta'][bldg_length]]
+        # Add values:
+        info_rmwfrs['wind direction'].append(direction)
+        info_rmwfrs['direction length'].append(dlength)
+        # Access pressures:
+        psim = get_roof_uplift_pressure(edition, bldg, dlength, exposure, wind_speed, direction, pitch)
+        info_rmwfrs['pressures'].append(psim)
+    # Next up: Assigning "zone" pressures to the corresponding building geometry:
 
 
 def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
