@@ -322,6 +322,11 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
     xrect, yrect = rect.exterior.xy
     plt.plot(xrect, yrect)
     plt.show()
+    # First store the line segments of the rotated rectangle:
+    rlines = []
+    for coord in range(0, len(xrect)-1):
+        new_line = LineString([(xrect[coord], yrect[coord]), (xrect[coord+1], yrect[coord+1])])
+        rlines.append(new_line)
     # Find the orientation and corresponding lengths of the building footprint:
     info_rmwfrs = {'bldg orientation': [], 'side length': [], 'wind direction': [], 'direction length': [], 'pressures': []}
     for idx in range(0, 2):  # Only need two sides of the rectangle
@@ -337,22 +342,20 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
             theta = 360 + theta
         else:
             pass
-        # Calculate the length for each side:
-        lnew = math.sqrt((xdist ** 2) + (ydist ** 2))
         # Add values:
         info_rmwfrs['bldg orientation'].append(theta)
-        info_rmwfrs['side length'].append(lnew)
+        info_rmwfrs['side length'].append(rlines[idx].length)
     # Given the orientation of the building, find a set of parallel and normal wind directions:
     # Assume that the ridge runs along the longer dimension of the building:
     for bldg_length in range(0,2):
-        if info_rmwfrs['length'][bldg_length] == max(info_rmwfrs['length']):
+        if info_rmwfrs['side length'][bldg_length] == max(info_rmwfrs['side length']):
             direction = 'parallel'
-            dlength = min(info_rmwfrs['length'])
+            dlength = min(info_rmwfrs['side length'])
             # For possible future uses: Real possible wind directions
             real_directions = [90 - info_rmwfrs['theta'][bldg_length], 270 + info_rmwfrs['theta'][bldg_length]]
         else:
             direction = 'normal'
-            dlength = max(info_rmwfrs['length'])
+            dlength = max(info_rmwfrs['side length'])
             real_directions = [info_rmwfrs['theta'][bldg_length], 180 + info_rmwfrs['theta'][bldg_length]]
         # Add values:
         info_rmwfrs['wind direction'].append(direction)
@@ -360,7 +363,22 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
         # Access pressures:
         psim = get_roof_uplift_pressure(edition, bldg, dlength, exposure, wind_speed, direction, pitch)
         info_rmwfrs['pressures'].append(psim)
-    # Next up: Assigning "zone" pressures to the corresponding building geometry:
+        # Next up: Assigning "zone" pressures to the corresponding building geometry:
+        # Need to create polygons to define zone locations:
+        if edition != 'ASCE 7-88' and edition != 'ASCE 7-93':
+            hdist = [bldg.hasHeight/2, bldg.hasHeight, bldg.hasHeight*2]
+            # Polygon can be defined using the points of two parallel sides:
+            # Use the first side to as reference:
+            for zone in range(0, len(psim)):
+                new_point1 = rlines[idx].interpolate(hdist[zone])
+                new_point2 = rlines[idx+2].interpolate(hdist[zone])
+                # Create a new polygon:
+                new_rpoly = Polygon([Point(rlines[idx].xy), new_point1, Point(rlines[idx+2].xy), new_point2])
+        else:
+            if direction == 'parallel':
+                pass
+            else:
+                pass
 
 
 def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
