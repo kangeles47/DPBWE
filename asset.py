@@ -144,7 +144,7 @@ class Building(Zone):
         self.hasLocation = {'Address': address, 'State': None, 'County': None, 'Geodesic': Point(lon, lat)}
         self.hasArea = float(area) # sq feet
         self.hasHeight = None  # every building has a height, fidelity will determine value
-        self.hasFootprint = {'type': None, 'geometry': None}
+        self.hasFootprint = {'type': None, 'geodesic_geometry': None, 'local_geometry': None}
         # BOT: Buildings have an origin (should be assigned using appropriate ontology in future use, using lon, lat for now):
         self.hasZeroPoint = Point(lon, lat)
         # Tag the building as "commercial" or "not commercial"
@@ -213,7 +213,7 @@ class Parcel(Building):
             # Check if point is within the polygon in this row:
             poly = data['geometry'][row]
             if ref_pt.within(poly):
-                parcel.hasFootprint['geometry'] = poly
+                parcel.hasFootprint['geodesic_geometry'] = poly
                 parcel.hasFootprint['type'] = 'open data'
             else:
                 pass
@@ -234,12 +234,11 @@ class Parcel(Building):
                     pass
             # Find the identified building footprints:
             if len(neigh_list[1]) == 1:
-                parcel.hasFootprint['geometry'] = data['geometry'][neigh_list[1][0]]
+                parcel.hasFootprint['geodesic_geometry'] = data['geometry'][neigh_list[1][0]]
                 parcel.hasFootprint['type'] = 'open data'
             else:
                 print('More than 1 building footprint identified', parcel.pid, parcel.address)
                 # In the future, might be able to do a match by considering the height of the parcel and it's area
-
 
         # Assign a regular footprint to any buildings without an open data footprint:
         if parcel.hasFootprint['type'] == 'open data':
@@ -251,7 +250,31 @@ class Parcel(Building):
             p2 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 135)
             p3 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 225)
             p4 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 315)
-            parcel.hasFootprint['geometry'] = Polygon([(p1.longitude, p1.latitude), (p2.longitude, p2.latitude), (p3.longitude, p3.latitude), (p4.longitude, p4.latitude)])
+            parcel.hasFootprint['geodesic_geometry'] = Polygon([(p1.longitude, p1.latitude), (p2.longitude, p2.latitude), (p3.longitude, p3.latitude), (p4.longitude, p4.latitude)])
+        # Given the geodesic footprint, calculate the local (x,y) coordinates for the building footprint:
+        # Find the distance between exterior points and the building centroid (origin) to define a new coordinate system:
+        xs, ys = parcel.hasFootprint['geodesic_geometry'].exterior.xy
+        origin = parcel.hasFootprint['geodesic_geometry'].centroid
+        point_list = []
+        yc = []
+        for ind in range(0, len(xs)):
+            # Find the distance between x, y at origin and x, y for each point:
+            xdist = distance.distance((origin.y, origin.x), (origin.y, xs[ind])).miles * 5280  # [ft]
+            ydist = distance.distance((origin.y, origin.x), (ys[ind], origin.x)).miles * 5280  # [ft]
+            if xs[ind] < origin.x:
+                xdist = -1 * xdist
+            else:
+                pass
+            if ys[ind] < origin.y:
+                ydist = -1 * ydist
+            else:
+                pass
+            point_list.append(Point(xdist, ydist))
+        # Create a new polygon object:
+        xy_poly = Polygon(point_list)
+        # Add to Parcel:
+        parcel.hasFootprint['local_geometry'] = xy_poly
+
 
     def parcel_elements(self, parcel):
         # Generate parcel elements with (default) attributes:
