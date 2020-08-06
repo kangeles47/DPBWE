@@ -336,7 +336,7 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
             ydist = yrect[idx + 1] - yrect[idx]
             theta = math.degrees(math.atan2(ydist, xdist))
         else:
-            theta = info_rmwfrs['theta'][0]
+            theta = info_rmwfrs['bldg orientation'][0]
         if theta < 0:
             # Find the equivalent positive angle:
             theta = 360 + theta
@@ -352,11 +352,11 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
             direction = 'parallel'
             dlength = min(info_rmwfrs['side length'])
             # For possible future uses: Real possible wind directions
-            real_directions = [90 - info_rmwfrs['theta'][j], 270 + info_rmwfrs['theta'][j]]
+            real_directions = [90 - info_rmwfrs['bldg orientation'][j], 270 + info_rmwfrs['bldg orientation'][j]]
         else:
             direction = 'normal'
             dlength = max(info_rmwfrs['side length'])
-            real_directions = [info_rmwfrs['theta'][j], 180 + info_rmwfrs['theta'][j]]
+            real_directions = [info_rmwfrs['bldg orientation'][j], 180 + info_rmwfrs['bldg orientation'][j]]
         # Add values:
         info_rmwfrs['wind direction'].append(direction)
         info_rmwfrs['direction length'].append(dlength)
@@ -368,8 +368,8 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
         if edition != 'ASCE 7-88' and edition != 'ASCE 7-93':
             hdist = [bldg.hasHeight/2, bldg.hasHeight, bldg.hasHeight*2]
             # Zone Polygons can be defined by creating points along two parallel sides:
-            lst_points1 = [Point(rlines[j].xy[0])]
-            lst_points2 = [Point(rlines[j+2].xy[0])]
+            lst_points1 = [Point(rlines[j].coords[:][0])]
+            lst_points2 = [Point(rlines[j+2].coords[:][0])]
             for zone in range(0, len(psim)):
                 # Create a new point along each line segment:
                 new_point1 = rlines[j].interpolate(hdist[zone])
@@ -378,8 +378,8 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
                 lst_points1.append(new_point1)
                 lst_points2.append(new_point2)
             # Finish off with the last point in the line segment:
-            lst_points1.append(Point(rlines[j].xy[1]))
-            lst_points1.append(Point(rlines[j+2].xy[1]))
+            lst_points1.append(Point(rlines[j].coords[:][1]))
+            lst_points1.append(Point(rlines[j].coords[:][1]))
             # Create zone geometries:
             for pt in range(0, len(lst_points1)):
                 new_rpoly = Polygon([lst_points1[pt], lst_points1[pt+1], lst_points2[pt+1], lst_points2[pt]])
