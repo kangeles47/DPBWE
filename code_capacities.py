@@ -197,7 +197,7 @@ def get_cc_zone_width(bldg):
     # This function determines the zone width, a, for a given building:
     # a is determined as max(min(0.1*least horizontal dimension, 0.4*h_bldg), 0.4*least horizontal direction, 3 ft)
     # Create an equivalent rectangle for the building:
-    rect = bldg.hasFootprint['geometry'].minimum_rotated_rectangle  # Note: min rect. (not constrained || to coord axis)
+    rect = bldg.hasFootprint['geodesic_geometry'].minimum_rotated_rectangle  # Note: min rect. (not constrained || to coord axis)
     xrect, yrect = rect.exterior.xy
     # Find the least horizontal dimension of the building:
     for ind in range(0, len(xrect)-1):
@@ -214,9 +214,9 @@ def get_cc_zone_width(bldg):
 
 def find_cc_zone_points(bldg, zone_width, roof_flag, edition):
     # Use the building footprint to find zone boundaries around perimeter:
-    xs, ys = bldg.hasFootprint['geometry'].exterior.xy
+    xs, ys = bldg.hasFootprint['geodesic_geometry'].exterior.xy
     # Find the distance between exterior points and the building centroid (origin) to define a new coordinate system:
-    origin = bldg.hasFootprint['geometry'].centroid
+    origin = bldg.hasFootprint['geodesic_geometry'].centroid
     xc = []
     yc = []
     for ind in range(0, len(xs)):
@@ -318,7 +318,7 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
     # Use an equivalent (rotated) rectangle to find lengths
     # BONUS: Find the orientation of the building footprint
     # Find the minimum rotated rectangle for the building footprint:
-    rect = bldg.hasFootprint['geometry'].minimum_rotated_rectangle
+    rect = bldg.hasFootprint['local_geometry'].minimum_rotated_rectangle
     xrect, yrect = rect.exterior.xy
     plt.plot(xrect, yrect)
     plt.show()
@@ -371,20 +371,24 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
             lst_points1 = [Point(rlines[j].coords[:][0])]
             lst_points2 = [Point(rlines[j+2].coords[:][0])]
             for zone in range(0, len(psim)):
-                # Create a new point along each line segment:
-                new_point1 = rlines[j].interpolate(hdist[zone])
-                new_point2 = rlines[j+2].interpolate(hdist[zone])
-                # Add to the corresponding lists:
-                lst_points1.append(new_point1)
-                lst_points2.append(new_point2)
+                if zone == 3:  # Case when there are four zones:
+                    pass
+                else:
+                    # Create a new point along each line segment:
+                    new_point1 = rlines[j].interpolate(hdist[zone])
+                    new_point2 = rlines[j+2].interpolate(hdist[zone])
+                    # Add to the corresponding lists:
+                    lst_points1.append(new_point1)
+                    lst_points2.append(new_point2)
             # Finish off with the last point in the line segment:
             lst_points1.append(Point(rlines[j].coords[:][1]))
-            lst_points1.append(Point(rlines[j].coords[:][1]))
+            lst_points2.append(Point(rlines[j+2].coords[:][1]))
             # Create zone geometries:
             for pt in range(0, len(lst_points1)):
-                new_rpoly = Polygon([lst_points1[pt], lst_points1[pt+1], lst_points2[pt+1], lst_points2[pt]])
+                #new_rpoly = Polygon([lst_points1[pt], lst_points1[pt+1], lst_points2[pt+1], lst_points2[pt]])
+                new_rpoly = Polygon([lst_points1[pt], lst_points1[pt + 1], lst_points2[pt]])
                 xpoly, ypoly = new_rpoly.exterior.xy
-                plt.plot(xpoly, ypoly)
+                plt.scatter(xpoly, ypoly)
                 plt.show()
         else:
             if direction == 'parallel':
