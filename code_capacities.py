@@ -313,93 +313,91 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
             print('Roof (str) pitch currently not supported')
     else:
         pass
-    # (2) Direction
+    # (2) Direction and aspect ratios
     # Roof MWFRS pressure assignments require knowledge of the building aspect ratio for a given "wind direction"
-    # Use an equivalent (rotated) rectangle to find lengths
-    # BONUS: Find the orientation of the building footprint
-    # Find the minimum rotated rectangle for the building footprint:
+    # (2a) Find the orientation of the building footprint using minimum rotated rectangle:
     rect = bldg.hasFootprint['local_geometry'].minimum_rotated_rectangle
     xrect, yrect = rect.exterior.xy
     plt.plot(xrect, yrect)
     plt.show()
-    # First store the line segments of the rotated rectangle:
+    # Find how many degrees ccw the building is oriented by using the angle on the bottom LHS:
+    xdist = xrect[2] - xrect[1]
+    ydist = yrect[2] - yrect[1]
+    theta = math.degrees(math.atan2(ydist, xdist))
+    if theta < 0:
+        # Find the equivalent positive angle:
+        theta = 360 + theta
+    else:
+        pass
+    # (2b) Find the length of the rectangle's line segments:
+    # Set up placeholders for Roof MWFRS pressures:
+    info_rmwfrs = {'side length': [], 'wind direction': [], 'possible wind directions': [], 'direction length': [], 'pressures': []}
+    # Set up placeholders for LineString objects of each line segment in rectangle:
     rlines = []
     for coord in range(0, 4):
         if coord == 0 or coord == 1:
             new_line = LineString([(xrect[coord], yrect[coord]), (xrect[coord+1], yrect[coord+1])])
+            info_rmwfrs['side length'].append(new_line.length)
         else:
-            new_line = LineString([(xrect[coord+1], yrect[coord+1]), (xrect[coord], yrect[coord])])  # Points in same direction for each line segment
-        rlines.append(new_line)
-    # Find the orientation and corresponding lengths of the building footprint:
-    info_rmwfrs = {'bldg orientation': [], 'side length': [], 'wind direction': [], 'direction length': [], 'pressures': []}
-    for idx in range(0, 2):  # Only need two sides of the rectangle
-        # Calculate the building orientation:
-        if idx == 0:
-            xdist = xrect[idx + 1] - xrect[idx]
-            ydist = yrect[idx + 1] - yrect[idx]
-            theta = math.degrees(math.atan2(ydist, xdist))
-        else:
-            theta = info_rmwfrs['bldg orientation'][0]
-        if theta < 0:
-            # Find the equivalent positive angle:
-            theta = 360 + theta
-        else:
-            pass
-        # Add values:
-        info_rmwfrs['bldg orientation'].append(theta)
-        info_rmwfrs['side length'].append(rlines[idx].length)
-    # Given the orientation of the building, find a set of parallel and normal wind directions:
-    # Assume that the ridge runs along the longer dimension of the building:
+            # Make the points in parallel lines run in the same direction (helps with zone geometries):
+            new_line = LineString([(xrect[coord+1], yrect[coord+1]), (xrect[coord], yrect[coord])])
+    # (3) Access roof uplift pressures:
+    # To get correct pressures, need to know: wind blowing parallel or normal to ridge? AND length of opposite side
     for j in range(0,2):
+        # Assume that the ridge runs along the longer dimension of the building:
         if info_rmwfrs['side length'][j] == max(info_rmwfrs['side length']):
             direction = 'parallel'
             dlength = min(info_rmwfrs['side length'])
-            # For possible future uses: Real possible wind directions
-            real_directions = [90 - info_rmwfrs['bldg orientation'][j], 270 + info_rmwfrs['bldg orientation'][j]]
+            # Given the orientation of the building, find a set of parallel wind directions:
+            real_directions = [90 - theta, 270 + theta]
         else:
             direction = 'normal'
             dlength = max(info_rmwfrs['side length'])
-            real_directions = [info_rmwfrs['bldg orientation'][j], 180 + info_rmwfrs['bldg orientation'][j]]
-        # Add values:
+            # Given the orientation of the building, find a set of normal wind directions:
+            real_directions = [theta, 180 + theta]
+        # Save values for this "side" of the building:
         info_rmwfrs['wind direction'].append(direction)
         info_rmwfrs['direction length'].append(dlength)
+        info_rmwfrs['possible wind directions'].append(real_directions)
         # Access pressures:
         psim = get_roof_uplift_pressure(edition, bldg, dlength, exposure, wind_speed, direction, pitch)
         info_rmwfrs['pressures'].append(psim)
-        # Next up: Assigning "zone" pressures to the corresponding building geometry:
+        # (4) Assign zone pressures to the corresponding building geometry:
         prmwfrs = pd.DataFrame(columns=['Uplift Pressure', 'Direction1', 'ZonePolyD1', 'Direction2', 'ZonePolyD2'])
         # Need to create polygons to define zone locations:
-        if edition != 'ASCE 7-88' and edition != 'ASCE 7-93':
-            hdist = [bldg.hasHeight/2, bldg.hasHeight, bldg.hasHeight*2]
-            # Zone Polygons can be defined by creating points along two parallel sides:
-            lst_points1 = [Point(rlines[j].coords[:][0])]
-            lst_points2 = [Point(rlines[j+2].coords[:][0])]
-            for zone in range(0, len(psim)):
-                if zone == 3:  # Case when there are four zones:
+        # Given wind directions according to station data conventions, pair zone geometries with pressures:
+        for wdir in range(0, len(real_directions)):
+            if edition != 'ASCE 7-88' and edition != 'ASCE 7-93':
+                hdist = [bldg.hasHeight/2, bldg.hasHeight, bldg.hasHeight*2]
+                # Zone Polygons can be defined by creating points along two parallel sides:
+                lst_points1 = [Point(rlines[j].coords[:][0])]
+                lst_points2 = [Point(rlines[j+2].coords[:][0])]
+                for zone in range(0, len(psim)):
+                    if zone == 3:  # Case when there are four zones:
+                        pass
+                    else:
+                        # Create a new point along each line segment:
+                        new_point1 = rlines[j].interpolate(hdist[zone])
+                        new_point2 = rlines[j+2].interpolate(hdist[zone])
+                        # Add to the corresponding lists:
+                        lst_points1.append(new_point1)
+                        lst_points2.append(new_point2)
+                # Finish off with the last point in the line segment:
+                lst_points1.append(Point(rlines[j].coords[:][1]))
+                lst_points2.append(Point(rlines[j+2].coords[:][1]))
+                # Create zone geometries:
+                for pt in range(0, len(lst_points1)-1):
+                    first_rpoly = Polygon([lst_points1[pt], lst_points1[pt + 1], lst_points2[pt+1], lst_points2[pt]])  # order ccw like min_rect
+                    xpoly, ypoly = first_rpoly.exterior.xy
+                    plt.plot(xpoly, ypoly)
+                    # Add to DataFrame object:
+                    prmwfrs = prmwfrs.append({'Uplift Pressure': psim[pt], 'Direction1': real_directions[j], 'ZonePolyD1': first_rpoly, 'Direction2': real_directions[j+1], 'ZonePolyD2': second_rpoly})
+                plt.show()
+            else:
+                if direction == 'parallel':
                     pass
                 else:
-                    # Create a new point along each line segment:
-                    new_point1 = rlines[j].interpolate(hdist[zone])
-                    new_point2 = rlines[j+2].interpolate(hdist[zone])
-                    # Add to the corresponding lists:
-                    lst_points1.append(new_point1)
-                    lst_points2.append(new_point2)
-            # Finish off with the last point in the line segment:
-            lst_points1.append(Point(rlines[j].coords[:][1]))
-            lst_points2.append(Point(rlines[j+2].coords[:][1]))
-            # Create zone geometries:
-            for pt in range(0, len(lst_points1)-1):
-                first_rpoly = Polygon([lst_points1[pt], lst_points1[pt + 1], lst_points2[pt+1], lst_points2[pt]])  # order ccw like min_rect
-                xpoly, ypoly = first_rpoly.exterior.xy
-                plt.plot(xpoly, ypoly)
-                # Add to DataFrame object:
-                prmwfrs = prmwfrs.append({'Uplift Pressure': psim[pt], 'Direction1': real_directions[j], 'ZonePolyD1': first_rpoly, 'Direction2': real_directions[j+1], 'ZonePolyD2': second_rpoly})
-            plt.show()
-        else:
-            if direction == 'parallel':
-                pass
-            else:
-                pass
+                    pass
 
 
 def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
