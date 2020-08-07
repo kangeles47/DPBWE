@@ -324,8 +324,11 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
     plt.show()
     # First store the line segments of the rotated rectangle:
     rlines = []
-    for coord in range(0, len(xrect)-1):
-        new_line = LineString([(xrect[coord], yrect[coord]), (xrect[coord+1], yrect[coord+1])])
+    for coord in range(0, 4):
+        if coord == 0 or coord == 1:
+            new_line = LineString([(xrect[coord], yrect[coord]), (xrect[coord+1], yrect[coord+1])])
+        else:
+            new_line = LineString([(xrect[coord+1], yrect[coord+1]), (xrect[coord], yrect[coord])])  # Points in same direction for each line segment
         rlines.append(new_line)
     # Find the orientation and corresponding lengths of the building footprint:
     info_rmwfrs = {'bldg orientation': [], 'side length': [], 'wind direction': [], 'direction length': [], 'pressures': []}
@@ -364,6 +367,7 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
         psim = get_roof_uplift_pressure(edition, bldg, dlength, exposure, wind_speed, direction, pitch)
         info_rmwfrs['pressures'].append(psim)
         # Next up: Assigning "zone" pressures to the corresponding building geometry:
+        prmwfrs = pd.DataFrame(columns=['Uplift Pressure', 'Direction1', 'ZonePolyD1', 'Direction2', 'ZonePolyD2'])
         # Need to create polygons to define zone locations:
         if edition != 'ASCE 7-88' and edition != 'ASCE 7-93':
             hdist = [bldg.hasHeight/2, bldg.hasHeight, bldg.hasHeight*2]
@@ -384,12 +388,13 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
             lst_points1.append(Point(rlines[j].coords[:][1]))
             lst_points2.append(Point(rlines[j+2].coords[:][1]))
             # Create zone geometries:
-            for pt in range(0, len(lst_points1)):
-                #new_rpoly = Polygon([lst_points1[pt], lst_points1[pt+1], lst_points2[pt+1], lst_points2[pt]])
-                new_rpoly = Polygon([lst_points1[pt], lst_points1[pt + 1], lst_points2[pt]])
-                xpoly, ypoly = new_rpoly.exterior.xy
-                plt.scatter(xpoly, ypoly)
-                plt.show()
+            for pt in range(0, len(lst_points1)-1):
+                first_rpoly = Polygon([lst_points1[pt], lst_points1[pt + 1], lst_points2[pt+1], lst_points2[pt]])  # order ccw like min_rect
+                xpoly, ypoly = first_rpoly.exterior.xy
+                plt.plot(xpoly, ypoly)
+                # Add to DataFrame object:
+                prmwfrs = prmwfrs.append({'Uplift Pressure': psim[pt], 'Direction1': real_directions[j], 'ZonePolyD1': first_rpoly, 'Direction2': real_directions[j+1], 'ZonePolyD2': second_rpoly})
+            plt.show()
         else:
             if direction == 'parallel':
                 pass
