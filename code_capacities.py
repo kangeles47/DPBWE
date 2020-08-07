@@ -296,6 +296,7 @@ def find_rmwfrs_zones(bldg, edition):
     # Equivalent rectangle:
     rect = bldg.hasFootprint['geometry'].minimum_rotated_rectangle
     xrect, yrect = rect.exterior.xy
+    # Leave here for now --- may or may not need to outsource zone geometry into another function
 
 
 def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
@@ -348,13 +349,15 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
         info_rmwfrs['side length'].append(new_line1.length)
     # (3) Access roof uplift pressures:
     # To get correct pressures, need to know: wind blowing parallel or normal to ridge? AND length of opposite side
+    # Store the RMWFRS pressures in dictionary:
+    uplift_pressures = dict.fromkeys(['parallel', 'normal'])
     for j in range(0,2):
         # Assume that the ridge runs along the longer dimension of the building:
         if info_rmwfrs['side length'][j] == max(info_rmwfrs['side length']):
             direction = 'parallel'
             dlength = min(info_rmwfrs['side length'])
             # Given the orientation of the building, find a set of parallel wind directions:
-            real_directions = [90 - theta, 270 + theta]
+            real_directions = [180 - theta, 360 - theta]
         else:
             direction = 'normal'
             dlength = max(info_rmwfrs['side length'])
@@ -368,13 +371,22 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
         psim = get_roof_uplift_pressure(edition, bldg, dlength, exposure, wind_speed, direction, pitch)
         info_rmwfrs['pressures'].append(psim)
         # (4) Assign zone pressures to the corresponding building geometry:
-        prmwfrs = pd.DataFrame(columns=['Uplift Pressure', 'Direction1', 'ZonePolyD1', 'Direction2', 'ZonePolyD2'])
+        prmwfrs = pd.DataFrame()
+        prmwfrs['Uplift Pressure'] = psim
         # Need to create polygons to define zone locations:
         # Given wind directions according to station data conventions, pair zone geometries with pressures:
-        for wdir in real_directions:
+        for wdir in range(0, len(real_directions)):
+            # Store the wind direction we are considering:
+            dir_name = 'Direction' + str(wdir)
+            dir_list = []
+            for i in range(0, len(psim)):
+                dir_list.append(real_directions[wdir])
+            prmwfrs[dir_name] = dir_list
+            # Set up tag for 'ZonePolys' columns:
+            zonepoly_name = 'ZonePolys' + str(wdir)
             if edition != 'ASCE 7-88' and edition != 'ASCE 7-93':
                 hdist = [bldg.hasHeight/2, bldg.hasHeight, bldg.hasHeight*2]
-                if wdir == min(real_directions):
+                if real_directions[wdir] == min(real_directions):
                     ref_lines = rlines1
                 else:
                     ref_lines = rlines2
@@ -395,19 +407,23 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
                 lst_points1.append(Point(ref_lines[j].coords[:][1]))
                 lst_points2.append(Point(ref_lines[j+2].coords[:][1]))
                 # Create zone geometries:
+                poly_list = []
                 for pt in range(0, len(lst_points1)-1):
-                    first_rpoly = Polygon([lst_points1[pt], lst_points1[pt + 1], lst_points2[pt+1], lst_points2[pt]])  # order ccw like min_rect
-                    xpoly, ypoly = first_rpoly.exterior.xy
+                    rpoly = Polygon([lst_points1[pt], lst_points1[pt + 1], lst_points2[pt+1], lst_points2[pt]])  # order ccw like min_rect
+                    xpoly, ypoly = rpoly.exterior.xy
                     plt.plot(xpoly, ypoly)
                     # Add to DataFrame object:
-                    #prmwfrs = prmwfrs.append({'Uplift Pressure': psim[pt], 'Direction1': real_directions[j], 'ZonePolyD1': first_rpoly, 'Direction2': real_directions[j+1], 'ZonePolyD2': second_rpoly})
+                    poly_list.append(rpoly)
+                prmwfrs[zonepoly_name] = poly_list
                 plt.show()
             else:
                 if direction == 'parallel':
                     pass
                 else:
                     pass
-
+            # Once zone geometries have been defined and pressures mapped, store the Dataframe:
+            uplift_pressures[direction] = prmwfrs
+    return uplift_pressures
 
 def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
     # Create an instance of PressureCalc:
