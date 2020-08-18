@@ -71,22 +71,27 @@ class Zone:
                 for k, v in bldg.containsElement:
                     self.hasElement.append(v)
         elif isinstance(self, Building):
-            if len(self.hasElement) == len(self.hasStorey):
+            if len(self.hasElement) == len(self.hasStorey):  # NOTE: is there a better way to check if the building has already been updated with all storey elements? This won't work
                 print('Elements in this building are already up to date')
             else:
                 for storey in self.hasStorey:
                     self.hasElement.append(storey.hasElement)
         elif isinstance(self, Storey):
             self.hasElement.append(list(self.containsElement.values()))
-            #for space in self.hasSpace:
-                #for k, v in space.containsElement:
-                    #self.hasElement.append(v)
-            # Remove repetitive elements:
-            #new_set = set(self.hasElement)
-            #elem_update = []
-            #for elem in new_set:
-                    #elem_update.append(elem)
-            #self.hasElement = elem_update
+
+    def update_interfaces(self):
+        # Simple function to easily update hasElement assignment
+        if isinstance(self, Site):
+            for bldg in self.hasBuilding:
+                for interface in bldg.hasInterface:
+                    self.hasInterface.append(interface)
+        elif isinstance(self, Building):
+            for storey in self.hasStorey:
+                self.hasInterface.append(storey.hasInterface)
+        elif isinstance(self, Storey):
+            # This one should be according to the identified spaces (if applicable)
+                pass
+
 
 class Site(Zone):
     # Sub-class of Zone
@@ -113,6 +118,7 @@ class Site(Zone):
          # Add the site as a Zone:
         self.hasName = 'Site' + str(site_num)
         self.containsZone.append(self)
+        self.hasInterface = []
 
 
 class Building(Zone):
@@ -137,6 +143,7 @@ class Building(Zone):
         # Buildings contain all of the zones, spaces, elements, etc. within each storey:
         self.update_zones()
         self.update_elements()
+        self.update_interfaces()
         # Attributes outside of BOT:
         self.hasName = pid
         self.hasOccupancy = occupancy
@@ -147,6 +154,7 @@ class Building(Zone):
         self.hasFootprint = {'type': None, 'geodesic_geometry': None, 'local_geometry': None}
         self.hasZeroPoint = Point(lon, lat)
         self.hasGeometry = {'3D Geometry': None, 'Surfaces': None}
+        self.hasOrientation = None
         self.hasFundamentalPeriod = {'x': None, 'y': None}
         self.hasStructuralSystem = {'type': None, 'elements': []}
         self.hasImportanceFactor = None
@@ -154,6 +162,7 @@ class Building(Zone):
         self.hasEffectiveSeismicWeight = None
         self.hasDampingValue = None
         self.hasServiceLife = None
+        self.hasInterface = []
         # Tag the building as "commercial" or "not commercial"
         if self.hasOccupancy == "Profession" or self.hasOccupancy == "Hotel" or self.hasOccupancy == "Motel" or self.hasOccupancy == "Financial":
             self.isComm = True
@@ -370,3 +379,4 @@ class Interface:
         self.hasCapacity = {'type': None, 'value': None}
         self.hasLoadingDemand = {'type': None, 'value': None}
         self.hasFailure = None
+        self.hasType = None  # options here are point or plane

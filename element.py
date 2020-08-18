@@ -17,11 +17,13 @@ class Element:
         self.hasGeometry = {'3D Geometry': None, '2D Geometry': None, '1D Geometry': None, 'Thickness': None}
         self.hasFragility = None
         self.hasModeOfFabrication = None  # options: on-site, off-site, unknown (None object)
-        self.hasEDP = {'peak interstory drift ratio': None, 'peak absolute velocity': None, 'peak absolute acceleration': None, 'wind speed': None, 'pressure': None, 'impact': None, 'axial force': None, 'shear force': None, 'bending moment': None, 'peak flexural stress': None, 'peak shear stress': None, 'peak flexural strain': None, 'curvature': None, 'rotation': None, 'elongation': None}
+        edp_dict = {'peak interstory drift ratio': None, 'peak absolute velocity': None, 'peak absolute acceleration': None, 'wind speed': None, 'pressure': None, 'impact': None, 'axial force': None, 'shear force': None, 'bending moment': None, 'peak flexural stress': None, 'peak shear stress': None, 'peak flexural strain': None, 'curvature': None, 'rotation': None, 'elongation': None}
+        self.hasEDP = {'x direction': edp_dict, 'y direction': edp_dict}  # Specifying direction for of out-of-plane
         self.hasOutputVariable = {'repair cost': None, 'downtime': None, 'fatalities': None}
         self.hasServiceLife = None  # placeholder for typical replacement times (i.e., maintenance)
         self.hasManufacturer = None
         self.inLoadPath = None
+        self.hasDirection = None  # options here are x or y as defined by building geometry
 
 
 class Wall(Element):
