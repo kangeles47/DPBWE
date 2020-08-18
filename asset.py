@@ -138,15 +138,22 @@ class Building(Zone):
         self.update_zones()
         self.update_elements()
         # Attributes outside of BOT:
-        self.hasPID = pid
+        self.hasName = pid
         self.hasOccupancy = occupancy
         self.hasYearBuilt = int(yr_built)
         self.hasLocation = {'Address': address, 'State': None, 'County': None, 'Geodesic': Point(lon, lat)}
         self.hasArea = float(area) # sq feet
         self.hasHeight = None  # every building has a height, fidelity will determine value
         self.hasFootprint = {'type': None, 'geodesic_geometry': None, 'local_geometry': None}
-        # BOT: Buildings have an origin (should be assigned using appropriate ontology in future use, using lon, lat for now):
         self.hasZeroPoint = Point(lon, lat)
+        self.hasGeometry = {'3D Geometry': None, 'Surfaces': None}
+        self.hasFundamentalPeriod = {'x': None, 'y': None}
+        self.hasStructuralSystem = {'type': None, 'elements': []}
+        self.hasImportanceFactor = None
+        self.hasRiskCategory = None
+        self.hasEffectiveSeismicWeight = None
+        self.hasDampingValue = None
+        self.hasServiceLife = None
         # Tag the building as "commercial" or "not commercial"
         if self.hasOccupancy == "Profession" or self.hasOccupancy == "Hotel" or self.hasOccupancy == "Motel" or self.hasOccupancy == "Financial":
             self.isComm = True
@@ -338,7 +345,7 @@ class Storey(Zone):
         self.hasName = None
         self.hasElevation = []
         self.hasHeight = None
-        self.hasLayout = None  # Floor plan geometry
+        self.hasGeometry = {'3D Geometry': None, '2D Geometry': None}
         # Add a placeholder for Interface objects
         self.hasInterface = []
 
@@ -349,6 +356,7 @@ class Space(Zone):
         # Populate zone properties:
         new_zone = self
         Zone.__init__(self, new_zone)
+        self.hasName = None
 
 
 class Interface:
