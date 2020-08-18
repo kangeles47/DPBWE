@@ -295,18 +295,18 @@ class Parcel(Building):
             element_list = []
             # Generate floor and ceiling instance(s):
             new_floor_list = []
-            new_floor1 = Floor(parcel, storey, parcel_flag=True)
+            new_floor1 = Floor()
             new_floor1.hasElevation = storey.hasElevation[0]
             new_floor_list.append(new_floor1)
             element_list.append(new_floor1)
-            new_ceiling = Ceiling(parcel, storey, parcel_flag=True)
+            new_ceiling = Ceiling()
             if storey == parcel.hasStorey[-1]:
-                new_roof = Roof(parcel, storey, parcel_flag=True)
+                new_roof = Roof()
                 # Add roof to the storey:
                 storey.containsElement.update({'Roof': new_roof})
                 element_list.append(new_roof)
             else:
-                new_floor2 = Floor(parcel, storey, parcel_flag=True)
+                new_floor2 = Floor()
                 new_floor2.hasElevation = storey.hasElevation[1]
                 new_floor_list.append(new_floor2)
                 element_list.append(new_floor2)
@@ -316,11 +316,11 @@ class Parcel(Building):
             for ind in zone_pts.index:
                 for col in range(0, len(zone_pts.loc[ind])-1):
                     # Create a new Wall Instance:
-                    ext_wall = Wall(parcel, storey, parcel_flag=True)
+                    ext_wall = Wall()
                     ext_wall.isExterior = True
                     ext_wall.hasHeight = storey.hasHeight
-                    ext_wall.has1DModel = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[ind, col+1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
-                    ext_wall.hasLength = ext_wall.has1DModel.length
+                    ext_wall.hasGeometry['1D Geometry'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[ind, col+1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
+                    ext_wall.hasLength = ext_wall.hasGeometry['1D Geometry'].length
                     new_wall_list.append(ext_wall)
             # Each wall shares interfaces with the walls before and after it:
             for w in range(0, len(new_wall_list)-1):
