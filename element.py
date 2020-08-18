@@ -25,7 +25,7 @@ class Element:
 
 
 class Wall(Element):
-    def __init__(self, storey, parcel_flag):
+    def __init__(self):
         Element.__init__(self)
         # Add in wall instance attributes:
         self.isImpactResistant = None
@@ -33,7 +33,7 @@ class Wall(Element):
 
 
 class Roof(Element):
-    def __init__(self, storey, parcel_flag):
+    def __init__(self):
         Element.__init__(self)
         # Add in roof instance attributes:
         self.hasPitch = None
@@ -44,7 +44,7 @@ class Roof(Element):
 
 
 class Floor(Element):
-    def __init__(self, storey, parcel_flag):
+    def __init__(self):
         Element.__init__(self)
         # Add in roof instance attributes:
         self.hasElevation = None
@@ -53,7 +53,7 @@ class Floor(Element):
 
 
 class Ceiling(Element):
-    def __init__(self, storey, parcel_flag):
+    def __init__(self):
         Element.__init__(self)
         # Add in roof instance attributes:
         self.inLoadPath = False
@@ -61,15 +61,15 @@ class Ceiling(Element):
 
 
 class Column(Element):
-    def __init__(self, storey, parcel_flag):
+    def __init__(self):
         Element.__init__(self)
         # Add in column instance attributes:
         self.inLoadPath = True
         self.hasHeight = None
 
 class Beam(Element):
-    def __init__(self, storey, parcel_flag):
-        Element.__init__(self, storey, parcel_flag)
+    def __init__(self):
+        Element.__init__(self)
         # Add in beam instance attributes:
         self.inLoadPath = True
         self.hasLength = None
