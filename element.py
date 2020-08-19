@@ -34,6 +34,14 @@ class Wall(Element):
         self.hasHeight = None
 
 
+class Window(Element):
+    def __init__(self):
+        Element.__init__(self)
+        # Add in wall instance attributes:
+        self.isImpactResistant = None
+        self.hasHeight = None
+
+
 class Roof(Element):
     def __init__(self):
         Element.__init__(self)
