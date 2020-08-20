@@ -24,7 +24,7 @@ p = assign_rmwfrs_pressures(test, edition, exposure, wind_speed)
 a = get_cc_zone_width(test)
 print('zone width in ft:', a)
 roof_flag = True
-zone_pts, int_poly = find_cc_zone_points(test, a, roof_flag, edition)
+zone_pts, int_poly, zone2_polys = find_cc_zone_points(test, a, roof_flag, edition)
 assign_wcc_pressures(test, zone_pts, edition, exposure, wind_speed)
 print(exposure)
 

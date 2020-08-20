@@ -214,25 +214,7 @@ def get_cc_zone_width(bldg):
 
 def find_cc_zone_points(bldg, zone_width, roof_flag, edition):
     # Use the building footprint to find zone boundaries around perimeter:
-    xs, ys = bldg.hasFootprint['geodesic_geometry'].exterior.xy
-    # Find the distance between exterior points and the building centroid (origin) to define a new coordinate system:
-    origin = bldg.hasFootprint['geodesic_geometry'].centroid
-    xc = []
-    yc = []
-    for ind in range(0, len(xs)):
-        # Find the distance between x, y at origin and x, y for each point:
-        xdist = distance.distance((origin.y, origin.x), (origin.y, xs[ind])).miles * 5280  # [ft]
-        ydist = distance.distance((origin.y, origin.x), (ys[ind], origin.x)).miles * 5280  # [ft]
-        if xs[ind] < origin.x:
-            xdist = -1*xdist
-        else:
-            pass
-        if ys[ind] < origin.y:
-            ydist = -1*ydist
-        else:
-            pass
-        xc.append(xdist)
-        yc.append(ydist)
+    xc, yc = bldg.hasFootprint['local_geometry'].exterior.xy
     # Find points along building footprint corresponding to zone start/end
     zone_pts = pd.DataFrame(columns=['LinePoint1', 'NewZoneStart', 'NewZoneEnd', 'LinePoint2'])
     for j in range(0, len(xc)-1):
@@ -257,29 +239,35 @@ def find_cc_zone_points(bldg, zone_width, roof_flag, edition):
     if roof_flag:
         if edition != 'ASCE 7-16':
             # Derive Zone 1 points from original bldg footprint:
-            point_list = []
-            for coord in range(0, len(xc)):
-                point_list.append(Point(xc[coord], yc[coord]))
-            bldg_poly = Polygon(point_list)
-            int_poly = bldg_poly.buffer(distance=-1*zone_width, resolution=300, join_style=2)
+            int_poly = bldg.hasFootprint['local_geometry'].buffer(distance=-1*zone_width, resolution=300, join_style=2)
             # Leave as poly - can easily check if component in/out of geometry
             # Plot for reference
             xpoly, ypoly = int_poly.exterior.xy
             plt.plot(xc,yc)
             plt.plot(xpoly, ypoly)
             plt.show()
-            # Find geometries for Zone 3 Locations
-            z3polys = []
+            # Find geometries for Zone 2 Locations using zone points
+            zone2_polys = []
             for row in range(0, len(zone_pts)):
-                # Create a polygon object using the points before and after a vertex on the bldg footprint:
-                vpoly = Polygon([zone_pts['LinePoint1'].iloc[row], zone_pts['NewZoneStart'].iloc[row], zone_pts['NewZoneEnd'].iloc[row-1]])
-                # Find the nearest point between vpoly and int_poly:
-                npoint = nearest_points(vpoly, int_poly)[1]
-                # Create a new polygon using points in vpoly and npoint:
-                zpoly = Polygon([zone_pts['LinePoint1'].iloc[row], zone_pts['NewZoneStart'].iloc[row], npoint, zone_pts['NewZoneEnd'].iloc[row-1]])
-                z3polys.append(zpoly)
+                # Create a line object using zone points:
+                zpoint1 = zone_pts['NewZoneStart'].iloc[row]
+                zpoint2 = zone_pts['NewZoneEnd'].iloc[row]
+                zone_line = LineString([zpoint1, zpoint2])
+                point_list = zone_line.coords[:]
+                # Offset the line by the zone width:
+                if (zpoint1.x < zpoint2.x) and (zpoint1.y == zpoint2.y) and (zpoint1.y > bldg.hasFootprint['local_geometry'].centroid.y):
+                    offset_line = zone_line.parallel_offset(zone_width, side='right')
+                    point_list.append(offset_line.coords[0])
+                    point_list.append(offset_line.coords[1])
+                else:
+                    offset_line = zone_line.parallel_offset(-1*zone_width, side='right')
+                    point_list.append(offset_line.coords[1])
+                    point_list.append(offset_line.coords[0])
+                # Create a new polygon using the points in both lines:
+                new_poly = Polygon(point_list)
+                zone2_polys.append(new_poly)
                 # Plotting:
-                xz, yz = zpoly.exterior.xy
+                xz, yz = new_poly.exterior.xy
                 plt.plot(xz, yz)
             # Plot int_poly
             plt.plot(xc,yc)
@@ -289,8 +277,9 @@ def find_cc_zone_points(bldg, zone_width, roof_flag, edition):
             print('Code edition currently not supported for Roof MWFRS considerations')
     else:
         int_poly = None
+        zone2_polys = None
 
-    return zone_pts, int_poly
+    return zone_pts, int_poly, zone2_polys
 
 def find_rmwfrs_zones(bldg, edition):
     # Equivalent rectangle:

@@ -143,7 +143,7 @@ class Building(Zone):
         # Buildings contain all of the zones, spaces, elements, etc. within each storey:
         self.update_zones()
         self.update_elements()
-        self.update_interfaces()
+        #self.update_interfaces()
         # Attributes outside of BOT:
         self.hasName = pid
         self.hasOccupancy = occupancy
