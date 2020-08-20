@@ -185,7 +185,7 @@ class Building(Zone):
             print('County and State Information not currently supported')
 
 
-class Parcel(Building):
+class Parcel(Building):  # Note here: Consider how story/floor assignments may need to change for elevated structures
 
     def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
         Building.__init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat) #Bring in all of the attributes that are defined in the BIM class for the parcel model
