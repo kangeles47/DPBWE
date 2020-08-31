@@ -224,6 +224,17 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             new_gzpts.append(gzs)
             new_lzpts.append(lzs)
         # With new 3D coordinates for each horizontal plane, create surface geometry:
+        for plane in range(0, len(new_gzpts)):
+            for zpt in range(0, len(new_gzpts[plane])):
+                # Create the surface lines:
+                vert_line1 = LineString([new_gzpts[plane][zpt], new_gzpts[plane+1][zpt]])
+                vert_line2 = LineString([new_gzpts[plane+1][zpt+1], new_gzpts[plane][zpt+1]])
+                horiz_line1 = LineString([new_gzpts[plane+1][zpt], new_gzpts[plane+1][zpt+1]])
+                horiz_line2 = LineString([new_gzpts[plane][zpt+1], new_gzpts[plane][zpt]])
+                # Define a new polygon:
+                zpoly = Polygon([vert_line1, horiz_line1, vert_line2, horiz_line2])
+                # Plot the polygon:
+                coord_list = Polygon.exterior.coords
 
         for storey in self.hasStorey:
             self.hasGeometry['3D Geometry']['geodesic_geometry'] = None
