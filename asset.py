@@ -153,7 +153,7 @@ class Building(Zone):
         self.hasHeight = None  # every building has a height, fidelity will determine value
         self.hasFootprint = {'type': None, 'geodesic_geometry': None, 'local_geometry': None}
         self.hasZeroPoint = Point(lon, lat)
-        self.hasGeometry = {'3D Geometry': {'geodesic_geometry': None, 'local_geometry': None}, 'Surfaces': None}
+        self.hasGeometry = {'3D Geometry': {'geodesic_geometry': None, 'local_geometry': None}, 'Surfaces': {'geodesic_geometry': [], 'local_geometry': []}}
         self.hasOrientation = None
         self.hasFundamentalPeriod = {'x': None, 'y': None}
         self.hasStructuralSystem = {'type': None, 'elements': []}
@@ -200,45 +200,38 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             pass
         # Now that we have the building and story heights, render the 3D geometries:
         # Extract points for the building footprint and add the base z coordinate:
-        gxs, gys = self.hasFootprint['geodesic_geometry'].exterior.xy
-        lxs, lys = self.hasFootprint['local_geometry'].exterior.xy
-        new_gzpts = []  # Hold geodesic coords
-        new_lzpts = []  # Hold local coords
-        base_z = 0
-        # Create z coordinates for each story:
-        for story_num in range(0, len(self.hasStorey)):
-            gzs = []  # Hold geodesic coords
-            lzs = []  # Hold local coords
-            for pt in range(0, len(gxs)):
-                if self.hasStorey[story_num].hasElevation[0] == base_z:  # First story exception
-                    # Define z-coordinates for bottom floor:
-                    gzs.append(Point(gxs[pt], gys[pt], base_z))
-                    lzs.append(Point(lxs[pt], lys[pt], base_z))
-                    # Define z-coordinates for top floor:
-                    gzs.append(Point(gxs[pt], gys[pt], self.hasStorey[story_num].hasElevation[-1]))
-                    lzs.append(Point(lxs[pt], lys[pt], self.hasStorey[story_num].hasElevation[-1]))
-                else:
-                    gzs.append(Point(gxs[pt], gys[pt], self.hasStorey[story_num].hasElevation[-1]))
-                    lzs.append(Point(lxs[pt], lys[pt], self.hasStorey[story_num].hasElevation[-1]))
-            # Save lists of 3D geodesic and local coordinates:
-            new_gzpts.append(gzs)
-            new_lzpts.append(lzs)
-        # With new 3D coordinates for each horizontal plane, create surface geometry:
-        for plane in range(0, len(new_gzpts)):
-            for zpt in range(0, len(new_gzpts[plane])):
-                # Create the surface lines:
-                vert_line1 = LineString([new_gzpts[plane][zpt], new_gzpts[plane+1][zpt]])
-                vert_line2 = LineString([new_gzpts[plane+1][zpt+1], new_gzpts[plane][zpt+1]])
-                horiz_line1 = LineString([new_gzpts[plane+1][zpt], new_gzpts[plane+1][zpt+1]])
-                horiz_line2 = LineString([new_gzpts[plane][zpt+1], new_gzpts[plane][zpt]])
-                # Define a new polygon:
-                zpoly = Polygon([vert_line1, horiz_line1, vert_line2, horiz_line2])
-                # Plot the polygon:
-                coord_list = Polygon.exterior.coords
+        geo_keys = self.hasFootprint.keys()
+        for key in geo_keys:
+            xs, ys = self.hasFootprint[key].exterior.xy
+            new_zpts = []
+            base_z = 0
+            # Create z coordinates for each story:
+            for story_num in range(0, len(self.hasStorey)):
+                zs = []  # Hold 3D coords
+                for pt in range(0, len(xs)):
+                    if self.hasStorey[story_num].hasElevation[0] == base_z:  # First story exception
+                        # Define z-coordinates for bottom floor:
+                        zs.append(Point(xs[pt], ys[pt], base_z))
+                        # Define z-coordinates for top floor:
+                        zs.append(Point(xs[pt], ys[pt], self.hasStorey[story_num].hasElevation[-1]))
+                    else:
+                        zs.append(Point(xs[pt], ys[pt], self.hasStorey[story_num].hasElevation[-1]))
+                # Save lists of 3D geodesic and local coordinates:
+                new_zpts.append(zs)
+            # With new 3D coordinates for each horizontal plane, create surface geometry:
+            for plane in range(0, len(new_zpts)):
+                for zpt in range(0, len(new_zpts[plane])):
+                    # Create the surface lines:
+                    vert_line1 = LineString([new_zpts[plane][zpt], new_zpts[plane+1][zpt]])
+                    vert_line2 = LineString([new_zpts[plane+1][zpt+1], new_zpts[plane][zpt+1]])
+                    horiz_line1 = LineString([new_zpts[plane+1][zpt], new_zpts[plane+1][zpt+1]])
+                    horiz_line2 = LineString([new_zpts[plane][zpt+1], new_zpts[plane][zpt]])
+                    # Define a new polygon:
+                    surf_poly = Polygon([vert_line1, horiz_line1, vert_line2, horiz_line2])
+                    # Save the polygon to the storey's geometry:
+                    self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(surf_poly)
+            # Create full 3D surface renderings for the building using base plane and top plane:
 
-        for storey in self.hasStorey:
-            self.hasGeometry['3D Geometry']['geodesic_geometry'] = None
-            self.hasGeometry['3D Geometry']['local_geometry'] = None
         # Generate a set of building elements (with default attributes) for the parcel:
         self.parcel_elements(self)
         # Populate instance attributes informed by national survey data:
@@ -395,7 +388,7 @@ class Storey(Zone):
         self.hasName = None
         self.hasElevation = []
         self.hasHeight = None
-        self.hasGeometry = {'3D Geometry': None, '2D Geometry': None}
+        self.hasGeometry = {'3D Geometry': {'geodesic_geometry': [], 'local_geometry': []}, '2D Geometry': None}
         # Add a placeholder for Interface objects
         self.hasInterface = []
 
