@@ -153,7 +153,7 @@ class Building(Zone):
         self.hasHeight = None  # every building has a height, fidelity will determine value
         self.hasFootprint = {'type': None, 'geodesic_geometry': None, 'local_geometry': None}
         self.hasZeroPoint = Point(lon, lat)
-        self.hasGeometry = {'3D Geometry': None, 'Surfaces': None}
+        self.hasGeometry = {'3D Geometry': {'geodesic_geometry': None, 'local_geometry': None}, 'Surfaces': None}
         self.hasOrientation = None
         self.hasFundamentalPeriod = {'x': None, 'y': None}
         self.hasStructuralSystem = {'type': None, 'elements': []}
@@ -198,6 +198,36 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             code_informed = bldg_code.FBC(self, desc_flag)
         else:
             pass
+        # Now that we have the building and story heights, render the 3D geometries:
+        # Extract points for the building footprint and add the base z coordinate:
+        gxs, gys = self.hasFootprint['geodesic_geometry'].exterior.xy
+        lxs, lys = self.hasFootprint['local_geometry'].exterior.xy
+        new_gzpts = []  # Hold geodesic coords
+        new_lzpts = []  # Hold local coords
+        base_z = 0
+        # Create z coordinates for each story:
+        for story_num in range(0, len(self.hasStorey)):
+            gzs = []  # Hold geodesic coords
+            lzs = []  # Hold local coords
+            for pt in range(0, len(gxs)):
+                if self.hasStorey[story_num].hasElevation[0] == base_z:  # First story exception
+                    # Define z-coordinates for bottom floor:
+                    gzs.append(Point(gxs[pt], gys[pt], base_z))
+                    lzs.append(Point(lxs[pt], lys[pt], base_z))
+                    # Define z-coordinates for top floor:
+                    gzs.append(Point(gxs[pt], gys[pt], self.hasStorey[story_num].hasElevation[-1]))
+                    lzs.append(Point(lxs[pt], lys[pt], self.hasStorey[story_num].hasElevation[-1]))
+                else:
+                    gzs.append(Point(gxs[pt], gys[pt], self.hasStorey[story_num].hasElevation[-1]))
+                    lzs.append(Point(lxs[pt], lys[pt], self.hasStorey[story_num].hasElevation[-1]))
+            # Save lists of 3D geodesic and local coordinates:
+            new_gzpts.append(gzs)
+            new_lzpts.append(lzs)
+        # With new 3D coordinates for each horizontal plane, create surface geometry:
+
+        for storey in self.hasStorey:
+            self.hasGeometry['3D Geometry']['geodesic_geometry'] = None
+            self.hasGeometry['3D Geometry']['local_geometry'] = None
         # Generate a set of building elements (with default attributes) for the parcel:
         self.parcel_elements(self)
         # Populate instance attributes informed by national survey data:
