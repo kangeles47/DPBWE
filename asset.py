@@ -4,6 +4,7 @@ import geopandas as gpd
 from shapely.geometry import Point, Polygon, LineString
 from scipy import spatial
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 from element import Roof, Wall, Floor, Ceiling
 import bldg_code
 from survey_data import SurveyData
@@ -202,35 +203,50 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         # Extract points for the building footprint and add the base z coordinate:
         geo_keys = self.hasFootprint.keys()
         for key in geo_keys:
-            xs, ys = self.hasFootprint[key].exterior.xy
-            new_zpts = []
-            base_z = 0
-            # Create z coordinates for each story:
-            for story_num in range(0, len(self.hasStorey)):
-                zs = []  # Hold 3D coords
-                for pt in range(0, len(xs)):
-                    if self.hasStorey[story_num].hasElevation[0] == base_z:  # First story exception
-                        # Define z-coordinates for bottom floor:
-                        zs.append(Point(xs[pt], ys[pt], base_z))
-                        # Define z-coordinates for top floor:
-                        zs.append(Point(xs[pt], ys[pt], self.hasStorey[story_num].hasElevation[-1]))
-                    else:
-                        zs.append(Point(xs[pt], ys[pt], self.hasStorey[story_num].hasElevation[-1]))
-                # Save lists of 3D geodesic and local coordinates:
-                new_zpts.append(zs)
-            # With new 3D coordinates for each horizontal plane, create surface geometry:
-            for plane in range(0, len(new_zpts)):
-                for zpt in range(0, len(new_zpts[plane])):
-                    # Create the surface lines:
-                    vert_line1 = LineString([new_zpts[plane][zpt], new_zpts[plane+1][zpt]])
-                    vert_line2 = LineString([new_zpts[plane+1][zpt+1], new_zpts[plane][zpt+1]])
-                    horiz_line1 = LineString([new_zpts[plane+1][zpt], new_zpts[plane+1][zpt+1]])
-                    horiz_line2 = LineString([new_zpts[plane][zpt+1], new_zpts[plane][zpt]])
-                    # Define a new polygon:
-                    surf_poly = Polygon([vert_line1, horiz_line1, vert_line2, horiz_line2])
-                    # Save the polygon to the storey's geometry:
-                    self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(surf_poly)
-            # Create full 3D surface renderings for the building using base plane and top plane:
+            if key == 'type':
+                pass
+            else:
+                xs, ys = self.hasFootprint[key].exterior.xy
+                new_zpts = []
+                roof_zs = []
+                base_z = 0
+                # Create z coordinates for each story:
+                for story_num in range(0, len(self.hasStorey)):
+                    zs = []  # Hold 3D coords
+                    for pt in range(0, len(xs)):
+                        # Define z-coordinates for bottom floor of each story:
+                        zs.append(Point(xs[pt], ys[pt], self.hasStorey[story_num].hasElevation[0]))
+                        if story_num == len(self.hasStorey) - 1:
+                            # Define z-coordinates for top floor of last story (roof):
+                            roof_zs.append(Point(xs[pt], ys[pt], self.hasStorey[story_num].hasElevation[-1]))
+                        else:
+                            pass
+                    # Save 3D coordinates:
+                    new_zpts.append(zs)
+                new_zpts.append(roof_zs)
+                # With new 3D coordinates for each horizontal plane, create surface geometry:
+                # Set up plotting:
+                fig = plt.figure()
+                ax = plt.axes(projection='3d')
+                for plane in range(0, len(new_zpts)-1):
+                    for zpt in range(0, len(new_zpts[plane])-1):
+                        # Create the surface polygon:
+                        surf_poly = Polygon([new_zpts[plane][zpt], new_zpts[plane+1][zpt], new_zpts[plane+1][zpt+1], new_zpts[plane][zpt+1]])
+                        # Save the polygon to the storey's geometry:
+                        self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(surf_poly)
+                        # Extract xs, ys, and zs and plot
+                        surf_xs = []
+                        surf_ys = []
+                        surf_zs = []
+                        for surf_points in list(surf_poly.exterior.coords):
+                            surf_xs.append(surf_points[0])
+                            surf_ys.append(surf_points[1])
+                            surf_zs.append(surf_points[2])
+                        # Plot the surfaces for the entire building to verify:
+                        ax.plot(surf_xs, surf_ys, surf_zs)
+                # Show the surfaces for each story:
+                plt.show()
+                # Create full 3D surface renderings for the building using base plane and top plane:
 
         # Generate a set of building elements (with default attributes) for the parcel:
         self.parcel_elements(self)
