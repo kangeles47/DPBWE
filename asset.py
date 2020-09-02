@@ -240,7 +240,17 @@ class Building(Zone):
                     pass
         else:
             pass
-        # Axes use cases:
+        # TPU axes use cases:
+        if self.hasOrientation == 0:
+            max_ind = side_lines['length'].index(max(side_lines['length']))
+            # (1) Easiest scenario: TPU and real axes coincide:
+            if side_lines['TPU direction'][max_ind] == 'x':
+                tpu_axes = 0
+            else:
+                # (2) TPU and real axes are orthogonal:
+                tpu_axes = -90
+        else:
+            pass
 
 
 class Parcel(Building):  # Note here: Consider how story/floor assignments may need to change for elevated structures
