@@ -189,34 +189,55 @@ class Building(Zone):
         # Create an equivalent minimum rectangle for the building footprint::
         rect = self.hasFootprint[key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
         xrect, yrect = rect.exterior.xy
-        # Create lines for each side on the rectangle:
-        line1 = LineString([(xrect[0], yrect[0]), (xrect[1], yrect[1])])
-        line2 = LineString([(xrect[1], yrect[1]), (xrect[2], yrect[2])])
-        side_lines = [line1, line2]
-        # Find length of longer side:
-        max_length = max(line1.length, line2.length)
-        # Find general direction that the longer side is facing:
-        for line in side_lines:
-            if line.length == max_length:
-                xline, yline = line.xy
-                xdist = abs(xline[1] - xline[0])
-                ydist = abs(yline[1] - yline[0])
+        # Step 1: Create lines for each side on the rectangle and find their lengths and relative orientations
+        side_lines = {'lines': [], 'length': [], 'real-life direction': [], 'TPU direction': []}
+        max_length = 0
+        for ind in range(0, len(xrect)):
+            new_line = LineString([(xrect[ind], yrect[ind]), (xrect[ind+1], yrect[ind+1])])
+            side_lines['lines'].append(new_line)
+            if key == 'geodesic':
+                pass
+            else:
+                side_lines['length'].append(new_line.length)
+                # Update the maximum length if needed:
+                if new_line.length > max_length:
+                    max_length = new_line.length
+                else:
+                    pass
+                # Figure out if line is running more N-S or E-W:
+                xdist = abs(xrect[ind] - xrect[ind+1])
+                ydist = abs(yrect[ind] - yrect[ind+1])
                 if xdist > ydist:
+                    direction = 'x'
+                else:
+                    direction = 'y'
+                side_lines['real-life direction'].append(direction)
+        # Find the TPU direction of each line:
+        for line in range(0, len(side_lines)):
+            # For each line, figure out if line is in the TPU x-direction (longer length):
+            if key == 'geodesic':
+                pass
+            else:
+                if side_lines['lines'][line].length == max_length:
                     line_direction = 'x'
                 else:
                     line_direction = 'y'
-            else:
-                pass
-        # Find how many degrees ccw the building is oriented by using the angle on the bottom LHS:
+            # Record line directions:
+            side_lines['TPU direction'].append(line_direction)
+        # Step 2: find the orientation of the TPU axes:
+        # Find how many degrees ccw the building is oriented by using the angle on the bottom LHS of minimum rectangle:
         if self.hasOrientation == None:
-            xdist = xrect[2] - xrect[1]
-            ydist = yrect[2] - yrect[1]
-            theta = degrees(atan2(ydist, xdist))
-            if theta < 0:
-                # Find the equivalent positive angle:
-                theta = 360 + theta
-            else:
+            if key == 'geodesic':
                 pass
+            else:
+                xdist = xrect[2] - xrect[1]
+                ydist = yrect[2] - yrect[1]
+                theta = degrees(atan2(ydist, xdist))
+                if theta < 0:
+                    # Find the equivalent positive angle:
+                    theta = 360 + theta
+                else:
+                    pass
         else:
             pass
         # Axes use cases:
