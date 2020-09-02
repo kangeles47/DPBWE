@@ -1,5 +1,5 @@
 import numpy as np
-from math import sqrt, pi, sin
+from math import sqrt, pi, sin, atan2, degrees
 import geopandas as gpd
 from shapely.geometry import Point, Polygon, LineString
 from scipy import spatial
@@ -184,6 +184,42 @@ class Building(Zone):
             Building.hasLocation['County'] = 'Bay'
         else:
             print('County and State Information not currently supported')
+
+    def create_TPU_surfaces(self, key):
+        # Create an equivalent minimum rectangle for the building footprint::
+        rect = self.hasFootprint[key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
+        xrect, yrect = rect.exterior.xy
+        # Create lines for each side on the rectangle:
+        line1 = LineString([(xrect[0], yrect[0]), (xrect[1], yrect[1])])
+        line2 = LineString([(xrect[1], yrect[1]), (xrect[2], yrect[2])])
+        side_lines = [line1, line2]
+        # Find length of longer side:
+        max_length = max(line1.length, line2.length)
+        # Find general direction that the longer side is facing:
+        for line in side_lines:
+            if line.length == max_length:
+                xline, yline = line.xy
+                xdist = abs(xline[1] - xline[0])
+                ydist = abs(yline[1] - yline[0])
+                if xdist > ydist:
+                    line_direction = 'x'
+                else:
+                    line_direction = 'y'
+            else:
+                pass
+        # Find how many degrees ccw the building is oriented by using the angle on the bottom LHS:
+        if self.hasOrientation == None:
+            xdist = xrect[2] - xrect[1]
+            ydist = yrect[2] - yrect[1]
+            theta = degrees(atan2(ydist, xdist))
+            if theta < 0:
+                # Find the equivalent positive angle:
+                theta = 360 + theta
+            else:
+                pass
+        else:
+            pass
+        # Axes use cases:
 
 
 class Parcel(Building):  # Note here: Consider how story/floor assignments may need to change for elevated structures
