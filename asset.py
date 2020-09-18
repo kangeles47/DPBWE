@@ -154,7 +154,7 @@ class Building(Zone):
         self.hasHeight = None  # every building has a height, fidelity will determine value
         self.hasFootprint = {'type': None, 'geodesic_geometry': None, 'local_geometry': None}
         self.hasZeroPoint = Point(lon, lat)
-        self.hasGeometry = {'3D Geometry': {'geodesic_geometry': None, 'local_geometry': None}, 'Surfaces': {'geodesic_geometry': [], 'local_geometry': []}}
+        self.hasGeometry = {'3D Geometry': {'geodesic_geometry': None, 'local_geometry': None}, 'Surfaces': {'geodesic_geometry': [], 'local_geometry': []}, 'TPU_surfaces': {'geodesic_geometry': [], 'local_geometry': []}}
         self.hasOrientation = None
         self.hasFundamentalPeriod = {'x': None, 'y': None}
         self.hasStructuralSystem = {'type': None, 'elements': []}
@@ -185,7 +185,7 @@ class Building(Zone):
         else:
             print('County and State Information not currently supported')
 
-    def create_TPU_surfaces(self, key):
+    def create_TPU_surfaces(self, key, tpu_wdir):
         # Create an equivalent minimum rectangle for the building footprint::
         rect = self.hasFootprint[key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
         xrect, yrect = rect.exterior.xy
@@ -224,7 +224,29 @@ class Building(Zone):
                     line_direction = 'y'
             # Record line directions:
             side_lines['TPU direction'].append(line_direction)
-        # Step 2: find the orientation of the TPU axes:
+        # Step 2: Determine how many surfaces will be needed using the roof assembly description:
+        # Assign the corresponding sides:
+        if self.hasStorey[-1].hasElement['Roof'].hasShape == 'flat':
+            num_surf = 5
+            surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
+        elif self.hasStorey[-1].hasElement['Roof'].hasShape == 'hip':  # Note: most common hip roof pitches 4:12-6:12
+            num_surf = 8
+            surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None, 8: None}
+        elif self.hasStorey[-1].hasElement['Roof'].hasShape == 'gable':
+            num_surf = 6
+            surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None}
+        else:
+            print('Roof shape not supported. Please provide a valid roof shape.')
+        # Step 2: Convert footprint 2D into 3D points for base and roof:
+        new_zpts = []
+        if num_surf == 5:
+            zcoord_base = self.hasStorey[0].hasElevation[0]
+            zcoord_roof = self.hasStorey[-1].hasElevation[-1]
+            new_zpts.append(self.create_zcoords(self, rect, zcoord_base))
+            new_zpts.append(self.create_zcoords(self, rect, zcoord_roof))
+        else:
+            pass
+        # Step 3: find the orientation of the TPU axes:
         # Find how many degrees ccw the building is oriented by using the angle on the bottom LHS of minimum rectangle:
         if self.hasOrientation == None:
             if key == 'geodesic':
@@ -240,6 +262,39 @@ class Building(Zone):
                     pass
         else:
             pass
+        # Step 3: Create surface geometries using 3D coordinates:
+        # Set up plotting:
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
+        # Create a placeholder for the surfaces:
+        tpu_polys = []
+        if num_surf == 5 or num_surf == 8:  # Hip and gable roofs both have rectangular vertical planes
+            for plane in range(0, len(new_zpts) - 1):
+                for zpt in range(0, len(new_zpts[plane]) - 1):
+                    # Create the surface polygon:
+                    tpu_surf = Polygon([new_zpts[plane][zpt], new_zpts[plane + 1][zpt], new_zpts[plane + 1][zpt + 1], new_zpts[plane][zpt + 1]])
+                    tpu_polys.append(tpu_surf)
+                    # Extract xs, ys, and zs and plot
+                    surf_xs = []
+                    surf_ys = []
+                    surf_zs = []
+                    for surf_points in list(tpu_surf.exterior.coords):
+                        surf_xs.append(surf_points[0])
+                        surf_ys.append(surf_points[1])
+                        surf_zs.append(surf_points[2])
+                    # Plot the surfaces for the entire building to verify:
+                    ax.plot(surf_xs, surf_ys, surf_zs)
+            # Show the surfaces for each story:
+            plt.show()
+            # Add roof surfaces to the end of the list:
+            if num_surf == 5:
+                roof_surf = Polygon([new_zpts[-1]])
+                tpu_polys.append(roof_surf)
+            elif num_surf == 8:  # Placeholder for hip roof polygons
+                pass
+        else:
+            pass
+        # Step 4: Determine the surface number based on TPU axes orientation and wind direction:
         # TPU axes use cases:
         if self.hasOrientation == 0:
             max_ind = side_lines['length'].index(max(side_lines['length']))
@@ -249,9 +304,45 @@ class Building(Zone):
             else:
                 # (2) TPU and real axes are orthogonal:
                 tpu_axes = -90
+            # Assign the pressure surfaces:
+            idx = surf_dict.key()
+            if tpu_axes == 0:
+                if tpu_wdir <= 90:
+                    poly_order = [1, 2, 3, 4, 5]  # Polygons are in current order
+                elif 90 < tpu_wdir <= 180:
+                    # Surface 3 becomes windward surface and ordering is cw:
+                    poly_order = [3, 2, 1, 4, 5]
+                elif 180 < tpu_wdir <= 270:
+                    # Surface 3 is windward surface and order is ccw:
+                    poly_order = [3, 4, 1, 2, 5]
+                elif 270 < tpu_wdir <= 360:
+                    # Surface 1 is windward surface and order is cw:
+                    poly_order = [1, 4, 3, 2, 5]
+                # Assign the surfaces to the correct key
+                for i in idx:
+                    self.hasGeometry['TPU_surfaces'][key][i] = tpu_polys[poly_order[i - 1] - 1]
+            elif tpu_axes == -90:
+                if tpu_wdir <= 90:
+                    # The fourth surface in tpu_poly is the windward surface
+                    poly_order = [4, 1, 2, 3, 5]
+                elif 90 < tpu_wdir <= 180:
+                    # The second surface in tpu_poly becomes windward surface and ordering is cw:
+                    poly_order = [2, 1, 3, 4, 5]
+
+            else:
+                pass
         else:
             pass
 
+    def create_zcoords(self, footprint, zcoord):
+        # Input footprint polygon (either local or geodesic) and elevation:
+        zs = []
+        # Create z coordinates for the given building footprint and elevation:
+        xs, ys = footprint.exterior.xy
+        for pt in range(0, len(xs)):
+            # Define z-coordinates for bottom floor of each story:
+            zs.append(Point(xs[pt], ys[pt], zcoord))
+        return zs
 
 class Parcel(Building):  # Note here: Consider how story/floor assignments may need to change for elevated structures
 
@@ -279,15 +370,13 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 base_z = 0
                 # Create z coordinates for each story:
                 for story_num in range(0, len(self.hasStorey)):
-                    zs = []  # Hold 3D coords
-                    for pt in range(0, len(xs)):
-                        # Define z-coordinates for bottom floor of each story:
-                        zs.append(Point(xs[pt], ys[pt], self.hasStorey[story_num].hasElevation[0]))
-                        if story_num == len(self.hasStorey) - 1:
-                            # Define z-coordinates for top floor of last story (roof):
-                            roof_zs.append(Point(xs[pt], ys[pt], self.hasStorey[story_num].hasElevation[-1]))
-                        else:
-                            pass
+                    zcoord = self.hasStorey[story_num].hasElevation[0]
+                    zs = self.create_zcoords(self.hasFootprint[key], zcoord)
+                    if story_num == len(self.hasStorey) - 1:
+                        zcoord_roof = self.hasStorey[story_num].hasElevation[-1]
+                        roof_zs = self.create_zcoords(self.hasFootprint[key], zcoord_roof)
+                    else:
+                        pass
                     # Save 3D coordinates:
                     new_zpts.append(zs)
                 new_zpts.append(roof_zs)
