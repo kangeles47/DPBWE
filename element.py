@@ -52,6 +52,7 @@ class Roof(Element):
         self.hasElevation = None
         self.inLoadPath = True
         self.hasEaveLength = None
+        self.hasShape = None
 
 
 class Floor(Element):  # Consider how we might bring in something like piles
