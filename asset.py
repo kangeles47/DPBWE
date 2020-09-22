@@ -205,13 +205,13 @@ class Building(Zone):
                 else:
                     pass
                 # Figure out if line is running more N-S or E-W:
-                xdist = abs(xrect[ind] - xrect[ind+1])
-                ydist = abs(yrect[ind] - yrect[ind+1])
-                if xdist > ydist:
-                    direction = 'x'
-                else:
-                    direction = 'y'
-                side_lines['real-life direction'].append(direction)
+                #xdist = abs(xrect[ind] - xrect[ind+1])
+                #ydist = abs(yrect[ind] - yrect[ind+1])
+                #if xdist > ydist:
+                    #direction = 'x'
+                #else:
+                    #direction = 'y'
+                #side_lines['real-life direction'].append(direction)
         # Find the TPU direction of each line:
         for line in range(0, len(side_lines)):
             # For each line, figure out if line is in the TPU x-direction (longer length):
@@ -262,7 +262,7 @@ class Building(Zone):
                     pass
         else:
             pass
-        # Step 3: Create surface geometries using 3D coordinates:
+        # Step 4: Create surface geometries using 3D coordinates:
         # Set up plotting:
         fig = plt.figure()
         ax = plt.axes(projection='3d')
@@ -294,58 +294,69 @@ class Building(Zone):
                 pass
         else:
             pass
-        # Step 4: Determine the surface number based on TPU axes orientation and wind direction:
+        # Step 5: Determine the surface number based on building geometry (TPU axes orientation) and wind direction:
+        # Note: Surfaces derived from the Shapely minimum rectangle start at the upper left-hand corner and go ccw
+        # Given this, whenever the first side < second side, the building's TPU x-axis will be in general E-W direction
+        # If second side > first side, the building's TPU x-axis will be in general N-S direction
         # TPU axes use cases:
-        if self.hasOrientation == 0:
-            max_ind = side_lines['length'].index(max(side_lines['length']))
-            # (1) Easiest scenario: TPU and real axes coincide:
-            if side_lines['TPU direction'][max_ind] == 'x':
-                tpu_axes = 0
-            else:
-                # (2) TPU and real axes are orthogonal:
-                tpu_axes = -90
-            # Assign the pressure surfaces:
-            idx = surf_dict.key()
+        # Choose the first line to check the above conditions:
+        if side_lines['TPU direction'][0] == 'x':
             # Polygon order:
-            # Surfaces derived from the Shapely minimum rectangle start at the upper left-hand corner and go ccw
-            if tpu_axes == 0:
-                # When TPU and global axes are aligned:
-                # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 0, 1, 2, 3, 4 in tpu_polys
-                if tpu_wdir <= 90:
-                    # TPU and global axes are aligned:
-                    # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
-                    poly_order = [0, 1, 2, 3, 4]
-                elif 90 < tpu_wdir <= 180:
-                    # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
-                    poly_order = [2, 1, 0, 3, 4]
-                elif 180 < tpu_wdir <= 270:
-                    # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
-                    poly_order = [3, 4, 1, 2, 5]
-                elif 270 < tpu_wdir <= 360:
-                    # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
-                    poly_order = [0, 3, 2, 1, 4]
-                # Assign the surfaces to the correct key
-                for i in idx:
-                    self.hasGeometry['TPU_surfaces'][key][i] = tpu_polys[poly_order[i]]
-            elif tpu_axes == -90:
-                # When TPU and global axes are orthogonal:
-                # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 3, 0, 1, 2, 4 in tpu_polys
-                if tpu_wdir <= 90:
-                    # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
-                    poly_order = [3, 0, 1, 2, 4]
-                elif 90 < tpu_wdir <= 180:
-                    # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
-                    poly_order = [1, 0, 3, 2, 4]
-                elif 180 < tpu_wdir <= 270:
-                    # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
-                    poly_order = [1, 2, 3, 0, 4]
-                elif 270 < tpu_wdir <= 360:
-                    # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
-                    poly_order = [3, 2, 1, 0, 4]
-            else:
-                pass
+            # When TPU and global axes are both running in general E-W direction:
+            # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 0, 1, 2, 3, 4 in tpu_polys
+            if tpu_wdir <= 90:
+                # TPU and global axes are aligned:
+                # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
+                poly_order = [0, 1, 2, 3, 4]
+            elif 90 < tpu_wdir <= 180:
+                # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
+                poly_order = [2, 1, 0, 3, 4]
+            elif 180 < tpu_wdir <= 270:
+                # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
+                poly_order = [3, 4, 1, 2, 5]
+            elif 270 < tpu_wdir <= 360:
+                # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
+                poly_order = [0, 3, 2, 1, 4]
+        elif side_lines['TPU direction'][0] == 'y':
+            # When TPU x-axis is runnning in N-S direction (i.e., orthogonal to ideal scenario):
+            # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 3, 0, 1, 2, 4 in tpu_polys
+            if tpu_wdir <= 90:
+                # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
+                poly_order = [3, 0, 1, 2, 4]
+            elif 90 < tpu_wdir <= 180:
+                # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
+                poly_order = [1, 0, 3, 2, 4]
+            elif 180 < tpu_wdir <= 270:
+                # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
+                poly_order = [1, 2, 3, 0, 4]
+            elif 270 < tpu_wdir <= 360:
+                # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
+                poly_order = [3, 2, 1, 0, 4]
         else:
-            pass
+            print('Cannot determine dominant axis')
+        # Assign the surfaces to the correct key
+        idx = surf_dict.key()
+        # Set up plotting:
+        fig2 = plt.figure()
+        ax2 = plt.axes(projection='3d')
+        for i in idx:
+            surf_dict[i] = tpu_polys[poly_order[i-1]]
+            # Optional: Plotting:
+            # Extract xs, ys, and zs and plot
+            poly_xs = []
+            poly_ys = []
+            poly_zs = []
+            for pts in list(surf_dict[i].exterior.coords):
+                poly_xs.append(surf_points[0])
+                poly_ys.append(surf_points[1])
+                poly_zs.append(surf_points[2])
+            # Define various line colors to keep track of surfaces:
+            colors = ['b', 'g', 'r', 'y', 'm']
+            # Plot the surface geometry:
+            ax2.plot(poly_xs, poly_ys, poly_zs, colors[i-1])
+        plt.show()
+        # Step 6: Save the surfaces to the building description:
+        self.hasGeometry['TPU_surfaces'][key] = surf_dict
 
     def create_zcoords(self, footprint, zcoord):
         # Input footprint polygon (either local or geodesic) and elevation:
