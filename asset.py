@@ -418,8 +418,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         ax.plot(surf_xs, surf_ys, surf_zs)
                 # Show the surfaces for each story:
                 plt.show()
-                # Create full 3D surface renderings for the building using base plane and top plane:
-
+                # Define full 3D surface renderings for the building using base plane and top plane:
         # Generate a set of building elements (with default attributes) for the parcel:
         self.parcel_elements(self)
         # Populate instance attributes informed by national survey data:
