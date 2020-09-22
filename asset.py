@@ -190,9 +190,9 @@ class Building(Zone):
         rect = self.hasFootprint[key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
         xrect, yrect = rect.exterior.xy
         # Step 1: Create lines for each side on the rectangle and find their lengths and relative orientations
-        side_lines = {'lines': [], 'length': [], 'real-life direction': [], 'TPU direction': []}
+        side_lines = {'lines': [], 'length': [], 'TPU direction': []}
         max_length = 0
-        for ind in range(0, len(xrect)):
+        for ind in range(0, len(xrect)-1):
             new_line = LineString([(xrect[ind], yrect[ind]), (xrect[ind+1], yrect[ind+1])])
             side_lines['lines'].append(new_line)
             if key == 'geodesic':
@@ -218,7 +218,7 @@ class Building(Zone):
             side_lines['TPU direction'].append(line_direction)
         # Step 2: Determine how many surfaces will be needed using the roof assembly description:
         # Assign the corresponding sides:
-        if self.hasStorey[-1].hasElement['Roof'].hasShape == 'flat':
+        if self.hasStorey[-1].containsElement['Roof'].hasShape == 'flat':
             num_surf = 5
             surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
         elif self.hasStorey[-1].hasElement['Roof'].hasShape == 'hip':  # Note: most common hip roof pitches 4:12-6:12
@@ -518,7 +518,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         # Floor, Ceiling, and Roof Instances - These are conducted by storey to facilitate "hasElement" assignment
         # Exterior Walls - Geometries are derived considering zone locations on the building footprint:
         a = get_cc_zone_width(parcel)  # Determine the zone width
-        zone_pts, int_poly = find_cc_zone_points(parcel, a, roof_flag=True, edition=None)  # Coordinates for start/end of zone locations
+        zone_pts, int_poly, zone2_polys = find_cc_zone_points(parcel, a, roof_flag=True, edition=None)  # Coordinates for start/end of zone locations
         # Assume that walls span one story for now:
         for storey in parcel.hasStorey:
             # Create an empty list to hold all elements:

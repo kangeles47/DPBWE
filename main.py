@@ -17,7 +17,7 @@ test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405',
 # Asset Representation
 # Generate and determine the building's TPU surfaces:
 tpu_wdir = 0
-test.create_TPU_surfaces('local', tpu_wdir)
+test.create_TPU_surfaces('local_geometry', tpu_wdir)
 # Populate component capacities:
 edition = 'ASCE 7-10'
 exposure = 'B'

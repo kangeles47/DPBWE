@@ -118,6 +118,7 @@ class FBC(BldgCode):
             # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
             if roof_element.hasCover == 'Built-up' or roof_element.hasCover == 'Concrete' or roof_element.hasCover == 'Plastic/rubber/synthetic sheeting' or roof_element.hasCover == 'Metal surfacing':
                 roof_element.hasPitch = 'flat'  # roof slopes under 2:12
+                roof_element.hasShape = 'flat'
             elif roof_element.hasCover == 'Asphalt/fiberglass/other shingles' or roof_element.hasCover == 'Wood shingles/shakes/other wood' or roof_element.hasCover == 'Slate or tile shingles':
                 roof_element.hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
             else:
@@ -127,6 +128,7 @@ class FBC(BldgCode):
             roof_element = parcel.hasStorey[-1].containsElement['Roof']
             if roof_element.hasCover == 'Built-up' or roof_element.hasCover == 'Metal surfacing' or roof_element.hasCover == 'Single/multiple ply' or roof_element.hasCover == 'Concrete roof' or roof_element.hasCover == 'Metal & rubber' or roof_element.hasCover == 'Slate & built-up' or roof_element.hasCover == 'Built-up & metal' or roof_element.hasCover == 'Built-up & s/m ply':
                 roof_element.hasPitch = 'flat'  # roof slopes under 2:12
+                roof_element.hasShape = 'flat'
             elif roof_element.hasCover == 'Wooden materials' or roof_element.hasCover == 'Slate or tile' or roof_element.hasCover == 'Shingles (not wood)' or roof_element.hasCover == 'Shingles & metal':
                 roof_element.hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
             else:

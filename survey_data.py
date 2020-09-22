@@ -381,11 +381,12 @@ class SurveyData:
                 # Choose roof tilt:
                 rtilt_choice = random.choices(rtilt_options, rtilt_weights)[0]
                 if rtilt_choice == 1:
-                    roof_element.hasPitch = 'Flat'
+                    roof_element.hasPitch = 'flat'
+                    roof_element.hasShape = 'flat'
                 elif rtilt_choice == 2:
-                    roof_element.hasPitch = 'Shallow pitch'
+                    roof_element.hasPitch = 'shallow pitch'
                 elif rtilt_choice == 3:
-                    roof_element.hasPitch = 'Steeper pitch'
+                    roof_element.hasPitch = 'steeper pitch'
             else:
                 pass
         else:
