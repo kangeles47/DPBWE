@@ -204,14 +204,6 @@ class Building(Zone):
                     max_length = new_line.length
                 else:
                     pass
-                # Figure out if line is running more N-S or E-W:
-                #xdist = abs(xrect[ind] - xrect[ind+1])
-                #ydist = abs(yrect[ind] - yrect[ind+1])
-                #if xdist > ydist:
-                    #direction = 'x'
-                #else:
-                    #direction = 'y'
-                #side_lines['real-life direction'].append(direction)
         # Find the TPU direction of each line:
         for line in range(0, len(side_lines)):
             # For each line, figure out if line is in the TPU x-direction (longer length):
@@ -299,8 +291,8 @@ class Building(Zone):
         # Given this, whenever the first side < second side, the building's TPU x-axis will be in general E-W direction
         # If second side > first side, the building's TPU x-axis will be in general N-S direction
         # TPU axes use cases:
-        # Choose the first line to check the above conditions:
-        if side_lines['TPU direction'][0] == 'x':
+        # Choose the second line to check the above conditions:
+        if side_lines['TPU direction'][1] == 'x':
             # Polygon order:
             # When TPU and global axes are both running in general E-W direction:
             # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 0, 1, 2, 3, 4 in tpu_polys
@@ -317,8 +309,8 @@ class Building(Zone):
             elif 270 < tpu_wdir <= 360:
                 # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
                 poly_order = [0, 3, 2, 1, 4]
-        elif side_lines['TPU direction'][0] == 'y':
-            # When TPU x-axis is runnning in N-S direction (i.e., orthogonal to ideal scenario):
+        elif side_lines['TPU direction'][1] == 'y':
+            # When TPU x-axis is running in N-S direction (i.e., orthogonal to ideal scenario):
             # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 3, 0, 1, 2, 4 in tpu_polys
             if tpu_wdir <= 90:
                 # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
