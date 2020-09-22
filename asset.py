@@ -306,29 +306,42 @@ class Building(Zone):
                 tpu_axes = -90
             # Assign the pressure surfaces:
             idx = surf_dict.key()
+            # Polygon order:
+            # Surfaces derived from the Shapely minimum rectangle start at the upper left-hand corner and go ccw
             if tpu_axes == 0:
+                # When TPU and global axes are aligned:
+                # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 0, 1, 2, 3, 4 in tpu_polys
                 if tpu_wdir <= 90:
-                    poly_order = [1, 2, 3, 4, 5]  # Polygons are in current order
+                    # TPU and global axes are aligned:
+                    # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
+                    poly_order = [0, 1, 2, 3, 4]
                 elif 90 < tpu_wdir <= 180:
-                    # Surface 3 becomes windward surface and ordering is cw:
-                    poly_order = [3, 2, 1, 4, 5]
+                    # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
+                    poly_order = [2, 1, 0, 3, 4]
                 elif 180 < tpu_wdir <= 270:
-                    # Surface 3 is windward surface and order is ccw:
+                    # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
                     poly_order = [3, 4, 1, 2, 5]
                 elif 270 < tpu_wdir <= 360:
-                    # Surface 1 is windward surface and order is cw:
-                    poly_order = [1, 4, 3, 2, 5]
+                    # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
+                    poly_order = [0, 3, 2, 1, 4]
                 # Assign the surfaces to the correct key
                 for i in idx:
-                    self.hasGeometry['TPU_surfaces'][key][i] = tpu_polys[poly_order[i - 1] - 1]
+                    self.hasGeometry['TPU_surfaces'][key][i] = tpu_polys[poly_order[i]]
             elif tpu_axes == -90:
+                # When TPU and global axes are orthogonal:
+                # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 3, 0, 1, 2, 4 in tpu_polys
                 if tpu_wdir <= 90:
-                    # The fourth surface in tpu_poly is the windward surface
-                    poly_order = [4, 1, 2, 3, 5]
+                    # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
+                    poly_order = [3, 0, 1, 2, 4]
                 elif 90 < tpu_wdir <= 180:
-                    # The second surface in tpu_poly becomes windward surface and ordering is cw:
-                    poly_order = [2, 1, 3, 4, 5]
-
+                    # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
+                    poly_order = [1, 0, 3, 2, 4]
+                elif 180 < tpu_wdir <= 270:
+                    # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
+                    poly_order = [1, 2, 3, 0, 4]
+                elif 270 < tpu_wdir <= 360:
+                    # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
+                    poly_order = [3, 2, 1, 0, 4]
             else:
                 pass
         else:
