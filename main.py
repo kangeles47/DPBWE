@@ -15,6 +15,9 @@ test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405',
 # Will also need to add subroutine for WBD
 
 # Asset Representation
+# Generate and determine the building's TPU surfaces:
+tpu_wdir = 0
+test.create_TPU_surfaces('local', tpu_wdir)
 # Populate component capacities:
 edition = 'ASCE 7-10'
 exposure = 'B'
@@ -27,6 +30,7 @@ roof_flag = True
 zone_pts, int_poly, zone2_polys = find_cc_zone_points(test, a, roof_flag, edition)
 assign_wcc_pressures(test, zone_pts, edition, exposure, wind_speed)
 print(exposure)
+
 
 # Response Simulation
 
