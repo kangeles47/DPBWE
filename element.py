@@ -14,7 +14,7 @@ class Element:
         self.hasCapacity = {'type': [], 'value': []}
         self.hasLoadingDemand = {'type': [], 'value': []}
         self.hasFailure = False  # Default value
-        self.hasGeometry = {'3D Geometry': None, '2D Geometry': None, '1D Geometry': None, 'Thickness': None}
+        self.hasGeometry = {'3D Geometry': None, '2D Geometry': None, '1D Geometry': None, 'Thickness': None, 'Length': None, 'Height': None}
         self.hasFragility = None
         self.hasModeOfFabrication = None  # options: on-site, off-site, unknown (None object)
         edp_dict = {'peak interstory drift ratio': None, 'peak absolute velocity': None, 'peak absolute acceleration': None, 'wind speed': None, 'pressure': None, 'impact': None, 'axial force': None, 'shear force': None, 'bending moment': None, 'peak flexural stress': None, 'peak shear stress': None, 'peak flexural strain': None, 'curvature': None, 'rotation': None, 'elongation': None}
@@ -31,7 +31,6 @@ class Wall(Element):
         Element.__init__(self)
         # Add in wall instance attributes:
         self.isImpactResistant = None
-        self.hasHeight = None
 
 
 class Window(Element):
@@ -39,7 +38,6 @@ class Window(Element):
         Element.__init__(self)
         # Add in wall instance attributes:
         self.isImpactResistant = None
-        self.hasHeight = None
 
 
 class Roof(Element):
@@ -48,7 +46,6 @@ class Roof(Element):
         # Add in roof instance attributes:
         self.hasPitch = None
         self.hasCover = None
-        self.hasHeight = None
         self.hasElevation = None
         self.inLoadPath = True
         self.hasEaveLength = None
@@ -77,11 +74,9 @@ class Column(Element):
         Element.__init__(self)
         # Add in column instance attributes:
         self.inLoadPath = True
-        self.hasHeight = None
 
 class Beam(Element):
     def __init__(self):
         Element.__init__(self)
         # Add in beam instance attributes:
         self.inLoadPath = True
-        self.hasLength = None

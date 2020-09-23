@@ -270,11 +270,11 @@ class SurveyData:
 
         # Assign wall type description to every exterior wall for the parcel:
         for storey in parcel.hasStorey:
-            for wall in storey.containsElement['Walls']:
+            for wall in storey.hasElement['Walls']:
                 wall.hasType = wtype
 
         # Roof type descriptions:
-        roof_element = parcel.hasStorey[-1].containsElement['Roof']
+        roof_element = parcel.hasStorey[-1].hasElement['Roof'][0]
         if data_yr == 1989:
             if roof_choice == 1:
                 roof_element.hasCover = 'Wooden materials'
