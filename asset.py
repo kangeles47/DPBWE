@@ -154,7 +154,7 @@ class Building(Zone):
         self.hasHeight = None  # every building has a height, fidelity will determine value
         self.hasFootprint = {'type': None, 'geodesic_geometry': None, 'local_geometry': None}
         self.hasZeroPoint = Point(lon, lat)
-        self.hasGeometry = {'3D Geometry': {'geodesic_geometry': None, 'local_geometry': None}, 'Surfaces': {'geodesic_geometry': [], 'local_geometry': []}, 'TPU_surfaces': {'geodesic_geometry': [], 'local_geometry': []}}
+        self.hasGeometry = {'3D Geometry': {'geodesic_geometry': [], 'local_geometry': []}, 'Surfaces': {'geodesic_geometry': [], 'local_geometry': []}, 'TPU_surfaces': {'geodesic_geometry': [], 'local_geometry': []}}
         self.hasOrientation = None
         self.hasFundamentalPeriod = {'x': None, 'y': None}
         self.hasStructuralSystem = {'type': None, 'elements': []}
@@ -205,7 +205,7 @@ class Building(Zone):
                 else:
                     pass
         # Find the TPU direction of each line:
-        for line in range(0, len(side_lines)):
+        for line in range(0, len(side_lines['lines'])):
             # For each line, figure out if line is in the TPU x-direction (longer length):
             if key == 'geodesic':
                 pass
@@ -221,21 +221,21 @@ class Building(Zone):
         if self.hasStorey[-1].containsElement['Roof'].hasShape == 'flat':
             num_surf = 5
             surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
-        elif self.hasStorey[-1].hasElement['Roof'].hasShape == 'hip':  # Note: most common hip roof pitches 4:12-6:12
+        elif self.hasStorey[-1].containsElement['Roof'].hasShape == 'hip':  # Note: most common hip roof pitches 4:12-6:12
             num_surf = 8
             surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None, 8: None}
-        elif self.hasStorey[-1].hasElement['Roof'].hasShape == 'gable':
+        elif self.hasStorey[-1].containsElement['Roof'].hasShape == 'gable':
             num_surf = 6
             surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None}
         else:
             print('Roof shape not supported. Please provide a valid roof shape.')
-        # Step 2: Convert footprint 2D into 3D points for base and roof:
+        # Step 3: Convert footprint 2D into 3D points for base and roof:
         new_zpts = []
         if num_surf == 5:
             zcoord_base = self.hasStorey[0].hasElevation[0]
             zcoord_roof = self.hasStorey[-1].hasElevation[-1]
-            new_zpts.append(self.create_zcoords(self, rect, zcoord_base))
-            new_zpts.append(self.create_zcoords(self, rect, zcoord_roof))
+            new_zpts.append(self.create_zcoords(rect, zcoord_base))
+            new_zpts.append(self.create_zcoords(rect, zcoord_roof))
         else:
             pass
         # Step 3: find the orientation of the TPU axes:
@@ -252,6 +252,7 @@ class Building(Zone):
                     theta = 360 + theta
                 else:
                     pass
+                self.hasOrientation = theta
         else:
             pass
         # Step 4: Create surface geometries using 3D coordinates:
@@ -263,6 +264,7 @@ class Building(Zone):
         if num_surf == 5 or num_surf == 8:  # Hip and gable roofs both have rectangular vertical planes
             for plane in range(0, len(new_zpts) - 1):
                 for zpt in range(0, len(new_zpts[plane]) - 1):
+                    print(plane, zpt)
                     # Create the surface polygon:
                     tpu_surf = Polygon([new_zpts[plane][zpt], new_zpts[plane + 1][zpt], new_zpts[plane + 1][zpt + 1], new_zpts[plane][zpt + 1]])
                     tpu_polys.append(tpu_surf)
@@ -280,7 +282,7 @@ class Building(Zone):
             plt.show()
             # Add roof surfaces to the end of the list:
             if num_surf == 5:
-                roof_surf = Polygon([new_zpts[-1]])
+                roof_surf = Polygon(new_zpts[-1])
                 tpu_polys.append(roof_surf)
             elif num_surf == 8:  # Placeholder for hip roof polygons
                 pass
@@ -327,7 +329,7 @@ class Building(Zone):
         else:
             print('Cannot determine dominant axis')
         # Assign the surfaces to the correct key
-        idx = surf_dict.key()
+        idx = surf_dict.keys()
         # Set up plotting:
         fig2 = plt.figure()
         ax2 = plt.axes(projection='3d')
@@ -339,16 +341,26 @@ class Building(Zone):
             poly_ys = []
             poly_zs = []
             for pts in list(surf_dict[i].exterior.coords):
-                poly_xs.append(surf_points[0])
-                poly_ys.append(surf_points[1])
-                poly_zs.append(surf_points[2])
+                poly_xs.append(pts[0])
+                poly_ys.append(pts[1])
+                poly_zs.append(pts[2])
             # Define various line colors to keep track of surfaces:
             colors = ['b', 'g', 'r', 'y', 'm']
             # Plot the surface geometry:
             ax2.plot(poly_xs, poly_ys, poly_zs, colors[i-1])
+        # Plot the building 3D Geometry:
+        for poly in self.hasGeometry['3D Geometry'][key]:
+            x_bpoly, y_bpoly, z_bpoly = [], [], []
+            for bpt in list(poly.exterior.coords):
+                x_bpoly.append(bpt[0])
+                y_bpoly.append(bpt[1])
+                z_bpoly.append(bpt[2])
+            # Plot the building geometry:
+            ax2.plot(x_bpoly, y_bpoly, z_bpoly, 'k')
         plt.show()
         # Step 6: Save the surfaces to the building description:
         self.hasGeometry['TPU_surfaces'][key] = surf_dict
+        a = 0
 
     def create_zcoords(self, footprint, zcoord):
         # Input footprint polygon (either local or geodesic) and elevation:
@@ -419,6 +431,11 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 # Show the surfaces for each story:
                 plt.show()
                 # Define full 3D surface renderings for the building using base plane and top plane:
+                for pt in range(0, len(new_zpts[0])-1):
+                    # Create the surface polygon:
+                    bsurf_poly = Polygon([new_zpts[0][pt], new_zpts[-1][pt], new_zpts[-1][pt + 1], new_zpts[0][pt + 1]])
+                    # Save the polygon to the building geometry:
+                    self.hasGeometry['3D Geometry'][key].append(bsurf_poly)
         # Generate a set of building elements (with default attributes) for the parcel:
         self.parcel_elements(self)
         # Populate instance attributes informed by national survey data:
