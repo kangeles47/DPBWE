@@ -347,7 +347,8 @@ class Building(Zone):
             # Define various line colors to keep track of surfaces:
             colors = ['b', 'g', 'r', 'y', 'm']
             # Plot the surface geometry:
-            ax2.plot(poly_xs, poly_ys, poly_zs, colors[i-1])
+            ax2.plot(poly_xs, poly_ys, poly_zs, colors[i-1], label='Surface'+str(i))
+        ax2.legend(loc='best')
         # Plot the building 3D Geometry:
         for poly in self.hasGeometry['3D Geometry'][key]:
             x_bpoly, y_bpoly, z_bpoly = [], [], []
@@ -357,10 +358,12 @@ class Building(Zone):
                 z_bpoly.append(bpt[2])
             # Plot the building geometry:
             ax2.plot(x_bpoly, y_bpoly, z_bpoly, 'k')
+        ax2.set_xlabel('E-W direction')
+        ax2.set_ylabel('N-S direction')
+        ax2.set_title('Surfaces for TPU Wind Direction: '+str(tpu_wdir))
         plt.show()
         # Step 6: Save the surfaces to the building description:
         self.hasGeometry['TPU_surfaces'][key] = surf_dict
-        a = 0
 
     def create_zcoords(self, footprint, zcoord):
         # Input footprint polygon (either local or geodesic) and elevation:
