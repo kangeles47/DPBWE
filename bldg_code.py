@@ -97,14 +97,14 @@ class FBC(BldgCode):
                 # 9 ft standard ceiling height - Add to each Storey in Building:
                 for i in range(0, len(parcel.hasStorey)):
                     parcel.hasStorey[i].hasElevation = [9*i, 9*(i+1)]
-                    parcel.hasStorey[i].hasHeight = 9
-                parcel.hasHeight = len(parcel.hasStorey) * 9  # min. ceiling height used to calculate building height [ft]
+                    parcel.hasStorey[i].hasGeometry['Height'] = 9
+                parcel.hasGeometry['Height'] = len(parcel.hasStorey) * 9  # min. ceiling height used to calculate building height [ft]
             elif 'CABO' in self.hasEdition:
                 # 8 ft standard ceiling height for older construction
                 for i in range(0, len(parcel.hasStorey)):
                     parcel.hasStorey[i].hasElevation = [8*i, 8*(i+1)]
-                    parcel.hasStorey[i].hasHeight = 8
-                parcel.hasHeight = len(parcel.hasStorey) * 8  # min. ceiling height used to calculate building height [ft]
+                    parcel.hasStorey[i].hasGeometry['Height'] = 8
+                parcel.hasGeometry['Height'] = len(parcel.hasStorey) * 8  # min. ceiling height used to calculate building height [ft]
             else:
                 print('Building level attributes currently not supported')
         else:

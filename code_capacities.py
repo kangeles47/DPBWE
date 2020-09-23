@@ -197,7 +197,7 @@ def get_cc_zone_width(bldg):
     # This function determines the zone width, a, for a given building:
     # a is determined as max(min(0.1*least horizontal dimension, 0.4*h_bldg), 0.4*least horizontal direction, 3 ft)
     # Create an equivalent rectangle for the building:
-    rect = bldg.hasFootprint['geodesic_geometry'].minimum_rotated_rectangle  # Note: min rect. (not constrained || to coord axis)
+    rect = bldg.hasGeometry['Footprint']['geodesic'].minimum_rotated_rectangle  # Note: min rect. (not constrained || to coord axis)
     xrect, yrect = rect.exterior.xy
     # Find the least horizontal dimension of the building:
     for ind in range(0, len(xrect)-1):
@@ -209,12 +209,12 @@ def get_cc_zone_width(bldg):
                 hdist = hnew
             else:
                 pass
-    a = max(min(0.1*hdist, 0.4*bldg.hasHeight), 0.04*hdist, 3)
+    a = max(min(0.1*hdist, 0.4*bldg.hasGeometry['Height']), 0.04*hdist, 3)
     return a
 
 def find_cc_zone_points(bldg, zone_width, roof_flag, edition):
     # Use the building footprint to find zone boundaries around perimeter:
-    xc, yc = bldg.hasFootprint['local_geometry'].exterior.xy
+    xc, yc = bldg.hasGeometry['Footprint']['local'].exterior.xy
     # Find points along building footprint corresponding to zone start/end
     zone_pts = pd.DataFrame(columns=['LinePoint1', 'NewZoneStart', 'NewZoneEnd', 'LinePoint2'])
     for j in range(0, len(xc)-1):
@@ -239,7 +239,7 @@ def find_cc_zone_points(bldg, zone_width, roof_flag, edition):
     if roof_flag:
         if edition != 'ASCE 7-16':
             # Derive Zone 1 points from original bldg footprint:
-            int_poly = bldg.hasFootprint['local_geometry'].buffer(distance=-1*zone_width, resolution=300, join_style=2)
+            int_poly = bldg.hasGeometry['Footprint']['local'].buffer(distance=-1*zone_width, resolution=300, join_style=2)
             # Leave as poly - can easily check if component in/out of geometry
             # Plot for reference
             xpoly, ypoly = int_poly.exterior.xy
@@ -255,7 +255,7 @@ def find_cc_zone_points(bldg, zone_width, roof_flag, edition):
                 zone_line = LineString([zpoint1, zpoint2])
                 point_list = zone_line.coords[:]
                 # Offset the line by the zone width:
-                if (zpoint1.x < zpoint2.x) and (zpoint1.y == zpoint2.y) and (zpoint1.y > bldg.hasFootprint['local_geometry'].centroid.y):
+                if (zpoint1.x < zpoint2.x) and (zpoint1.y == zpoint2.y) and (zpoint1.y > bldg.hasGeometry['Footprint']['local'].centroid.y):
                     offset_line = zone_line.parallel_offset(zone_width, side='right')
                     point_list.append(offset_line.coords[0])
                     point_list.append(offset_line.coords[1])
@@ -281,13 +281,6 @@ def find_cc_zone_points(bldg, zone_width, roof_flag, edition):
 
     return zone_pts, int_poly, zone2_polys
 
-def find_rmwfrs_zones(bldg, edition):
-    # Equivalent rectangle:
-    rect = bldg.hasFootprint['geometry'].minimum_rotated_rectangle
-    xrect, yrect = rect.exterior.xy
-    # Leave here for now --- may or may not need to outsource zone geometry into another function
-
-
 def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
     # Create an instance of PressureCalc:
     pressures = PressureCalc()
@@ -306,7 +299,7 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
     # (2) Direction and aspect ratios
     # Roof MWFRS pressure assignments require knowledge of the building aspect ratio for a given "wind direction"
     # (2a) Find the orientation of the building footprint using minimum rotated rectangle:
-    rect = bldg.hasFootprint['local_geometry'].minimum_rotated_rectangle
+    rect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
     xrect, yrect = rect.exterior.xy
     plt.plot(xrect, yrect)
     plt.show()

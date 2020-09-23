@@ -141,6 +141,10 @@ class Building(Zone):
             new_storey = Storey()
             new_storey.hasName = 'Storey' + str(i)
             self.hasStorey.append(new_storey)
+        # Create Interface instances to relate stories:
+        self.hasInterface = []
+        for stry in range(0, len(self.hasStorey)-1):
+            self.hasInterface.append(Interface(self.hasStorey[stry], self.hasStorey[stry+1]))
         # Buildings contain all of the zones, spaces, elements, etc. within each storey:
         self.update_zones()
         self.update_elements()
@@ -150,11 +154,8 @@ class Building(Zone):
         self.hasOccupancy = occupancy
         self.hasYearBuilt = int(yr_built)
         self.hasLocation = {'Address': address, 'State': None, 'County': None, 'Geodesic': Point(lon, lat)}
-        self.hasArea = float(area) # sq feet
-        self.hasHeight = None  # every building has a height, fidelity will determine value
-        self.hasFootprint = {'type': None, 'geodesic_geometry': None, 'local_geometry': None}
         self.hasZeroPoint = Point(lon, lat)
-        self.hasGeometry = {'3D Geometry': {'geodesic_geometry': [], 'local_geometry': []}, 'Surfaces': {'geodesic_geometry': [], 'local_geometry': []}, 'TPU_surfaces': {'geodesic_geometry': [], 'local_geometry': []}}
+        self.hasGeometry = {'Area': float(area), 'Footprint': {'type': None, 'geodesic': None, 'local': None}, 'Height': None, '3D Geometry': {'geodesic': [], 'local': []}, 'Surfaces': {'geodesic': [], 'local': []}, 'TPU_surfaces': {'geodesic': [], 'local': []}}
         self.hasOrientation = None
         self.hasFundamentalPeriod = {'x': None, 'y': None}
         self.hasStructuralSystem = {'type': None, 'elements': []}
@@ -163,7 +164,6 @@ class Building(Zone):
         self.hasEffectiveSeismicWeight = None
         self.hasDampingValue = None
         self.hasServiceLife = None
-        self.hasInterface = []
         # Tag the building as "commercial" or "not commercial"
         if self.hasOccupancy == "Profession" or self.hasOccupancy == "Hotel" or self.hasOccupancy == "Motel" or self.hasOccupancy == "Financial":
             self.isComm = True
@@ -187,7 +187,8 @@ class Building(Zone):
 
     def create_TPU_surfaces(self, key, tpu_wdir):
         # Create an equivalent minimum rectangle for the building footprint::
-        rect = self.hasFootprint[key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
+        rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
+        #rect = self.hasFootprint[key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
         xrect, yrect = rect.exterior.xy
         # Step 1: Create lines for each side on the rectangle and find their lengths and relative orientations
         side_lines = {'lines': [], 'length': [], 'TPU direction': []}
@@ -264,7 +265,6 @@ class Building(Zone):
         if num_surf == 5 or num_surf == 8:  # Hip and gable roofs both have rectangular vertical planes
             for plane in range(0, len(new_zpts) - 1):
                 for zpt in range(0, len(new_zpts[plane]) - 1):
-                    print(plane, zpt)
                     # Create the surface polygon:
                     tpu_surf = Polygon([new_zpts[plane][zpt], new_zpts[plane + 1][zpt], new_zpts[plane + 1][zpt + 1], new_zpts[plane][zpt + 1]])
                     tpu_polys.append(tpu_surf)
@@ -390,22 +390,21 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             pass
         # Now that we have the building and story heights, render the 3D geometries:
         # Extract points for the building footprint and add the base z coordinate:
-        geo_keys = self.hasFootprint.keys()
+        geo_keys = self.hasGeometry['Footprint'].keys()
+        #geo_keys = self.hasFootprint.keys()
         for key in geo_keys:
             if key == 'type':
                 pass
             else:
-                xs, ys = self.hasFootprint[key].exterior.xy
                 new_zpts = []
                 roof_zs = []
-                base_z = 0
                 # Create z coordinates for each story:
                 for story_num in range(0, len(self.hasStorey)):
                     zcoord = self.hasStorey[story_num].hasElevation[0]
-                    zs = self.create_zcoords(self.hasFootprint[key], zcoord)
+                    zs = self.create_zcoords(self.hasGeometry['Footprint'][key], zcoord)
                     if story_num == len(self.hasStorey) - 1:
                         zcoord_roof = self.hasStorey[story_num].hasElevation[-1]
-                        roof_zs = self.create_zcoords(self.hasFootprint[key], zcoord_roof)
+                        roof_zs = self.create_zcoords(self.hasGeometry['Footprint'][key], zcoord_roof)
                     else:
                         pass
                     # Save 3D coordinates:
@@ -416,11 +415,17 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 fig = plt.figure()
                 ax = plt.axes(projection='3d')
                 for plane in range(0, len(new_zpts)-1):
+                    # Add the bottom and top planes for the Story:
+                    plane_poly1 = Polygon(new_zpts[plane])
+                    plane_poly2 = Polygon(new_zpts[plane+1])
+                    self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(plane_poly1)
+                    self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(plane_poly2)
                     for zpt in range(0, len(new_zpts[plane])-1):
                         # Create the surface polygon:
                         surf_poly = Polygon([new_zpts[plane][zpt], new_zpts[plane+1][zpt], new_zpts[plane+1][zpt+1], new_zpts[plane][zpt+1]])
                         # Save the polygon to the storey's geometry:
                         self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(surf_poly)
+                        self.hasStorey[plane].hasGeometry['Surfaces'][key].append(surf_poly)
                         # Extract xs, ys, and zs and plot
                         surf_xs = []
                         surf_ys = []
@@ -434,11 +439,16 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 # Show the surfaces for each story:
                 plt.show()
                 # Define full 3D surface renderings for the building using base plane and top plane:
+                base_poly = Polygon(new_zpts[0])
+                top_poly = Polygon(new_zpts[-1])
+                self.hasGeometry['3D Geometry'][key].append(base_poly)
+                self.hasGeometry['3D Geometry'][key].append(top_poly)
                 for pt in range(0, len(new_zpts[0])-1):
                     # Create the surface polygon:
                     bsurf_poly = Polygon([new_zpts[0][pt], new_zpts[-1][pt], new_zpts[-1][pt + 1], new_zpts[0][pt + 1]])
                     # Save the polygon to the building geometry:
                     self.hasGeometry['3D Geometry'][key].append(bsurf_poly)
+                    self.hasGeometry['Surfaces'][key].append(bsurf_poly)
         # Generate a set of building elements (with default attributes) for the parcel:
         self.parcel_elements(self)
         # Populate instance attributes informed by national survey data:
@@ -470,12 +480,14 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             # Check if point is within the polygon in this row:
             poly = data['geometry'][row]
             if ref_pt.within(poly):
-                parcel.hasFootprint['geodesic_geometry'] = poly
-                parcel.hasFootprint['type'] = 'open data'
+                parcel.hasGeometry['Footprint']['geodesic'] = poly
+                parcel.hasGeometry['Footprint']['type'] = 'open data'
+                #parcel.hasFootprint['geodesic_geometry'] = poly
+                #parcel.hasFootprint['type'] = 'open data'
             else:
                 pass
         # If the lon, lat of the parcel does not fall within bounds of any of the footprints, assign nearest neighbor:
-        if parcel.hasFootprint['type'] is None:
+        if parcel.hasGeometry['Footprint']['type'] is None:
             # Populate the KD tree using the centroids of the building footprints:
             centroids = data['geometry'].apply(lambda ind: [ind.centroid.x, ind.centroid.y]).tolist()
             kdtree = spatial.KDTree(centroids)
@@ -491,29 +503,28 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     pass
             # Find the identified building footprints:
             if len(neigh_list[1]) == 1:
-                parcel.hasFootprint['geodesic_geometry'] = data['geometry'][neigh_list[1][0]]
-                parcel.hasFootprint['type'] = 'open data'
+                parcel.hasGeometry['Footprint']['geodesic'] = data['geometry'][neigh_list[1][0]]
+                parcel.hasGeometry['Footprint']['type'] = 'open data'
             else:
                 print('More than 1 building footprint identified', parcel.pid, parcel.address)
                 # In the future, might be able to do a match by considering the height of the parcel and it's area
 
         # Assign a regular footprint to any buildings without an open data footprint:
-        if parcel.hasFootprint['type'] == 'open data':
+        if parcel.hasGeometry['Footprint']['type'] == 'open data':
             pass
         else:
-            parcel.hasFootprint['type'] = 'default'
-            length = (sqrt(self.hasArea/num_stories))*(1/(2*sin(pi/4))) # Divide total building area by number of stories and take square root, divide by 2
+            parcel.hasGeometry['Footprint']['type'] = 'default'
+            length = (sqrt(self.hasGeometry['Area']/num_stories))*(1/(2*sin(pi/4))) # Divide total building area by number of stories and take square root, divide by 2
             p1 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 45)
             p2 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 135)
             p3 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 225)
             p4 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 315)
-            parcel.hasFootprint['geodesic_geometry'] = Polygon([(p1.longitude, p1.latitude), (p2.longitude, p2.latitude), (p3.longitude, p3.latitude), (p4.longitude, p4.latitude)])
+            parcel.hasGeometry['Footprint']['geodesic'] = Polygon([(p1.longitude, p1.latitude), (p2.longitude, p2.latitude), (p3.longitude, p3.latitude), (p4.longitude, p4.latitude)])
         # Given the geodesic footprint, calculate the local (x,y) coordinates for the building footprint:
         # Find the distance between exterior points and the building centroid (origin) to define a new coordinate system:
-        xs, ys = parcel.hasFootprint['geodesic_geometry'].exterior.xy
-        origin = parcel.hasFootprint['geodesic_geometry'].centroid
+        xs, ys = parcel.hasGeometry['Footprint']['geodesic'].exterior.xy
+        origin = parcel.hasGeometry['Footprint']['geodesic'].centroid
         point_list = []
-        yc = []
         for ind in range(0, len(xs)):
             # Find the distance between x, y at origin and x, y for each point:
             xdist = distance.distance((origin.y, origin.x), (origin.y, xs[ind])).miles * 5280  # [ft]
@@ -530,7 +541,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         # Create a new polygon object:
         xy_poly = Polygon(point_list)
         # Add to Parcel:
-        parcel.hasFootprint['local_geometry'] = xy_poly
+        parcel.hasGeometry['Footprint']['local'] = xy_poly
 
 
     def parcel_elements(self, parcel):
@@ -568,7 +579,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     # Create a new Wall Instance:
                     ext_wall = Wall()
                     ext_wall.isExterior = True
-                    ext_wall.hasHeight = storey.hasHeight
+                    ext_wall.hasHeight = storey.hasGeometry['Height']
                     ext_wall.hasGeometry['1D Geometry'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[ind, col+1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
                     ext_wall.hasLength = ext_wall.hasGeometry['1D Geometry'].length
                     new_wall_list.append(ext_wall)
@@ -594,8 +605,7 @@ class Storey(Zone):
         # Attributes outside of BOT Ontology:
         self.hasName = None
         self.hasElevation = []
-        self.hasHeight = None
-        self.hasGeometry = {'3D Geometry': {'geodesic_geometry': [], 'local_geometry': []}, '2D Geometry': None}
+        self.hasGeometry = {'3D Geometry': {'geodesic': [], 'local': []}, 'Surfaces': {'geodesic': [], 'local': []}}
         # Add a placeholder for Interface objects
         self.hasInterface = []
 
