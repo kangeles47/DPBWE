@@ -78,11 +78,25 @@ class Zone:
                         if storey.hasElement[k] == self.hasElement[k]:
                             print('Building story-wise elements have already been updated')
                         else:
-                            self.hasElement[k].append(storey.hasElement[k])
+                            # Create a list with existing and new story's elements and choose only unique values:
+                            elem_list = self.hasElement[k] + storey.hasElement[k]
+                            unique_elem = set(elem_list)
+                            self.hasElement.update({k: list(unique_elem)})
                     else:
-                        self.hasElement[k].append(storey.hasElement[k])
+                        self.hasElement.update({k: storey.hasElement[k]})
         elif isinstance(self, Storey):
-            self.hasElement.append(list(self.containsElement.values()))
+            for space in self.hasSpace:
+                for k in space.hasElement:
+                    if k in self.hasElement:
+                        if space.hasElement[k] == self.hasElement[k]:
+                            print('Story space-wise elements have already been updated')
+                        else:
+                            # Create a list with existing and new story's elements and choose only unique values:
+                            elem_list = self.hasElement[k] + space.hasElement[k]
+                            unique_elem = set(elem_list)
+                            self.hasElement.update({k: list(unique_elem)})
+                    else:
+                        self.hasElement.update({k: space.hasElement[k]})
 
     def update_interfaces(self):
         # Simple function to easily update hasElement assignment
@@ -555,33 +569,33 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         a = get_cc_zone_width(parcel)  # Determine the zone width
         zone_pts, int_poly, zone2_polys = find_cc_zone_points(parcel, a, roof_flag=True, edition=None)  # Coordinates for start/end of zone locations
         # Assume that walls span one story for now:
-        for storey in range(0, len(parcel.hasStorey)-1):
+        for storey in range(0, len(parcel.hasStorey)):
             # Create an empty list to hold all elements:
             element_dict = {'Floor': [], 'Walls': [], 'Ceiling': [], 'Roof': []}
             # Generate floor and ceiling instance(s):
-            #new_floor_list = []
             if storey == 0:
                 new_floor1 = Floor()
                 new_floor1.hasElevation = parcel.hasStorey[storey].hasElevation[0]
-                #new_floor_list.append(new_floor1)
                 element_dict['Floor'].append(new_floor1)
             else:
-                # Reference the prior story's base floor:
+                # Reference the prior story's top floor:
                 floor1 = parcel.hasStorey[storey-1].hasElement['Floor'][1]
+                element_dict['Floor'].append(floor1)
+            # Top floor:
+            if storey == len(parcel.hasStorey)-1:
+                new_roof = Roof()
+                # Add roof to the storey:
+                parcel.hasStorey[storey].adjacentElement.update({'Roof': new_roof})
+                element_dict['Roof'].append(new_roof)
+            else:
+                new_floor2 = Floor()
+                new_floor2.hasElevation = parcel.hasStorey[storey].hasElevation[1]
+                # new_floor_list.append(new_floor2)
+                element_dict['Floor'].append(new_floor2)
             # Create a new ceiling for the floor:
             new_ceiling = Ceiling()
             # Add the ceiling to element_dict:
             element_dict['Ceiling'].append(new_ceiling)
-            if storey == parcel.hasStorey[-1]:
-                new_roof = Roof()
-                # Add roof to the storey:
-                storey.adjacentElement.update({'Roof': new_roof})
-                element_dict['Roof'].append(new_roof)
-            else:
-                new_floor2 = Floor()
-                new_floor2.hasElevation = storey.hasElevation[1]
-                # new_floor_list.append(new_floor2)
-                element_dict['Floor'].append(new_floor2)
             # Parcel models: Use ASCE 7 C&C zones to create a preliminary set of wall elements
             # Loop through zone_pts and assign geometries to wall elements:
             new_wall_list = []
@@ -590,7 +604,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     # Create a new Wall Instance:
                     ext_wall = Wall()
                     ext_wall.isExterior = True
-                    ext_wall.hasGeometry['Height'] = storey.hasGeometry['Height']
+                    ext_wall.hasGeometry['Height'] = parcel.hasStorey[storey].hasGeometry['Height']
                     ext_wall.hasGeometry['1D Geometry'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[ind, col+1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
                     ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry'].length
                     new_wall_list.append(ext_wall)
@@ -600,13 +614,13 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             for w in range(0, len(new_wall_list)-1):
                 # Create new Interface instance
                 new_interface = Interface(new_wall_list[w], new_wall_list[w+1])
-                storey.hasInterface.append(new_interface)
+                parcel.hasStorey[storey].hasInterface.append(new_interface)
             # Add all elements to the storey's "hasElement" attribute:
-            storey.containsElement.update({'Ceiling': element_dict['Ceiling']})
-            storey.adjacentElement.update({'Floor': element_dict['Floor']})
-            storey.adjacentElement.update({'Walls': element_dict['Walls']})
+            parcel.hasStorey[storey].containsElement.update({'Ceiling': element_dict['Ceiling']})
+            parcel.hasStorey[storey].adjacentElement.update({'Floor': element_dict['Floor']})
+            parcel.hasStorey[storey].adjacentElement.update({'Walls': element_dict['Walls']})
             # Update hasElement attribute for the storey:
-            storey.hasElement.update(element_dict)
+            parcel.hasStorey[storey].hasElement.update(element_dict)
 
 
 class Storey(Zone):
