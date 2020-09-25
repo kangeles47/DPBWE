@@ -46,6 +46,8 @@ class Zone:
         self.intersectingElement = {}  # Building elements that intersect the zone
         self.hasElement = {}
         self.has3DModel = None
+        # Adding in a hasInterface element to keep track of interface objects:
+        self.hasInterface = []
 
     def update_zones(self):
         # Simple function to easily update containsZone assignment
@@ -134,13 +136,24 @@ class Zone:
         if isinstance(self, Site):
             for bldg in self.hasBuilding:
                 for interface in bldg.hasInterface:
-                    self.hasInterface.append(interface)
+                    if interface not in self.hasInterface:
+                        self.hasInterface.append(interface)
+                    else:
+                        pass
         elif isinstance(self, Building):
             for storey in self.hasStorey:
-                self.hasInterface.append(storey.hasInterface)
+                for interface in storey.hasInterface:
+                    if interface not in self.hasInterface:
+                        self.hasInterface.append(interface)
+                    else:
+                        pass
         elif isinstance(self, Storey):
-            # This one should be according to the identified spaces (if applicable)
-                pass
+            for space in self.hasSpace:
+                for interface in space.hasInterface:
+                    if interface not in self.hasInterface:
+                        self.hasInterface.append(interface)
+                    else:
+                        pass
 
 
 class Site(Zone):
@@ -168,7 +181,6 @@ class Site(Zone):
          # Add the site as a Zone:
         self.hasName = 'Site' + str(site_num)
         self.containsZone.append(self)
-        self.hasInterface = []
 
 
 class Building(Zone):
@@ -191,7 +203,6 @@ class Building(Zone):
             new_storey.hasName = 'Storey' + str(i)
             self.hasStorey.append(new_storey)
         # Create Interface instances to relate stories:
-        self.hasInterface = []
         for stry in range(0, len(self.hasStorey)-1):
             self.hasInterface.append(Interface(self.hasStorey[stry], self.hasStorey[stry+1]))
         # Buildings contain all of the zones, spaces, elements, etc. within each storey:
@@ -531,8 +542,6 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             if ref_pt.within(poly):
                 parcel.hasGeometry['Footprint']['geodesic'] = poly
                 parcel.hasGeometry['Footprint']['type'] = 'open data'
-                #parcel.hasFootprint['geodesic_geometry'] = poly
-                #parcel.hasFootprint['type'] = 'open data'
             else:
                 pass
         # If the lon, lat of the parcel does not fall within bounds of any of the footprints, assign nearest neighbor:
@@ -665,8 +674,6 @@ class Storey(Zone):
         self.hasName = None
         self.hasElevation = []
         self.hasGeometry = {'3D Geometry': {'geodesic': [], 'local': []}, 'Surfaces': {'geodesic': [], 'local': []}}
-        # Add a placeholder for Interface objects
-        self.hasInterface = []
 
 
 class Space(Zone):
