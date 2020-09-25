@@ -69,7 +69,13 @@ class Zone:
 
     def update_elements(self):
         # Simple function to easily update hasElement assignment
-        inst_types = ['Site', 'Building', 'Storey', 'Space']
+        inst_types = ['Site', 'Building', 'Parcel','Storey', 'Space']
+        a = str(type(self))
+        for itype in inst_types:
+            if a in itype:
+                print(type)
+            else:
+                pass
         if isinstance(self, Site):
             for bldg in self.hasBuilding:
                 for k, v in bldg.hasElement:
