@@ -67,13 +67,16 @@ class Zone:
 
     def update_elements(self):
         # Simple function to easily update hasElement assignment
+        inst_types = ['Site', 'Building', 'Storey', 'Space']
         if isinstance(self, Site):
             for bldg in self.hasBuilding:
                 for k, v in bldg.hasElement:
                     self.hasElement.append(v)
         elif isinstance(self, Building):
+            print(self.__class__.__name__)
             for storey in self.hasStorey:
                 for k in storey.hasElement:
+                    # Update the hasElement attribute:
                     if k in self.hasElement:
                         if storey.hasElement[k] == self.hasElement[k]:
                             print('Building story-wise elements have already been updated')
@@ -84,8 +87,36 @@ class Zone:
                             self.hasElement.update({k: list(unique_elem)})
                     else:
                         self.hasElement.update({k: storey.hasElement[k]})
+                    # Update the containsElement attribute:
+                    if k in self.containsElement:
+                        if storey.containsElement[k] == self.containsElement[k]:
+                            print('Building story-wise (contains) elements have already been updated')
+                        else:
+                            # Create a list with existing and new story's elements and choose only unique values:
+                            elem_list = self.containsElement[k] + storey.containsElement[k]
+                            unique_elem = set(elem_list)
+                            self.containsElement.update({k: list(unique_elem)})
+                    else:
+                        if k in storey.containsElement:
+                            self.containsElement.update({k: storey.containsElement[k]})
+                        else:
+                            pass
+                # Update adjacentElement attribute (exterior walls):
+                if 'Walls' in self.adjacentElement:
+                    # Create a list with existing and new story's elements and choose only unique values:
+                    wall_list = self.adjacentElement['Walls'] + storey.adjacentElement['Walls']
+                    unique_walls = set(wall_list)
+                    self.adjacentElement.update({'Walls': list(unique_walls)})
+                else:
+                    self.adjacentElement.update({'Walls': storey.adjacentElement['Walls']})
+            # Add the roof as an adjacentElement for the building:
+            if 'Roof' in self.adjacentElement:
+                print('Roof already defined as an adjacent element for this building')
+            else:
+                self.adjacentElement.update({'Roof': self.hasStorey[-1].adjacentElement['Roof']})
         elif isinstance(self, Storey):
             for space in self.hasSpace:
+                # Update the hasElement attribute:
                 for k in space.hasElement:
                     if k in self.hasElement:
                         if space.hasElement[k] == self.hasElement[k]:
@@ -604,6 +635,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     # Create a new Wall Instance:
                     ext_wall = Wall()
                     ext_wall.isExterior = True
+                    ext_wall.inLoadPath = True
                     ext_wall.hasGeometry['Height'] = parcel.hasStorey[storey].hasGeometry['Height']
                     ext_wall.hasGeometry['1D Geometry'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[ind, col+1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
                     ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry'].length

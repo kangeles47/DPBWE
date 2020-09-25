@@ -23,7 +23,7 @@ def get_roof_uplift_pressure(edition, bldg, length, exposure, wind_speed, direct
     elif direction == 'normal' and (edition == 'ASCE 7-88' or edition == 'ASCE 7-93'):
         pass
     # Step 2: Determine the use case:
-    ratio = bldg.hasHeight / length
+    ratio = bldg.hasGeometry['Height'] / length
     if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
         if direction == 'parallel':
             if ratio <= 2.5:
@@ -62,18 +62,18 @@ def get_roof_uplift_pressure(edition, bldg, length, exposure, wind_speed, direct
         else:
             vfactor = pd.read_csv(file_path + 'v.csv', index_col='Edition')[str(wind_speed)][edition] # Leave here for now, for regional simulation will probably want to load everything somewhere outside
     # Similitude in height:
-    if bldg.hasHeight == ref_hbldg:
+    if bldg.hasGeometry['Height'] == ref_hbldg:
         hfactor = 0.0
     else:
         if edition == 'ASCE 7-93':
-            hfactor = pd.read_csv(file_path + 'h93.csv')[str(bldg.hasHeight) + ' ft'][0]
+            hfactor = pd.read_csv(file_path + 'h93.csv')[str(bldg.hasGeometry['Height']) + ' ft'][0]
         else:
-            hfactor = pd.read_csv(file_path + 'h.csv')[str(bldg.hasHeight) + ' ft'][0]
+            hfactor = pd.read_csv(file_path + 'h.csv')[str(bldg.hasGeometry['Height']) + ' ft'][0]
     # Similitude in exposure categories:
     if exposure == ref_exposure:
         efactor = 0.0
     else:
-        efactor = pd.read_csv(file_path + 'e' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][bldg.hasHeight]
+        efactor = pd.read_csv(file_path + 'e' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][bldg.hasGeometry['Height']]
     # Step 6: Apply the similitude parameters to get the final pressures for each zone:
     factor_lst = [vfactor, hfactor, efactor]
     psim = pref.loc[edition]
@@ -287,7 +287,7 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
     # Assign MWFRS pressures for the roof:
     # Set up parameters to access pressures:
     # (1) Roof pitch
-    roof_elem = bldg.hasStorey[-1].containsElement['Roof']
+    roof_elem = bldg.hasStorey[-1].hasElement['Roof'][0]
     if isinstance(roof_elem.hasPitch, str):
         if roof_elem.hasPitch == 'flat':
             # Assign angle based on 2:12 slope
@@ -367,7 +367,7 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
             # Set up tag for 'ZonePolys' columns:
             zonepoly_name = 'ZonePolys' + str(wdir)
             if edition != 'ASCE 7-88' and edition != 'ASCE 7-93':
-                hdist = [bldg.hasHeight/2, bldg.hasHeight, bldg.hasHeight*2]
+                hdist = [bldg.hasGeometry['Height']/2, bldg.hasGeometry['Height'], bldg.hasGeometry['Height']*2]
                 if real_directions[wdir] == min(real_directions):
                     ref_lines = rlines1
                 else:
@@ -414,8 +414,8 @@ def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
     for storey in bldg.hasStorey:
         # Create a list of all Wall C&C types within this story
         wcc_lst = pd.DataFrame(columns=['Element', 'Type'])
-        for elem in storey.containsElement['Walls']:
-            if elem.isExterior and not elem.isLoadbearing:
+        for elem in storey.adjacentElement['Walls']:
+            if elem.isExterior and not elem.inLoadPath:
                 # Figure out what ctype the wall component is:
                 ctype = pressures.get_ctype(elem)
                 wcc_lst = wcc_lst.append({'Element': elem, 'Type': ctype}, ignore_index=True)

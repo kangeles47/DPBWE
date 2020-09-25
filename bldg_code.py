@@ -113,7 +113,7 @@ class FBC(BldgCode):
     def roof_attributes(self, edition, parcel, survey):
 
         #Populate roof attributes for this instance (parcel)
-        roof_element = parcel.hasStorey[-1].containsElement['Roof']
+        roof_element = parcel.hasStorey[-1].hasElement['Roof'][0]
         if edition == '2001 FBC' and survey == 'CBECS' and parcel.hasYearBuilt < 2003:
             # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
             if roof_element.hasCover == 'Built-up' or roof_element.hasCover == 'Concrete' or roof_element.hasCover == 'Plastic/rubber/synthetic sheeting' or roof_element.hasCover == 'Metal surfacing':
@@ -125,7 +125,6 @@ class FBC(BldgCode):
                 roof_element.hasPitch = 'unknown'
         elif edition == '1988 SBC' and survey == 'CBECS' and parcel.hasYearBuilt < 1990:
             # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
-            roof_element = parcel.hasStorey[-1].containsElement['Roof']
             if roof_element.hasCover == 'Built-up' or roof_element.hasCover == 'Metal surfacing' or roof_element.hasCover == 'Single/multiple ply' or roof_element.hasCover == 'Concrete roof' or roof_element.hasCover == 'Metal & rubber' or roof_element.hasCover == 'Slate & built-up' or roof_element.hasCover == 'Built-up & metal' or roof_element.hasCover == 'Built-up & s/m ply':
                 roof_element.hasPitch = 'flat'  # roof slopes under 2:12
                 roof_element.hasShape = 'flat'
