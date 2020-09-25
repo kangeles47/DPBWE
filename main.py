@@ -1,5 +1,5 @@
 from asset import Parcel
-from code_capacities import get_cc_zone_width, find_cc_zone_points, assign_wcc_pressures, assign_rmwfrs_pressures
+from code_capacities import get_cc_zone_width, find_cc_zone_points, assign_wcc_pressures, assign_rmwfrs_pressures, assign_rcc_pressures
 
 # Initialization script for data-driven workflow:
 
@@ -23,12 +23,14 @@ edition = 'ASCE 7-10'
 exposure = 'B'
 wind_speed = 120
 wind_direction = 0
-p = assign_rmwfrs_pressures(test, edition, exposure, wind_speed)
+assign_rmwfrs_pressures(test, edition, exposure, wind_speed)
+# Assign pressures to roof assembly:
 a = get_cc_zone_width(test)
 print('zone width in ft:', a)
 roof_flag = True
 zone_pts, int_poly, zone2_polys = find_cc_zone_points(test, a, roof_flag, edition)
 assign_wcc_pressures(test, zone_pts, edition, exposure, wind_speed)
+#assign_rcc_pressures(test, zone_pts, int_poly, edition, exposure, wind_speed)
 print(exposure)
 
 

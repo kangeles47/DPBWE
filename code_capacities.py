@@ -285,6 +285,7 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
     # Create an instance of PressureCalc:
     pressures = PressureCalc()
     # Assign MWFRS pressures for the roof:
+    bldg.hasElement['Roof'][0].hasCapacity['type'].append('MWFRS Pressure')
     # Set up parameters to access pressures:
     # (1) Roof pitch
     roof_elem = bldg.hasStorey[-1].hasElement['Roof'][0]
@@ -405,7 +406,7 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
                     pass
             # Once zone geometries have been defined and pressures mapped, store the Dataframe:
             uplift_pressures[direction] = prmwfrs
-    return uplift_pressures
+    bldg.hasElement['Roof'][0].hasCapacity['value'].append(uplift_pressures)
 
 def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
     # Create an instance of PressureCalc:
@@ -415,17 +416,18 @@ def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
         # Create a list of all Wall C&C types within this story
         wcc_lst = pd.DataFrame(columns=['Element', 'Type'])
         for elem in storey.adjacentElement['Walls']:
-            if elem.isExterior and not elem.inLoadPath:
+            if elem.isExterior and elem.inLoadPath:
                 # Figure out what ctype the wall component is:
                 ctype = pressures.get_ctype(elem)
                 wcc_lst = wcc_lst.append({'Element': elem, 'Type': ctype}, ignore_index=True)
+                elem.hasCapacity['type'].append('C&C Pressure')
             else:
                 pass
         # Find all unique C&C types and calculate (+)/(-) pressures at each zone:
         zone_pressures = pd.DataFrame(columns=['Type', 'Pressures'])
         for ctype in wcc_lst['Type'].unique():
             # (+)/(-) pressures:
-            psim = get_wcc_pressure(edition, bldg.hasHeight, storey.hasHeight, ctype, exposure, wind_speed, bldg.hasStorey[-1].containsElement['Roof'].hasPitch)
+            psim = get_wcc_pressure(edition, bldg.hasGeometry['Height'], storey.hasGeometry['Height'], ctype, exposure, wind_speed, bldg.hasStorey[-1].hasElement['Roof'][0].hasPitch)
             # Incorporate pressure minimums:
             if bldg.hasYearBuilt > 2010 and (abs(psim) < 16):  # [lb]/[ft^2]
                 if psim < 0:
@@ -444,9 +446,9 @@ def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
                     # Create a line segment using zone 4 points
                     zline = LineString([zone_pts['NewZoneStart'][seg], zone_pts['NewZoneEnd'][seg]])
                     # Check if element falls within the zone or is exactly at zone points or is outsidezone 4:
-                    if Point(elem.has1DModel.coords[0]).within(zline) and Point(elem.has1DModel.coords[1]).within(zline):
+                    if Point(elem.hasGeometry['1D Geometry'].coords[0]).within(zline) and Point(elem.hasGeometry['1D Geometry'].coords[1]).within(zline):
                         zone4_flag = True
-                    elif Point(elem.has1DModel.coords[0]) == zone_pts['NewZoneStart'][seg] and Point(elem.has1DModel.coords[1]) == zone_pts['NewZoneEnd'][seg]:
+                    elif Point(elem.hasGeometry['1D Geometry'].coords[0]) == zone_pts['NewZoneStart'][seg] and Point(elem.hasGeometry['1D Geometry'].coords[1]) == zone_pts['NewZoneEnd'][seg]:
                         zone4_flag = True
                     else:
                         pass
@@ -457,17 +459,17 @@ def assign_wcc_pressures(bldg, zone_pts, edition, exposure, wind_speed):
             # Find the index where the element C&C type matches with unique types in zone_pressures:
             utype_ind = zone_pressures[zone_pressures['Type'] == ectype].index.values
             if zone4_flag:
-                elem.hasCapacity['Positive'] = zone_pressures.iloc[utype_ind]['Pressures'][0]['Zone 4+']
-                elem.hasCapacity['Negative'] = zone_pressures.iloc[utype_ind]['Pressures'][0]['Zone 4-']
+                wp_dict = {'Positive': zone_pressures.iloc[utype_ind]['Pressures'][0]['Zone 4+'], 'Negative': zone_pressures.iloc[utype_ind]['Pressures'][0]['Zone 4-']}
+                elem.hasCapacity['value'].append(wp_dict)
             else:
-                elem.hasCapacity['Positive'] = zone_pressures.iloc[utype_ind]['Pressures'][0]['Zone 5+']
-                elem.hasCapacity['Negative'] = zone_pressures.iloc[utype_ind]['Pressures'][0]['Zone 5-']
+                wp_dict = {'Positive': zone_pressures.iloc[utype_ind]['Pressures'][0]['Zone 5+'], 'Negative':zone_pressures.iloc[utype_ind]['Pressures'][0]['Zone 5-'] }
+                elem.hasCapacity['value'].append(wp_dict)
 
 def assign_rcc_pressures(bldg, zone_pts, int_poly, edition, exposure, wind_speed):
     # Create an instance of PressureCalc:
     pressures = PressureCalc()
     # Assign C&C pressures given the component type and its location (zone):
-    roof_elem = bldg.hasStorey[-1].containsElement['Roof']
+    roof_elem = bldg.hasStorey[-1].hasElement['Roof'][0]
     # Create a list of all C&C types within the roof:
     rcc_lst = pd.DataFrame(columns=['Element', 'Type'])
     # Figure out what ctype the main roof component is:
@@ -475,17 +477,20 @@ def assign_rcc_pressures(bldg, zone_pts, int_poly, edition, exposure, wind_speed
     rcc_lst = rcc_lst.append({'Element': roof_elem, 'Type': ctype}, ignore_index=True)
     # Figure out what the ctype is for any additional roof components:
     if roof_elem.hasSubElement is None:
-        pass
+        bldg.hasStorey[-1].hasElement['Roof'][0].hasCapacity['type'].append('C&C Pressure')
+        # Figure out what ctype the roof cover is:
+        ctype = pressures.get_ctype(roof_elem)
+        rcc_lst = rcc_lst.append({'Element': roof_elem, 'Type': ctype}, ignore_index=True)
     else:
         for elem in roof_elem.hasSubElement:
-            # Figure out what ctype the wall component is:
+            # Figure out what ctype the roof component is:
             ctype = pressures.get_ctype(elem)
             rcc_lst = rcc_lst.append({'Element': elem, 'Type': ctype}, ignore_index=True)
     # Find all unique C&C types and calculate (+)/(-) pressures at each zone:
     zone_pressures = pd.DataFrame(columns=['Type', 'Pressures'])
     for ctype in rcc_lst['Type'].unique():
         # (+)/(-) pressures:
-        psim = get_rcc_pressure(edition, bldg.hasHeight, ctype, exposure, wind_speed, roof_elem.hasPitch)
+        psim = get_rcc_pressure(edition, bldg.hasGeometry['Height'], ctype, exposure, wind_speed, roof_elem.hasPitch)
         # Incorporate pressure minimums:
         if bldg.hasYearBuilt > 2010 and (abs(psim) < 16):  # [lb]/[ft^2]
             if psim < 0:
@@ -495,7 +500,7 @@ def assign_rcc_pressures(bldg, zone_pts, int_poly, edition, exposure, wind_speed
         else:
             pass
         zone_pressures = zone_pressures.append({'Type': ctype, 'Pressures': psim}, ignore_index=True)
-    # Assign zone pressures to each Wall C&C Element
+    # Assign zone pressures to each Roof C&C Element:
     for elem in rcc_lst['Element']:
         zone2_flag = False
         zone1_flag = False
@@ -505,11 +510,11 @@ def assign_rcc_pressures(bldg, zone_pts, int_poly, edition, exposure, wind_speed
                 # Create a line segment using zone 4 points
                 zline = LineString([zone_pts['NewZoneStart'][seg], zone_pts['NewZoneEnd'][seg]])
                 # Check if element falls within the zone or is exactly at zone points or is outsidezone 4:
-                if elem.has1DModel[0].within(zline) and elem.has1DModel[1].within(zline):
+                if elem.hasGeometry['1D Geometry'][0].within(zline) and elem.hasGeometry['1D Geometry'][1].within(zline):
                     zone2_flag = True
-                elif elem.has1DModel[0] == zone_pts['NewZoneStart'][seg] and elem.has1DModel[1] == zone_pts['NewZoneEnd'][seg]:
+                elif elem.hasGeometry['1D Geometry'][0] == zone_pts['NewZoneStart'][seg] and elem.hasGeometry['1D Geometry'][1] == zone_pts['NewZoneEnd'][seg]:
                     zone2_flag = True
-                elif elem.has1DModel[0].within(int_poly):
+                elif elem.hasGeometry['1D Geometry'][0].within(int_poly):
                     zone1_flag = True
                 else:
                     pass
@@ -519,14 +524,14 @@ def assign_rcc_pressures(bldg, zone_pts, int_poly, edition, exposure, wind_speed
         etype_ind = rcc_lst.loc[rcc_lst['Element'] == elem]
         type_ind = zone_pressures.loc[zone_pressures['Type'] == rcc_lst['Type'][etype_ind]]
         if zone2_flag:
-            elem.hasCapacity['Positive'] = zone_pressures['Pressures'][type_ind]['Zone2+']
-            elem.hasCapacity['Negative'] = zone_pressures['Pressures'][type_ind]['Zone2-']
+            rp_dict = {'Positive': zone_pressures['Pressures'][type_ind]['Zone2+'], 'Negative': zone_pressures['Pressures'][type_ind]['Zone2-']}
+            elem.hasCapacity['value'] = rp_dict
         elif zone1_flag:
-            elem.hasCapacity['Positive'] = zone_pressures['Pressures'][type_ind]['Zone1+']
-            elem.hasCapacity['Negative'] = zone_pressures['Pressures'][type_ind]['Zone1-']
+            rp_dict = {'Positive': zone_pressures['Pressures'][type_ind]['Zone1+'], 'Negative': zone_pressures['Pressures'][type_ind]['Zone1-']}
+            elem.hasCapacity['value'] = rp_dict
         else:
-            elem.hasCapacity['Positive'] = zone_pressures['Pressures'][type_ind]['Zone3+']
-            elem.hasCapacity['Negative'] = zone_pressures['Pressures'][type_ind]['Zone3-']
+            rp_dict = {'Positive': zone_pressures['Pressures'][type_ind]['Zone3+'], 'Negative': zone_pressures['Pressures'][type_ind]['Zone3-']}
+            elem.hasCapacity['value'] = rp_dict
             
 def dist_calc(lon1, lat1, lon2, lat2):
     # Calculate distance between two longitude, latitude points using the Haversine formula:

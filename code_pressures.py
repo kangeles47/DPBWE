@@ -1227,7 +1227,7 @@ class PressureCalc:
         elif isinstance(component, Roof):
             # Determine the ctype for the component:
             mtl_ctype = ['Metal surfacing', 'Built-up', 'Built-up and metal']
-            if component.hasType in mtl_ctype:
+            if component.hasCover in mtl_ctype:
                 ctype = 'Metal deck'
             else:
                 print('C&C type currently not supported')
