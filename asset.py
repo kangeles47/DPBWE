@@ -422,6 +422,18 @@ class Building(Zone):
                 z_bpoly.append(bpt[2])
             # Plot the building geometry:
             ax2.plot(x_bpoly, y_bpoly, z_bpoly, 'k')
+            # Make the panes transparent:
+            ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+            ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+            ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+            # Make the grids transparent:
+            ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+            ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+            ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+            # Plot labels
+            ax.set_xlabel('East-West')
+            ax.set_ylabel('North-South')
+            ax.set_zlabel('Height [ft]')
         ax2.set_xlabel('E-W direction')
         ax2.set_ylabel('N-S direction')
         ax2.set_title('Surfaces for TPU Wind Direction: '+str(tpu_wdir))
@@ -446,6 +458,23 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         # Define building-level attributes that are specific to parcel models
         # Building footprint:
         self.assign_footprint(self, num_stories)
+        # Clean up building footprint for illustrative example:
+        for key in self.hasGeometry['Footprint']:
+            if key == 'type':
+                pass
+            else:
+                xcoord, ycoord = self.hasGeometry['Footprint'][key].exterior.xy
+                new_point_list = []
+                for idx in range(2, len(xcoord)-2):
+                    new_point_list.append(Point(xcoord[idx], ycoord[idx]))
+                # Create a new polygon:
+                self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
+                # Plot the building footprint:
+                xpoly, ypoly = self.hasGeometry['Footprint'][key].exterior.xy
+                plt.plot(np.array(xpoly)/3.281,np.array(ypoly)/3.281, 'k')
+                plt.xlabel('x [m]')
+                plt.ylabel('y [m]')
+                plt.show()
         # Create an instance of the BldgCode class and populate building-level code-informed attributes for the parcel:
         desc_flag = True  # Need to access a building code that will give us code-based descriptions
         if self.hasLocation['State'] == 'FL':
@@ -455,7 +484,6 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         # Now that we have the building and story heights, render the 3D geometries:
         # Extract points for the building footprint and add the base z coordinate:
         geo_keys = self.hasGeometry['Footprint'].keys()
-        #geo_keys = self.hasFootprint.keys()
         for key in geo_keys:
             if key == 'type':
                 pass
@@ -499,7 +527,19 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                             surf_ys.append(surf_points[1])
                             surf_zs.append(surf_points[2])
                         # Plot the surfaces for the entire building to verify:
-                        ax.plot(surf_xs, surf_ys, surf_zs)
+                        ax.plot(surf_xs, surf_ys, surf_zs, 'k')
+                        # Make the panes transparent:
+                        ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+                        ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+                        ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+                        # Make the grids transparent:
+                        ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                        ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                        ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                        # Plot labels
+                        ax.set_xlabel('East-West')
+                        ax.set_ylabel('North-South')
+                        ax.set_zlabel('Height [ft]')
                 # Show the surfaces for each story:
                 plt.show()
                 # Define full 3D surface renderings for the building using base plane and top plane:
