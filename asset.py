@@ -5,6 +5,7 @@ from shapely.geometry import Point, Polygon, LineString
 from scipy import spatial
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from element import Roof, Wall, Floor, Ceiling
 import bldg_code
 from survey_data import SurveyData
@@ -411,8 +412,8 @@ class Building(Zone):
             # Define various line colors to keep track of surfaces:
             colors = ['b', 'g', 'r', 'y', 'm']
             # Plot the surface geometry:
-            ax2.plot(poly_xs, poly_ys, poly_zs, colors[i-1], label='Surface'+str(i))
-        ax2.legend(loc='best')
+            ax2.plot(poly_xs, poly_ys, poly_zs, color=colors[i-1], label='Surface'+str(i))
+        #ax2.legend(loc='best')
         # Plot the building 3D Geometry:
         for poly in self.hasGeometry['3D Geometry'][key]:
             x_bpoly, y_bpoly, z_bpoly = [], [], []
@@ -422,20 +423,18 @@ class Building(Zone):
                 z_bpoly.append(bpt[2])
             # Plot the building geometry:
             ax2.plot(x_bpoly, y_bpoly, z_bpoly, 'k')
-            # Make the panes transparent:
-            ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-            ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-            ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-            # Make the grids transparent:
-            ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-            ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-            ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-            # Plot labels
-            ax.set_xlabel('East-West')
-            ax.set_ylabel('North-South')
-            ax.set_zlabel('Height [ft]')
-        ax2.set_xlabel('E-W direction')
-        ax2.set_ylabel('N-S direction')
+        # Make the panes transparent:
+        ax2.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax2.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax2.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # Make the grids transparent:
+        ax2.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax2.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax2.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # Plot labels
+        ax2.set_xlabel('x [m]')
+        ax2.set_ylabel('y [m]')
+        ax2.set_zlabel('z [m]')
         ax2.set_title('Surfaces for TPU Wind Direction: '+str(tpu_wdir))
         plt.show()
         # Step 6: Save the surfaces to the building description:
@@ -527,7 +526,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                             surf_ys.append(surf_points[1])
                             surf_zs.append(surf_points[2])
                         # Plot the surfaces for the entire building to verify:
-                        ax.plot(surf_xs, surf_ys, surf_zs, 'k')
+                        ax.plot(np.array(surf_xs)/3.281, np.array(surf_ys)/3.281, np.array(surf_zs)/3.281, 'k')
                         # Make the panes transparent:
                         ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
                         ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
@@ -537,9 +536,9 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
                         ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
                         # Plot labels
-                        ax.set_xlabel('East-West')
-                        ax.set_ylabel('North-South')
-                        ax.set_zlabel('Height [ft]')
+                        ax.set_xlabel('x [m]')
+                        ax.set_ylabel('y [m]')
+                        ax.set_zlabel('z [m]')
                 # Show the surfaces for each story:
                 plt.show()
                 # Define full 3D surface renderings for the building using base plane and top plane:

@@ -302,8 +302,7 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
     # (2a) Find the orientation of the building footprint using minimum rotated rectangle:
     rect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
     xrect, yrect = rect.exterior.xy
-    plt.plot(xrect, yrect)
-    plt.show()
+    xfpt, yfpt = bldg.hasGeometry['Footprint']['local'].exterior.xy
     # Find how many degrees ccw the building is oriented by using the angle on the bottom LHS:
     xdist = xrect[2] - xrect[1]
     ydist = yrect[2] - yrect[1]
@@ -391,13 +390,18 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
                 lst_points2.append(Point(ref_lines[j+2].coords[:][1]))
                 # Create zone geometries:
                 poly_list = []
+                fmt = [(0, ()), (0, (1, 1)), (0, (5, 5)), (0, (3, 5, 1, 5))]
                 for pt in range(0, len(lst_points1)-1):
                     rpoly = Polygon([lst_points1[pt], lst_points1[pt + 1], lst_points2[pt+1], lst_points2[pt]])  # order ccw like min_rect
                     xpoly, ypoly = rpoly.exterior.xy
-                    plt.plot(xpoly, ypoly)
+                    plt.plot(xpoly, ypoly, linestyle=fmt[pt], label='Zone '+str(pt+1), color='b')
                     # Add to DataFrame object:
                     poly_list.append(rpoly)
                 prmwfrs[zonepoly_name] = poly_list
+                plt.legend()
+                plt.plot(xfpt,yfpt, 'k')
+                plt.xlabel('x [m]')
+                plt.ylabel('y [m]')
                 plt.show()
             else:
                 if direction == 'parallel':
