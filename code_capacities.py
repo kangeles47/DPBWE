@@ -332,7 +332,7 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
     # (3) Access roof uplift pressures:
     # To get correct pressures, need to know: wind blowing parallel or normal to ridge? AND length of opposite side
     # Store the RMWFRS pressures in dictionary:
-    uplift_pressures = dict.fromkeys(['parallel', 'normal'])
+    uplift_pressures = dict.fromkeys(['normal', 'parallel'])
     for j in range(0,2):
         # Assume that the ridge runs along the longer dimension of the building:
         if info_rmwfrs['side length'][j] == max(info_rmwfrs['side length']):
@@ -390,18 +390,18 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
                 lst_points2.append(Point(ref_lines[j+2].coords[:][1]))
                 # Create zone geometries:
                 poly_list = []
-                fmt = [(0, ()), (0, (1, 1)), (0, (5, 5)), (0, (3, 5, 1, 5))]
                 for pt in range(0, len(lst_points1)-1):
                     rpoly = Polygon([lst_points1[pt], lst_points1[pt + 1], lst_points2[pt+1], lst_points2[pt]])  # order ccw like min_rect
                     xpoly, ypoly = rpoly.exterior.xy
-                    plt.plot(xpoly, ypoly, linestyle=fmt[pt], label='Zone '+str(pt+1), color='b')
+                    plt.plot(xpoly, ypoly, label='Zone '+str(pt+1), color='0.50', linewidth=1, linestyle='dashed')
                     # Add to DataFrame object:
                     poly_list.append(rpoly)
                 prmwfrs[zonepoly_name] = poly_list
-                plt.legend()
+                #plt.legend()
                 plt.plot(xfpt,yfpt, 'k')
                 plt.xlabel('x [m]')
                 plt.ylabel('y [m]')
+                plt.axis('off')
                 plt.show()
             else:
                 if direction == 'parallel':
@@ -553,65 +553,3 @@ def dist_calc(lon1, lat1, lon2, lat2):
     dist = earth_radius * c  # output distance in [ft]
 
     return dist
-
-
-# Test it out:
-#edition = 'ASCE 7-02'
-#h_bldg = 9
-#length = 27
-#ratio = h_bldg/length
-#exposure = 'B'
-#wind_speed = 120
-#direction = 'parallel'
-#ref_pitch = 9
-#ref_cat =2
-#hpr = True
-#h_ocean = True
-#encl_class = 'Enclosed'
-# Difference in wind speed:
-#psim = get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, ref_pitch)
-#pressures = PressureCalc()
-#rmps = pressures.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
-#print('real pressure:', rmps, 'change in wind speed:', psim)
-# Difference in height:
-#h_bldg = 27
-#length = 27
-#ratio = h_bldg/length
-#hpsim = get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, ref_pitch)
-#hrmps = pressures.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
-#print('real pressure:', hrmps, 'change in height:', hpsim)
-# Difference in exposure categories:
-#exposure = 'C'
-#epsim = get_roof_uplift_pressure(edition, h_bldg, length, exposure, wind_speed, direction, ref_pitch)
-#ermps = pressures.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, length, ratio, ref_pitch, ref_cat, hpr, h_ocean, encl_class)
-#print('real pressure:', ermps, 'change in exposure:', epsim)
-
-# Wall C&C:
-#edition = 'ASCE 7-02'
-#h_bldg = 9
-#h_story = 9
-#exposure = 'B'
-#wind_speed = 120
-#ref_pitch = 9
-#ref_cat =2
-#ctype = 'mullion'
-#parcel_flag = True
-#hpr = True
-#h_ocean = True
-#encl_class = 'Enclosed'
-# Difference in wind speed:
-#psim = get_wcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, ref_pitch)
-#pressures = PressureCalc()
-#area_eff = pressures.get_warea(ctype, parcel_flag, h_story)
-#wmps = pressures.wcc_pressure(wind_speed, exposure, edition, h_bldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
-#print('real pressure:', wmps, 'change in wind speed:', psim)
-# Difference in height:
-#h_bldg = 27
-#hpsim = get_wcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, ref_pitch)
-#hwmps = pressures.wcc_pressure(wind_speed, exposure, edition, h_bldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
-#print('real pressure:', hwmps, 'change in wind speed:', hpsim)
-# Difference in exposure categories:
-#exposure = 'C'
-#epsim = get_wcc_pressure(edition, h_bldg, h_story, ctype, exposure, wind_speed, ref_pitch)
-#ewmps = pressures.wcc_pressure(wind_speed, exposure, edition, h_bldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
-#print('real pressure:', ewmps, 'change in wind speed:', epsim)
