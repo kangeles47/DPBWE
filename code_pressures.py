@@ -300,6 +300,30 @@ class PressureCalc:
                         zones = 2
                     # Get back all Cps for the identified zones:
                     Cps = Cp_full[0:zones]
+                else:
+                    # Use cases between 0.5 and 1.0
+                    # Determine how many zones are present:
+                    if length <= 0.5*h_bldg:
+                        zones = 1
+                    elif 0.5*h_bldg < length <= h_bldg:
+                        zones = 2
+                    elif h_bldg < length <= 2*h_bldg:
+                        zones = 3
+                    elif length > 2*h_bldg:
+                        zones = 4
+                    # Now create an array of interpolated Cp values:
+                    cp_full05 = np.array([[-0.9, -0.18], [-0.9, -0.18], [-0.5, -0.18], [-0.3, -0.18]])
+                    cp_full1 = np.array([[-1.3, -0.18], [-0.7, -0.18]])
+                    xp = [0.5, 1.0]
+                    yp2 = -0.18
+                    coeff_list = []
+                    for coeff in range(0, zones):
+                        if coeff == 0:
+                            yp = [cp_full05[coeff][0], cp_full1[0][0]]
+                        else:
+                            yp = [cp_full05[coeff][0], cp_full1[1][0]]
+                        cp = np.interp(ratio, xp, yp)
+                    coeff_list.append([cp, yp2])
             else:
                 if direction == 'windward':
                     angles = np.array([10, 15, 20, 25, 30, 35, 45, 60, 80])
