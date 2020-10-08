@@ -204,6 +204,24 @@ class ASCE7(BldgCode):
     #   b) Conduct the necessary similitude mappings
     #   c) Assign pressures for each zone to the appropriate locations for the building model
     def get_roof_uplift_pressure(self, edition, bldg, length, exposure, wind_speed, direction, pitch):
+        """
+        Determines the roof uplift pressures per zone for the given building.
+
+        This function begins by determining the ASCE7 Roof MWFRS use case for the building.
+        It then conducts any necessary similitude mappings of pressures.
+
+        Parameters:
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            bldg: A BOT: Building object
+            length: The building length needed to calculate the h/L ratio to access roof MWFRS pressure coefficients
+            exposure: A string providing the ASCE 7 Exposure Category
+            wind_speed: The wind speed the building is subject to
+            direction: A string describing the wind direction as either parallel or normal to the building's ridge
+            pitch: The roof pitch needed to determine the appropriate use case for the building
+
+        Returns:
+            df: Zone pressures (row) for each zone number (columns)
+        """
         # Step 1: Determine which reference building is needed and the file path:
         pressures = PressureCalc()  # Create an instance of PressureCalc to pull reference building parameters
         if direction == 'parallel' or (direction == 'normal' and pitch < 10):
@@ -273,6 +291,24 @@ class ASCE7(BldgCode):
         return psim
 
     def get_wcc_pressure(self, edition, h_bldg, h_story, ctype, exposure, wind_speed, pitch):
+        """
+        Determines the wall (facade) pressures per zone for the given building/component.
+
+        This function begins by determining the ASCE7 edition and component use case.
+        It then conducts any necessary similitude mappings of pressures.
+
+        Parameters:
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            h_bldg: The building height
+            h_story: The story height
+            ctype: A string naming the component type
+            exposure: A string providing the ASCE 7 Exposure Category
+            wind_speed: The wind speed the building is subject to
+            pitch: The roof pitch needed to determine the appropriate use case for the building
+
+        Returns:
+            df: Zone pressures (row) for each zone number (columns) and sign (e.g., Zone4+ vs. Zone4-)
+        """
         # Step 1: Determine which "family" of building codes will be needed (if necessary):
         if edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
             edition = 'ASCE 7-98'
@@ -323,6 +359,23 @@ class ASCE7(BldgCode):
         return psim
 
     def get_rcc_pressure(self, edition, h_bldg, ctype, exposure, wind_speed, pitch):
+        """
+        Determines the roof uplift pressures per zone for the given building.
+
+        This function begins by determining the ASCE7 Roof MWFRS use case for the building.
+        It then conducts any necessary similitude mappings of pressures.
+
+        Parameters:
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            h_bldg: The building height
+            ctype: A string naming the component type
+            exposure: A string providing the ASCE 7 Exposure Category
+            wind_speed: The wind speed the building is subject to
+            pitch: The roof pitch needed to determine the appropriate use case for the building
+
+        Returns:
+            df: Zone pressures (row) for each zone number (columns) and sign (e.g., Zone1+ vs. Zone1-)
+        """
         # Step 1: Semantic translation of roof pitch:
         if pitch == 'flat':
             # Code editions ASCE 7-98 and earlier use 10 degrees for first use case
@@ -354,7 +407,7 @@ class ASCE7(BldgCode):
             elif (edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and 7 < pitch <= 27:
                 use_case = 2
                 print('Roof use case currently not supported')
-        # Step 4: Extract the reference pressures for the component type -- COME BACK AND CHECK FOR WHEN WE EXPAND TO OTHER USE CASES
+        # Step 4: Extract the reference pressures for component type -- COME BACK AND CHECK FOR OTHER USE CASES
         pref = pd.read_csv(file_path + ctype + '/ref' + str(use_case) + '.csv', index_col='Edition').loc[[edition], :]
         # Step 5: Extract similitude parameters for wind speed, height, and exposure
         # Similitude in wind speed:
@@ -386,8 +439,7 @@ class ASCE7(BldgCode):
         return psim
 
     def get_cc_zone_width(self, bldg):
-        # This function determines the zone width, a, for a given building:
-        # a is determined as max(min(0.1*least horizontal dimension, 0.4*h_bldg), 0.4*least horizontal direction, 3 ft)
+        """ Calculates and returns the ASCE 7 zone width, a, for C&C pressures."""
         # Create an equivalent rectangle for the building:
         rect = bldg.hasGeometry['Footprint'][
             'geodesic'].minimum_rotated_rectangle  # Note: min rect. (not constrained || to coord axis)
@@ -406,6 +458,23 @@ class ASCE7(BldgCode):
         return a
 
     def find_cc_zone_points(self, bldg, zone_width, roof_flag, edition):
+        """
+        Determines the building's C&C zone start/end points.
+
+        This function uses the building footprint to find C&C zone locations on the building envelope.
+        It includes options to calculate both facade and roof zones or only facade zones.
+
+        Parameters:
+            bldg: A BOT: Building object
+            zone_width: The ASCE 7 zone width, a
+            roof_flag: Boolean indicating if roof zones need to be determined (Yes/No, True/False)
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+
+        Returns:
+            zone_pts: A Dataframe with Start/End points (columns) for zones on building facade, per line segment (row).
+            int_poly: A Shapely Polygon object marking Zone 1 location (ASCE 7 editions < 7-16)
+            zone2_polys: Shapely Polygon objects marking Zone 2 locations (ASCE 7 editions < 7-16)
+        """
         # Use the building footprint to find zone boundaries around perimeter:
         xc, yc = bldg.hasGeometry['Footprint']['local'].exterior.xy
         # Find points along building footprint corresponding to zone start/end
@@ -478,6 +547,20 @@ class ASCE7(BldgCode):
         return zone_pts, int_poly, zone2_polys
 
     def assign_rmwfrs_pressures(self, bldg, edition, exposure, wind_speed):
+        """
+        Orchestrates designations of Roof MWFRS pressures to zone geometries.
+
+        Provides parameters for get_roof_uplift pressures.
+        Creates zone geometries using a minimum rectangle.
+        Maps pressures to zones.
+        Stores zone geometries and pressures for parallel and normal wind directions in Roof object.
+
+        Parameters:
+            bldg: A BOT: Building object
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            exposure: A string providing the ASCE 7 Exposure Category
+            wind_speed: The wind speed the building is subject to
+        """
         # Create an instance of PressureCalc:
         pressures = PressureCalc()
         # Assign MWFRS pressures for the roof:
@@ -612,6 +695,22 @@ class ASCE7(BldgCode):
         bldg.hasElement['Roof'][0].hasCapacity['value'].append(uplift_pressures)
 
     def assign_wcc_pressures(self, bldg, zone_pts, edition, exposure, wind_speed):
+        """
+        Orchestrates the designation of pressures on the building facade.
+
+        Provides parameters for get_wcc_pressures.
+        Incorporates pressure minimums as needed.
+        Uses each elements 1D (line) geometry to determine its Zone location.
+        Maps component pressures according to zone location.
+        Stores component pressures within each element's hasCapacity attribute.
+
+        Parameters:
+            bldg: A BOT: Building object
+            zone_pts: A Dataframe with Start/End points (columns) for zones on building facade, per line segment (row)
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            exposure: A string providing the ASCE 7 Exposure Category
+            wind_speed: The wind speed the building is subject to
+        """
         # Create an instance of PressureCalc:
         pressures = PressureCalc()
         # Assign C&C pressures given the component type and its location (zone):
@@ -674,6 +773,24 @@ class ASCE7(BldgCode):
                     elem.hasCapacity['value'].append(wp_dict)
 
     def assign_rcc_pressures(self, bldg, zone_pts, int_poly, edition, exposure, wind_speed):
+        """
+        Orchestrates the designation of C&C pressures on roof.
+
+        Provides parameters for get_rcc_pressures.
+        Incorporates pressure minimums as needed.
+        In progress: Uses each element's geometry to determine its Zone location.
+        Maps component pressures according to zone location.
+        Stores component pressures within each element's hasCapacity attribute.
+
+        Parameters:
+            bldg: A BOT: Building object
+            zone_pts: A Dataframe with Start/End points (columns) for zones on building facade, per line segment (row)
+            int_poly: A Shapely Polygon object marking Zone 1 location (ASCE 7 editions < 7-16)
+            zone2_polys: Shapely Polygon objects marking Zone 2 locations (ASCE 7 editions < 7-16)
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            exposure: A string providing the ASCE 7 Exposure Category
+            wind_speed: The wind speed the building is subject to
+        """
         # Create an instance of PressureCalc:
         pressures = PressureCalc()
         # Assign C&C pressures given the component type and its location (zone):
