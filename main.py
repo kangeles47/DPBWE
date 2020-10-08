@@ -1,7 +1,7 @@
 from asset import Parcel
-from code_capacities import get_cc_zone_width, find_cc_zone_points, assign_wcc_pressures, assign_rmwfrs_pressures, assign_rcc_pressures
 from matplotlib import pyplot as plt
 from shapely.geometry import Polygon
+from bldg_code import ASCE7
 
 # Initialization script for data-driven workflow:
 
@@ -21,17 +21,18 @@ test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405',
 tpu_wdir = 315
 test.create_TPU_surfaces('local', tpu_wdir)
 # Populate component capacities:
+asce7 = ASCE7(test, loading_flag=True)
 edition = 'ASCE 7-10'
 exposure = 'B'
 wind_speed = 120
 wind_direction = 0
-assign_rmwfrs_pressures(test, edition, exposure, wind_speed)
+asce7.assign_rmwfrs_pressures(test, edition, exposure, wind_speed)
 # Assign pressures to roof assembly:
-a = get_cc_zone_width(test)
+a = asce7.get_cc_zone_width(test)
 print('zone width in ft:', a)
 roof_flag = True
-zone_pts, int_poly, zone2_polys = find_cc_zone_points(test, a, roof_flag, edition)
-assign_wcc_pressures(test, zone_pts, edition, exposure, wind_speed)
+zone_pts, int_poly, zone2_polys = asce7.find_cc_zone_points(test, a, roof_flag, edition)
+asce7.assign_wcc_pressures(test, zone_pts, edition, exposure, wind_speed)
 #assign_rcc_pressures(test, zone_pts, int_poly, edition, exposure, wind_speed)
 # Create a polygon with full surf points:
 poly_xs = []
@@ -39,7 +40,11 @@ poly_ys = []
 new_points = []
 for row in zone_pts.index:
     for col in range(0, len(zone_pts.loc[row])):
-        if (col == 0 and row==0) or (col > 0 and row>0):
+        if row == 0:
+            poly_xs.append(zone_pts.iloc[row, col].x)
+            poly_ys.append(zone_pts.iloc[row, col].y)
+            new_points.append(zone_pts.iloc[row, col])
+        elif row> 0 and (col > 0):
             poly_xs.append(zone_pts.iloc[row, col].x)
             poly_ys.append(zone_pts.iloc[row, col].y)
             new_points.append(zone_pts.iloc[row, col])
@@ -58,7 +63,7 @@ for plane in range(0, len(surf_list)-1):
         wcc_surf = Polygon([surf_list[plane][pt], surf_list[plane + 1][pt], surf_list[plane + 1][pt + 1], surf_list[plane][pt + 1]])
         poly_list.append(wcc_surf)
 # Set up plotting:
-fig = plt.figure()
+fig = plt.figure(dpi=200)
 ax = plt.axes(projection='3d')
 for poly in poly_list:
     xs = []
@@ -82,6 +87,7 @@ ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
 ax.set_xlabel('x [m]')
 ax.set_ylabel('y [m]')
 ax.set_zlabel('z [m]')
+plt.axis('off')
 plt.show()
 print(exposure)
 

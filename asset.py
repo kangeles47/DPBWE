@@ -396,7 +396,7 @@ class Building(Zone):
         # Assign the surfaces to the correct key
         idx = surf_dict.keys()
         # Set up plotting:
-        fig2 = plt.figure()
+        fig2 = plt.figure(dpi=200)
         ax2 = plt.axes(projection='3d')
         for i in idx:
             surf_dict[i] = tpu_polys[poly_order[i-1]]
@@ -412,7 +412,7 @@ class Building(Zone):
             # Define various line colors to keep track of surfaces:
             colors = ['b', 'g', 'r', 'y', 'm']
             # Plot the surface geometry:
-            ax2.plot(poly_xs, poly_ys, poly_zs, color=colors[i-1], label='Surface'+str(i))
+            ax2.plot(poly_xs, poly_ys, poly_zs, color='0.50', linestyle=(0, (1, 1)), label='Surface'+str(i))
         #ax2.legend(loc='best')
         # Plot the building 3D Geometry:
         for poly in self.hasGeometry['3D Geometry'][key]:
@@ -436,9 +436,86 @@ class Building(Zone):
         ax2.set_ylabel('y [m]')
         ax2.set_zlabel('z [m]')
         ax2.set_title('Surfaces for TPU Wind Direction: '+str(tpu_wdir))
+        plt.axis('off')
         plt.show()
         # Step 6: Save the surfaces to the building description:
         self.hasGeometry['TPU_surfaces'][key] = surf_dict
+
+    def map_TPUsurfaces(self, key):
+        # Given the building, determine the use case:
+        eave_length = 0
+        # Use an equivalent rectangle to calculate aspect ratios:
+        rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
+        xrect, yrect = rect.exterior.xy
+        # Determine side lengths:
+        side_lines = {'lines': [], 'length': [], 'TPU direction': []}
+        max_length = 0
+        for ind in range(0, len(xrect) - 1):
+            new_line = LineString([(xrect[ind], yrect[ind]), (xrect[ind + 1], yrect[ind + 1])])
+            side_lines['lines'].append(new_line)
+            if key == 'geodesic':
+                pass
+            else:
+                side_lines['length'].append(new_line.length)
+                # Update the maximum length if needed:
+                if new_line.length > max_length:
+                    max_length = new_line.length
+                else:
+                    pass
+        # Find the TPU direction of each line:
+        for line in range(0, len(side_lines['lines'])):
+            # For each line, figure out if line is in the TPU x-direction (longer length):
+            if key == 'geodesic':
+                pass
+            else:
+                if side_lines['lines'][line].length == max_length:
+                    line_direction = 'x'
+                else:
+                    line_direction = 'y'
+            # Record line directions:
+            side_lines['TPU direction'].append(line_direction)
+        # Calculate aspect ratios:
+        hb = self.hasGeometry['Height']/min(side_lines['length'])
+        db = max(side_lines['length'])/min(side_lines['length'])
+        # Determine the use case:
+        if eave_length == 0:
+            if self.hasStorey[-1].adjacentElement['Roof'].hasShape == 'flat':
+                num_surf = 5
+                surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
+                # Height to breadth use case
+                if hb <= 1/4:
+                    hb_ratio= 1/4
+                elif 1/4 < hb <= 2/4:
+                    hb_ratio = 2/4
+                elif 2/4 < hb <= 3/4:
+                    hb_ratio = 3/4
+                elif 3/4 < hb <= 1:
+                    hb_ratio = 1
+                else:
+                    print('Height to breadth ratio not supported')
+                # Depth to breadth use case:
+                if db <= 1:
+                    db_ratio = 1
+                elif 1 < db <= 3/2:
+                    db_ratio = 3/2
+                elif 3/2 < db <= 5/2:
+                    db_ratio = 5/2
+                else:
+                    print('Depth to breadth ratio not supported')
+            elif self.hasStorey[-1].adjacentElement['Roof'].hasShape == 'hip':  # Note: most common hip roof pitches 4:12-6:12
+                num_surf = 8
+                surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None, 8: None}
+            elif self.hasStorey[-1].adjacentElement['Roof'].hasShape == 'gable':
+                num_surf = 6
+                surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None}
+            else:
+                print('Roof shape not supported. Please provide a valid roof shape.')
+        else:
+            print('Buildings with eaves are not yet supported')
+        # Create the TPU footprint geometry from the building's equivalent rectangle:
+        for line in side_lines['lines']:
+            pass
+
 
     def create_zcoords(self, footprint, zcoord):
         # Input footprint polygon (either local or geodesic) and elevation:
@@ -466,18 +543,34 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 new_point_list = []
                 for idx in range(2, len(xcoord)-2):
                     new_point_list.append(Point(xcoord[idx], ycoord[idx]))
-                # Create a new polygon:
                 self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
                 # Plot the building footprint:
                 xpoly, ypoly = self.hasGeometry['Footprint'][key].exterior.xy
-                plt.plot(np.array(xpoly)/3.281,np.array(ypoly)/3.281, 'k')
+                plt.plot(np.array(xpoly),np.array(ypoly), 'k', linewidth=2)
+                # Create a new polygon:
+                rect = self.hasGeometry['Footprint']['local'].minimum_rotated_rectangle  # user can specify between geodesic or local coords
+                xrect, yrect = rect.exterior.xy
+                line1 = LineString([Point(xrect[2], yrect[2]), Point(xrect[1], yrect[1])])
+                line2 = LineString([Point(xrect[3], yrect[3]), Point(xrect[0], yrect[0])])
+                point1 = line1.interpolate(52.5/2)
+                point2 = line2.interpolate(52.5/2)
+                point3 = line1.interpolate(52.5)
+                point4 = line2.interpolate(52.5)
+                newx1 = [xrect[2], point1.x, point2.x]
+                newy1 = [yrect[2], point1.y, point2.y]
+                newx2 = [xrect[2], point3.x, point4.x]
+                newy2 = [yrect[2], point3.y, point4.y]
+                plt.plot(np.array(xrect), np.array(yrect), color='0.50', linestyle='dashed')
+                plt.plot(np.array(newx1), np.array(newy1), color='0.50', linestyle='dashed')
+                plt.plot(np.array(newx2), np.array(newy2), color='0.50', linestyle='dashed')
                 plt.xlabel('x [m]')
                 plt.ylabel('y [m]')
+                plt.axis('off')
                 plt.show()
         # Create an instance of the BldgCode class and populate building-level code-informed attributes for the parcel:
-        desc_flag = True  # Need to access a building code that will give us code-based descriptions
+        #loading_flag = False  # Need to access a building code that will give us code-based descriptions
         if self.hasLocation['State'] == 'FL':
-            code_informed = bldg_code.FBC(self, desc_flag)
+            code_informed = bldg_code.FBC(self, loading_flag=False)
         else:
             pass
         # Now that we have the building and story heights, render the 3D geometries:
@@ -650,9 +743,10 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
     def parcel_elements(self, parcel):
         # Generate parcel elements with (default) attributes:
         # Floor, Ceiling, and Roof Instances - These are conducted by storey to facilitate "hasElement" assignment
-        # Exterior Walls - Geometries are derived considering zone locations on the building footprint:
-        a = get_cc_zone_width(parcel)  # Determine the zone width
-        zone_pts, int_poly, zone2_polys = find_cc_zone_points(parcel, a, roof_flag=True, edition=None)  # Coordinates for start/end of zone locations
+        # Exterior Walls - Geometries are derived considering ASCE 7 zone locations on the building footprint:
+        asce7 = bldg_code.ASCE7(parcel, loading_flag=True)
+        a = asce7.get_cc_zone_width(parcel)  # Determine the zone width
+        zone_pts, int_poly, zone2_polys = asce7.find_cc_zone_points(parcel, a, roof_flag=True, edition=None)  # Coordinates for start/end of zone locations
         # Assume that walls span one story for now:
         for storey in range(0, len(parcel.hasStorey)):
             # Create an empty list to hold all elements:
