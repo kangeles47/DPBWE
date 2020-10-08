@@ -10,10 +10,10 @@ class BldgCode:
         desc_flag = True
         self.hasEdition = self.get_edition(parcel, desc_flag)
 
-    def get_edition(self, parcel, desc_flag):
+    def get_edition(self, parcel, ruleset_flag):
         # Get the code edition considering parcel location, year built
         # For code-based rulesets (Parcels):
-        if desc_flag:
+        if ruleset_flag:
             if parcel.hasLocation['State'] == 'FL':
                 # Create an instance of FBC and assign its edition:
                 if parcel.isComm:
@@ -86,8 +86,8 @@ class BldgCode:
 
 class FBC(BldgCode):
 
-    def __init__(self, parcel, desc_flag):
-        BldgCode.__init__(self, parcel, desc_flag)  # Bring in building code attributes (edition)
+    def __init__(self, parcel, ruleset_flag):
+        BldgCode.__init__(self, parcel, ruleset_flag)  # Bring in building code attributes (edition)
         self.bldg_attributes(parcel)
 
     def bldg_attributes(self, parcel):
@@ -113,7 +113,7 @@ class FBC(BldgCode):
     def roof_attributes(self, edition, parcel, survey):
 
         #Populate roof attributes for this instance (parcel)
-        roof_element = parcel.hasStorey[-1].hasElement['Roof'][0]
+        roof_element = parcel.hasStorey[-1].hasElement['Roof']
         if edition == '2001 FBC' and survey == 'CBECS' and parcel.hasYearBuilt < 2003:
             # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
             if roof_element.hasCover == 'Built-up' or roof_element.hasCover == 'Concrete' or roof_element.hasCover == 'Plastic/rubber/synthetic sheeting' or roof_element.hasCover == 'Metal surfacing':
@@ -190,6 +190,6 @@ class FBC(BldgCode):
 
 class ASCE7(BldgCode):
 
-    def __init__(self, parcel, desc_flag):
-        BldgCode.__init__(self, parcel, desc_flag)  # Bring in building code attributes (edition)
+    def __init__(self, parcel, ruleset_flag):
+        BldgCode.__init__(self, parcel, ruleset_flag)  # Bring in building code attributes (edition)
 
