@@ -6,6 +6,29 @@ from element import Wall, Roof
 class PressureCalc:
 
     def wcc_pressure(self, wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class):
+        """
+        Orchestrates the calculation of design pressures per zone for the given C&C effective area (facade C&C).
+
+        Accesses GCPi for pressure calculation (get_gcpi).
+        Calculates velocity pressure and extracts alpha from power law (qz_calc).
+        Obtains GCp for each Zone (4, 5) and sign (+, -) (get_wcc_gcp).
+        Calculates pressure for each zone (calc_pressure).
+
+        Parameters:
+            wind_speed: The wind speed the building is subject to
+            exposure: A string providing the ASCE 7 Exposure Category
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            h_bldg: The building height
+            pitch: The roof pitch needed to determine the appropriate use case for the building
+            area_eff: Effective wind area for a component type
+            cat: A string with the ASCE 7 Importance Factor Category
+            hpr: A Boolean indicating if the location is in a hurricane-prone region (True/False, Yes/No)
+            h_ocean: A Boolean identifying if building is at hurricane oceanline (ASCE 7-88 and 7-93)
+            encl_class: A string with ASCE 7 Enclosure Class ('Enclosed', 'Partial', 'Open')
+
+        Returns:
+            wps: (List) Zone pressures for each zone number and sign (ordered Zone4+, Zone5+, Zone4-, Zone5-).
+        """
         # Determine GCpis for pressure calculation:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class)
         # Determine components and cladding pressure for building facade components:
@@ -31,6 +54,29 @@ class PressureCalc:
         return wps
 
     def rcc_pressure(self, wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class):
+        """
+        Orchestrates the calculation of design pressures per zone for the given C&C effective area (roof C&C).
+
+        Accesses GCPi for pressure calculation (get_gcpi).
+        Calculates velocity pressure and extracts alpha from power law (qz_calc).
+        Obtains GCp for each Zone (1, 2, 3) and sign (+, -) (get_roof_gcp).
+        Calculates pressure for each zone (calc_pressure).
+
+        Parameters:
+            wind_speed: The wind speed the building is subject to
+            exposure: A string providing the ASCE 7 Exposure Category
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            h_bldg: The building height
+            pitch: The roof pitch needed to determine the appropriate use case for the building
+            area_eff: Effective wind area for a component type [ft^2]
+            cat: A string with the ASCE 7 Importance Factor Category
+            hpr: A Boolean indicating if the location is in a hurricane-prone region (True/False, Yes/No)
+            h_ocean: A Boolean identifying if building is at hurricane oceanline (ASCE 7-88 and 7-93)
+            encl_class: A string with ASCE 7 Enclosure Class ('Enclosed', 'Partial', 'Open')
+
+        Returns:
+            rps: (List) Zone pressures for each zone number and sign (Zone1+, Zone2+, Zone3+, Zone1-, Zone2-, Zone3-).
+        """
         # Determine GCpis for pressure calculation:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class)
         # Determine components and cladding pressure for building roof components:
@@ -50,6 +96,31 @@ class PressureCalc:
         return rps
 
     def rmwfrs_pressure(self, wind_speed, exposure, edition, h_bldg, length, ratio, pitch, cat, hpr, h_ocean, encl_class):
+        """
+        Orchestrates the calculation of design pressures per zone for roof uplift pressures.
+
+        Accesses GCPi for pressure calculation (get_gcpi).
+        Calculates velocity pressure and extracts alpha from power law (qz_calc).
+        Determine the gust factor (get_g).
+        Obtains (-) Cp for each Roof Zone (get_cp_rmwfrs). Note: currently set for 'parallel' use case
+        Calculates pressure for each zone (calc_pressure).
+
+        Parameters:
+            wind_speed: The wind speed the building is subject to
+            exposure: A string providing the ASCE 7 Exposure Category
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            h_bldg: The building height
+            length: The building length needed to calculate the h/L ratio to access roof MWFRS pressure coefficients
+            ratio: h/L ratio
+            pitch: The roof pitch needed to determine the appropriate use case for the building
+            cat: A string with the ASCE 7 Importance Factor Category
+            hpr: A Boolean indicating if the location is in a hurricane-prone region (True/False, Yes/No)
+            h_ocean: A Boolean identifying if building is at hurricane oceanline (ASCE 7-88 and 7-93)
+            encl_class: A string with ASCE 7 Enclosure Class ('Enclosed', 'Partial', 'Open')
+
+        Returns:
+            rmps: (List) Uplift pressures for each zone.
+        """
         # Determine GCpis for pressure calculation:
         gcpi = PressureCalc.get_gcpi(self, edition, encl_class)
         # Determine the velocity pressure:
@@ -88,6 +159,16 @@ class PressureCalc:
         return rmps
 
     def get_gcpi(self, edition, encl_class):
+        """
+        Determines the GCpi for the building.
+
+        Parameters:
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            encl_class: A string with ASCE 7 Enclosure Class ('Enclosed', 'Partial', 'Open')
+
+        Returns:
+            gcpi: GCpi value for the enclosure category
+        """
         # Determine GCpi: in the future, will need to develop a procedure to determine the enclosure category
         if encl_class == 'Open':
             gcpi = 0.0
@@ -109,7 +190,20 @@ class PressureCalc:
 
         return gcpi
 
-    def get_g(self, edition, exposure, is_cc, alpha,z):
+    def get_g(self, edition, exposure, is_cc, alpha, z):
+        """
+        Determines the Gust effect or gust response factor for the building.
+
+        Parameters:
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            exposure: A string providing the ASCE 7 Exposure Category
+            is_cc: A Boolean indicating if the assessment is for C&C (True) or MWFRS (False)
+            alpha: Used in power law and depends on Exposure Category
+            z: (For ASCE 7-93 and earlier) height at which g is calculated
+
+        Returns:
+            g: Gust effect or gust response factor for the building.
+        """
         # Gust effect or gust response factor:
         if edition == 'ASCE 7-95':
             if exposure == 'A' or exposure == 'B':
@@ -145,7 +239,21 @@ class PressureCalc:
         return g
 
     # Laying out the code needed to replicate the pressures from ASCE 7
-    def calc_pressure(self, z, exposure, edition, is_cc, q, gcp, gcpi):
+    def calc_pressure(self, z, edition, is_cc, q, gcp, gcpi):
+        """
+        Determines the Gust effect or gust response factor for the building.
+
+        Parameters:
+            z: The height the pressure needs to be calculated at.
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            is_cc: A Boolean indicating if the assessment is for C&C (True) or MWFRS (False)
+            q: Velocity pressure at height z
+            gcp: Either C&C coefficient or product or gust effect/response factor and Cp
+            gcpi: Interior pressure coefficient
+
+        Returns:
+            p: The design pressure.
+        """
         # Pressure calc: will need to code in a procedure to determine both +/- cases for GCpi
         if is_cc:
             if z <= 60:  # [ft]
@@ -167,6 +275,26 @@ class PressureCalc:
         return p
 
     def qz_calc(self, z, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean):
+        """
+        Orchestrates the velocity pressure calculation.
+
+        Accesses Kz value for the given z (get_kz).
+        Determines the building's Importance Factor (get_i).
+        Calculates the velocity pressure, qz.
+
+        Parameters:
+            wind_speed: The wind speed the building is subject to
+            exposure: A string providing the ASCE 7 Exposure Category
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            is_cc: A Boolean indicating if the assessment is for C&C (True) or MWFRS (False)g
+            cat: A string with the ASCE 7 Importance Factor Category
+            hpr: A Boolean indicating if the location is in a hurricane-prone region (True/False, Yes/No)
+            h_ocean: A Boolean identifying if building is at hurricane oceanline (ASCE 7-88 and 7-93)
+
+        Returns:
+            qz: Velocity pressure at height z
+            alpha: Used in power law and depends on Exposure Category
+        """
         # Every edition of ASCE 7 has a velocity exposure coefficient:
         kz, alpha = PressureCalc.get_kz(self, z, exposure, edition, is_cc)
         # Calculate the velocity pressure:
@@ -189,6 +317,19 @@ class PressureCalc:
         return qz, alpha
 
     def get_kz(self, z, exposure, edition, is_cc):
+        """
+        Calculates the velocity pressure exposure coefficient.
+
+        Parameters:
+            z: The height the coefficient needs to be calculated at.
+            exposure: A string providing the ASCE 7 Exposure Category
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+            is_cc: A Boolean indicating if the assessment is for C&C (True) or MWFRS (False)g
+
+        Returns:
+            kz: Velocity pressure at height z
+            alpha: Used in power law and depends on Exposure Category
+        """
         # ASCE 7-95 and older: Exposure Category is C for C&C (B allowed for 7-95)
         if is_cc:
             if edition == 'ASCE 7-95':
@@ -250,7 +391,20 @@ class PressureCalc:
             kz = factor * (z / zg) ** (2 / alpha)
         return kz, alpha
 
-    def get_i(self, z, wind_speed, hpr, h_ocean, cat, edition):
+    def get_i(self, wind_speed, hpr, h_ocean, cat, edition):
+        """
+        Determines the building's Importance Factor.
+
+        Parameters:
+            wind_speed: The wind speed the building is subject to
+            hpr: A Boolean indicating if the location is in a hurricane-prone region (True/False, Yes/No)
+            h_ocean: A Boolean identifying if building is at hurricane oceanline (ASCE 7-88 and 7-93)
+            cat: A string with the ASCE 7 Importance Factor Category
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+
+        Returns:
+            imp: Building Importance Factor.
+        """
         # Importance factor for ASCE 7-05 and older:
         if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
             if h_ocean:  # if building is at hurricane oceanline (ASCE 7-88 and 7-93)
@@ -269,6 +423,26 @@ class PressureCalc:
         return imp
 
     def get_cp_rmwfrs(self, h_bldg, direction, ratio, pitch, length, edition):
+        """
+        Determines all possible Cps for a roof uplift pressures use case.
+
+        Accesses GCPi for pressure calculation (get_gcpi).
+        Calculates velocity pressure and extracts alpha from power law (qz_calc).
+        Determine the gust factor (get_g).
+        Obtains (-) Cp for each Roof Zone (get_cp_rmwfrs). Note: currently set for 'parallel' use case
+        Calculates pressure for each zone (calc_pressure).
+
+        Parameters:
+            h_bldg: The building height
+            direction: A string indicating the wind direction ('parallel' or 'normal')
+            ratio: h/L ratio
+            pitch: The roof pitch needed to determine the appropriate use case for the building
+            length: The building length needed to calculate the h/L ratio to access roof MWFRS pressure coefficients
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+
+        Returns:
+            Cps: (List) Uplift pressure coefficients.
+        """
         # Identify roof MWFRS zones and pressure coefficients
         if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
             if direction == 'parallel':
@@ -344,6 +518,19 @@ class PressureCalc:
         return Cps
 
     def get_roof_gcp(self, pitch, area_eff, pos, zone, edition):
+        """
+        Determines the GCp for Roof C&C.
+
+        Parameters:
+            pitch: The roof pitch needed to determine the appropriate use case for the building
+            area_eff: Effective wind area for a component type
+            pos: A Boolean indicating if the coefficients are for positive (True) or negative (False) pressures
+            zone: The roof C&C zone number
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+
+        Returns:
+            gcp: The GCp for the C&C's effective area.
+        """
         # Assume effective wind area is in units of ft^2
         if pitch < 10:
             if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
@@ -460,6 +647,18 @@ class PressureCalc:
         return gcp
 
     def get_wcc_gcp(self, area_eff, pos, zone, edition):
+        """
+        Determines the GCp for Wall (facade) C&C.
+
+        Parameters:
+            area_eff: Effective wind area for a component type
+            pos: A Boolean indicating if the coefficients are for positive (True) or negative (False) pressures
+            zone: The wall C&C zone number
+            edition: A string naming the edition of ASCE 7 wind loading provision for the building
+
+        Returns:
+            gcp: The GCp for the C&C's effective area.
+        """
         # Assume effective wind area is in units of ft^2
         if edition == 'ASCE 7-93' or edition == 'ASCE 7-88':
             # Positive external pressure coefficients:
