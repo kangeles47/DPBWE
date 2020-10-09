@@ -316,14 +316,14 @@ class PressureCalc:
                     cp_full1 = np.array([[-1.3, -0.18], [-0.7, -0.18]])
                     xp = [0.5, 1.0]
                     yp2 = -0.18
-                    coeff_list = []
+                    Cps = []
                     for coeff in range(0, zones):
                         if coeff == 0:
                             yp = [cp_full05[coeff][0], cp_full1[0][0]]
                         else:
                             yp = [cp_full05[coeff][0], cp_full1[1][0]]
                         cp = np.interp(ratio, xp, yp)
-                    coeff_list.append([cp, yp2])
+                    Cps.append([cp, yp2])
             else:
                 if direction == 'windward':
                     angles = np.array([10, 15, 20, 25, 30, 35, 45, 60, 80])
