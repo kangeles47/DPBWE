@@ -1,5 +1,6 @@
 import random
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from geopy import distance
 from shapely.geometry import Point, LineString, Polygon
@@ -98,9 +99,9 @@ class FBC(BldgCode):
             if 'FBC' in self.hasEdition or self.hasEdition == '1988 SBC':
                 # 9 ft standard ceiling height - Add to each Storey in Building:
                 for i in range(0, len(parcel.hasStorey)):
-                    parcel.hasStorey[i].hasElevation = [9*i, 9*(i+1)]
-                    parcel.hasStorey[i].hasGeometry['Height'] = 9
-                parcel.hasGeometry['Height'] = len(parcel.hasStorey) * 9  # min. ceiling height used to calculate building height [ft]
+                    parcel.hasStorey[i].hasElevation = [13*i, 13*(i+1)]
+                    parcel.hasStorey[i].hasGeometry['Height'] = 13
+                parcel.hasGeometry['Height'] = len(parcel.hasStorey) * 13  # min. ceiling height used to calculate building height [ft]
             elif 'CABO' in self.hasEdition:
                 # 8 ft standard ceiling height for older construction
                 for i in range(0, len(parcel.hasStorey)):
@@ -234,17 +235,20 @@ class ASCE7(BldgCode):
         if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
             if direction == 'parallel':
                 if ratio <= 2.5:
-                    use_case = 3
+                    use_case = [3]
                 elif ratio > 2.5:
-                    use_case = 4
+                    use_case = [4]
             elif direction == 'normal':
                 pass
         else:
             if direction == 'parallel' or (direction == 'normal' and pitch < 10):
                 if ratio <= 0.5:
-                    use_case = 1
+                    use_case = [1]
                 elif ratio >= 1.0:
-                    use_case = 2
+                    use_case = [2]
+                elif 0.5 < ratio <= 1.0:
+                    use_case = [1, 2]
+                    iratios = [0.5, 1.0]
             elif direction == 'normal' and pitch >= 10:
                 pass
         # Step 3: Determine which "family" of building codes will be needed (if necessary):
@@ -252,43 +256,55 @@ class ASCE7(BldgCode):
             edition = 'ASCE 7-98'
         elif edition == 'ASCE 7-88':
             edition = 'ASCE 7-93'
-        # Step 4: Extract the respective reference pressure for the use case:
-        pref = pd.read_csv(file_path + 'ref' + str(use_case) + '.csv', index_col='Edition').loc[[edition], :]
-        # Step 5: Filter out any zones that are not needed for use cases 1 and 2:
-        if use_case == 1 and ratio == 0.5:
-            pref = pref[pref.columns[0:3]]  # Case with only 3 zones
-        elif use_case == 2 and ratio == 2.0:
-            pref = pref[pref.columns[0:1]]  # Case with only 1 zone
-        # Step 5: Extract similitude parameters for wind speed, height, and exposure
-        # Similitude in wind speed:
-        if wind_speed == ref_speed:
-            vfactor = 0.0
-        else:
-            if edition == 'ASCE 7-93':
-                vfactor = pd.read_csv(file_path + 'v93.csv', index_col='Edition')[str(wind_speed)][edition]
+        # Step 4: Extract the respective reference pressure(s) for the use case(s):
+        interp_pressures = []
+        for case in range(0, len(use_case)):
+            pref = pd.read_csv(file_path + 'ref' + str(use_case[case]) + '.csv', index_col='Edition').loc[[edition],:]
+            # Step 5: Filter out any zones that are not needed for use cases 1 and 2:
+            if use_case[case] == 1 and ratio == 0.5:
+                pref = pref[pref.columns[0:3]]  # Case with only 3 zones
+            elif use_case[case] == 2 and ratio == 2.0:
+                pref = pref[pref.columns[0:1]]  # Case with only 1 zone
+            # Step 5: Extract similitude parameters for wind speed, height, and exposure
+            # Similitude in wind speed:
+            if wind_speed == ref_speed:
+                vfactor = 0.0
             else:
-                vfactor = pd.read_csv(file_path + 'v.csv', index_col='Edition')[str(wind_speed)][
-                    edition]  # Leave here for now, for regional simulation will probably want to load everything somewhere outside
-        # Similitude in height:
-        if bldg.hasGeometry['Height'] == ref_hbldg:
-            hfactor = 0.0
-        else:
-            if edition == 'ASCE 7-93':
-                hfactor = pd.read_csv(file_path + 'h93.csv')[str(bldg.hasGeometry['Height']) + ' ft'][0]
+                if edition == 'ASCE 7-93':
+                    vfactor = pd.read_csv(file_path + 'v93.csv', index_col='Edition')[str(wind_speed)][edition]
+                else:
+                    vfactor = pd.read_csv(file_path + 'v.csv', index_col='Edition')[str(wind_speed)][edition]  # Leave here for now, for regional simulation will probably want to load everything somewhere outside
+            # Similitude in height:
+            if bldg.hasGeometry['Height'] == ref_hbldg:
+                hfactor = 0.0
             else:
-                hfactor = pd.read_csv(file_path + 'h.csv')[str(bldg.hasGeometry['Height']) + ' ft'][0]
-        # Similitude in exposure categories:
-        if exposure == ref_exposure:
-            efactor = 0.0
-        else:
-            efactor = pd.read_csv(file_path + 'e' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][
-                bldg.hasGeometry['Height']]
-        # Step 6: Apply the similitude parameters to get the final pressures for each zone:
-        factor_lst = [vfactor, hfactor, efactor]
-        psim = pref.loc[edition]
-        for factor in factor_lst:
-            psim = factor * psim + psim
-        return psim
+                if edition == 'ASCE 7-93':
+                    hfactor = pd.read_csv(file_path + 'h93.csv')[str(bldg.hasGeometry['Height']) + ' ft'][0]
+                else:
+                    hfactor = pd.read_csv(file_path + 'h.csv')[str(bldg.hasGeometry['Height']) + ' ft'][0]
+            # Similitude in exposure categories:
+            if exposure == ref_exposure:
+                efactor = 0.0
+            else:
+                efactor = pd.read_csv(file_path + 'e' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][bldg.hasGeometry['Height']]
+            # Step 6: Apply the similitude parameters to get the final pressures for each zone:
+            factor_lst = [vfactor, hfactor, efactor]
+            psim = pref.loc[edition]
+            for factor in factor_lst:
+                psim = factor * psim + psim
+            # Interpolated use cases:
+            if len(use_case) == 2:
+                interp_pressures.append(psim)
+                if case == 1 and use_case == [1,2]:
+                    # Set up placeholder for interpolated pressures:
+                    ip1 = np.interp(ratio, iratios, [interp_pressures[0][0], interp_pressures[1][0]])
+                    ip2 = np.interp(ratio, iratios, [interp_pressures[0][1], interp_pressures[1][1]])
+                    ip3 = np.interp(ratio, iratios, [interp_pressures[0][2], interp_pressures[1][1]])
+                    ip4 = np.interp(ratio, iratios, [interp_pressures[0][3], interp_pressures[1][1]])
+                    uplift_pressures = pd.Series([ip1, ip2, ip3, ip4], index=interp_pressures[0].index)
+            else:
+                uplift_pressures = psim
+        return uplift_pressures
 
     def get_wcc_pressure(self, edition, h_bldg, h_story, ctype, exposure, wind_speed, pitch):
         """
