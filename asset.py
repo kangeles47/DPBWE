@@ -5,12 +5,10 @@ from shapely.geometry import Point, Polygon, LineString
 from scipy import spatial
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from element import Roof, Wall, Floor, Ceiling
 import bldg_code
 from survey_data import SurveyData
 from geopy import distance
-from code_capacities import get_cc_zone_width, find_cc_zone_points
 
 # The Building Topology Ontology (BOT) is a minimal ontology for describing the core topological concepts of a building.
 # BOT representation (logic) is used to organize asset(s) description(s)
@@ -544,33 +542,9 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 for idx in range(2, len(xcoord)-2):
                     new_point_list.append(Point(xcoord[idx], ycoord[idx]))
                 self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
-                # Plot the building footprint:
-                xpoly, ypoly = self.hasGeometry['Footprint'][key].exterior.xy
-                plt.plot(np.array(xpoly),np.array(ypoly), 'k', linewidth=2)
-                # Create a new polygon:
-                rect = self.hasGeometry['Footprint']['local'].minimum_rotated_rectangle  # user can specify between geodesic or local coords
-                xrect, yrect = rect.exterior.xy
-                line1 = LineString([Point(xrect[2], yrect[2]), Point(xrect[1], yrect[1])])
-                line2 = LineString([Point(xrect[3], yrect[3]), Point(xrect[0], yrect[0])])
-                point1 = line1.interpolate(52.5/2)
-                point2 = line2.interpolate(52.5/2)
-                point3 = line1.interpolate(52.5)
-                point4 = line2.interpolate(52.5)
-                newx1 = [xrect[2], point1.x, point2.x]
-                newy1 = [yrect[2], point1.y, point2.y]
-                newx2 = [xrect[2], point3.x, point4.x]
-                newy2 = [yrect[2], point3.y, point4.y]
-                plt.plot(np.array(xrect), np.array(yrect), color='0.50', linestyle='dashed')
-                plt.plot(np.array(newx1), np.array(newy1), color='0.50', linestyle='dashed')
-                plt.plot(np.array(newx2), np.array(newy2), color='0.50', linestyle='dashed')
-                plt.xlabel('x [m]')
-                plt.ylabel('y [m]')
-                plt.axis('off')
-                plt.show()
         # Create an instance of the BldgCode class and populate building-level code-informed attributes for the parcel:
-        #loading_flag = False  # Need to access a building code that will give us code-based descriptions
         if self.hasLocation['State'] == 'FL':
-            code_informed = bldg_code.FBC(self, loading_flag=False)
+            code_informed = bldg_code.FBC(self, loading_flag=False) # Need building code for code-based descriptions
         else:
             pass
         # Now that we have the building and story heights, render the 3D geometries:
@@ -619,7 +593,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                             surf_ys.append(surf_points[1])
                             surf_zs.append(surf_points[2])
                         # Plot the surfaces for the entire building to verify:
-                        ax.plot(np.array(surf_xs)/3.281, np.array(surf_ys)/3.281, np.array(surf_zs)/3.281, 'k')
+                        ax.plot(np.array(surf_xs), np.array(surf_ys), np.array(surf_zs), 'k')
                         # Make the panes transparent:
                         ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
                         ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
@@ -629,9 +603,9 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
                         ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
                         # Plot labels
-                        ax.set_xlabel('x [m]')
-                        ax.set_ylabel('y [m]')
-                        ax.set_zlabel('z [m]')
+                        ax.set_xlabel('x')
+                        ax.set_ylabel('y')
+                        ax.set_zlabel('z')
                 # Show the surfaces for each story:
                 plt.show()
                 # Define full 3D surface renderings for the building using base plane and top plane:
