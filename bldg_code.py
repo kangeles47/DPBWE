@@ -325,12 +325,11 @@ class ASCE7(BldgCode):
                         rpoly = Polygon([lst_points1[pt], lst_points1[pt + 1], lst_points2[pt + 1],
                                          lst_points2[pt]])  # order ccw like min_rect
                         xpoly, ypoly = rpoly.exterior.xy
-                        plt.plot(xpoly, ypoly, label='Zone ' + str(pt + 1), color='0.50', linewidth=1,
-                                 linestyle='dashed')
+                        plt.plot(xpoly, ypoly, label='Zone ' + str(pt + 1))
                         # Add to DataFrame object:
                         poly_list.append(rpoly)
                     prmwfrs[zonepoly_name] = poly_list
-                    # plt.legend()
+                    plt.legend()
                     plt.plot(xfpt, yfpt, 'k')
                     plt.xlabel('x [m]')
                     plt.ylabel('y [m]')
