@@ -99,9 +99,9 @@ class FBC(BldgCode):
             if 'FBC' in self.hasEdition or self.hasEdition == '1988 SBC':
                 # 9 ft standard ceiling height - Add to each Storey in Building:
                 for i in range(0, len(parcel.hasStorey)):
-                    parcel.hasStorey[i].hasElevation = [13*i, 13*(i+1)]
-                    parcel.hasStorey[i].hasGeometry['Height'] = 13
-                parcel.hasGeometry['Height'] = len(parcel.hasStorey) * 13  # min. ceiling height used to calculate building height [ft]
+                    parcel.hasStorey[i].hasElevation = [9*i, 9*(i+1)]
+                    parcel.hasStorey[i].hasGeometry['Height'] = 9
+                parcel.hasGeometry['Height'] = len(parcel.hasStorey) * 9  # min. ceiling height used to calculate building height [ft]
             elif 'CABO' in self.hasEdition:
                 # 8 ft standard ceiling height for older construction
                 for i in range(0, len(parcel.hasStorey)):
