@@ -18,8 +18,8 @@ agreeButton.click()
 # Parcels numbered between 14805-101-000 to 14805-191-000 AND 14876-501-000 to 14876-614-000
 parcel_list = []
 
-for num in range(60, 61):
-    parcel_list.append('13779-0' + str(num) + '-000')
+for num in range(10, 99):
+    parcel_list.append('04103-0' + str(num) + '-000')
 
 # for num2 in range(501,615):
     # parcel_list.append('14876-' + str(num2) + '-000')
@@ -42,38 +42,62 @@ for parcel in range(0, len(parcel_list)):
     table = parcelSoup.find_all('table')
     table1 = table[0]
     for row in table1.find_all('tr'):
+        tag = row.get_text().splitlines()[1]
+        b = row.find_all('th')[0].get_text().splitlines()[1]
+        print(b)
+        #if tag == '':
+            #if 'Use Code' in row.find_all('th')[0].get_text():
+                #tag = row.find_all('th')[0].get_text()
         columns = row.find_all('td')
-        tag = columns[0].get_text()
-        value = columns[1].get_text()
+        #tag = columns[0].get_text()
+        value = columns[0].get_text()
         if 'Parcel ID' in tag:
             parcel_id = value.splitlines()[1]
         elif 'Address' in tag:
             address = value.splitlines()[1]
-        elif 'Use Code' in tag:
+        elif 'Property Use Code' in tag:
             use_code = value.splitlines()[1]
 
     if 'VAC' in use_code:
         sq_ft = 'N/A'
         stories = 'N/A'
         yr_built = 'N/A'
+        occ_type = 'N/A'
+        ewall_type = 'N/A'
+        rcover_type = 'N/A'
+        iwall_type = 'N/A'
+        ftype = 'N/A'
+        fcover_type = 'N/A'
     else:
         table2 = table[2]
 
         for row in table2.find_all('tr'):
             columns = row.find_all('td')
-            tag = columns[0].get_text()
-            value = columns[1].get_text()
+            tag = row.get_text().splitlines()[1]
+            value = columns[0].get_text()
             if 'Total Area' in tag:
                 sq_ft = value.splitlines()[1]
             elif 'Stories' in tag:
                 stories = value.splitlines()[1]
             elif 'Actual Year Built' in tag:
                 yr_built = value.splitlines()[1]
+            elif 'Type' in tag:
+                occ_type = value.splitlines()[1]
+            elif 'Exterior Walls' in tag:
+                ewall_type = value.splitlines()[1]
+            elif 'Roof Cover' in tag:
+                rcover_type = value.splitlines()[1]
+            elif 'Interior Walls' in tag:
+                iwall_type = value.splitlines()[1]
+            elif 'Frame Type' in tag:
+                ftype = value.splitlines()[1]
+            elif 'Floor Cover' in tag:
+                fcover_type = value.splitlines()[1]
 
-    with open('NewAddress.csv', 'a', newline = '') as csvfile:
-        fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built']
+    with open('CommParcels.csv', 'a', newline = '') as csvfile:
+        fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType', 'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writerow({'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Square Footage': sq_ft, 'Stories': stories, 'Year Built': yr_built})
+        writer.writerow({'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Square Footage': sq_ft, 'Stories': stories, 'Year Built': yr_built, 'OccType': occ_type, 'Exterior Walls': ewall_type, 'Roof Cover': rcover_type, 'Interior Walls': iwall_type, 'Frame Type': ftype, 'Floor Cover': fcover_type})
 
     # Move on to the next parcel or stop once we have gone through all of the parcels:
     if parcel_id != parcel_list[-1]:
