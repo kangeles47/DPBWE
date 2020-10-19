@@ -18,8 +18,8 @@ agreeButton.click()
 # Parcels numbered between 14805-101-000 to 14805-191-000 AND 14876-501-000 to 14876-614-000
 parcel_list = []
 
-for num in range(10, 99):
-    parcel_list.append('04103-0' + str(num) + '-000')
+for num in range(20, 99):
+    parcel_list.append('04119-0' + str(num) + '-000')
 
 # for num2 in range(501,615):
     # parcel_list.append('14876-' + str(num2) + '-000')
@@ -40,7 +40,7 @@ for parcel in range(0, len(parcel_list)):
     # Parcel Summary page - We can now parse the parcel details
     parcelSoup = BeautifulSoup(browser.page_source, "html.parser")
     table = parcelSoup.find_all('table')
-    table1 = table[0]
+    table1 = table[0]  # First table provides overview of the Parcel
     for row in table1.find_all('tr'):
         tag = row.get_text().splitlines()[1]
         if tag == '':
@@ -67,36 +67,69 @@ for parcel in range(0, len(parcel_list)):
         ftype = 'N/A'
         fcover_type = 'N/A'
     else:
-        table2 = table[2]
-
-        for row in table2.find_all('tr'):
-            columns = row.find_all('td')
-            tag = row.get_text().splitlines()[1]
-            value = columns[0].get_text()
-            if 'Total Area' in tag:
-                sq_ft = value.splitlines()[1]
-            elif 'Stories' in tag:
-                stories = value.splitlines()[1]
-            elif 'Actual Year Built' in tag:
-                yr_built = value.splitlines()[1]
-            elif 'Type' in tag:
-                occ_type = value.splitlines()[1]
-            elif 'Exterior Walls' in tag:
-                ewall_type = value.splitlines()[1]
-            elif 'Roof Cover' in tag:
-                rcover_type = value.splitlines()[1]
-            elif 'Interior Walls' in tag:
-                iwall_type = value.splitlines()[1]
-            elif 'Frame Type' in tag:
-                ftype = value.splitlines()[1]
-            elif 'Floor Cover' in tag:
-                fcover_type = value.splitlines()[1]
-
-    with open('CommParcels.csv', 'a', newline = '') as csvfile:
-        fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType', 'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writerow({'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Square Footage': sq_ft, 'Stories': stories, 'Year Built': yr_built, 'OccType': occ_type, 'Exterior Walls': ewall_type, 'Roof Cover': rcover_type, 'Interior Walls': iwall_type, 'Frame Type': ftype, 'Floor Cover': fcover_type})
-
+        # If the parcel is not a vacant lot, access all parcel attributes:
+        for tab in table:
+            if 'Building' in tab.find_all('tr')[0].get_text():  # Some parcels have multiple bldgs
+                for row in tab.find_all('tr'):
+                    columns = row.find_all('td')
+                    tag = row.get_text().splitlines()[1]
+                    if tag == '':
+                        sq_ft = 'N/A'
+                        stories = 'N/A'
+                        yr_built = 'N/A'
+                        occ_type = 'N/A'
+                        ewall_type = 'N/A'
+                        rcover_type = 'N/A'
+                        iwall_type = 'N/A'
+                        ftype = 'N/A'
+                        fcover_type = 'N/A'
+                    else:
+                        value = columns[0].get_text()
+                        if 'Total Area' in tag:
+                            sq_ft = value.splitlines()[1]
+                        elif 'Stories' in tag:
+                            stories = value.splitlines()[1]
+                        elif 'Actual Year Built' in tag:
+                            yr_built = value.splitlines()[1]
+                        elif 'Type' in tag:
+                            occ_type = value.splitlines()[1]
+                        elif 'Exterior Walls' in tag:
+                            ewall_type = value.splitlines()[1]
+                        elif 'Roof Cover' in tag:
+                            rcover_type = value.splitlines()[1]
+                        elif 'Interior Walls' in tag:
+                            iwall_type = value.splitlines()[1]
+                        elif 'Frame Type' in tag:
+                            ftype = value.splitlines()[1]
+                        elif 'Floor Cover' in tag:
+                            fcover_type = value.splitlines()[1]
+                    # Save the building and parcel information:
+                    with open('CommParcels.csv', 'a', newline='') as csvfile:
+                        fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built',
+                                      'OccType', 'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type',
+                                      'Floor Cover']
+                        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                        writer.writerow(
+                            {'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Square Footage': sq_ft,
+                             'Stories': stories, 'Year Built': yr_built, 'OccType': occ_type,
+                             'Exterior Walls': ewall_type, 'Roof Cover': rcover_type, 'Interior Walls': iwall_type,
+                             'Frame Type': ftype, 'Floor Cover': fcover_type})
+            elif 'Permit' in tab.find_all('tr')[0].get_text():
+                permit_list = []
+                count = 0
+                for row in tab.find_all('tr'):
+                    if count == 0:
+                        count = count+1
+                    elif count > 0:
+                        permit_list.append(row.get_text().splitlines()[2])
+                # Save the address, parcel number, and permit numbers in a separate CSV:
+                with open('CommParcelsPermits.csv', 'a', newline='') as csvfile:
+                    fieldnames = ['Parcel Id', 'Address', 'Permit Number']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                    writer.writerow(
+                        {'Parcel Id': parcel_id, 'Address': address, 'Permit Number': permit_list})
+            else:
+                pass
     # Move on to the next parcel or stop once we have gone through all of the parcels:
     if parcel_id != parcel_list[-1]:
         # Going to next page in the search results
