@@ -43,11 +43,9 @@ for parcel in range(0, len(parcel_list)):
     table1 = table[0]
     for row in table1.find_all('tr'):
         tag = row.get_text().splitlines()[1]
-        b = row.find_all('th')[0].get_text().splitlines()[1]
-        print(b)
-        #if tag == '':
-            #if 'Use Code' in row.find_all('th')[0].get_text():
-                #tag = row.find_all('th')[0].get_text()
+        if tag == '':
+            if 'Use Code' in row.find_all('th')[0].get_text():
+               tag = row.find_all('th')[0].get_text().splitlines()[1]
         columns = row.find_all('td')
         #tag = columns[0].get_text()
         value = columns[0].get_text()
