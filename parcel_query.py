@@ -11,6 +11,7 @@ url = "https://qpublic.schneidercorp.com/application.aspx?app=BayCountyFL&PageTy
 browser.get(url)
 
 # Access agreement:
+#wait = WebDriverWait(browser, 10)
 agreeButton = browser.find_element_by_tag_name("a.btn.btn-primary.button-1")
 agreeButton.click()
 
@@ -18,8 +19,8 @@ agreeButton.click()
 # Parcels numbered between 14805-101-000 to 14805-191-000 AND 14876-501-000 to 14876-614-000
 parcel_list = []
 
-for num in range(20, 99):
-    parcel_list.append('04119-0' + str(num) + '-000')
+for num in range(0, 25):
+    parcel_list.append('36075-00' + str(num) + '-000')
 
 # for num2 in range(501,615):
     # parcel_list.append('14876-' + str(num2) + '-000')
@@ -36,6 +37,7 @@ searchButton.click()
 data_list = []
 
 # Pulling information for each parcel
+print(len(parcel_list)) #38
 for parcel in range(0, len(parcel_list)):
     # Parcel Summary page - We can now parse the parcel details
     parcelSoup = BeautifulSoup(browser.page_source, "html.parser")
@@ -66,13 +68,22 @@ for parcel in range(0, len(parcel_list)):
         iwall_type = 'N/A'
         ftype = 'N/A'
         fcover_type = 'N/A'
+        # Save the parcel:
+        with open('CommParcels.csv', 'a', newline='') as csvfile:
+            fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType',
+                          'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writerow({'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Square Footage': sq_ft,
+                             'Stories': stories, 'Year Built': yr_built, 'OccType': occ_type,
+                             'Exterior Walls': ewall_type, 'Roof Cover': rcover_type, 'Interior Walls': iwall_type,
+                             'Frame Type': ftype, 'Floor Cover': fcover_type})
     else:
         # If the parcel is not a vacant lot, access all parcel attributes:
         for tab in table:
             if 'Building' in tab.find_all('tr')[0].get_text():  # Some parcels have multiple bldgs
                 for row in tab.find_all('tr'):
                     columns = row.find_all('td')
-                    tag = row.get_text().splitlines()[1]
+                    tag = row.get_text().splitlines()[2]
                     if tag == '':
                         sq_ft = 'N/A'
                         stories = 'N/A'
@@ -92,25 +103,23 @@ for parcel in range(0, len(parcel_list)):
                         elif 'Actual Year Built' in tag:
                             yr_built = value.splitlines()[1]
                         elif 'Type' in tag:
-                            occ_type = value.splitlines()[1]
+                            if 'Frame' in tag:
+                                ftype = value.splitlines()[1]
+                            else:
+                                occ_type = value.splitlines()[1]
                         elif 'Exterior Walls' in tag:
                             ewall_type = value.splitlines()[1]
                         elif 'Roof Cover' in tag:
                             rcover_type = value.splitlines()[1]
                         elif 'Interior Walls' in tag:
                             iwall_type = value.splitlines()[1]
-                        elif 'Frame Type' in tag:
-                            ftype = value.splitlines()[1]
                         elif 'Floor Cover' in tag:
                             fcover_type = value.splitlines()[1]
                     # Save the building and parcel information:
-                    with open('CommParcels.csv', 'a', newline='') as csvfile:
-                        fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built',
-                                      'OccType', 'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type',
-                                      'Floor Cover']
-                        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                        writer.writerow(
-                            {'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Square Footage': sq_ft,
+                with open('CommParcels.csv', 'a', newline='') as csvfile:
+                    fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType', 'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type','Floor Cover']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                    writer.writerow({'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Square Footage': sq_ft,
                              'Stories': stories, 'Year Built': yr_built, 'OccType': occ_type,
                              'Exterior Walls': ewall_type, 'Roof Cover': rcover_type, 'Interior Walls': iwall_type,
                              'Frame Type': ftype, 'Floor Cover': fcover_type})
