@@ -1,23 +1,30 @@
 import random #switch later
 import pandas as pd
+from element import Window
 
 class SurveyData:
 
-
-    def run(self, parcel):
-        # Check what survey this parcel needs data from:
-        if parcel.isComm:
-            self.isSurvey = 'CBECS'
+    def run(self, parcel, ref_bldg_flag, parcel_flag):
+        # Populate building features using DOE reference buildings:
+        if ref_bldg_flag:  # Only ask for the floor-to-floor height
+            self.doe_ref_bldg(parcel, window_flag=False)
         else:
-            self.isSurvey = 'RECS - currently not supported'
-
-        # Determine the census division for the CBECS and RECS surveys:
-        if self.isSurvey == 'CBECS' or self.isSurvey == 'RECS':
-            census_div = self.get_census_division(parcel)
-
-        # Call function that populates building attributes using the CBECS:
-        if self.isSurvey == 'CBECS':
-            self.cbecs_attrib(census_div, parcel)
+            pass
+        # Region-specific attributes:
+        if parcel_flag:
+            # Check what survey this parcel needs data from:
+            if parcel.isComm:
+                self.isSurvey = 'CBECS'
+            else:
+                self.isSurvey = 'RECS - currently not supported'
+            # Determine the census division for the CBECS and RECS surveys:
+            if self.isSurvey == 'CBECS' or self.isSurvey == 'RECS':
+                census_div = self.get_census_division(parcel)
+            # Call function that populates building attributes using the CBECS:
+            if self.isSurvey == 'CBECS':
+                self.cbecs_attrib(census_div, parcel)
+            else:
+                pass
         else:
             pass
 
@@ -267,12 +274,11 @@ class SurveyData:
                 wtype = 'Other'
         else:
             print('Survey year currently not supported')
-
-        # Assign wall type description to every exterior wall for the parcel:
+        # Assign wall type description to every exterior wall for the parcel and add a Window SubElement:
         for storey in parcel.hasStorey:
             for wall in storey.hasElement['Walls']:
                 wall.hasType = wtype
-
+                wall.hasSubElement = Window()
         # Roof type descriptions:
         roof_element = parcel.hasStorey[-1].hasElement['Roof'][0]
         if data_yr == 1989:
@@ -334,24 +340,6 @@ class SurveyData:
 
         # For CBECS 2003 and 2012, additional attributes are available for building glass percentage and window type:
         if data_yr == 2003 or data_yr == 2012:
-            # Building glass percentage:
-            glsspc_weights = []
-            for option in glsspc_options:
-                glsspc_weights.append(CBECS_data.loc[CBECS_data[glsspc_tag] == option, wght_tag].sum())
-            # Choose glass percent: ********NEED TO CREATE A WINDOW ASSEMBLY AND BRING IN ************
-            glsspc_choice = random.choices(glsspc_options, glsspc_weights)[0]
-            if glsspc_choice == 1:
-                choice2 = '1 percent or less'
-            elif glsspc_choice == 2:
-                choice2 = '2 to 10 percent'
-            elif glsspc_choice == 3:
-                choice2 = '11 to 25 percent'
-            elif glsspc_choice == 4:
-                choice2 = '26 to 50 percent'
-            elif glsspc_choice == 5:
-                choice2 = '51 to 75 percent'
-            elif glsspc_choice == 6:
-                choice2 = '76 to 100 percent'
             # Window type:
             win_weights = []
             for option in win_options:
@@ -371,8 +359,26 @@ class SurveyData:
             # Add windows to wall elements:
             if win_choice != 4:
                 for storey in parcel.hasStorey:
-                    wall = storey.containsElement['Wall']
+                    wall = storey.adjacentElement['Wall']
                     wall.hasSubElement = 'Window: ' + win_type
+            # Building glass percentage:
+            glsspc_weights = []
+            for option in glsspc_options:
+                glsspc_weights.append(CBECS_data.loc[CBECS_data[glsspc_tag] == option, wght_tag].sum())
+            # Choose glass percent: ********NEED TO CREATE A WINDOW ASSEMBLY AND BRING IN ************
+            glsspc_choice = random.choices(glsspc_options, glsspc_weights)[0]
+            if glsspc_choice == 1:
+                choice2 = '1 percent or less'
+            elif glsspc_choice == 2:
+                choice2 = '2 to 10 percent'
+            elif glsspc_choice == 3:
+                choice2 = '11 to 25 percent'
+            elif glsspc_choice == 4:
+                choice2 = '26 to 50 percent'
+            elif glsspc_choice == 5:
+                choice2 = '51 to 75 percent'
+            elif glsspc_choice == 6:
+                choice2 = '76 to 100 percent'
             # Additional "roof tilt" attribute for 2012 CBECS:
             if data_yr == 2012:
                 rtilt_weights = []
@@ -392,8 +398,56 @@ class SurveyData:
         else:
             pass
 
-
-
-#Let's play with the file:
-#test = Parcel('12345', 5, 'Hotel', 2002, "801 10th CT E Panama City 32401",'3200')
-#b = NatlSurveyData(test)
+    def doe_ref_bldg(self, parcel, window_flag):
+        if parcel.isComm:
+            # Identify the vintage of reference buildings needed:
+            if 1980 < parcel.hasYearBuilt < 2016:
+                # Use the building occupancy to identify the appropriate subset of reference buildings:
+                if parcel.hasOccupancy == 'Office':
+                    # All reference buildings have the same floor-to-floor height:
+                    for story in parcel.hasStorey:
+                        story.hasGeometry['Height'] = 4.0*3.28084  # [m] *3.28084 for ft
+                    if window_flag:
+                        if len(parcel.hasStorey) == 1:  # Small office building - 1 floor
+                            window_wall_ratio = [0.244, 0.198, 0.198, 0.198]
+                            window_wall_ratio_total = 0.212
+                        elif 1 < len(parcel.hasStorey) < 11:  # Medium office building - 3 floors, 4982 m^2 floor area
+                            window_wall_ratio = [0.33, 0.33, 0.33, 0.33]
+                            window_wall_ratio_total = 0.33
+                        elif len(parcel.hasStorey) >= 11:  # Large office building - 12 floors, 46,320 m^2
+                            window_wall_ratio = [0.244, 0.198, 0.198, 0.198]
+                            window_wall_ratio_total = 0.212
+                    else:
+                        pass
+                elif parcel.hasOccupancy == 'Warehouse':
+                    pass
+                elif parcel.hasOccupancy == 'Retail':
+                    pass
+                elif parcel.hasOccupancy == 'Strip Mall':
+                    pass
+                elif parcel.hasOccupancy == 'Primary School':
+                    pass
+                elif parcel.hasOccupancy == 'Secondary School':
+                    pass
+                elif parcel.hasOccupancy == 'Supermarket':
+                    pass
+                elif parcel.hasOccupancy == 'Quick Service Restaurant':
+                    pass
+                elif parcel.hasOccupancy == 'Full Service Restaurant':
+                    pass
+                elif parcel.hasOccupancy == 'Hospital':
+                    pass
+                elif parcel.hasOccupancy == 'Outpatient Health Care':
+                    pass
+                elif parcel.hasOccupancy == 'Small Hotel':
+                    pass
+                elif parcel.hasOccupancy == 'Large Hotel':
+                    pass
+                elif parcel.hasOccupancy == 'Midrise apartment':
+                    pass
+            elif parcel.hasYearBuilt <= 1980:
+                pass
+            else:
+                pass
+        else:
+            print('Non-engineered residential buildings not yet supported')
