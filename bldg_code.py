@@ -97,17 +97,15 @@ class FBC(BldgCode):
         # Knowing the code edition, populate this building-level code-informed attributes for the parcel:
         if parcel.hasLocation['State'] == 'FL':
             if 'FBC' in self.hasEdition or self.hasEdition == '1988 SBC':
-                # 9 ft standard ceiling height - Add to each Storey in Building:
+                # minimum ceiling height is 7 ft 6 inches - Add to each Storey in Building:
                 for i in range(0, len(parcel.hasStorey)):
-                    parcel.hasStorey[i].hasElevation = [9*i, 9*(i+1)]
-                    parcel.hasStorey[i].hasGeometry['Height'] = 9
-                parcel.hasGeometry['Height'] = len(parcel.hasStorey) * 9  # min. ceiling height used to calculate building height [ft]
+                    parcel.hasStorey[i].hasElement['Ceiling'][0].hasElevation = parcel.hasStorey[i].hasElevation[0] + 7.5
+                    parcel.hasStorey[i].hasElement['Ceiling'][0].hasGeometry['Height'] = 7.5
             elif 'CABO' in self.hasEdition:
-                # 8 ft standard ceiling height for older construction
+                # minimum ceiling height is 7 ft 6 inches - Add to each Storey in Building:
                 for i in range(0, len(parcel.hasStorey)):
-                    parcel.hasStorey[i].hasElevation = [8*i, 8*(i+1)]
-                    parcel.hasStorey[i].hasGeometry['Height'] = 8
-                parcel.hasGeometry['Height'] = len(parcel.hasStorey) * 8  # min. ceiling height used to calculate building height [ft]
+                    parcel.hasStorey[i].hasElement['Ceiling'][0].hasElevation = parcel.hasStorey[i].hasElevation[0] + 7.5
+                    parcel.hasStorey[i].hasElement['Ceiling'][0].hasGeometry['Height'] = 7.5
             else:
                 print('Building level attributes currently not supported')
         else:
@@ -418,10 +416,25 @@ class ASCE7(BldgCode):
             if bldg.hasGeometry['Height'] == ref_hbldg:
                 hfactor = 0.0
             else:
-                if edition == 'ASCE 7-93':
-                    hfactor = pd.read_csv(file_path + 'h93.csv')[str(bldg.hasGeometry['Height']) + ' ft'][0]
+                # First check if building height will need to be interpolated:
+                if bldg.hasGeometry['Height'].is_integer():
+                    input_height = [bldg.hasGeometry['Height']]
                 else:
-                    hfactor = pd.read_csv(file_path + 'h.csv')[str(bldg.hasGeometry['Height']) + ' ft'][0]
+                    input_height = [math.floor(bldg.hasGeometry['Height']), math.ceil(bldg.hasGeometry['Height'])]
+                if edition == 'ASCE 7-93':
+                    if len(input_height) == 1:
+                        hfactor = pd.read_csv(file_path + 'h93.csv')[str(input_height[0]) + ' ft'][0]
+                    else:
+                        hfactor1 = pd.read_csv(file_path + 'h93.csv')[str(input_height[0]) + ' ft'][0]
+                        hfactor2 = pd.read_csv(file_path + 'h93.csv')[str(input_height[1]) + ' ft'][0]
+                        hfactor = np.interp(bldg.hasGeometry['Height'], input_height, [hfactor1, hfactor2])
+                else:
+                    if len(input_height) == 1:
+                        hfactor = pd.read_csv(file_path + 'h.csv')[str(input_height[0]) + ' ft'][0]
+                    else:
+                        hfactor1 = pd.read_csv(file_path + 'h.csv')[str(input_height[0]) + ' ft'][0]
+                        hfactor2 = pd.read_csv(file_path + 'h.csv')[str(input_height[1]) + ' ft'][0]
+                        hfactor = np.interp(bldg.hasGeometry['Height'], input_height, [hfactor1, hfactor2])
             # Similitude in exposure categories:
             if exposure == ref_exposure:
                 efactor = 0.0
