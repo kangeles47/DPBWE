@@ -1,5 +1,5 @@
 import numpy as np
-from math import sqrt, pi, sin, atan2, degrees
+from math import sqrt, pi, sin, atan2, degrees, cos
 import geopandas as gpd
 from shapely.geometry import Point, Polygon, LineString
 from scipy import spatial
@@ -9,6 +9,7 @@ from element import Roof, Wall, Floor, Ceiling
 import bldg_code
 from survey_data import SurveyData
 from geopy import distance
+
 
 # The Building Topology Ontology (BOT) is a minimal ontology for describing the core topological concepts of a building.
 # BOT representation (logic) is used to organize asset(s) description(s)
@@ -68,7 +69,7 @@ class Zone:
 
     def update_elements(self):
         # Simple function to easily update hasElement assignment
-        inst_types = ['Site', 'Building', 'Parcel','Storey', 'Space']
+        inst_types = ['Site', 'Building', 'Parcel', 'Storey', 'Space']
         a = str(type(self))
         for itype in inst_types:
             if a in itype:
@@ -172,7 +173,8 @@ class Site(Zone):
         # Given the number of buildings, create instances of Building and pull attributes
         for i in range(0, len(bldg_list)):
             # Sites contain one or more buildings
-            new_bldg = Building(pid, num_stories, occupancy, yr_built, address, area, lon, lat) # These attributes come from building list
+            new_bldg = Building(pid, num_stories, occupancy, yr_built, address, area, lon,
+                                lat)  # These attributes come from building list
             self.hasBuilding.append(new_bldg)
             # Sites contain all of the zones, spaces, elements, etc. within each building model:
             self.update_zones()
@@ -183,7 +185,7 @@ class Site(Zone):
             self.intersectsZone = None
         else:
             pass
-         # Add the site as a Zone:
+        # Add the site as a Zone:
         self.hasName = 'Site' + str(site_num)
         self.containsZone.append(self)
 
@@ -208,8 +210,8 @@ class Building(Zone):
             new_storey.hasName = 'Storey' + str(i)
             self.hasStorey.append(new_storey)
         # Create Interface instances to relate stories:
-        for stry in range(0, len(self.hasStorey)-1):
-            self.hasInterface.append(Interface(self.hasStorey[stry], self.hasStorey[stry+1]))
+        for stry in range(0, len(self.hasStorey) - 1):
+            self.hasInterface.append(Interface(self.hasStorey[stry], self.hasStorey[stry + 1]))
         # Buildings contain all of the zones, spaces, elements, etc. within each storey:
         self.update_zones()
         # Attributes outside of BOT:
@@ -218,7 +220,9 @@ class Building(Zone):
         self.hasYearBuilt = int(yr_built)
         self.hasLocation = {'Address': address, 'State': None, 'County': None, 'Geodesic': Point(lon, lat)}
         self.hasZeroPoint = Point(lon, lat)
-        self.hasGeometry = {'Area': float(area), 'Footprint': {'type': None, 'geodesic': None, 'local': None}, 'Height': None, '3D Geometry': {'geodesic': [], 'local': []}, 'Surfaces': {'geodesic': [], 'local': []}, 'TPU_surfaces': {'geodesic': [], 'local': []}}
+        self.hasGeometry = {'Total Floor Area': float(area), 'Footprint': {'type': None, 'geodesic': None, 'local': None},
+                            'Height': None, '3D Geometry': {'geodesic': [], 'local': []},
+                            'Surfaces': {'geodesic': [], 'local': []}, 'TPU_surfaces': {'geodesic': [], 'local': []}}
         self.hasOrientation = None
         self.hasFundamentalPeriod = {'x': None, 'y': None}
         self.hasStructuralSystem = {'type': None, 'elements': []}
@@ -251,13 +255,12 @@ class Building(Zone):
     def create_TPU_surfaces(self, key, tpu_wdir):
         # Create an equivalent minimum rectangle for the building footprint::
         rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
-        #rect = self.hasFootprint[key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
         xrect, yrect = rect.exterior.xy
         # Step 1: Create lines for each side on the rectangle and find their lengths and relative orientations
         side_lines = {'lines': [], 'length': [], 'TPU direction': []}
         max_length = 0
-        for ind in range(0, len(xrect)-1):
-            new_line = LineString([(xrect[ind], yrect[ind]), (xrect[ind+1], yrect[ind+1])])
+        for ind in range(0, len(xrect) - 1):
+            new_line = LineString([(xrect[ind], yrect[ind]), (xrect[ind + 1], yrect[ind + 1])])
             side_lines['lines'].append(new_line)
             if key == 'geodesic':
                 pass
@@ -282,6 +285,7 @@ class Building(Zone):
             side_lines['TPU direction'].append(line_direction)
         # Step 2: Determine how many surfaces will be needed using the roof assembly description:
         # Assign the corresponding sides:
+        self.hasStorey[-1].adjacentElement['Roof'].hasShape = 'flat'
         if self.hasStorey[-1].adjacentElement['Roof'].hasShape == 'flat':
             num_surf = 5
             surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
@@ -304,21 +308,21 @@ class Building(Zone):
             pass
         # Step 3: find the orientation of the TPU axes:
         # Find how many degrees ccw the building is oriented by using the angle on the bottom LHS of minimum rectangle:
-        if self.hasOrientation == None:
-            if key == 'geodesic':
-                pass
-            else:
-                xdist = xrect[2] - xrect[1]
-                ydist = yrect[2] - yrect[1]
-                theta = degrees(atan2(ydist, xdist))
-                if theta < 0:
+        #if self.hasOrientation == None:
+            #if key == 'geodesic':
+                #pass
+            #else:
+                #xdist = xrect[0] - xrect[3]
+                #ydist = yrect[0] - yrect[3]
+                #theta = degrees(atan2(ydist, xdist))
+                #if theta < 0:
                     # Find the equivalent positive angle:
-                    theta = 360 + theta
-                else:
-                    pass
-                self.hasOrientation = theta
-        else:
-            pass
+                    #theta = 360 + theta
+                #else:
+                    #pass
+                #self.hasOrientation = theta
+        #else:
+            #pass
         # Step 4: Create surface geometries using 3D coordinates:
         # Set up plotting:
         fig = plt.figure()
@@ -329,7 +333,8 @@ class Building(Zone):
             for plane in range(0, len(new_zpts) - 1):
                 for zpt in range(0, len(new_zpts[plane]) - 1):
                     # Create the surface polygon:
-                    tpu_surf = Polygon([new_zpts[plane][zpt], new_zpts[plane + 1][zpt], new_zpts[plane + 1][zpt + 1], new_zpts[plane][zpt + 1]])
+                    tpu_surf = Polygon([new_zpts[plane][zpt], new_zpts[plane + 1][zpt], new_zpts[plane + 1][zpt + 1],
+                                        new_zpts[plane][zpt + 1]])
                     tpu_polys.append(tpu_surf)
                     # Extract xs, ys, and zs and plot
                     surf_xs = []
@@ -397,7 +402,7 @@ class Building(Zone):
         fig2 = plt.figure(dpi=200)
         ax2 = plt.axes(projection='3d')
         for i in idx:
-            surf_dict[i] = tpu_polys[poly_order[i-1]]
+            surf_dict[i] = tpu_polys[poly_order[i - 1]]
             # Optional: Plotting:
             # Extract xs, ys, and zs and plot
             poly_xs = []
@@ -410,8 +415,8 @@ class Building(Zone):
             # Define various line colors to keep track of surfaces:
             colors = ['b', 'g', 'r', 'y', 'm']
             # Plot the surface geometry:
-            ax2.plot(poly_xs, poly_ys, poly_zs, color='0.50', linestyle=(0, (1, 1)), label='Surface'+str(i))
-        #ax2.legend(loc='best')
+            ax2.plot(poly_xs, poly_ys, poly_zs, color='0.50', linestyle=(0, (1, 1)), label='Surface' + str(i))
+        # ax2.legend(loc='best')
         # Plot the building 3D Geometry:
         for poly in self.hasGeometry['3D Geometry'][key]:
             x_bpoly, y_bpoly, z_bpoly = [], [], []
@@ -433,7 +438,7 @@ class Building(Zone):
         ax2.set_xlabel('x [m]')
         ax2.set_ylabel('y [m]')
         ax2.set_zlabel('z [m]')
-        ax2.set_title('Surfaces for TPU Wind Direction: '+str(tpu_wdir))
+        ax2.set_title('Surfaces for TPU Wind Direction: ' + str(tpu_wdir))
         plt.axis('off')
         plt.show()
         # Step 6: Save the surfaces to the building description:
@@ -443,7 +448,8 @@ class Building(Zone):
         # Given the building, determine the use case:
         eave_length = 0
         # Use an equivalent rectangle to calculate aspect ratios:
-        rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
+        rect = self.hasGeometry['Footprint'][
+            key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
         xrect, yrect = rect.exterior.xy
         # Determine side lengths:
         side_lines = {'lines': [], 'length': [], 'TPU direction': []}
@@ -473,31 +479,31 @@ class Building(Zone):
             # Record line directions:
             side_lines['TPU direction'].append(line_direction)
         # Calculate aspect ratios:
-        hb = self.hasGeometry['Height']/min(side_lines['length'])
-        db = max(side_lines['length'])/min(side_lines['length'])
+        hb = self.hasGeometry['Height'] / min(side_lines['length'])
+        db = max(side_lines['length']) / min(side_lines['length'])
         # Determine the use case:
         if eave_length == 0:
             if self.hasStorey[-1].adjacentElement['Roof'].hasShape == 'flat':
                 num_surf = 5
                 surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
                 # Height to breadth use case
-                if hb <= 1/4:
-                    hb_ratio= 1/4
-                elif 1/4 < hb <= 2/4:
-                    hb_ratio = 2/4
-                elif 2/4 < hb <= 3/4:
-                    hb_ratio = 3/4
-                elif 3/4 < hb <= 1:
+                if hb <= 1 / 4:
+                    hb_ratio = 1 / 4
+                elif 1 / 4 < hb <= 2 / 4:
+                    hb_ratio = 2 / 4
+                elif 2 / 4 < hb <= 3 / 4:
+                    hb_ratio = 3 / 4
+                elif 3 / 4 < hb <= 1:
                     hb_ratio = 1
                 else:
                     print('Height to breadth ratio not supported')
                 # Depth to breadth use case:
                 if db <= 1:
                     db_ratio = 1
-                elif 1 < db <= 3/2:
-                    db_ratio = 3/2
-                elif 3/2 < db <= 5/2:
-                    db_ratio = 5/2
+                elif 1 < db <= 3 / 2:
+                    db_ratio = 3 / 2
+                elif 3 / 2 < db <= 5 / 2:
+                    db_ratio = 5 / 2
                 else:
                     print('Depth to breadth ratio not supported')
             elif self.hasStorey[-1].adjacentElement['Roof'].hasShape == 'hip':  # Note: most common hip roof pitches 4:12-6:12
@@ -514,7 +520,6 @@ class Building(Zone):
         for line in side_lines['lines']:
             pass
 
-
     def create_zcoords(self, footprint, zcoord):
         # Input footprint polygon (either local or geodesic) and elevation:
         zs = []
@@ -525,10 +530,12 @@ class Building(Zone):
             zs.append(Point(xs[pt], ys[pt], zcoord))
         return zs
 
+
 class Parcel(Building):  # Note here: Consider how story/floor assignments may need to change for elevated structures
 
     def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
-        Building.__init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat) #Bring in all of the attributes that are defined in the BIM class for the parcel model
+        Building.__init__(self, pid, num_stories, occupancy, yr_built, address, area, lon,
+                          lat)  # Bring in all of the attributes that are defined in the BIM class for the parcel model
         # Define building-level attributes that are specific to parcel models
         # Building footprint:
         self.assign_footprint(self, num_stories)
@@ -539,14 +546,24 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             else:
                 xcoord, ycoord = self.hasGeometry['Footprint'][key].exterior.xy
                 new_point_list = []
-                for idx in range(2, len(xcoord)-2):
+                for idx in range(2, len(xcoord) - 2):
                     new_point_list.append(Point(xcoord[idx], ycoord[idx]))
                 self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
+                xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
+                plt.plot(np.array(xfpt)/3.281, np.array(yfpt)/3.281, 'k')
+                plt.xlabel('x [m]', fontsize=9)
+                plt.ylabel('y [m]', fontsize=9)
+                plt.xticks(fontsize=9)
+                plt.yticks(fontsize=9)
+                plt.show()
+        # Pull building/story height information from DOE reference buildings:
+        survey_data = SurveyData()  # create an instance of the survey data class
+        survey_data.run(self, ref_bldg_flag=True, parcel_flag=False)
         # Create an instance of the BldgCode class and populate building-level code-informed attributes for the parcel:
-        if self.hasLocation['State'] == 'FL':
-            code_informed = bldg_code.FBC(self, loading_flag=False) # Need building code for code-based descriptions
-        else:
-            pass
+        #if self.hasLocation['State'] == 'FL':
+            #code_informed = bldg_code.FBC(self, loading_flag=False)  # Need building code for code-based descriptions
+        #else:
+            #pass
         # Now that we have the building and story heights, render the 3D geometries:
         # Extract points for the building footprint and add the base z coordinate:
         geo_keys = self.hasGeometry['Footprint'].keys()
@@ -572,15 +589,15 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 # Set up plotting:
                 fig = plt.figure()
                 ax = plt.axes(projection='3d')
-                for plane in range(0, len(new_zpts)-1):
+                for plane in range(0, len(new_zpts) - 1):
                     # Add the bottom and top planes for the Story:
                     plane_poly1 = Polygon(new_zpts[plane])
-                    plane_poly2 = Polygon(new_zpts[plane+1])
+                    plane_poly2 = Polygon(new_zpts[plane + 1])
                     self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(plane_poly1)
                     self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(plane_poly2)
-                    for zpt in range(0, len(new_zpts[plane])-1):
+                    for zpt in range(0, len(new_zpts[plane]) - 1):
                         # Create the surface polygon:
-                        surf_poly = Polygon([new_zpts[plane][zpt], new_zpts[plane+1][zpt], new_zpts[plane+1][zpt+1], new_zpts[plane][zpt+1]])
+                        surf_poly = Polygon([new_zpts[plane][zpt], new_zpts[plane + 1][zpt], new_zpts[plane + 1][zpt + 1], new_zpts[plane][zpt + 1]])
                         # Save the polygon to the storey's geometry:
                         self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(surf_poly)
                         self.hasStorey[plane].hasGeometry['Surfaces'][key].append(surf_poly)
@@ -613,7 +630,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 top_poly = Polygon(new_zpts[-1])
                 self.hasGeometry['3D Geometry'][key].append(base_poly)
                 self.hasGeometry['3D Geometry'][key].append(top_poly)
-                for pt in range(0, len(new_zpts[0])-1):
+                for pt in range(0, len(new_zpts[0]) - 1):
                     # Create the surface polygon:
                     bsurf_poly = Polygon([new_zpts[0][pt], new_zpts[-1][pt], new_zpts[-1][pt + 1], new_zpts[0][pt + 1]])
                     # Save the polygon to the building geometry:
@@ -624,10 +641,10 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         # Update the Building's Elements:
         self.update_elements()
         # Populate instance attributes informed by national survey data:
-        survey_data = SurveyData()  # create an instance of the survey data class
-        survey_data.run(self)  # populate the component-level attributes using survey data
+        survey_data.run(self, ref_bldg_flag=False, parcel_flag=True)  # populate the component-level attributes using survey data
         if survey_data.isSurvey == 'CBECS':
             # Populate code-informed component-level information
+            code_informed = bldg_code.FBC(self, loading_flag=False)
             code_informed.roof_attributes(code_informed.hasEdition, self, survey_data.isSurvey)
         else:
             pass
@@ -684,12 +701,15 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             pass
         else:
             parcel.hasGeometry['Footprint']['type'] = 'default'
-            length = (sqrt(self.hasGeometry['Area']/num_stories))*(1/(2*sin(pi/4))) # Divide total building area by number of stories and take square root, divide by 2
-            p1 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 45)
-            p2 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 135)
-            p3 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 225)
-            p4 = distance.distance(kilometers=length/1000).destination((ref_pt.y, ref_pt.x), 315)
-            parcel.hasGeometry['Footprint']['geodesic'] = Polygon([(p1.longitude, p1.latitude), (p2.longitude, p2.latitude), (p3.longitude, p3.latitude), (p4.longitude, p4.latitude)])
+            length = (sqrt(self.hasGeometry['Total Floor Area'] / num_stories)) * (1 / (2 * sin(
+                pi / 4)))  # Divide total building area by number of stories and take square root, divide by 2
+            p1 = distance.distance(kilometers=length / 1000).destination((ref_pt.y, ref_pt.x), 45)
+            p2 = distance.distance(kilometers=length / 1000).destination((ref_pt.y, ref_pt.x), 135)
+            p3 = distance.distance(kilometers=length / 1000).destination((ref_pt.y, ref_pt.x), 225)
+            p4 = distance.distance(kilometers=length / 1000).destination((ref_pt.y, ref_pt.x), 315)
+            parcel.hasGeometry['Footprint']['geodesic'] = Polygon(
+                [(p1.longitude, p1.latitude), (p2.longitude, p2.latitude), (p3.longitude, p3.latitude),
+                 (p4.longitude, p4.latitude)])
         # Given the geodesic footprint, calculate the local (x,y) coordinates for the building footprint:
         # Find the distance between exterior points and the building centroid (origin) to define a new coordinate system:
         xs, ys = parcel.hasGeometry['Footprint']['geodesic'].exterior.xy
@@ -712,6 +732,21 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         xy_poly = Polygon(point_list)
         # Add to Parcel:
         parcel.hasGeometry['Footprint']['local'] = xy_poly
+        # Find the footprint's orientation using a minimum rectangle and its local geometry:
+        rect = self.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
+        xrect, yrect = rect.exterior.xy
+        xdist = xrect[0] - xrect[3]
+        ydist = yrect[0] - yrect[3]
+        theta = degrees(atan2(ydist, xdist))
+        if theta < 0:
+            # Find the equivalent positive angle:
+            theta = 360 + theta
+        else:
+            pass
+        # Add the building's orientation
+        self.hasOrientation = theta
+        plt.plot(xrect, yrect)
+        plt.show()
 
 
     def parcel_elements(self, parcel):
@@ -732,10 +767,10 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 element_dict['Floor'].append(new_floor1)
             else:
                 # Reference the prior story's top floor:
-                floor1 = parcel.hasStorey[storey-1].hasElement['Floor'][1]
+                floor1 = parcel.hasStorey[storey - 1].hasElement['Floor'][1]
                 element_dict['Floor'].append(floor1)
             # Top floor:
-            if storey == len(parcel.hasStorey)-1:
+            if storey == len(parcel.hasStorey) - 1:
                 new_roof = Roof()
                 # Add roof to the storey:
                 parcel.hasStorey[storey].adjacentElement.update({'Roof': new_roof})
@@ -753,21 +788,22 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             # Loop through zone_pts and assign geometries to wall elements:
             new_wall_list = []
             for ind in zone_pts.index:
-                for col in range(0, len(zone_pts.loc[ind])-1):
+                for col in range(0, len(zone_pts.loc[ind]) - 1):
                     # Create a new Wall Instance:
                     ext_wall = Wall()
                     ext_wall.isExterior = True
                     ext_wall.inLoadPath = True
                     ext_wall.hasGeometry['Height'] = parcel.hasStorey[storey].hasGeometry['Height']
-                    ext_wall.hasGeometry['1D Geometry'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[ind, col+1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
+                    ext_wall.hasGeometry['1D Geometry'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[
+                        ind, col + 1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
                     ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry'].length
                     new_wall_list.append(ext_wall)
             # Add all walls to element_dict:
             element_dict['Walls'] = new_wall_list
             # Each wall shares interfaces with the walls before and after it:
-            for w in range(0, len(new_wall_list)-1):
+            for w in range(0, len(new_wall_list) - 1):
                 # Create new Interface instance
-                new_interface = Interface(new_wall_list[w], new_wall_list[w+1])
+                new_interface = Interface(new_wall_list[w], new_wall_list[w + 1])
                 parcel.hasStorey[storey].hasInterface.append(new_interface)
             # Add all elements to the storey's "hasElement" attribute:
             parcel.hasStorey[storey].containsElement.update({'Ceiling': element_dict['Ceiling']})
