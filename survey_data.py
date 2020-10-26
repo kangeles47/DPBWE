@@ -134,25 +134,25 @@ class SurveyData:
                 print('Year Built not supported')
 
         # Value for square footage tag (consistent across datasets):
-        if parcel.hasGeometry['Area'] <= 1000:
+        if parcel.hasGeometry['Total Floor Area'] <= 1000:
             value_area = 1
-        elif 1000 < parcel.hasGeometry['Area'] <= 5000:
+        elif 1000 < parcel.hasGeometry['Total Floor Area'] <= 5000:
             value_area = 2
-        elif 5000 < parcel.hasGeometry['Area'] <= 10000:
+        elif 5000 < parcel.hasGeometry['Total Floor Area'] <= 10000:
             value_area = 3
-        elif 10000 < parcel.hasGeometry['Area'] <= 25000:
+        elif 10000 < parcel.hasGeometry['Total Floor Area'] <= 25000:
             value_area = 4
-        elif 25000 < parcel.hasGeometry['Area'] <= 50000:
+        elif 25000 < parcel.hasGeometry['Total Floor Area'] <= 50000:
             value_area = 5
-        elif 50000 < parcel.hasGeometry['Area'] <= 10000:
+        elif 50000 < parcel.hasGeometry['Total Floor Area'] <= 10000:
             value_area = 6
-        elif 100000 < parcel.hasGeometry['Area'] <= 20000:
+        elif 100000 < parcel.hasGeometry['Total Floor Area'] <= 20000:
             value_area = 7
-        elif 200000 < parcel.hasGeometry['Area'] <= 500000:
+        elif 200000 < parcel.hasGeometry['Total Floor Area'] <= 500000:
             value_area = 8
-        elif 500000 < parcel.hasGeometry['Area'] <= 1000000:
+        elif 500000 < parcel.hasGeometry['Total Floor Area'] <= 1000000:
             value_area = 9
-        elif parcel.hasGeometry['Area'] > 1000000:
+        elif parcel.hasGeometry['Total Floor Area'] > 1000000:
             value_area = 10
         else:
             print('CBECS square footage code not determined')
@@ -403,10 +403,13 @@ class SurveyData:
             # Identify the vintage of reference buildings needed:
             if 1980 < parcel.hasYearBuilt < 2016:
                 # Use the building occupancy to identify the appropriate subset of reference buildings:
-                if parcel.hasOccupancy == 'Office':
+                if parcel.hasOccupancy == 'Office' or parcel.hasOccupancy == 'Financial':
                     # All reference buildings have the same floor-to-floor height:
-                    for story in parcel.hasStorey:
-                        story.hasGeometry['Height'] = 4.0*3.28084  # [m] *3.28084 for ft
+                    for i in range(0, len(parcel.hasStorey)):
+                        parcel.hasStorey[i].hasGeometry['Height'] = 4.0*3.28084  # [ft]
+                        parcel.hasStorey[i].hasElevation = [4 * i *3.28084, 4 * (i + 1)*3.28084]
+                    # Building height:
+                    parcel.hasGeometry['Height'] = len(parcel.hasStorey) * 4*3.28084  # [ft]
                     if window_flag:
                         if len(parcel.hasStorey) == 1:  # Small office building - 1 floor
                             window_wall_ratio = [0.244, 0.198, 0.198, 0.198]
