@@ -539,6 +539,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         # Define building-level attributes that are specific to parcel models
         # Building footprint:
         self.assign_footprint(self, num_stories)
+        plt.rcParams["font.family"] = "Times New Roman"
         # Clean up building footprint for illustrative example:
         for key in self.hasGeometry['Footprint']:
             if key == 'type':
@@ -551,10 +552,10 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
                 xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
                 plt.plot(np.array(xfpt)/3.281, np.array(yfpt)/3.281, 'k')
-                plt.xlabel('x [m]', fontsize=9)
-                plt.ylabel('y [m]', fontsize=9)
-                plt.xticks(fontsize=9)
-                plt.yticks(fontsize=9)
+                plt.xlabel('x [m]', fontsize=12)
+                plt.ylabel('y [m]', fontsize=12)
+                plt.xticks(fontsize=12)
+                plt.yticks(fontsize=12)
                 plt.show()
         # Pull building/story height information from DOE reference buildings:
         survey_data = SurveyData()  # create an instance of the survey data class
@@ -610,7 +611,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                             surf_ys.append(surf_points[1])
                             surf_zs.append(surf_points[2])
                         # Plot the surfaces for the entire building to verify:
-                        ax.plot(np.array(surf_xs), np.array(surf_ys), np.array(surf_zs), 'k')
+                        ax.plot(np.array(surf_xs)/3.281, np.array(surf_ys)/3.281, np.array(surf_zs)/3.281, 'k')
                         # Make the panes transparent:
                         ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
                         ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
@@ -620,10 +621,14 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
                         ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
                         # Plot labels
-                        ax.set_xlabel('x')
-                        ax.set_ylabel('y')
-                        ax.set_zlabel('z')
+                        ax.set_xlabel('x [m]', fontsize=12)
+                        ax.set_ylabel('y [m]', fontsize=12)
+                        ax.set_zlabel('z [m]', fontsize=12)
+                        ax.set_zlim(0, 16)
                 # Show the surfaces for each story:
+                ax.xaxis.set_tick_params(labelsize=12)
+                ax.yaxis.set_tick_params(labelsize=12)
+                ax.zaxis.set_tick_params(labelsize=12)
                 plt.show()
                 # Define full 3D surface renderings for the building using base plane and top plane:
                 base_poly = Polygon(new_zpts[0])
