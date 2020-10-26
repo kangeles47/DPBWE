@@ -303,15 +303,7 @@ def assign_rmwfrs_pressures(bldg, edition, exposure, wind_speed):
     rect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
     xrect, yrect = rect.exterior.xy
     xfpt, yfpt = bldg.hasGeometry['Footprint']['local'].exterior.xy
-    # Find how many degrees ccw the building is oriented by using the angle on the bottom LHS:
-    xdist = xrect[2] - xrect[1]
-    ydist = yrect[2] - yrect[1]
-    theta = math.degrees(math.atan2(ydist, xdist))
-    if theta < 0:
-        # Find the equivalent positive angle:
-        theta = 360 + theta
-    else:
-        pass
+    theta = bldg.hasOrientation
     # (2b) Find the length of the rectangle's line segments:
     # Set up placeholders for Roof MWFRS pressures:
     info_rmwfrs = {'side length': [], 'wind direction': [], 'possible wind directions': [], 'direction length': [], 'pressures': []}
