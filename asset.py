@@ -9,6 +9,7 @@ from element import Roof, Wall, Floor, Ceiling
 import bldg_code
 from survey_data import SurveyData
 from geopy import distance
+from scipy.io import loadmat
 
 
 # The Building Topology Ontology (BOT) is a minimal ontology for describing the core topological concepts of a building.
@@ -447,9 +448,24 @@ class Building(Zone):
     def map_TPUsurfaces(self, key):
         # Given the building, determine the use case:
         eave_length = 0
+        wind_direction = 0
+        # Assign wdir_tag to access appropriate model building file later:
+        if wind_direction == 0:
+            wdir_tag = '00.mat'
+        elif wind_direction == 15:
+            wdir_tag = '15.mat'
+        elif wind_direction == 30:
+            wdir_tag = '30.mat'
+        elif wind_direction == 45:
+            wdir_tag = '45.mat'
+        elif wind_direction == 60:
+            wdir_tag = '60.mat'
+        elif wind_direction == 75:
+            wdir_tag = '75.mat'
+        elif wind_direction == 90:
+            wdir_tag = '90.mat'
         # Use an equivalent rectangle to calculate aspect ratios:
-        rect = self.hasGeometry['Footprint'][
-            key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
+        rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
         xrect, yrect = rect.exterior.xy
         # Determine side lengths:
         side_lines = {'lines': [], 'length': [], 'TPU direction': []}
@@ -481,41 +497,95 @@ class Building(Zone):
         # Calculate aspect ratios:
         hb = self.hasGeometry['Height'] / min(side_lines['length'])
         db = max(side_lines['length']) / min(side_lines['length'])
-        # Determine the use case:
+        # Determine the use case and the corresponding number of surfaces:
         if eave_length == 0:
-            if self.hasStorey[-1].adjacentElement['Roof'].hasShape == 'flat':
-                num_surf = 5
-                surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
-                # Height to breadth use case
-                if hb <= 1 / 4:
-                    hb_ratio = 1 / 4
-                elif 1 / 4 < hb <= 2 / 4:
-                    hb_ratio = 2 / 4
-                elif 2 / 4 < hb <= 3 / 4:
-                    hb_ratio = 3 / 4
-                elif 3 / 4 < hb <= 1:
-                    hb_ratio = 1
+            breadth_model = 160  # [mm]
+            # Height to breadth use case - same for flat, gable, and hip roof
+            if hb == 1 / 4:
+                height_model = 40  # [mm]
+            elif hb == 2 / 4:
+                height_model = 80  # [mm]
+            elif hb == 3 / 4:
+                height_model = 120  # [mm]
+            elif hb == 1:
+                height_model = 160  # [mm]
+            else:
+                # Choose the closest ratio:
+                model_hbs = np.array([1/4, 2/4, 3/4, 1])
+                diff_hbs = model_hbs - hb
+                hb_ratio = min(abs(diff_hbs))
+                # Calculate the corresponding model height using the breadth and hb ratio:
+                height_model = hb_ratio*breadth_model
+            # Populate the height tag needed to access the correct data file:
+            if height_model == 40:
+                htag = '02'
+            elif height_model == 80:
+                htag = '04'
+            elif height_model == 120:
+                htag = '06'
+            elif height_model == 160:
+                htag = '08'
+            # Depth to breadth use case:
+            if self.adjacentElement['Roof'].hasShape == 'flat' or self.adjacentElement['Roof'].hasShape == 'gable':
+                if db == 1:
+                    depth_model = 160
+                elif db == 3 / 2:
+                    depth_model = 240
+                elif db == 5 / 2:
+                    depth_model = 400
                 else:
-                    print('Height to breadth ratio not supported')
-                # Depth to breadth use case:
-                if db <= 1:
-                    db_ratio = 1
-                elif 1 < db <= 3 / 2:
-                    db_ratio = 3 / 2
-                elif 3 / 2 < db <= 5 / 2:
-                    db_ratio = 5 / 2
+                    # Choose the closest ratio:
+                    model_dbs = np.array([1, 3/2, 5/2])
+                    diff_dbs = model_dbs - db
+                    db_ratio = min(abs(diff_dbs))
+                    # Calculate the corresponding model depth using the breadth and db ratio:
+                    depth_model = db_ratio * breadth_model
+                # Populate the height tag needed to access the correct data file:
+                if depth_model == 160:
+                    dtag = '08'
+                elif depth_model == 240:
+                    dtag = '12'
+                elif depth_model == 400:
+                    dtag = '20'
+                # Initialize roof tag, num_surf and, surf_dictionaries for each use case:
+                if self.hasStorey[-1].adjacentElement['Roof'].hasShape == 'flat':
+                    num_surf = 5
+                    surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
+                    rtag = '00'
                 else:
-                    print('Depth to breadth ratio not supported')
-            elif self.hasStorey[-1].adjacentElement['Roof'].hasShape == 'hip':  # Note: most common hip roof pitches 4:12-6:12
+                    num_surf = 6
+                    surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None}
+                    if self.adjacentElement['Roof'].hasPitch == 4.8:
+                        rtag = '05'
+                    elif self.adjacentElement['Roof'].hasPitch == 9.4:
+                        rtag = '10'
+                    elif self.adjacentElement['Roof'].hasPitch == 14:
+                        rtag = '14'
+                    elif self.adjacentElement['Roof'].hasPitch == 18.4:
+                        rtag = '18'
+                    elif self.adjacentElement['Roof'].hasPitch == 21.8:
+                        rtag = '22'
+                    elif self.adjacentElement['Roof'].hasPitch == 26.7:
+                        rtag = '27'
+                    elif self.adjacentElement['Roof'].hasPitch == 30:
+                        rtag = '30'
+                    elif self.adjacentElement['Roof'].hasPitch == 45:
+                        rtag = '45'
+                # Initialize string to access the correct model building file:
+                model_file = 'Cp_ts_g' + dtag + htag + rtag + wdir_tag
+                tpu_data = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/TPU/' + model_file
+            elif self.adjacentElement['Roof'].hasShape == 'hip':  # Note: most common hip roof pitches 4:12-6:12
                 num_surf = 8
                 surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None, 8: None}
-            elif self.hasStorey[-1].adjacentElement['Roof'].hasShape == 'gable':
-                num_surf = 6
-                surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None}
+                db_ratio = 3/2  # One option for hip roof
+                # Initialize string to access the correct model building file:
+                model_file = 'Cp_ts_h'
             else:
                 print('Roof shape not supported. Please provide a valid roof shape.')
         else:
             print('Buildings with eaves are not yet supported')
+        # Using the identified ratios, access the model building's data file:
+
         # Create the TPU footprint geometry from the building's equivalent rectangle:
         for line in side_lines['lines']:
             pass
