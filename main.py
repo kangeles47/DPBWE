@@ -20,6 +20,7 @@ test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405',
 # Generate and determine the building's TPU surfaces:
 tpu_wdir = 315
 test.create_TPU_surfaces('local', tpu_wdir)
+test.map_TPUsurfaces('local')
 # Populate component capacities:
 asce7 = ASCE7(test, loading_flag=True)
 edition = 'ASCE 7-10'

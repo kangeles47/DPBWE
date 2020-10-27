@@ -2,6 +2,7 @@ import numpy as np
 from math import sqrt, pi, sin, atan2, degrees, cos
 import geopandas as gpd
 from shapely.geometry import Point, Polygon, LineString
+from shapely.ops import split
 from scipy import spatial
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -468,7 +469,7 @@ class Building(Zone):
         rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
         xrect, yrect = rect.exterior.xy
         # Determine side lengths:
-        side_lines = {'lines': [], 'length': [], 'TPU direction': []}
+        side_lines = {'lines': [], 'length': [], 'TPU direction': [], 'TPU line': []}
         max_length = 0
         for ind in range(0, len(xrect) - 1):
             new_line = LineString([(xrect[ind], yrect[ind]), (xrect[ind + 1], yrect[ind + 1])])
@@ -500,22 +501,32 @@ class Building(Zone):
         # Determine the use case and the corresponding number of surfaces:
         if eave_length == 0:
             breadth_model = 160  # [mm]
+            match_flag = True
             # Height to breadth use case - same for flat, gable, and hip roof
-            if hb == 1 / 4:
+            if hb == (1 / 4):
                 height_model = 40  # [mm]
-            elif hb == 2 / 4:
+                hb_ratio = 1/4
+            elif hb == (2 / 4):
                 height_model = 80  # [mm]
-            elif hb == 3 / 4:
+                hb_ratio = 2/4
+            elif hb == (3 / 4):
                 height_model = 120  # [mm]
+                hb_ratio = 3/4
             elif hb == 1:
                 height_model = 160  # [mm]
+                hb_ratio = 1
             else:
                 # Choose the closest ratio:
+                match_flag = False
                 model_hbs = np.array([1/4, 2/4, 3/4, 1])
                 diff_hbs = model_hbs - hb
-                hb_ratio = min(abs(diff_hbs))
-                # Calculate the corresponding model height using the breadth and hb ratio:
-                height_model = hb_ratio*breadth_model
+                closest_hb = min(abs(diff_hbs))
+                hb_index = np.where(diff_hbs == closest_hb)
+                if not hb_index[0]:
+                    hb_index = np.where(diff_hbs == closest_hb*-1)
+                hb_ratio = model_hbs[hb_index[0]][0]
+                # Assign the appropriate model height
+                height_model = model_hbs[hb_index[0]]*breadth_model
             # Populate the height tag needed to access the correct data file:
             if height_model == 40:
                 htag = '02'
@@ -529,17 +540,25 @@ class Building(Zone):
             if self.adjacentElement['Roof'].hasShape == 'flat' or self.adjacentElement['Roof'].hasShape == 'gable':
                 if db == 1:
                     depth_model = 160
+                    db_ratio = 1
                 elif db == 3 / 2:
                     depth_model = 240
+                    db_ratio = 3/2
                 elif db == 5 / 2:
                     depth_model = 400
+                    db_ratio = 5/2
                 else:
                     # Choose the closest ratio:
+                    match_flag = False
                     model_dbs = np.array([1, 3/2, 5/2])
                     diff_dbs = model_dbs - db
-                    db_ratio = min(abs(diff_dbs))
-                    # Calculate the corresponding model depth using the breadth and db ratio:
-                    depth_model = db_ratio * breadth_model
+                    closest_db = min(abs(diff_dbs))
+                    db_index = np.where(diff_dbs == closest_db)
+                    if not db_index[0]:
+                        db_index = np.where(diff_dbs == closest_db * -1)
+                    db_ratio = model_dbs[db_index[0]][0]
+                    # Assign the appropriate model height
+                    depth_model = model_dbs[db_index[0]] * breadth_model
                 # Populate the height tag needed to access the correct data file:
                 if depth_model == 160:
                     dtag = '08'
@@ -584,11 +603,35 @@ class Building(Zone):
                 print('Roof shape not supported. Please provide a valid roof shape.')
         else:
             print('Buildings with eaves are not yet supported')
-        # Using the identified ratios, access the model building's data file:
-
-        # Create the TPU footprint geometry from the building's equivalent rectangle:
-        for line in side_lines['lines']:
-            pass
+        # Create the TPU footprint geometry from the real-life building's equivalent rectangle:
+        if match_flag:
+            # The real-life building's geometry can be used directly:
+            bfull = min(side_lines['length'])
+            hfull= self.hasGeometry['Height']
+            dfull = max(side_lines['length'])
+        else:
+            # Use the real-life building's breadth to create the full-scale geometry:
+            bfull = min(side_lines['length'])
+            hfull = hb_ratio*bfull
+            dfull = db_ratio*bfull
+        for line in range(0, len(side_lines['lines'])):
+            if side_lines['TPU direction'][line] == 'x':
+                # x-direction in TPU corresponds to building depth:
+                # Create two new lines using this line's centroid:
+                ref_pt = side_lines['lines'][line].centroid
+                line_pts = list(side_lines['lines'][line].coords)
+                new_line1 = LineString([ref_pt, Point(line_pts[0])])
+                new_line2 = LineString([ref_pt, Point(line_pts[1])])
+                # Distribute half of dfull to each line segment:
+                new_point1 = new_line1.interpolate(dfull/2)
+                new_point2 = new_line2.interpolate(dfull/2)
+                # Combine the two new points into one LineString:
+                tpu_line = LineString([new_point1, new_point2])
+            else:
+                # y-direction in TPU corresponds to building breadth:
+                tpu_line = side_lines['lines'][line]
+            # Add the TPU line geometry:
+            side_lines['TPU line'].append(tpu_line)
 
     def create_zcoords(self, footprint, zcoord):
         # Input footprint polygon (either local or geodesic) and elevation:
