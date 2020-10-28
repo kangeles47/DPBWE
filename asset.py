@@ -308,24 +308,7 @@ class Building(Zone):
             new_zpts.append(self.create_zcoords(rect, zcoord_roof))
         else:
             pass
-        # Step 3: find the orientation of the TPU axes:
-        # Find how many degrees ccw the building is oriented by using the angle on the bottom LHS of minimum rectangle:
-        #if self.hasOrientation == None:
-            #if key == 'geodesic':
-                #pass
-            #else:
-                #xdist = xrect[0] - xrect[3]
-                #ydist = yrect[0] - yrect[3]
-                #theta = degrees(atan2(ydist, xdist))
-                #if theta < 0:
-                    # Find the equivalent positive angle:
-                    #theta = 360 + theta
-                #else:
-                    #pass
-                #self.hasOrientation = theta
-        #else:
-            #pass
-        # Step 4: Create surface geometries using 3D coordinates:
+        # Step 3: Create surface geometries using 3D coordinates:
         # Set up plotting:
         fig = plt.figure()
         ax = plt.axes(projection='3d')
@@ -358,7 +341,7 @@ class Building(Zone):
                 pass
         else:
             pass
-        # Step 5: Determine the surface number based on building geometry (TPU axes orientation) and wind direction:
+        # Step 4: Determine the surface number based on building geometry (TPU axes orientation) and wind direction:
         # Note: Surfaces derived from the Shapely minimum rectangle start at the upper left-hand corner and go ccw
         # Given this, whenever the first side < second side, the building's TPU x-axis will be in general E-W direction
         # If second side > first side, the building's TPU x-axis will be in general N-S direction
@@ -443,7 +426,7 @@ class Building(Zone):
         ax2.set_title('Surfaces for TPU Wind Direction: ' + str(tpu_wdir))
         plt.axis('off')
         plt.show()
-        # Step 6: Save the surfaces to the building description:
+        # Step 5: Save the surfaces to the building description:
         self.hasGeometry['TPU_surfaces'][key] = surf_dict
 
     def map_TPUsurfaces(self, key):
@@ -614,8 +597,14 @@ class Building(Zone):
             bfull = min(side_lines['length'])
             hfull = hb_ratio*bfull
             dfull = db_ratio*bfull
+        # Set up placeholder for footprint polygon:
+        tpu_poly_pts = []
         for line in range(0, len(side_lines['lines'])):
-            if side_lines['TPU direction'][line] == 'x':
+            if side_lines['TPU direction'][line] == 'y':
+                # y-direction in TPU corresponds to building breadth
+                # Leave alone since breadth is fixed to real-life building geometry
+                pass
+            else:
                 # x-direction in TPU corresponds to building depth:
                 # Create two new lines using this line's centroid:
                 ref_pt = side_lines['lines'][line].centroid
@@ -623,15 +612,62 @@ class Building(Zone):
                 new_line1 = LineString([ref_pt, Point(line_pts[0])])
                 new_line2 = LineString([ref_pt, Point(line_pts[1])])
                 # Distribute half of dfull to each line segment:
-                new_point1 = new_line1.interpolate(dfull/2)
-                new_point2 = new_line2.interpolate(dfull/2)
+                new_point1 = new_line1.interpolate(dfull / 2)
+                new_point2 = new_line2.interpolate(dfull / 2)
                 # Combine the two new points into one LineString:
                 tpu_line = LineString([new_point1, new_point2])
-            else:
-                # y-direction in TPU corresponds to building breadth:
-                tpu_line = side_lines['lines'][line]
-            # Add the TPU line geometry:
-            side_lines['TPU line'].append(tpu_line)
+                # Save points for footprint polygon:
+                tpu_poly_pts.append((new_point1.x, new_point1.y))
+                tpu_poly_pts.append((new_point2.x, new_point2.y))
+        # Convert footprint points into 3D:
+        new_zpts = []
+        if num_surf == 5:
+            new_zpts.append(self.create_zcoords(Polygon(tpu_poly_pts), 0))
+            new_zpts.append(self.create_zcoords(Polygon(tpu_poly_pts), hfull))
+        # Create surface geometries:
+        # Set up plotting:
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
+        tpu_polys = []
+        if num_surf == 5 or num_surf == 8:  # Hip and gable roofs both have rectangular vertical planes
+            for plane in range(0, len(new_zpts) - 1):
+                for zpt in range(0, len(new_zpts[plane]) - 1):
+                    # Create the surface polygon:
+                    tpu_surf = Polygon([new_zpts[plane][zpt], new_zpts[plane + 1][zpt], new_zpts[plane + 1][zpt + 1], new_zpts[plane][zpt + 1]])
+                    tpu_polys.append(tpu_surf)
+                    # Extract xs, ys, and zs and plot
+                    surf_xs = []
+                    surf_ys = []
+                    surf_zs = []
+                    for surf_points in list(tpu_surf.exterior.coords):
+                        surf_xs.append(surf_points[0])
+                        surf_ys.append(surf_points[1])
+                        surf_zs.append(surf_points[2])
+                    # Plot the surfaces for the entire building to verify:
+                    ax.plot(np.array(surf_xs)/3.281, np.array(surf_ys)/3.281, np.array(surf_zs)/3.281, 'k')
+            # Show the surfaces for each story:
+            # Make the panes transparent:
+            ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+            ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+            ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+            # Make the grids transparent:
+            ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+            ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+            ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+            # Plot labels
+            ax.set_xlabel('x [m]')
+            ax.set_ylabel('y [m]')
+            ax.set_zlabel('z [m]')
+            plt.show()
+            # Add roof surfaces to the end of the list:
+            if num_surf == 5:
+                roof_surf = Polygon(new_zpts[-1])
+                tpu_polys.append(roof_surf)
+            elif num_surf == 8:  # Placeholder for hip roof polygons
+                pass
+        else:
+            pass
+        print('a')
 
     def create_zcoords(self, footprint, zcoord):
         # Input footprint polygon (either local or geodesic) and elevation:
