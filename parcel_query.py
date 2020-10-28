@@ -77,6 +77,22 @@ for parcel in range(0, len(parcel_list)):
                              'Stories': stories, 'Year Built': yr_built, 'OccType': occ_type,
                              'Exterior Walls': ewall_type, 'Roof Cover': rcover_type, 'Interior Walls': iwall_type,
                              'Frame Type': ftype, 'Floor Cover': fcover_type})
+        # Check to see if there is any permit data:
+        for tab in table:
+            if 'Permit' in tab.find_all('tr')[0].get_text():
+                permit_list = []
+                count = 0
+                for row in tab.find_all('tr'):
+                    if count == 0:
+                        count = count + 1
+                    elif count > 0:
+                        permit_list.append(row.get_text().splitlines()[2])
+                # Save the address, parcel number, and permit numbers in a separate CSV:
+                with open('CommParcelsPermits.csv', 'a', newline='') as csvfile:
+                    fieldnames = ['Parcel Id', 'Address', 'Permit Number']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                    writer.writerow(
+                        {'Parcel Id': parcel_id, 'Address': address, 'Permit Number': permit_list})
     else:
         # If the parcel is not a vacant lot, access all parcel attributes:
         for tab in table:
