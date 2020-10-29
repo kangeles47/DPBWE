@@ -11,6 +11,7 @@ import bldg_code
 from survey_data import SurveyData
 from geopy import distance
 from scipy.io import loadmat
+import pandas as pd
 
 
 # The Building Topology Ontology (BOT) is a minimal ontology for describing the core topological concepts of a building.
@@ -424,7 +425,7 @@ class Building(Zone):
         ax2.set_ylabel('y [m]')
         ax2.set_zlabel('z [m]')
         ax2.set_title('Surfaces for TPU Wind Direction: ' + str(tpu_wdir))
-        plt.axis('off')
+        #plt.axis('off')
         plt.show()
         # Step 5: Save the surfaces to the building description:
         self.hasGeometry['TPU_surfaces'][key] = surf_dict
@@ -575,7 +576,7 @@ class Building(Zone):
                         rtag = '45'
                 # Initialize string to access the correct model building file:
                 model_file = 'Cp_ts_g' + dtag + htag + rtag + wdir_tag
-                tpu_data = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/TPU/' + model_file
+                tpu_file = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/TPU/' + model_file
             elif self.adjacentElement['Roof'].hasShape == 'hip':  # Note: most common hip roof pitches 4:12-6:12
                 num_surf = 8
                 surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None, 8: None}
@@ -667,6 +668,34 @@ class Building(Zone):
                 pass
         else:
             pass
+        # Read in pressure data file:
+        tpu_data = loadmat(tpu_file)
+        # Export Location_of_measured_points into a DataFrame for easier manipulation:
+        df = pd.DataFrame(tpu_data['Location_of_measured_points'], index=['x', 'y', 'Point Number', 'Surface Number'])
+        # Convert coordinate positions to ft:
+        df.loc['x'] = df.loc['x']/305
+        df.loc['y'] = df.loc['y'] / 305
+        # Start by plotting out the points to see what they look like:
+        plt.plot(df.loc['x'], df.loc['y'], 'o')
+        plt.show()
+        # Convert to full-scale dimensions:
+        for pt in range(0, len(df.loc['Point Number'])):
+            if num_surf == 5:
+                if df.loc['Surface Number'][pt] == 1 or df.loc['Surface Number'][pt] == 3:
+                    df.loc['x'][pt] = df.loc['x'][pt]*(bfull/(breadth_model/305))
+                    df.loc['y'][pt] = df.loc['y'][pt] * (hfull / (height_model/305))
+                elif df.loc['Surface Number'][pt] == 2 or df.loc['Surface Number'][pt] == 4:
+                    df.loc['x'][pt] = df.loc['x'][pt] * (dfull / (depth_model/305))
+                    df.loc['y'][pt] = df.loc['y'][pt] * (hfull / (height_model/305))
+                elif df.loc['Surface Number'][pt] == 5:
+                    df.loc['x'][pt] = df.loc['x'][pt] * (dfull / (depth_model/305))
+                    df.loc['y'][pt] = df.loc['y'][pt] * (bfull / (breadth_model/305))
+            else:
+                pass
+        plt.plot(df.loc['x'], df.loc['y'], 'o')
+        plt.show()
+        #for surf in range(0, len(df.loc['Surface Number'].unique())):
+            #pass
         print('a')
 
     def create_zcoords(self, footprint, zcoord):
