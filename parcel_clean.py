@@ -28,7 +28,9 @@ print('Roof Cover type:')
 print(df['Roof Cover'].value_counts())  # Modular mt, stand seam, built-up, etc.
 # Number of stories
 print('Number of Stories:')
-story_count = df['Stories'].value_counts()  # 1, 2, 1.5, 3, 5 (12)
+print(df['Stories'].value_counts()) # 1, 2, 1.5, 3, 5 (12)
+print('Exterior Wall Type:')
+print(df['Exterior Walls'].value_counts())
 # Step 4: Merge the parcel permit information:
 col_names2 = ['Parcel Id', 'Address', 'Permit Number']
 df2 = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/CommParcelsPermits.csv', header=0, names=col_names2)
