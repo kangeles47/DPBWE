@@ -672,27 +672,46 @@ class Building(Zone):
         tpu_data = loadmat(tpu_file)
         # Export Location_of_measured_points into a DataFrame for easier manipulation:
         df = pd.DataFrame(tpu_data['Location_of_measured_points'], index=['x', 'y', 'Point Number', 'Surface Number'])
+        df = df.T
         # Convert coordinate positions to ft:
-        df.loc['x'] = df.loc['x']/305
-        df.loc['y'] = df.loc['y'] / 305
+        df['x'] = df['x']/305
+        df['y'] = df['y'] / 305
         # Start by plotting out the points to see what they look like:
-        plt.plot(df.loc['x'], df.loc['y'], 'o')
+        plt.plot(df['x'], df['y'], 'o')
         plt.show()
         # Convert to full-scale dimensions:
-        for pt in range(0, len(df.loc['Point Number'])):
+        # (1) Re-reference coordinates to the "origin":
+        for pt in range(0, len(df['Point Number'])):
             if num_surf == 5:
-                if df.loc['Surface Number'][pt] == 1 or df.loc['Surface Number'][pt] == 3:
-                    df.loc['x'][pt] = df.loc['x'][pt]*(bfull/(breadth_model/305))
-                    df.loc['y'][pt] = df.loc['y'][pt] * (hfull / (height_model/305))
-                elif df.loc['Surface Number'][pt] == 2 or df.loc['Surface Number'][pt] == 4:
-                    df.loc['x'][pt] = df.loc['x'][pt] * (dfull / (depth_model/305))
-                    df.loc['y'][pt] = df.loc['y'][pt] * (hfull / (height_model/305))
-                elif df.loc['Surface Number'][pt] == 5:
-                    df.loc['x'][pt] = df.loc['x'][pt] * (dfull / (depth_model/305))
-                    df.loc['y'][pt] = df.loc['y'][pt] * (bfull / (breadth_model/305))
+                if df['Surface Number'][pt] == 1:
+                    #df['x'][pt] = df['x'][pt] + abs(min(df.loc[df['Surface Number'] == 1, 'x']))
+                    #df['y'][pt] = df['y'][pt] + abs(min(df.loc[df['Surface Number'] == 1, 'y']))
+                    df['x'][pt] = df['x'][pt]*(bfull/(tpu_data['Building_breadth'][0][0]/305))
+                    df['y'][pt] = df['y'][pt] * (hfull / (tpu_data['Building_height'][0][0]/305))
+                elif df['Surface Number'][pt] == 2:
+                    #df['x'][pt] = df['x'][pt] + abs(min(df.loc[df['Surface Number'] == 2, 'x']))
+                    #df['y'][pt] = df['y'][pt] + abs(min(df.loc[df['Surface Number'] == 2, 'y']))
+                    df['x'][pt] = df['x'][pt] * (bfull / (tpu_data['Building_breadth'][0][0] / 305))
+                    df['y'][pt] = df['y'][pt] * (hfull / (tpu_data['Building_height'][0][0] / 305))
+                elif df['Surface Number'][pt] == 3:
+                    #df['x'][pt] = df['x'][pt] - abs(min(df.loc[df['Surface Number'] == 3, 'x']))
+                    #df['y'][pt] = df['y'][pt] + abs(min(df.loc[df['Surface Number'] == 3, 'y']))
+                    df['x'][pt] = df['x'][pt] * (dfull / (tpu_data['Building_depth'][0][0]/305))
+                    df['y'][pt] = df['y'][pt] * (hfull / (tpu_data['Building_height'][0][0]/305))
+                elif df['Surface Number'][pt] == 4:
+                    #df['x'][pt] = df['x'][pt] + abs(min(df.loc[df['Surface Number'] == 4, 'x']))
+                    #df['y'][pt] = df['y'][pt] - abs(min(df.loc[df['Surface Number'] == 4, 'y']))
+                    df['x'][pt] = df['x'][pt] * (dfull / (tpu_data['Building_depth'][0][0]/305))
+                    df['y'][pt] = df['y'][pt] * (hfull / (tpu_data['Building_height'][0][0]/305))
+                elif df['Surface Number'][pt] == 5:
+                    # Find the minimum "x":
+                    #df['x'][pt] = df['x'][pt] + abs(min(df.loc[df['Surface Number'] == 5, 'x']))
+                    #df['y'][pt] = df['y'][pt] + abs(min(df.loc[df['Surface Number'] == 5, 'y']))
+                    df['x'][pt] = df['x'][pt] * (dfull / (tpu_data['Building_depth'][0][0]/305))
+                    df['y'][pt] = df['y'][pt] * (bfull / (tpu_data['Building_breadth'][0][0]/305))
             else:
                 pass
-        plt.plot(df.loc['x'], df.loc['y'], 'o')
+        plt.plot(df['x'], df['y'], 'o')
         plt.show()
         #for surf in range(0, len(df.loc['Surface Number'].unique())):
             #pass
