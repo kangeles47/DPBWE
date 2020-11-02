@@ -433,21 +433,21 @@ class Building(Zone):
     def map_TPUsurfaces(self, key):
         # Given the building, determine the use case:
         eave_length = 0
-        wind_direction = 0
+        tpu_wdir = 0
         # Assign wdir_tag to access appropriate model building file later:
-        if wind_direction == 0:
+        if tpu_wdir == 0:
             wdir_tag = '00.mat'
-        elif wind_direction == 15:
+        elif tpu_wdir == 15:
             wdir_tag = '15.mat'
-        elif wind_direction == 30:
+        elif tpu_wdir == 30:
             wdir_tag = '30.mat'
-        elif wind_direction == 45:
+        elif tpu_wdir == 45:
             wdir_tag = '45.mat'
-        elif wind_direction == 60:
+        elif tpu_wdir == 60:
             wdir_tag = '60.mat'
-        elif wind_direction == 75:
+        elif tpu_wdir == 75:
             wdir_tag = '75.mat'
-        elif wind_direction == 90:
+        elif tpu_wdir == 90:
             wdir_tag = '90.mat'
         # Use an equivalent rectangle to calculate aspect ratios:
         rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
@@ -684,37 +684,135 @@ class Building(Zone):
         for pt in range(0, len(df['Point Number'])):
             if num_surf == 5:
                 if df['Surface Number'][pt] == 1:
-                    #df['x'][pt] = df['x'][pt] + abs(min(df.loc[df['Surface Number'] == 1, 'x']))
-                    #df['y'][pt] = df['y'][pt] + abs(min(df.loc[df['Surface Number'] == 1, 'y']))
                     df['x'][pt] = df['x'][pt]*(bfull/(tpu_data['Building_breadth'][0][0]/305))
                     df['y'][pt] = df['y'][pt] * (hfull / (tpu_data['Building_height'][0][0]/305))
                 elif df['Surface Number'][pt] == 2:
-                    #df['x'][pt] = df['x'][pt] + abs(min(df.loc[df['Surface Number'] == 2, 'x']))
-                    #df['y'][pt] = df['y'][pt] + abs(min(df.loc[df['Surface Number'] == 2, 'y']))
                     df['x'][pt] = df['x'][pt] * (bfull / (tpu_data['Building_breadth'][0][0] / 305))
                     df['y'][pt] = df['y'][pt] * (hfull / (tpu_data['Building_height'][0][0] / 305))
                 elif df['Surface Number'][pt] == 3:
-                    #df['x'][pt] = df['x'][pt] - abs(min(df.loc[df['Surface Number'] == 3, 'x']))
-                    #df['y'][pt] = df['y'][pt] + abs(min(df.loc[df['Surface Number'] == 3, 'y']))
                     df['x'][pt] = df['x'][pt] * (dfull / (tpu_data['Building_depth'][0][0]/305))
                     df['y'][pt] = df['y'][pt] * (hfull / (tpu_data['Building_height'][0][0]/305))
                 elif df['Surface Number'][pt] == 4:
-                    #df['x'][pt] = df['x'][pt] + abs(min(df.loc[df['Surface Number'] == 4, 'x']))
-                    #df['y'][pt] = df['y'][pt] - abs(min(df.loc[df['Surface Number'] == 4, 'y']))
                     df['x'][pt] = df['x'][pt] * (dfull / (tpu_data['Building_depth'][0][0]/305))
                     df['y'][pt] = df['y'][pt] * (hfull / (tpu_data['Building_height'][0][0]/305))
                 elif df['Surface Number'][pt] == 5:
-                    # Find the minimum "x":
-                    #df['x'][pt] = df['x'][pt] + abs(min(df.loc[df['Surface Number'] == 5, 'x']))
-                    #df['y'][pt] = df['y'][pt] + abs(min(df.loc[df['Surface Number'] == 5, 'y']))
                     df['x'][pt] = df['x'][pt] * (dfull / (tpu_data['Building_depth'][0][0]/305))
                     df['y'][pt] = df['y'][pt] * (bfull / (tpu_data['Building_breadth'][0][0]/305))
             else:
                 pass
         plt.plot(df['x'], df['y'], 'o')
         plt.show()
-        #for surf in range(0, len(df.loc['Surface Number'].unique())):
-            #pass
+        # Create surface boundaries:
+        if num_surf == 5:
+            for surf in range(1, num_surf+1):
+                if surf == 1:
+                    # Add points for surface 1:
+                    px = [-dfull - hfull, -dfull - hfull, -dfull, -dfull]
+                    py = [bfull / 2, -bfull / 2, -bfull / 2, bfull / 2]
+                elif surf == 2:
+                    # Add points for surface 2:
+                    px = [-dfull / 2, dfull / 2, dfull / 2, -dfull / 2]
+                    py = [-bfull / 2 - hfull, -bfull / 2 - hfull, -bfull / 2 - hfull/2, -bfull / 2 - hfull/2]
+                elif surf == 3:
+                    # Add points for surface 3:
+                    px = [dfull + hfull, dfull + hfull, dfull, dfull]
+                    py = [-bfull / 2, bfull / 2, bfull / 2, -bfull / 2]
+                elif surf == 4:
+                    # Add points for surface 4:
+                    px = [-dfull / 2, dfull / 2, dfull / 2, -dfull / 2]
+                    py = [bfull / 2 + hfull/2, bfull / 2 + hfull/2, bfull / 2 + hfull, bfull / 2 + hfull]
+                elif surf == 5:
+                    # Add points for surface 5:
+                    px = [-dfull/2, dfull/2, dfull/2, -dfull/2]
+                    py = [-bfull/2, -bfull/2, bfull/2, bfull/2]
+                for pt in range(0, len(px)):
+                    df = df.append({'x': px[pt], 'y': py[pt], 'Point Number': 'N/A', 'Surface Number': 1*surf}, ignore_index=True)
+        else:
+            pass
+        # Mapping pressure coefficients to specific TPU surfaces for full-scale scenario:
+        # First need to establish which polygons correspond to specific TPU surface numbers:
+        if side_lines['TPU direction'][1] == 'x':
+            # Polygon order:
+            # When TPU and global axes are both running in general E-W direction:
+            # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 0, 1, 2, 3, 4 in tpu_polys
+            if tpu_wdir <= 90:
+                # TPU and global axes are aligned:
+                # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
+                poly_order = [0, 1, 2, 3, 4]
+            elif 90 < tpu_wdir <= 180:
+                # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
+                poly_order = [2, 1, 0, 3, 4]
+            elif 180 < tpu_wdir <= 270:
+                # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
+                poly_order = [3, 4, 1, 2, 5]
+            elif 270 < tpu_wdir <= 360:
+                # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
+                poly_order = [0, 3, 2, 1, 4]
+        elif side_lines['TPU direction'][1] == 'y':
+            # When TPU x-axis is running in N-S direction (i.e., orthogonal to ideal scenario):
+            # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 3, 0, 1, 2, 4 in tpu_polys
+            if tpu_wdir <= 90:
+                # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
+                poly_order = [3, 0, 1, 2, 4]
+            elif 90 < tpu_wdir <= 180:
+                # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
+                poly_order = [1, 0, 3, 2, 4]
+            elif 180 < tpu_wdir <= 270:
+                # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
+                poly_order = [1, 2, 3, 0, 4]
+            elif 270 < tpu_wdir <= 360:
+                # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
+                poly_order = [3, 2, 1, 0, 4]
+        else:
+            print('Cannot determine dominant axis')
+        # Assign the surfaces to the correct key
+        idx = surf_dict.keys()
+        for i in idx:
+            surf_dict[i] = tpu_polys[poly_order[i - 1]]
+            # Optional: Plotting:
+            # Extract xs, ys, and zs and plot
+            poly_xs = []
+            poly_ys = []
+            poly_zs = []
+            for pts in list(surf_dict[i].exterior.coords):
+                poly_xs.append(pts[0])
+                poly_ys.append(pts[1])
+                poly_zs.append(pts[2])
+        # Now that we have the correct order of polygons, determine real-life pressure tap locations:
+        df = df.reindex(columns=df.columns.to_list() + ['Real Life Location', 'Full Scale Pressure'])
+        for surf in surf_dict:
+            df_surf = df.loc[df['Surface Number'] == surf]
+            if num_surf == 5:
+                if tpu_wdir <= 90:
+                    # Start by defining an origin point for each real-life surface (lower LH corner):
+                    rls_origin = Point(list(surf_dict[surf].exterior.coords)[0])
+                    # Define this surface's origin point:
+                    if surf == 1:
+                        a = min(df_surf['x'])
+                        b = max(df_surf['y'])
+                        surf_origin = Point(min(df_surf['x']), max(df_surf['y']))
+                    elif surf == 2:
+                        surf_origin = Point(min(df_surf['x']), min(df_surf['y']))
+                    elif surf == 3:
+                        surf_origin = Point(max(df_surf['x']), min(df_surf['y']))
+                    elif surf == 4:
+                        surf_origin = Point(max(df_surf['x']), max(df_surf['y']))
+                    elif surf == 5:
+                        surf_origin = Point(min(df_surf['x']), max(df_surf['y']))
+                    # Re-reference surface pressure tap locations according to real-life geometry and orientation:
+                    for row in df_surf.index:
+                        if df_surf['Point Number'][row] != 'N/A':
+                            # Find the distance between surf_origin and pressure tap location:
+                            distx = abs(abs(df_surf.loc[row, 'x']) - abs(surf_origin.x))
+                            disty = abs(abs(df_surf.loc[row, 'y']) - abs(surf_origin.y))
+                        # Use these distances to define a new point within the real-life geometry:
+                        if surf != 5:
+                            # Note: Only affects x and z placement for these surfaces
+                            rl_point = Point(rls_origin.x, rls_origin.y, rls_origin.z + disty)
+                        else:
+                            pass
+                        # Save the point:
+                        df['Real Life Location'][row] = rl_point
         print('a')
 
     def create_zcoords(self, footprint, zcoord):
