@@ -659,7 +659,7 @@ class Building(Zone):
             ax.set_xlabel('x [m]')
             ax.set_ylabel('y [m]')
             ax.set_zlabel('z [m]')
-            plt.show()
+            #plt.show()
             # Add roof surfaces to the end of the list:
             if num_surf == 5:
                 roof_surf = Polygon(new_zpts[-1])
@@ -677,8 +677,8 @@ class Building(Zone):
         df['x'] = df['x']/305
         df['y'] = df['y'] / 305
         # Start by plotting out the points to see what they look like:
-        plt.plot(df['x'], df['y'], 'o')
-        plt.show()
+        #plt.plot(df['x'], df['y'], 'o')
+        #plt.show()
         # Convert to full-scale dimensions:
         # (1) Re-reference coordinates to the "origin":
         for pt in range(0, len(df['Point Number'])):
@@ -700,8 +700,8 @@ class Building(Zone):
                     df['y'][pt] = df['y'][pt] * (bfull / (tpu_data['Building_breadth'][0][0]/305))
             else:
                 pass
-        plt.plot(df['x'], df['y'], 'o')
-        plt.show()
+        #plt.plot(df['x'], df['y'], 'o')
+        #plt.show()
         # Create surface boundaries:
         if num_surf == 5:
             for surf in range(1, num_surf+1):
@@ -727,8 +727,10 @@ class Building(Zone):
                     py = [-bfull/2, -bfull/2, bfull/2, bfull/2]
                 for pt in range(0, len(px)):
                     df = df.append({'x': px[pt], 'y': py[pt], 'Point Number': 'N/A', 'Surface Number': 1*surf}, ignore_index=True)
+                    plt.plot(np.array([px[pt]]), np.array([py[pt]]),'o')
         else:
             pass
+        plt.show()
         # Mapping pressure coefficients to specific TPU surfaces for full-scale scenario:
         # First need to establish which polygons correspond to specific TPU surface numbers:
         if side_lines['TPU direction'][1] == 'x':
@@ -769,27 +771,21 @@ class Building(Zone):
         idx = surf_dict.keys()
         for i in idx:
             surf_dict[i] = tpu_polys[poly_order[i - 1]]
-            # Optional: Plotting:
-            # Extract xs, ys, and zs and plot
-            poly_xs = []
-            poly_ys = []
-            poly_zs = []
-            for pts in list(surf_dict[i].exterior.coords):
-                poly_xs.append(pts[0])
-                poly_ys.append(pts[1])
-                poly_zs.append(pts[2])
         # Now that we have the correct order of polygons, determine real-life pressure tap locations:
-        df = df.reindex(columns=df.columns.to_list() + ['Real Life Location', 'Full Scale Pressure'])
+        index_list = []
+        point_list = []
         for surf in surf_dict:
             df_surf = df.loc[df['Surface Number'] == surf]
+            # Extract all index numbers first:
+            for idx in df_surf.index.tolist():
+                index_list.append(idx)
+            # Now move on to finding real-life pressure tap locations:
             if num_surf == 5:
                 if tpu_wdir <= 90:
                     # Start by defining an origin point for each real-life surface (lower LH corner):
                     rls_origin = Point(list(surf_dict[surf].exterior.coords)[0])
                     # Define this surface's origin point:
                     if surf == 1:
-                        a = min(df_surf['x'])
-                        b = max(df_surf['y'])
                         surf_origin = Point(min(df_surf['x']), max(df_surf['y']))
                     elif surf == 2:
                         surf_origin = Point(min(df_surf['x']), min(df_surf['y']))
@@ -803,16 +799,39 @@ class Building(Zone):
                     for row in df_surf.index:
                         if df_surf['Point Number'][row] != 'N/A':
                             # Find the distance between surf_origin and pressure tap location:
-                            distx = abs(abs(df_surf.loc[row, 'x']) - abs(surf_origin.x))
-                            disty = abs(abs(df_surf.loc[row, 'y']) - abs(surf_origin.y))
+                            if surf == 1 or surf == 3:
+                                distx = abs(abs(df_surf.loc[row, 'y']) - surf_origin.y)
+                                disty = abs(abs(df_surf.loc[row, 'x']) - surf_origin.x)
+                            else:
+                                distx = abs(abs(df_surf.loc[row, 'x']) - surf_origin.x)
+                                disty = abs(abs(df_surf.loc[row, 'y']) - surf_origin.y)
+                        else:
+                            pass
                         # Use these distances to define a new point within the real-life geometry:
                         if surf != 5:
-                            # Note: Only affects x and z placement for these surfaces
-                            rl_point = Point(rls_origin.x, rls_origin.y, rls_origin.z + disty)
+                            # Determine whether the surface plane is increasing or decreasing (for x designations):
+                            spts = list(surf_dict[surf].exterior.coords)
+                            m = (spts[2][1] - spts[1][1])/(spts[2][0] - spts[1][0])
+                            # Given an x-value, determine the corresponding y coordinate:
+                            surf_2D = LineString([spts[1], spts[2]])
+                            ypt = surf_2D.interpolate(distx)
+                            rl_point = Point(rls_origin.x + np.sign(m)*distx, ypt.y, rls_origin.z + disty)
                         else:
                             pass
                         # Save the point:
-                        df['Real Life Location'][row] = rl_point
+                        point_list.append(rl_point)
+                else:
+                    pass
+            else:
+                print('gable and hip roofs not yet supported')
+        # Plot the real-life pressure tap locations:
+        #fig2 = plt.figure()
+        #ax2 = plt.axes(projection='3d')
+        sub_list = point_list[0:19]
+        for i in sub_list:
+            a = 0
+            ax.plot(np.array([i.x])/3.281, np.array([i.y])/3.281, np.array([i.z])/3.281, 'o')
+        plt.show()
         print('a')
 
     def create_zcoords(self, footprint, zcoord):
@@ -1045,8 +1064,8 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             pass
         # Add the building's orientation
         self.hasOrientation = theta
-        plt.plot(xrect, yrect)
-        plt.show()
+        #plt.plot(xrect, yrect)
+        #plt.show()
 
 
     def parcel_elements(self, parcel):
