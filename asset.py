@@ -705,32 +705,46 @@ class Building(Zone):
         # Create surface boundaries:
         if num_surf == 5:
             for surf in range(1, num_surf+1):
-                if surf == 1:
-                    # Add points for surface 1:
-                    px = [-dfull - hfull, -dfull - hfull, -dfull, -dfull]
-                    py = [bfull / 2, -bfull / 2, -bfull / 2, bfull / 2]
-                elif surf == 2:
+                # Grab max and min values for x, y, respectively
+                min_x = min(df.loc[df['Surface Number'] == surf, 'x'])
+                max_x = max(df.loc[df['Surface Number'] == surf, 'x'])
+                min_y = min(df.loc[df['Surface Number'] == surf, 'y'])
+                max_y = max(df.loc[df['Surface Number'] == surf, 'y'])
+                # Assign boundary geometry based off of full-scale dim
+                if surf == 1 or surf == 3:
+                    dim_x = (hfull - (abs(max_x-min_x)))/2
+                    dim_y = (bfull - (abs(max_y-min_y)))/2
+                    px = [min_x - dim_x, min_x - dim_x, max_x + dim_x, max_x + dim_x]
+                    py = [max_y + dim_y, min_y - dim_y, min_y - dim_y, max_y + dim_y]
+                    #if surf == 1:
+                        # Add points for surface 1:
+                        #px = [max_x-dim_x, max_x-dim_x, min_x+dim_x, min_x+dim_x]
+                        #px = [-dfull - hfull, -dfull - hfull, -dfull+hfull/2, -dfull+hfull/2]
+                        #py = [bfull / 2, -bfull / 2, -bfull / 2, bfull / 2]
+                elif surf == 2 or surf == 4:
+                    dim_x = (dfull - (abs(max_x - min_x))) / 2
+                    dim_y = (hfull - (abs(max_y - min_y))) / 2
+                    px = [min_x-dim_x, max_x+dim_x, max_x+dim_x, min_x-dim_x]
+                    py = [min_y-dim_y, min_y-dim_y, max_y+dim_y, max_y+dim_y]
                     # Add points for surface 2:
-                    px = [-dfull / 2, dfull / 2, dfull / 2, -dfull / 2]
-                    py = [-bfull / 2 - hfull, -bfull / 2 - hfull, -bfull / 2 - hfull/2, -bfull / 2 - hfull/2]
-                elif surf == 3:
+                    #px = [-dfull / 2, dfull / 2, dfull / 2, -dfull / 2]
+                    #py = [-bfull / 2 - 3*hfull/2, -bfull / 2 - 3*hfull/2, -bfull / 2 - hfull/2, -bfull / 2 - hfull/2]
+                #elif surf == 3:
                     # Add points for surface 3:
-                    px = [dfull + hfull, dfull + hfull, dfull, dfull]
-                    py = [-bfull / 2, bfull / 2, bfull / 2, -bfull / 2]
-                elif surf == 4:
+                    #px = [dfull + hfull, dfull + hfull, dfull-hfull/2, dfull-hfull/2]
+                    #py = [-bfull / 2, bfull / 2, bfull / 2, -bfull / 2]
+                #elif surf == 4:
                     # Add points for surface 4:
-                    px = [-dfull / 2, dfull / 2, dfull / 2, -dfull / 2]
-                    py = [bfull / 2 + hfull/2, bfull / 2 + hfull/2, bfull / 2 + hfull, bfull / 2 + hfull]
+                    #px = [-dfull / 2, dfull / 2, dfull / 2, -dfull / 2]
+                    #py = [bfull / 2 + hfull/2, bfull / 2 + hfull/2, bfull / 2 + 3*hfull/2, bfull / 2 + 3*hfull/2]
                 elif surf == 5:
                     # Add points for surface 5:
                     px = [-dfull/2, dfull/2, dfull/2, -dfull/2]
                     py = [-bfull/2, -bfull/2, bfull/2, bfull/2]
                 for pt in range(0, len(px)):
                     df = df.append({'x': px[pt], 'y': py[pt], 'Point Number': 'N/A', 'Surface Number': 1*surf}, ignore_index=True)
-                    plt.plot(np.array([px[pt]]), np.array([py[pt]]),'o')
         else:
             pass
-        plt.show()
         # Mapping pressure coefficients to specific TPU surfaces for full-scale scenario:
         # First need to establish which polygons correspond to specific TPU surface numbers:
         if side_lines['TPU direction'][1] == 'x':
@@ -800,11 +814,11 @@ class Building(Zone):
                         if df_surf['Point Number'][row] != 'N/A':
                             # Find the distance between surf_origin and pressure tap location:
                             if surf == 1 or surf == 3:
-                                distx = abs(abs(df_surf.loc[row, 'y']) - surf_origin.y)
-                                disty = abs(abs(df_surf.loc[row, 'x']) - surf_origin.x)
+                                distx = abs(df_surf.loc[row, 'y'] - surf_origin.y)
+                                disty = abs(df_surf.loc[row, 'x'] - surf_origin.x)
                             else:
-                                distx = abs(abs(df_surf.loc[row, 'x']) - surf_origin.x)
-                                disty = abs(abs(df_surf.loc[row, 'y']) - surf_origin.y)
+                                distx = abs(df_surf.loc[row, 'x'] - surf_origin.x)
+                                disty = abs(df_surf.loc[row, 'y'] - surf_origin.y)
                         else:
                             pass
                         # Use these distances to define a new point within the real-life geometry:
@@ -814,8 +828,8 @@ class Building(Zone):
                             m = (spts[2][1] - spts[1][1])/(spts[2][0] - spts[1][0])
                             # Given an x-value, determine the corresponding y coordinate:
                             surf_2D = LineString([spts[1], spts[2]])
-                            ypt = surf_2D.interpolate(distx)
-                            rl_point = Point(rls_origin.x + np.sign(m)*distx, ypt.y, rls_origin.z + disty)
+                            proj_pt = surf_2D.interpolate(distx)
+                            rl_point = Point(proj_pt.x, proj_pt.y, rls_origin.z + disty)
                         else:
                             pass
                         # Save the point:
@@ -827,8 +841,8 @@ class Building(Zone):
         # Plot the real-life pressure tap locations:
         #fig2 = plt.figure()
         #ax2 = plt.axes(projection='3d')
-        sub_list = point_list[0:19]
-        for i in sub_list:
+        #sub_list = point_list[20:40]
+        for i in point_list:
             a = 0
             ax.plot(np.array([i.x])/3.281, np.array([i.y])/3.281, np.array([i.z])/3.281, 'o')
         plt.show()
