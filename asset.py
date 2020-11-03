@@ -4,6 +4,7 @@ import geopandas as gpd
 from shapely.geometry import Point, Polygon, LineString
 from shapely.ops import split
 from scipy import spatial
+from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from element import Roof, Wall, Floor, Ceiling
@@ -702,6 +703,24 @@ class Building(Zone):
                 pass
         #plt.plot(df['x'], df['y'], 'o')
         #plt.show()
+        # Create contour plots of the pressure coefficients:
+        fig = plt.figure()
+        for surf in range(1, num_surf+1):
+            # Create x and y meshgrids:
+            xvals = np.linspace(min(df.loc[df['Surface Number'] == surf, 'x']), max(df.loc[df['Surface Number'] == surf, 'x']), 100)
+            yvals = np.linspace(min(df.loc[df['Surface Number'] == surf, 'y']), max(df.loc[df['Surface Number'] == surf, 'y']), 100)
+            x, y = np.meshgrid(xvals, yvals)
+            # Extract the mean pressure coefficients for each pressure tap location:
+            mean_cps = []
+            point_nums = df.loc[df['Surface Number'] == surf, 'Point Number']
+            for pnum in point_nums:
+                mean_cps.append(np.mean(tpu_data['Wind_pressure_coefficients'][:, int(pnum)-1]))
+            # Determine the corresponding z values:
+            points = np.column_stack((df.loc[df['Surface Number'] == surf, 'x'], df.loc[df['Surface Number'] == surf, 'y']))
+            zvals = griddata(points, mean_cps, (x, y), method='cubic')
+            cp = plt.contourf(x, y, zvals)
+            plt.colorbar(cp)
+            plt.show()
         # Create surface boundaries:
         if num_surf == 5:
             for surf in range(1, num_surf+1):
@@ -716,27 +735,11 @@ class Building(Zone):
                     dim_y = (bfull - (abs(max_y-min_y)))/2
                     px = [min_x - dim_x, min_x - dim_x, max_x + dim_x, max_x + dim_x]
                     py = [max_y + dim_y, min_y - dim_y, min_y - dim_y, max_y + dim_y]
-                    #if surf == 1:
-                        # Add points for surface 1:
-                        #px = [max_x-dim_x, max_x-dim_x, min_x+dim_x, min_x+dim_x]
-                        #px = [-dfull - hfull, -dfull - hfull, -dfull+hfull/2, -dfull+hfull/2]
-                        #py = [bfull / 2, -bfull / 2, -bfull / 2, bfull / 2]
                 elif surf == 2 or surf == 4:
                     dim_x = (dfull - (abs(max_x - min_x))) / 2
                     dim_y = (hfull - (abs(max_y - min_y))) / 2
                     px = [min_x-dim_x, max_x+dim_x, max_x+dim_x, min_x-dim_x]
                     py = [min_y-dim_y, min_y-dim_y, max_y+dim_y, max_y+dim_y]
-                    # Add points for surface 2:
-                    #px = [-dfull / 2, dfull / 2, dfull / 2, -dfull / 2]
-                    #py = [-bfull / 2 - 3*hfull/2, -bfull / 2 - 3*hfull/2, -bfull / 2 - hfull/2, -bfull / 2 - hfull/2]
-                #elif surf == 3:
-                    # Add points for surface 3:
-                    #px = [dfull + hfull, dfull + hfull, dfull-hfull/2, dfull-hfull/2]
-                    #py = [-bfull / 2, bfull / 2, bfull / 2, -bfull / 2]
-                #elif surf == 4:
-                    # Add points for surface 4:
-                    #px = [-dfull / 2, dfull / 2, dfull / 2, -dfull / 2]
-                    #py = [bfull / 2 + hfull/2, bfull / 2 + hfull/2, bfull / 2 + 3*hfull/2, bfull / 2 + 3*hfull/2]
                 elif surf == 5:
                     # Add points for surface 5:
                     px = [-dfull/2, dfull/2, dfull/2, -dfull/2]
