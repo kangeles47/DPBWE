@@ -13,6 +13,7 @@ from survey_data import SurveyData
 from geopy import distance
 from scipy.io import loadmat
 import pandas as pd
+from code_pressures import PressureCalc
 
 
 # The Building Topology Ontology (BOT) is a minimal ontology for describing the core topological concepts of a building.
@@ -708,11 +709,11 @@ class Building(Zone):
         for pnum in df['Point Number']:
             mean_cps.append(np.mean(tpu_data['Wind_pressure_coefficients'][:, int(pnum) - 1]))
         # Add this information to the Dataframe:
-        df['Mean Cps'] = mean_cps
+        df['Mean Cp'] = mean_cps
         # Set up figure for contour plots of the pressure coefficients:
         fig = plt.figure()
         # Set up placeholders to save contour plot coefficients:
-        surf_cps = {'xvals': [], 'yvals': [], 'cps': []}
+        contour_values = {'x': [], 'y': [], 'Surface Number': [], 'Mean Cp': []}
         # Create surface boundaries and add data to fill out the surface:
         for surf in range(1, num_surf+1):
             if num_surf == 5:
@@ -734,58 +735,67 @@ class Building(Zone):
                     dim_y = (bfull - (abs(max_y-min_y)))/2
                     px = [min_x - dim_x, min_x - dim_x, max_x + dim_x, max_x + dim_x]
                     py = [max_y + dim_y, min_y - dim_y, min_y - dim_y, max_y + dim_y]
-                    boundary_cps = [df_surf['Mean Cps'][ind_list[1]], df_surf['Mean Cps'][ind_list[0]], df_surf['Mean Cps'][ind_list[2]], df_surf['Mean Cps'][ind_list[3]]]
+                    boundary_cps = [df_surf['Mean Cp'][ind_list[1]], df_surf['Mean Cp'][ind_list[0]], df_surf['Mean Cp'][ind_list[2]], df_surf['Mean Cp'][ind_list[3]]]
                 elif surf == 2 or surf == 4:
                     dim_x = (dfull - (abs(max_x - min_x))) / 2
                     dim_y = (hfull - (abs(max_y - min_y))) / 2
                     px = [min_x-dim_x, max_x+dim_x, max_x+dim_x, min_x-dim_x]
                     py = [min_y-dim_y, min_y-dim_y, max_y+dim_y, max_y+dim_y]
-                    boundary_cps = [df_surf['Mean Cps'][ind_list[0]], df_surf['Mean Cps'][ind_list[2]], df_surf['Mean Cps'][ind_list[3]], df_surf['Mean Cps'][ind_list[1]]]
+                    boundary_cps = [df_surf['Mean Cp'][ind_list[0]], df_surf['Mean Cp'][ind_list[2]], df_surf['Mean Cp'][ind_list[3]], df_surf['Mean Cp'][ind_list[1]]]
                 elif surf == 5:
                     # Add points for surface 5:
                     px = [-dfull/2, dfull/2, dfull/2, -dfull/2]
                     py = [-bfull/2, -bfull/2, bfull/2, bfull/2]
-                    boundary_cps = [df_surf['Mean Cps'][ind_list[0]], df_surf['Mean Cps'][ind_list[2]], df_surf['Mean Cps'][ind_list[3]], df_surf['Mean Cps'][ind_list[1]]]
+                    boundary_cps = [df_surf['Mean Cp'][ind_list[0]], df_surf['Mean Cp'][ind_list[2]], df_surf['Mean Cp'][ind_list[3]], df_surf['Mean Cp'][ind_list[1]]]
                 for pt in range(0, len(px)):
-                    df = df.append({'x': px[pt], 'y': py[pt], 'Point Number': df['Point Number'].iloc[-1]+1, 'Surface Number': 1*surf, 'Mean Cps': boundary_cps[pt]}, ignore_index=True)
+                    df = df.append({'x': px[pt], 'y': py[pt], 'Point Number': df['Point Number'].iloc[-1]+1, 'Surface Number': 1*surf, 'Mean Cp': boundary_cps[pt]}, ignore_index=True)
                 # Determine remaining boundary geometries and assign pressure coefficients:
                 xcoords = df.loc[df['Surface Number'] == surf, 'x']
                 ycoords = df.loc[df['Surface Number'] == surf, 'y']
-                mcps = df.loc[df['Surface Number'] == surf, 'Mean Cps']
+                mcps = df.loc[df['Surface Number'] == surf, 'Mean Cp']
                 index_list = xcoords.index.to_list()
                 # Loop through xcoords and create horizontal boundaries
                 for x in index_list:
                     if xcoords[x] == min_x:  # recall that this is original min_x
                         # Add new point to DataFrame and use current point's mean Cp:
-                        df = df.append({'x': min(df.loc[df['Surface Number'] == surf, 'x']), 'y': ycoords[x], 'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 1 * surf, 'Mean Cps': mcps[x]}, ignore_index=True)
+                        df = df.append({'x': min(df.loc[df['Surface Number'] == surf, 'x']), 'y': ycoords[x], 'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 1 * surf, 'Mean Cp': mcps[x]}, ignore_index=True)
                     elif xcoords[x] == max_x:
-                        df = df.append({'x': max(df.loc[df['Surface Number'] == surf, 'x']), 'y': ycoords[x], 'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 1 * surf, 'Mean Cps': mcps[x]}, ignore_index=True)
+                        df = df.append({'x': max(df.loc[df['Surface Number'] == surf, 'x']), 'y': ycoords[x], 'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 1 * surf, 'Mean Cp': mcps[x]}, ignore_index=True)
                 # Loop through ycoords and create vertical boundaries:
                 for y in index_list:
                     if ycoords[y] == min_y:  # recall that this is original min_x
                         # Add new point to DataFrame and use current point's mean Cp:
-                        df = df.append({'x': xcoords[y], 'y': min(df.loc[df['Surface Number'] == surf, 'y']), 'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 1 * surf, 'Mean Cps': mcps[x]}, ignore_index=True)
+                        df = df.append({'x': xcoords[y], 'y': min(df.loc[df['Surface Number'] == surf, 'y']), 'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 1 * surf, 'Mean Cp': mcps[y]}, ignore_index=True)
                     elif ycoords[y] == max_y:
-                        df = df.append({'x': xcoords[y], 'y': max(df.loc[df['Surface Number'] == surf, 'y']), 'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 1 * surf, 'Mean Cps': mcps[y]}, ignore_index=True)
+                        df = df.append({'x': xcoords[y], 'y': max(df.loc[df['Surface Number'] == surf, 'y']), 'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 1 * surf, 'Mean Cp': mcps[y]}, ignore_index=True)
             else:
                 pass
-
             # Create contours of pressure coefficients:
             # Create x and y meshgrids:
-            xvals = np.linspace(min(df.loc[df['Surface Number'] == surf, 'x']), max(df.loc[df['Surface Number'] == surf, 'x']), 100)
-            yvals = np.linspace(min(df.loc[df['Surface Number'] == surf, 'y']), max(df.loc[df['Surface Number'] == surf, 'y']), 100)
+            xvals = np.linspace(min(df.loc[df['Surface Number'] == surf, 'x']), max(df.loc[df['Surface Number'] == surf, 'x']), 10)
+            yvals = np.linspace(min(df.loc[df['Surface Number'] == surf, 'y']), max(df.loc[df['Surface Number'] == surf, 'y']), 10)
             x, y = np.meshgrid(xvals, yvals)
             # Extract the mean pressure coefficients for each pressure tap location:
-            surf_cps = df.loc[df['Surface Number'] == surf, 'Mean Cps']
+            surf_cps = df.loc[df['Surface Number'] == surf, 'Mean Cp']
             # Determine the corresponding z values:
             points = np.column_stack((df.loc[df['Surface Number'] == surf, 'x'], df.loc[df['Surface Number'] == surf, 'y']))
             zvals = griddata(points, surf_cps, (x, y), method='cubic')
-            surf_cps['xvals'].append(xvals)
-            surf_cps['yvals'].append(yvals)
-            surf_cps['cps'].append(zvals)
+            # Save the (x, y) coordinate pairs and their corresponding Cp according to surface number:
+            for col in range(0, len(xvals)):
+                for row in range(0, len(yvals)):
+                    # Record x and y-values:
+                    contour_values['x'].append(xvals[col])
+                    contour_values['y'].append(yvals[row])
+                    # Record the surface number:
+                    contour_values['Surface Number'].append(surf)
+                    # Grab the Cp value corresponding to this (x,y) pair:
+                    contour_values['Mean Cp'].append(zvals[row][col])
+            # Uncomment to produce contour plots:
             #cp = plt.contourf(x, y, zvals)
-        #plt.colorbar()
-        #plt.show()
+            #plt.colorbar()
+            #plt.show()
+        # Create a new DataFrame with new set of (x, y) and Cps:
+        df_contour = pd.DataFrame(contour_values)
         # Mapping pressure coefficients to specific TPU surfaces for full-scale scenario:
         # First need to establish which polygons correspond to specific TPU surface numbers:
         if side_lines['TPU direction'][1] == 'x':
@@ -827,62 +837,104 @@ class Building(Zone):
         for i in idx:
             surf_dict[i] = tpu_polys[poly_order[i - 1]]
         # Now that we have the correct order of polygons, determine real-life pressure tap locations:
-        index_list = []
+        #index_list = []
         point_list = []
+        proj_dict = {'Index': [], 'Real Life Location': [], 'Surface Number': [], 'Mean Cp': []}
         for surf in surf_dict:
-            df_surf = df.loc[df['Surface Number'] == surf]
-            # Extract all index numbers first:
-            for idx in df_surf.index.tolist():
-                index_list.append(idx)
+            df_csurf = df_contour.loc[df_contour['Surface Number'] == surf]
+            # Extract all index and Surface numbers first:
+            for idx in df_csurf.index.tolist():
+                proj_dict['Index'].append(idx)
+                proj_dict['Surface Number'].append(surf)
             # Now move on to finding real-life pressure tap locations:
             if num_surf == 5:
                 if tpu_wdir <= 90:
-                    # Start by defining an origin point for each real-life surface (lower LH corner):
-                    rls_origin = Point(list(surf_dict[surf].exterior.coords)[0])
-                    # Define this surface's origin point:
+                    # Define this surface's origin point (working with TPU 2D plane):
                     if surf == 1:
-                        surf_origin = Point(min(df_surf['x']), max(df_surf['y']))
+                        surf_origin = Point(min(df_csurf['x']), max(df_csurf['y']))
                     elif surf == 2:
-                        surf_origin = Point(min(df_surf['x']), min(df_surf['y']))
+                        surf_origin = Point(min(df_csurf['x']), min(df_csurf['y']))
                     elif surf == 3:
-                        surf_origin = Point(max(df_surf['x']), min(df_surf['y']))
+                        surf_origin = Point(max(df_csurf['x']), min(df_csurf['y']))
                     elif surf == 4:
-                        surf_origin = Point(max(df_surf['x']), max(df_surf['y']))
+                        surf_origin = Point(max(df_csurf['x']), max(df_csurf['y']))
                     elif surf == 5:
-                        surf_origin = Point(min(df_surf['x']), max(df_surf['y']))
+                        surf_origin = Point(min(df_csurf['x']), max(df_csurf['y']))
                     # Re-reference surface pressure tap locations according to real-life geometry and orientation:
-                    for row in df_surf.index:
+                    for row in df_csurf.index:
                         # Find the distance between surf_origin and pressure tap location:
                         if surf == 1 or surf == 3:
-                            distx = abs(df_surf.loc[row, 'y'] - surf_origin.y)
-                            disty = abs(df_surf.loc[row, 'x'] - surf_origin.x)
+                            distx = abs(df_csurf.loc[row, 'y'] - surf_origin.y)
+                            disty = abs(df_csurf.loc[row, 'x'] - surf_origin.x)
                         else:
-                            distx = abs(df_surf.loc[row, 'x'] - surf_origin.x)
-                            disty = abs(df_surf.loc[row, 'y'] - surf_origin.y)
+                            distx = abs(df_csurf.loc[row, 'x'] - surf_origin.x)
+                            disty = abs(df_csurf.loc[row, 'y'] - surf_origin.y)
                         # Use these distances to define a new point within the real-life geometry:
                         if surf != 5:
                             # Determine whether the surface plane is increasing or decreasing (for x designations):
                             spts = list(surf_dict[surf].exterior.coords)
                             m = (spts[2][1] - spts[1][1])/(spts[2][0] - spts[1][0])
-                            # Given an x-value, determine the corresponding y coordinate:
+                            # Surface coordinates at the same elevation follow ccw rotation around building footprint
+                            # For wind directions <= 90, this is the direction we want to project in
                             surf_2D = LineString([spts[1], spts[2]])
+                            # Given an x-value, determine the corresponding y coordinate:
                             proj_pt = surf_2D.interpolate(distx)
-                            rl_point = Point(proj_pt.x, proj_pt.y, rls_origin.z + disty)
+                            # Determine the pressure tap's real-life location on the building envelope
+                            rl_point = Point(proj_pt.x, proj_pt.y, disty)
                         else:
                             pass
-                        # Save the point:
-                        point_list.append(rl_point)
+                        # Save the point's real-life location:
+                        proj_dict['Real Life Location'].append(rl_point)
+                        # Save the point's mean Cp value:
+                        proj_dict['Mean Cp'].append(df_csurf['Mean Cp'][row])
                 else:
                     pass
             else:
                 print('gable and hip roofs not yet supported')
+        # Convert the dictionary into a DataFrame:
+        df_tpu_pressures = pd.DataFrame(proj_dict).set_index('Index')
+        # Calculate the pressure at each location:
+        pressure_calc = PressureCalc()
+        pressures = []
+        wind_speed = 140
+        exposure = 'B'
+        edition = 'ASCE 7-16'
+        cat = 2
+        hpr = True
+        for k in df_tpu_pressures.index.to_list():
+            pressures.append(pressure_calc.tpu_pressure(wind_speed, exposure, edition, df_tpu_pressures['Real Life Location'][k].z, df_tpu_pressures['Mean Cp'][k], cat, hpr))
+        # Add a new column with the calculated pressures to the DataFrame:
+        df_tpu_pressures['Pressure'] = pressures
         # Plot the real-life pressure tap locations:
         #fig2 = plt.figure()
         #ax2 = plt.axes(projection='3d')
-        #sub_list = point_list[20:40]
-        for i in point_list:
-            a = 0
-            ax.plot(np.array([i.x])/3.281, np.array([i.y])/3.281, np.array([i.z])/3.281, 'o')
+        #for i in df_tpu_pressures['Real Life Location']:
+            #ax2.scatter(np.array([i.x])/3.281, np.array([i.y])/3.281, np.array([i.z])/3.281, 'o')
+        #plt.show()
+        # Plot the full-scale pressures:
+        fig3 = plt.figure()
+        ax3 = plt.axes(projection='3d')
+        rl_xs = []
+        rl_ys = []
+        rl_zs = []
+        for k in df_tpu_pressures.index.to_list():
+            rl_xs.append(df_tpu_pressures['Real Life Location'][k].x)
+            rl_ys.append(df_tpu_pressures['Real Life Location'][k].y)
+            rl_zs.append(df_tpu_pressures['Real Life Location'][k].z)
+        img = ax3.scatter3D(np.array([rl_xs])/3.281, np.array([rl_ys])/3.281, np.array([rl_zs])/3.281, c=df_tpu_pressures['Pressure']/0.020885, cmap=plt.get_cmap('hot'))
+        fig3.colorbar(img)
+        # Make the panes transparent:
+        ax3.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax3.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax3.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # Make the grids transparent:
+        ax3.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax3.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax3.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # Plot labels
+        ax3.set_xlabel('x [m]')
+        ax3.set_ylabel('y [m]')
+        ax3.set_zlabel('z [m]')
         plt.show()
         print('a')
 

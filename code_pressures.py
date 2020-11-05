@@ -158,6 +158,23 @@ class PressureCalc:
 
         return rmps
 
+    def tpu_pressure(self, wind_speed, exposure, edition, z, cp, cat, hpr, encl_class='Enclosed'):
+        if edition != 'ASCE 7-88' or edition != 'ASCE 7-93' or edition != 'ASCE 7-95':
+            # Determine GCpis for pressure calculation:
+            gcpi = 0
+            #gcpi = PressureCalc.get_gcpi(self, edition, encl_class)
+            # Determine the velocity pressure:
+            is_cc = False  # Don't include code adjustments for C&C < 30 ft
+            qz, alpha = PressureCalc.qz_calc(self, z, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean=True, tpu_flag=True)
+            # Get the gust effect or gust response factor:
+            g = PressureCalc.get_g(self, edition, exposure, is_cc, alpha, z)
+            gcp = g*cp
+            # Calculate the pressure at the pressure tap location:
+            p = PressureCalc.calc_pressure(self, z, edition, is_cc, qz, gcp, gcpi)
+        else:
+            print('ASCE 7 edition cannot be used to calculate TPU pressures. Averaging period mismatch or modifications in formulation. Please choose a modern version of ASCE 7.')
+        return p
+
     def get_gcpi(self, edition, encl_class):
         """
         Determines the GCpi for the building.
@@ -274,7 +291,7 @@ class PressureCalc:
 
         return p
 
-    def qz_calc(self, z, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean):
+    def qz_calc(self, z, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag):
         """
         Orchestrates the velocity pressure calculation.
 
@@ -283,6 +300,7 @@ class PressureCalc:
         Calculates the velocity pressure, qz.
 
         Parameters:
+            z: Height qz must be calculated at [ft]
             wind_speed: The wind speed the building is subject to
             exposure: A string providing the ASCE 7 Exposure Category
             edition: A string naming the edition of ASCE 7 wind loading provision for the building
@@ -307,12 +325,18 @@ class PressureCalc:
             qz = 0.00256 * kz * kzt * imp * wind_speed ** 2
         elif edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
             kzt = 1.0
-            kd = 0.85
+            if tpu_flag:
+                kd = 1.0
+            else:
+                kd = 0.85
             imp = PressureCalc.get_i(self, z, wind_speed, hpr, h_ocean, cat, edition)
             qz = 0.00256 * kz * kzt * kd * imp * wind_speed ** 2
         elif edition == 'ASCE 7-10' or edition == 'ASCE 7-16':
             kzt = 1.0
-            kd = 0.85
+            if tpu_flag:
+                kd = 1.0
+            else:
+                kd = 0.85
             qz = 0.00256 * kz * kzt * kd * wind_speed ** 2
         return qz, alpha
 
