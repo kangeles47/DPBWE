@@ -679,7 +679,7 @@ class Building(Zone):
         df['y'] = df['y'] / 305
         # Start by plotting out the points to see what they look like:
         #plt.plot(df['x'], df['y'], 'o')
-        #plt.show()
+        plt.show()
         # Convert to full-scale dimensions:
         # (1) Re-reference coordinates to the "origin":
         for pt in range(0, len(df['Point Number'])):
@@ -703,30 +703,16 @@ class Building(Zone):
                 pass
         #plt.plot(df['x'], df['y'], 'o')
         #plt.show()
-        # Create contour plots of the pressure coefficients:
-        fig = plt.figure()
-        #for surf in range(1, num_surf+1):
-            # Create x and y meshgrids:
-            #xvals = np.linspace(min(df.loc[df['Surface Number'] == surf, 'x']), max(df.loc[df['Surface Number'] == surf, 'x']), 100)
-            #yvals = np.linspace(min(df.loc[df['Surface Number'] == surf, 'y']), max(df.loc[df['Surface Number'] == surf, 'y']), 100)
-            #x, y = np.meshgrid(xvals, yvals)
-            # Extract the mean pressure coefficients for each pressure tap location:
-            #mean_cps = []
-            #point_nums = df.loc[df['Surface Number'] == surf, 'Point Number']
-            #for pnum in point_nums:
-                #mean_cps.append(np.mean(tpu_data['Wind_pressure_coefficients'][:, int(pnum)-1]))
-            # Determine the corresponding z values:
-            #points = np.column_stack((df.loc[df['Surface Number'] == surf, 'x'], df.loc[df['Surface Number'] == surf, 'y']))
-            #zvals = griddata(points, mean_cps, (x, y), method='cubic')
-            #cp = plt.contourf(x, y, zvals)
-            #plt.colorbar(cp)
-            #plt.show()
         # Create a column with mean Cp for each pressure tap location:
         mean_cps = []
         for pnum in df['Point Number']:
             mean_cps.append(np.mean(tpu_data['Wind_pressure_coefficients'][:, int(pnum) - 1]))
         # Add this information to the Dataframe:
         df['Mean Cps'] = mean_cps
+        # Set up figure for contour plots of the pressure coefficients:
+        fig = plt.figure()
+        # Set up placeholders to save contour plot coefficients:
+        surf_cps = {'xvals': [], 'yvals': [], 'cps': []}
         # Create surface boundaries and add data to fill out the surface:
         for surf in range(1, num_surf+1):
             if num_surf == 5:
@@ -794,9 +780,12 @@ class Building(Zone):
             # Determine the corresponding z values:
             points = np.column_stack((df.loc[df['Surface Number'] == surf, 'x'], df.loc[df['Surface Number'] == surf, 'y']))
             zvals = griddata(points, surf_cps, (x, y), method='cubic')
-            cp = plt.contourf(x, y, zvals)
-            plt.colorbar(cp)
-            plt.show()
+            surf_cps['xvals'].append(xvals)
+            surf_cps['yvals'].append(yvals)
+            surf_cps['cps'].append(zvals)
+            #cp = plt.contourf(x, y, zvals)
+        #plt.colorbar()
+        #plt.show()
         # Mapping pressure coefficients to specific TPU surfaces for full-scale scenario:
         # First need to establish which polygons correspond to specific TPU surface numbers:
         if side_lines['TPU direction'][1] == 'x':
@@ -863,16 +852,13 @@ class Building(Zone):
                         surf_origin = Point(min(df_surf['x']), max(df_surf['y']))
                     # Re-reference surface pressure tap locations according to real-life geometry and orientation:
                     for row in df_surf.index:
-                        if df_surf['Point Number'][row] != 'N/A':
-                            # Find the distance between surf_origin and pressure tap location:
-                            if surf == 1 or surf == 3:
-                                distx = abs(df_surf.loc[row, 'y'] - surf_origin.y)
-                                disty = abs(df_surf.loc[row, 'x'] - surf_origin.x)
-                            else:
-                                distx = abs(df_surf.loc[row, 'x'] - surf_origin.x)
-                                disty = abs(df_surf.loc[row, 'y'] - surf_origin.y)
+                        # Find the distance between surf_origin and pressure tap location:
+                        if surf == 1 or surf == 3:
+                            distx = abs(df_surf.loc[row, 'y'] - surf_origin.y)
+                            disty = abs(df_surf.loc[row, 'x'] - surf_origin.x)
                         else:
-                            pass
+                            distx = abs(df_surf.loc[row, 'x'] - surf_origin.x)
+                            disty = abs(df_surf.loc[row, 'y'] - surf_origin.y)
                         # Use these distances to define a new point within the real-life geometry:
                         if surf != 5:
                             # Determine whether the surface plane is increasing or decreasing (for x designations):
