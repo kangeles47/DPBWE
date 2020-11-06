@@ -1,8 +1,9 @@
 import numpy as np
-from math import sqrt, pi, sin, atan2, degrees, cos
+from math import sqrt, pi, sin, atan2, degrees, cos, radians
 import geopandas as gpd
 from shapely.geometry import Point, Polygon, LineString
 from shapely.ops import split
+from shapely import affinity
 from scipy import spatial
 from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
@@ -859,7 +860,7 @@ class Building(Zone):
                     elif surf == 4:
                         surf_origin = Point(max(df_csurf['x']), max(df_csurf['y']))
                     elif surf == 5:
-                        surf_origin = Point(min(df_csurf['x']), max(df_csurf['y']))
+                        surf_origin = Point(min(df_csurf['x']), min(df_csurf['y']))
                     # Re-reference surface pressure tap locations according to real-life geometry and orientation:
                     for row in df_csurf.index:
                         # Find the distance between surf_origin and pressure tap location:
@@ -882,6 +883,7 @@ class Building(Zone):
                             # Determine the pressure tap's real-life location on the building envelope
                             rl_point = Point(proj_pt.x, proj_pt.y, disty)
                         else:
+                            # Origin of roof horizontal plane is in alignment with
                             pass
                         # Save the point's real-life location:
                         proj_dict['Real Life Location'].append(rl_point)
@@ -969,12 +971,16 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     new_point_list.append(Point(xcoord[idx], ycoord[idx]))
                 self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
                 xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
-                plt.plot(np.array(xfpt)/3.281, np.array(yfpt)/3.281, 'k')
-                plt.xlabel('x [m]', fontsize=12)
-                plt.ylabel('y [m]', fontsize=12)
-                plt.xticks(fontsize=12)
-                plt.yticks(fontsize=12)
-                plt.show()
+                # Rotate the footprint to create a "local" axis:
+                #rotated_b = affinity.rotate(Polygon(new_point_list), 90, origin='centroid')
+                #rx, ry = rotated_b.exterior.xy
+                # Uncomment to plot the footprint:
+                #plt.plot(np.array(xfpt)/3.281, np.array(yfpt)/3.281, 'k')
+                #plt.xlabel('x [m]', fontsize=12)
+                #plt.ylabel('y [m]', fontsize=12)
+                #plt.xticks(fontsize=12)
+                #plt.yticks(fontsize=12)
+                #plt.show()
         # Pull building/story height information from DOE reference buildings:
         survey_data = SurveyData()  # create an instance of the survey data class
         survey_data.run(self, ref_bldg_flag=True, parcel_flag=False)
