@@ -165,7 +165,6 @@ def find_tpu_use_case(bldg, key, tpu_wdir, eave_length=0):
                     rtag = '45'
             # Initialize string to access the correct model building file:
             model_file = 'Cp_ts_g' + dtag + htag + rtag + wdir_tag
-            tpu_file = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/TPU/' + model_file
         elif bldg.adjacentElement['Roof'].hasShape == 'hip':  # Note: most common hip roof pitches 4:12-6:12
             num_surf = 8
             surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None, 8: None}
@@ -179,7 +178,7 @@ def find_tpu_use_case(bldg, key, tpu_wdir, eave_length=0):
     return match_flag, num_surf, side_lines, tpu_file, hb_ratio, db_ratio, rect, surf_dict
 
 
-def create_TPU_geometry(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict):
+def create_TPU_3Dgeometry(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict):
     # Convert TPU model building geometries into full-scale:
     # Create the TPU footprint geometry from the real-life building's equivalent rectangle:
     if num_surf == 5:
@@ -384,348 +383,10 @@ def create_TPU_geometry(bldg, key, match_flag, num_surf, side_lines, hb_ratio, d
     # Step 5: Save the surfaces to the building description:
     bldg.hasGeometry['TPU_surfaces'][key] = surf_dict
 
-def create_zcoords(footprint, zcoord):
-    # Input footprint polygon (either local or geodesic) and elevation:
-    zs = []
-    # Create z coordinates for the given building footprint and elevation:
-    xs, ys = footprint.exterior.xy
-    for pt in range(0, len(xs)):
-        # Define z-coordinates for bottom floor of each story:
-        zs.append(Point(xs[pt], ys[pt], zcoord))
-    return zs
-
-
-def create_TPU_surfaces(self, key, tpu_wdir):
-    # Step 4: Determine the surface number based on building geometry (TPU axes orientation) and wind direction:
-    # Note: Surfaces derived from the Shapely minimum rectangle start at the upper left-hand corner and go ccw
-    # Given this, whenever the first side < second side, the building's TPU x-axis will be in general E-W direction
-    # If second side > first side, the building's TPU x-axis will be in general N-S direction
-    # TPU axes use cases:
-    # Choose the second line to check the above conditions:
-    if side_lines['TPU direction'][1] == 'x':
-        # Polygon order:
-        # When TPU and global axes are both running in general E-W direction:
-        # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 0, 1, 2, 3, 4 in tpu_polys
-        if tpu_wdir <= 90:
-            # TPU and global axes are aligned:
-            # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
-            poly_order = [0, 1, 2, 3, 4]
-        elif 90 < tpu_wdir <= 180:
-            # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
-            poly_order = [2, 1, 0, 3, 4]
-        elif 180 < tpu_wdir <= 270:
-            # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
-            poly_order = [3, 4, 1, 2, 5]
-        elif 270 < tpu_wdir <= 360:
-            # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
-            poly_order = [0, 3, 2, 1, 4]
-    elif side_lines['TPU direction'][1] == 'y':
-        # When TPU x-axis is running in N-S direction (i.e., orthogonal to ideal scenario):
-        # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 3, 0, 1, 2, 4 in tpu_polys
-        if tpu_wdir <= 90:
-            # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
-            poly_order = [3, 0, 1, 2, 4]
-        elif 90 < tpu_wdir <= 180:
-            # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
-            poly_order = [1, 0, 3, 2, 4]
-        elif 180 < tpu_wdir <= 270:
-            # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
-            poly_order = [1, 2, 3, 0, 4]
-        elif 270 < tpu_wdir <= 360:
-            # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
-            poly_order = [3, 2, 1, 0, 4]
-    else:
-        print('Cannot determine dominant axis')
-    # Assign the surfaces to the correct key
-    idx = surf_dict.keys()
-    # Set up plotting:
-    fig2 = plt.figure(dpi=200)
-    ax2 = plt.axes(projection='3d')
-    for i in idx:
-        surf_dict[i] = tpu_polys[poly_order[i - 1]]
-        # Optional: Plotting:
-        # Extract xs, ys, and zs and plot
-        poly_xs = []
-        poly_ys = []
-        poly_zs = []
-        for pts in list(surf_dict[i].exterior.coords):
-            poly_xs.append(pts[0])
-            poly_ys.append(pts[1])
-            poly_zs.append(pts[2])
-        # Define various line colors to keep track of surfaces:
-        colors = ['b', 'g', 'r', 'y', 'm']
-        # Plot the surface geometry:
-        ax2.plot(poly_xs, poly_ys, poly_zs, color='0.50', linestyle=(0, (1, 1)), label='Surface' + str(i))
-    # ax2.legend(loc='best')
-    # Plot the building 3D Geometry:
-    for poly in self.hasGeometry['3D Geometry'][key]:
-        x_bpoly, y_bpoly, z_bpoly = [], [], []
-        for bpt in list(poly.exterior.coords):
-            x_bpoly.append(bpt[0])
-            y_bpoly.append(bpt[1])
-            z_bpoly.append(bpt[2])
-        # Plot the building geometry:
-        ax2.plot(x_bpoly, y_bpoly, z_bpoly, 'k')
-    # Make the panes transparent:
-    ax2.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax2.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax2.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    # Make the grids transparent:
-    ax2.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    ax2.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    ax2.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    # Plot labels
-    ax2.set_xlabel('x [m]')
-    ax2.set_ylabel('y [m]')
-    ax2.set_zlabel('z [m]')
-    ax2.set_title('Surfaces for TPU Wind Direction: ' + str(tpu_wdir))
-    # plt.axis('off')
-    plt.show()
-    # Step 5: Save the surfaces to the building description:
-    self.hasGeometry['TPU_surfaces'][key] = surf_dict
-
-
-def map_TPUsurfaces(self, key):
-    # Given the building, determine the use case:
-    eave_length = 0
-    tpu_wdir = 0
-    # Assign wdir_tag to access appropriate model building file later:
-    if tpu_wdir == 0:
-        wdir_tag = '00.mat'
-    elif tpu_wdir == 15:
-        wdir_tag = '15.mat'
-    elif tpu_wdir == 30:
-        wdir_tag = '30.mat'
-    elif tpu_wdir == 45:
-        wdir_tag = '45.mat'
-    elif tpu_wdir == 60:
-        wdir_tag = '60.mat'
-    elif tpu_wdir == 75:
-        wdir_tag = '75.mat'
-    elif tpu_wdir == 90:
-        wdir_tag = '90.mat'
-    # Use an equivalent rectangle to calculate aspect ratios:
-    rect = self.hasGeometry['Footprint'][
-        key].minimum_rotated_rectangle  # user can specify between geodesic or local coords
-    xrect, yrect = rect.exterior.xy
-    # Determine side lengths:
-    side_lines = {'lines': [], 'length': [], 'TPU direction': [], 'TPU line': []}
-    max_length = 0
-    for ind in range(0, len(xrect) - 1):
-        new_line = LineString([(xrect[ind], yrect[ind]), (xrect[ind + 1], yrect[ind + 1])])
-        side_lines['lines'].append(new_line)
-        if key == 'geodesic':
-            pass
-        else:
-            side_lines['length'].append(new_line.length)
-            # Update the maximum length if needed:
-            if new_line.length > max_length:
-                max_length = new_line.length
-            else:
-                pass
-    # Find the TPU direction of each line:
-    for line in range(0, len(side_lines['lines'])):
-        # For each line, figure out if line is in the TPU x-direction (longer length):
-        if key == 'geodesic':
-            pass
-        else:
-            if side_lines['lines'][line].length == max_length:
-                line_direction = 'x'
-            else:
-                line_direction = 'y'
-        # Record line directions:
-        side_lines['TPU direction'].append(line_direction)
-    # Calculate aspect ratios:
-    hb = self.hasGeometry['Height'] / min(side_lines['length'])
-    db = max(side_lines['length']) / min(side_lines['length'])
-    # Determine the use case and the corresponding number of surfaces:
-    if eave_length == 0:
-        breadth_model = 160  # [mm]
-        match_flag = True
-        # Height to breadth use case - same for flat, gable, and hip roof
-        if hb == (1 / 4):
-            height_model = 40  # [mm]
-            hb_ratio = 1 / 4
-        elif hb == (2 / 4):
-            height_model = 80  # [mm]
-            hb_ratio = 2 / 4
-        elif hb == (3 / 4):
-            height_model = 120  # [mm]
-            hb_ratio = 3 / 4
-        elif hb == 1:
-            height_model = 160  # [mm]
-            hb_ratio = 1
-        else:
-            # Choose the closest ratio:
-            match_flag = False
-            model_hbs = np.array([1 / 4, 2 / 4, 3 / 4, 1])
-            diff_hbs = model_hbs - hb
-            closest_hb = min(abs(diff_hbs))
-            hb_index = np.where(diff_hbs == closest_hb)
-            if not hb_index[0]:
-                hb_index = np.where(diff_hbs == closest_hb * -1)
-            hb_ratio = model_hbs[hb_index[0]][0]
-            # Assign the appropriate model height
-            height_model = model_hbs[hb_index[0]] * breadth_model
-        # Populate the height tag needed to access the correct data file:
-        if height_model == 40:
-            htag = '02'
-        elif height_model == 80:
-            htag = '04'
-        elif height_model == 120:
-            htag = '06'
-        elif height_model == 160:
-            htag = '08'
-        # Depth to breadth use case:
-        if self.adjacentElement['Roof'].hasShape == 'flat' or self.adjacentElement['Roof'].hasShape == 'gable':
-            if db == 1:
-                depth_model = 160
-                db_ratio = 1
-            elif db == 3 / 2:
-                depth_model = 240
-                db_ratio = 3 / 2
-            elif db == 5 / 2:
-                depth_model = 400
-                db_ratio = 5 / 2
-            else:
-                # Choose the closest ratio:
-                match_flag = False
-                model_dbs = np.array([1, 3 / 2, 5 / 2])
-                diff_dbs = model_dbs - db
-                closest_db = min(abs(diff_dbs))
-                db_index = np.where(diff_dbs == closest_db)
-                if not db_index[0]:
-                    db_index = np.where(diff_dbs == closest_db * -1)
-                db_ratio = model_dbs[db_index[0]][0]
-                # Assign the appropriate model height
-                depth_model = model_dbs[db_index[0]] * breadth_model
-            # Populate the height tag needed to access the correct data file:
-            if depth_model == 160:
-                dtag = '08'
-            elif depth_model == 240:
-                dtag = '12'
-            elif depth_model == 400:
-                dtag = '20'
-            # Initialize roof tag, num_surf and, surf_dictionaries for each use case:
-            if self.hasStorey[-1].adjacentElement['Roof'].hasShape == 'flat':
-                num_surf = 5
-                surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
-                rtag = '00'
-            else:
-                num_surf = 6
-                surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None}
-                if self.adjacentElement['Roof'].hasPitch == 4.8:
-                    rtag = '05'
-                elif self.adjacentElement['Roof'].hasPitch == 9.4:
-                    rtag = '10'
-                elif self.adjacentElement['Roof'].hasPitch == 14:
-                    rtag = '14'
-                elif self.adjacentElement['Roof'].hasPitch == 18.4:
-                    rtag = '18'
-                elif self.adjacentElement['Roof'].hasPitch == 21.8:
-                    rtag = '22'
-                elif self.adjacentElement['Roof'].hasPitch == 26.7:
-                    rtag = '27'
-                elif self.adjacentElement['Roof'].hasPitch == 30:
-                    rtag = '30'
-                elif self.adjacentElement['Roof'].hasPitch == 45:
-                    rtag = '45'
-            # Initialize string to access the correct model building file:
-            model_file = 'Cp_ts_g' + dtag + htag + rtag + wdir_tag
-            tpu_file = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/TPU/' + model_file
-        elif self.adjacentElement['Roof'].hasShape == 'hip':  # Note: most common hip roof pitches 4:12-6:12
-            num_surf = 8
-            surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None, 8: None}
-            db_ratio = 3 / 2  # One option for hip roof
-            # Initialize string to access the correct model building file:
-            model_file = 'Cp_ts_h'
-        else:
-            print('Roof shape not supported. Please provide a valid roof shape.')
-    else:
-        print('Buildings with eaves are not yet supported')
-    # Create the TPU footprint geometry from the real-life building's equivalent rectangle:
-    if match_flag:
-        # The real-life building's geometry can be used directly:
-        bfull = min(side_lines['length'])
-        hfull = self.hasGeometry['Height']
-        dfull = max(side_lines['length'])
-    else:
-        # Use the real-life building's breadth to create the full-scale geometry:
-        bfull = min(side_lines['length'])
-        hfull = hb_ratio * bfull
-        dfull = db_ratio * bfull
-    # Set up placeholder for footprint polygon:
-    tpu_poly_pts = []
-    for line in range(0, len(side_lines['lines'])):
-        if side_lines['TPU direction'][line] == 'y':
-            # y-direction in TPU corresponds to building breadth
-            # Leave alone since breadth is fixed to real-life building geometry
-            pass
-        else:
-            # x-direction in TPU corresponds to building depth:
-            # Create two new lines using this line's centroid:
-            ref_pt = side_lines['lines'][line].centroid
-            line_pts = list(side_lines['lines'][line].coords)
-            new_line1 = LineString([ref_pt, Point(line_pts[0])])
-            new_line2 = LineString([ref_pt, Point(line_pts[1])])
-            # Distribute half of dfull to each line segment:
-            new_point1 = new_line1.interpolate(dfull / 2)
-            new_point2 = new_line2.interpolate(dfull / 2)
-            # Combine the two new points into one LineString:
-            tpu_line = LineString([new_point1, new_point2])
-            # Save points for footprint polygon:
-            tpu_poly_pts.append((new_point1.x, new_point1.y))
-            tpu_poly_pts.append((new_point2.x, new_point2.y))
-    # Convert footprint points into 3D:
-    new_zpts = []
-    if num_surf == 5:
-        new_zpts.append(self.create_zcoords(Polygon(tpu_poly_pts), 0))
-        new_zpts.append(self.create_zcoords(Polygon(tpu_poly_pts), hfull))
-    # Create surface geometries:
-    # Set up plotting:
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
-    tpu_polys = []
-    if num_surf == 5 or num_surf == 8:  # Hip and gable roofs both have rectangular vertical planes
-        for plane in range(0, len(new_zpts) - 1):
-            for zpt in range(0, len(new_zpts[plane]) - 1):
-                # Create the surface polygon:
-                tpu_surf = Polygon([new_zpts[plane][zpt], new_zpts[plane + 1][zpt], new_zpts[plane + 1][zpt + 1],
-                                    new_zpts[plane][zpt + 1]])
-                tpu_polys.append(tpu_surf)
-                # Extract xs, ys, and zs and plot
-                surf_xs = []
-                surf_ys = []
-                surf_zs = []
-                for surf_points in list(tpu_surf.exterior.coords):
-                    surf_xs.append(surf_points[0])
-                    surf_ys.append(surf_points[1])
-                    surf_zs.append(surf_points[2])
-                # Plot the surfaces for the entire building to verify:
-                ax.plot(np.array(surf_xs) / 3.281, np.array(surf_ys) / 3.281, np.array(surf_zs) / 3.281, 'k')
-        # Show the surfaces for each story:
-        # Make the panes transparent:
-        ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        # Make the grids transparent:
-        ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        # Plot labels
-        ax.set_xlabel('x [m]')
-        ax.set_ylabel('y [m]')
-        ax.set_zlabel('z [m]')
-        # plt.show()
-        # Add roof surfaces to the end of the list:
-        if num_surf == 5:
-            roof_surf = Polygon(new_zpts[-1])
-            tpu_polys.append(roof_surf)
-        elif num_surf == 8:  # Placeholder for hip roof polygons
-            pass
-    else:
-        pass
+    
+def map_tap_data(bldg, tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict):
     # Read in pressure data file:
+    tpu_file = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/TPU/' + model_file
     tpu_data = loadmat(tpu_file)
     # Export Location_of_measured_points into a DataFrame for easier manipulation:
     df = pd.DataFrame(tpu_data['Location_of_measured_points'], index=['x', 'y', 'Point Number', 'Surface Number'])
@@ -867,45 +528,6 @@ def map_TPUsurfaces(self, key):
     # Create a new DataFrame with new set of (x, y) and Cps:
     df_contour = pd.DataFrame(contour_values)
     # Mapping pressure coefficients to specific TPU surfaces for full-scale scenario:
-    # First need to establish which polygons correspond to specific TPU surface numbers:
-    if side_lines['TPU direction'][1] == 'x':
-        # Polygon order:
-        # When TPU and global axes are both running in general E-W direction:
-        # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 0, 1, 2, 3, 4 in tpu_polys
-        if tpu_wdir <= 90:
-            # TPU and global axes are aligned:
-            # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
-            poly_order = [0, 1, 2, 3, 4]
-        elif 90 < tpu_wdir <= 180:
-            # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
-            poly_order = [2, 1, 0, 3, 4]
-        elif 180 < tpu_wdir <= 270:
-            # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
-            poly_order = [3, 4, 1, 2, 5]
-        elif 270 < tpu_wdir <= 360:
-            # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
-            poly_order = [0, 3, 2, 1, 4]
-    elif side_lines['TPU direction'][1] == 'y':
-        # When TPU x-axis is running in N-S direction (i.e., orthogonal to ideal scenario):
-        # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 3, 0, 1, 2, 4 in tpu_polys
-        if tpu_wdir <= 90:
-            # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
-            poly_order = [3, 0, 1, 2, 4]
-        elif 90 < tpu_wdir <= 180:
-            # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
-            poly_order = [1, 0, 3, 2, 4]
-        elif 180 < tpu_wdir <= 270:
-            # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
-            poly_order = [1, 2, 3, 0, 4]
-        elif 270 < tpu_wdir <= 360:
-            # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
-            poly_order = [3, 2, 1, 0, 4]
-    else:
-        print('Cannot determine dominant axis')
-    # Assign the surfaces to the correct key
-    idx = surf_dict.keys()
-    for i in idx:
-        surf_dict[i] = tpu_polys[poly_order[i - 1]]
     # Now that we have the correct order of polygons, determine real-life pressure tap locations:
     # index_list = []
     point_list = []
@@ -1013,6 +635,15 @@ def map_TPUsurfaces(self, key):
     print('a')
 
 
+def create_zcoords(footprint, zcoord):
+    # Input footprint polygon (either local or geodesic) and elevation:
+    zs = []
+    # Create z coordinates for the given building footprint and elevation:
+    xs, ys = footprint.exterior.xy
+    for pt in range(0, len(xs)):
+        # Define z-coordinates for bottom floor of each story:
+        zs.append(Point(xs[pt], ys[pt], zcoord))
+    return zs
 
 
 

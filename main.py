@@ -21,7 +21,7 @@ test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405',
 tpu_wdir = 0
 key = 'local'
 match_flag, num_surf, side_lines, tpu_file, hb_ratio, db_ratio, rect, surf_dict = find_tpu_use_case(test, key, tpu_wdir, eave_length=0)
-create_TPU_geometry(test, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict)
+create_TPU_3Dgeometry(test, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict)
 test.create_TPU_surfaces('local', tpu_wdir)
 test.map_TPUsurfaces('local')
 # Populate component capacities:
