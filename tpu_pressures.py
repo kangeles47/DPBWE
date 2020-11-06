@@ -176,10 +176,10 @@ def find_tpu_use_case(bldg, key, tpu_wdir, eave_length=0):
             print('Roof shape not supported. Please provide a valid roof shape.')
     else:
         print('Buildings with eaves are not yet supported')
-    return match_flag, num_surf, side_lines, tpu_file, hb_ratio, db_ratio, rect
+    return match_flag, num_surf, side_lines, tpu_file, hb_ratio, db_ratio, rect, surf_dict
 
 
-def create_TPU_geometry(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir):
+def create_TPU_geometry(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict):
     # Convert TPU model building geometries into full-scale:
     # Create the TPU footprint geometry from the real-life building's equivalent rectangle:
     if num_surf == 5:
@@ -234,7 +234,7 @@ def create_TPU_geometry(bldg, match_flag, num_surf, side_lines, hb_ratio, db_rat
             bldg_zpts.append(create_zcoords(rect, zcoord_roof))
         else:
             pass
-    # Create surface geometries:
+    # Create general surface geometries:
     # Set up plotting:
     fig = plt.figure()
     ax = plt.axes(projection='3d')
@@ -253,7 +253,7 @@ def create_TPU_geometry(bldg, match_flag, num_surf, side_lines, hb_ratio, db_rat
                     surf_ys.append(surf_points[1])
                     surf_zs.append(surf_points[2])
                 # Plot the surfaces for the entire building to verify:
-                ax.plot(np.array(surf_xs) / 3.281, np.array(surf_ys) / 3.281, np.array(surf_zs) / 3.281, 'k')
+                ax.plot(np.array(surf_xs) / 3.281, np.array(surf_ys) / 3.281, np.array(surf_zs) / 3.281, linestyle='dashed', color='gray')
                 # Repeat this process for buildings with geometries that do not exactly match TPU:
                 if not match_flag:
                     bldg_surf = Polygon([bldg_zpts[plane][zpt], bldg_zpts[plane + 1][zpt], bldg_zpts[plane + 1][zpt + 1], bldg_zpts[plane][zpt + 1]])
@@ -267,7 +267,14 @@ def create_TPU_geometry(bldg, match_flag, num_surf, side_lines, hb_ratio, db_rat
                         bsurf_zs.append(bsurf_points[2])
                     # Plot the surfaces for the entire building:
                     ax.plot(np.array(bsurf_xs) / 3.281, np.array(bsurf_ys) / 3.281, np.array(bsurf_zs) / 3.281, linestyle='dashed', color='gray')
-        # Show the surfaces for each story:
+        # Plot the building geometry:
+        for poly in bldg.hasGeometry['3D Geometry'][key]:
+            x_bpoly, y_bpoly, z_bpoly = [], [], []
+            for bpt in list(poly.exterior.coords):
+                x_bpoly.append(bpt[0])
+                y_bpoly.append(bpt[1])
+                z_bpoly.append(bpt[2])
+            ax.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, color='k')
         # Make the panes transparent:
         ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
         ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
@@ -292,6 +299,7 @@ def create_TPU_geometry(bldg, match_flag, num_surf, side_lines, hb_ratio, db_rat
             pass
     else:
         pass
+    # Next step: Determine the surface numberings:
     # First need to establish which polygons correspond to specific TPU surface numbers:
     if side_lines['TPU direction'][1] == 'x':
         # Polygon order:
@@ -327,6 +335,54 @@ def create_TPU_geometry(bldg, match_flag, num_surf, side_lines, hb_ratio, db_rat
             poly_order = [3, 2, 1, 0, 4]
     else:
         print('Cannot determine dominant axis')
+    # Assign the surfaces to the correct key
+    idx = surf_dict.keys()
+    # Set up plotting:
+    fig2 = plt.figure(dpi=200)
+    ax2 = plt.axes(projection='3d')
+    for i in idx:
+        surf_dict[i] = tpu_polys[poly_order[i - 1]]
+        # Optional: Plotting:
+        # Extract xs, ys, and zs and plot
+        poly_xs = []
+        poly_ys = []
+        poly_zs = []
+        for pts in list(surf_dict[i].exterior.coords):
+            poly_xs.append(pts[0])
+            poly_ys.append(pts[1])
+            poly_zs.append(pts[2])
+        # Define various line colors to keep track of surfaces:
+        colors = ['b', 'g', 'r', 'y', 'm']
+        # Plot the surface geometry:
+        ax2.plot(poly_xs, poly_ys, poly_zs, color=colors[i-1], label='Surface' + str(i))
+        #ax2.plot(poly_xs, poly_ys, poly_zs, color='0.50', linestyle=(0, (1, 1)), label='Surface' + str(i))
+    ax2.legend(loc='best')
+    # Plot the building 3D Geometry:
+    for poly in bldg.hasGeometry['3D Geometry'][key]:
+        x_bpoly, y_bpoly, z_bpoly = [], [], []
+        for bpt in list(poly.exterior.coords):
+            x_bpoly.append(bpt[0])
+            y_bpoly.append(bpt[1])
+            z_bpoly.append(bpt[2])
+        # Plot the building geometry:
+        ax2.plot(x_bpoly, y_bpoly, z_bpoly, 'k')
+    # Make the panes transparent:
+    ax2.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    ax2.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    ax2.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # Make the grids transparent:
+    ax2.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    ax2.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    ax2.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # Plot labels
+    ax2.set_xlabel('x [m]')
+    ax2.set_ylabel('y [m]')
+    ax2.set_zlabel('z [m]')
+    ax2.set_title('Surfaces for TPU Wind Direction: ' + str(tpu_wdir))
+    # plt.axis('off')
+    plt.show()
+    # Step 5: Save the surfaces to the building description:
+    bldg.hasGeometry['TPU_surfaces'][key] = surf_dict
 
 def create_zcoords(footprint, zcoord):
     # Input footprint polygon (either local or geodesic) and elevation:

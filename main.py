@@ -19,8 +19,9 @@ test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405',
 # Asset Representation
 # Generate and determine the building's TPU surfaces:
 tpu_wdir = 0
-match_flag, num_surf, side_lines, tpu_file, hb_ratio, db_ratio, rect = find_tpu_use_case(test, 'local', tpu_wdir, eave_length=0)
-create_TPU_geometry(test, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir)
+key = 'local'
+match_flag, num_surf, side_lines, tpu_file, hb_ratio, db_ratio, rect, surf_dict = find_tpu_use_case(test, key, tpu_wdir, eave_length=0)
+create_TPU_geometry(test, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict)
 test.create_TPU_surfaces('local', tpu_wdir)
 test.map_TPUsurfaces('local')
 # Populate component capacities:
