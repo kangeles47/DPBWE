@@ -2,7 +2,7 @@ from asset import Parcel
 from matplotlib import pyplot as plt
 from shapely.geometry import Polygon
 from bldg_code import ASCE7
-from tpu_pressures import find_tpu_use_case, create_TPU_geometry
+from tpu_pressures import find_tpu_use_case, get_TPU_surfaces, map_tap_data
 # Initialization script for data-driven workflow:
 
 # Asset Description
@@ -20,8 +20,9 @@ test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405',
 # Generate and determine the building's TPU surfaces:
 tpu_wdir = 0
 key = 'local'
-match_flag, num_surf, side_lines, tpu_file, hb_ratio, db_ratio, rect, surf_dict = find_tpu_use_case(test, key, tpu_wdir, eave_length=0)
-create_TPU_3Dgeometry(test, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict)
+match_flag, num_surf, side_lines, model_file, hb_ratio, db_ratio, rect, surf_dict = find_tpu_use_case(test, key, tpu_wdir, eave_length=0)
+bfull, hfull, dfull = get_TPU_surfaces(test, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict)
+map_tap_data(test, tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, rect)
 test.create_TPU_surfaces('local', tpu_wdir)
 test.map_TPUsurfaces('local')
 # Populate component capacities:
