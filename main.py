@@ -2,6 +2,7 @@ from asset import Parcel
 from matplotlib import pyplot as plt
 from shapely.geometry import Polygon
 from bldg_code import ASCE7
+from tpu_pressures import calc_tpu_pressures
 from tpu_pressures import find_tpu_use_case, get_TPU_surfaces, map_tap_data
 # Initialization script for data-driven workflow:
 
@@ -20,17 +21,15 @@ test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405',
 # Generate and determine the building's TPU surfaces:
 tpu_wdir = 0
 key = 'local'
-match_flag, num_surf, side_lines, model_file, hb_ratio, db_ratio, rect, surf_dict = find_tpu_use_case(test, key, tpu_wdir, eave_length=0)
-bfull, hfull, dfull = get_TPU_surfaces(test, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict)
-map_tap_data(test, tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, rect)
-test.create_TPU_surfaces('local', tpu_wdir)
-test.map_TPUsurfaces('local')
-# Populate component capacities:
-asce7 = ASCE7(test, loading_flag=True)
-edition = 'ASCE 7-10'
+edition = 'ASCE 7-16'
 exposure = 'B'
 wind_speed = 120
+cat = 2
+hpr = True
 wind_direction = 0
+df_tpu_pressures = calc_tpu_pressures(test, key, tpu_wdir, wind_speed, exposure, edition, cat, hpr)
+# Populate component capacities:
+asce7 = ASCE7(test, loading_flag=True)
 asce7.assign_rmwfrs_pressures(test, edition, exposure, wind_speed)
 # Assign pressures to roof assembly:
 a = asce7.get_cc_zone_width(test)

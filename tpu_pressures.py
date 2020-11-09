@@ -9,12 +9,12 @@ import pandas as pd
 from code_pressures import PressureCalc
 
 
-def calc_tpu_pressures(bldg, key, tpu_wdir, edition, exposure, wind_speed, cat):
+def calc_tpu_pressures(bldg, key, tpu_wdir, wind_speed, exposure, edition, cat, hpr):
     # Step 1: Determine the building's TPU use case:
     eave_length = 0
     match_flag, num_surf, side_lines, model_file, hb_ratio, db_ratio, rect, surf_dict = find_tpu_use_case(bldg, key, tpu_wdir, eave_length)
     bfull, hfull, dfull = get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict)
-    df_tpu_pressures = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict)
+    df_tpu_pressures = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, exposure, edition, cat, hpr)
     return df_tpu_pressures
 
 def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
@@ -386,7 +386,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
     return bfull, hfull, dfull
 
 
-def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict):
+def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, exposure, edition, cat, hpr):
     # Read in pressure data file:
     tpu_file = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/TPU/' + model_file
     tpu_data = loadmat(tpu_file)
@@ -432,8 +432,6 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
     # Add this information to the Dataframe:
     df['Mean Cp'] = mean_cps
     # Step 3: Contour plots/interpolating data
-    # Set up figure for contour plots of the pressure coefficients:
-    fig = plt.figure()
     # Set up placeholders to save contour plot coefficients:
     contour_values = {'x': [], 'y': [], 'Surface Number': [], 'Mean Cp': []}
     # Step 3a: To create Cp values for entire surface, need to first define points at surface boundaries and add data
@@ -603,11 +601,6 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
     # Calculate the pressure at each location:
     pressure_calc = PressureCalc()
     pressures = []
-    wind_speed = 140
-    exposure = 'B'
-    edition = 'ASCE 7-16'
-    cat = 2
-    hpr = True
     for k in df_tpu_pressures.index.to_list():
         pressures.append(
             pressure_calc.tpu_pressure(wind_speed, exposure, edition, df_tpu_pressures['Real Life Location'][k].z,
