@@ -1,13 +1,9 @@
 import numpy as np
-from math import sqrt, pi, sin, atan2, degrees, cos, radians
-import geopandas as gpd
+from math import atan2, degrees
 from shapely.geometry import Point, Polygon, LineString
-from shapely.ops import split
 from shapely import affinity
-from scipy import spatial
 from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from scipy.io import loadmat
 import pandas as pd
 from code_pressures import PressureCalc
@@ -15,9 +11,13 @@ from code_pressures import PressureCalc
 
 def calc_tpu_pressures(bldg, key, tpu_wdir, edition, exposure, wind_speed, cat):
     # Step 1: Determine the building's TPU use case:
-    pass
+    eave_length = 0
+    match_flag, num_surf, side_lines, model_file, hb_ratio, db_ratio, rect, surf_dict = find_tpu_use_case(bldg, key, tpu_wdir, eave_length)
+    bfull, hfull, dfull = get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict)
+    df_tpu_pressures = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict)
+    return df_tpu_pressures
 
-def find_tpu_use_case(bldg, key, tpu_wdir, eave_length=0):
+def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
     # This function determines the appropriate TPU use case for the given building.
     # Various tags are populated to identify the correct .mat file with TPU data
     # Given a building, determine its corresponding use case:
@@ -322,16 +322,17 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
         # TPU surfaces 1, 2, 3, 4, 5 correspond to surfaces in positions 3, 0, 1, 2, 4 in tpu_polys
         if tpu_wdir <= 90:
             # TPU Surface 1 is windward surface and order is ccw: 1, 2, 3, 4, 5
-            poly_order = [3, 0, 1, 2, 4]
+            #poly_order = [3, 0, 1, 2, 4]
+            poly_order = [1, 2, 3, 0, 4]
         elif 90 < tpu_wdir <= 180:
             # TPU Surface 3 is windward surface and order is cw: 3, 2, 1, 4, 5
-            poly_order = [1, 0, 3, 2, 4]
+            poly_order = [3, 2, 1, 0, 4]
         elif 180 < tpu_wdir <= 270:
             # TPU Surface 3 is windward surface and order is ccw: 3, 4, 1, 2, 5
-            poly_order = [1, 2, 3, 0, 4]
+            poly_order = [3, 0, 1, 2, 4]
         elif 270 < tpu_wdir <= 360:
             # TPU Surface 1 is windward surface and order is cw: 1, 4, 3, 2, 5
-            poly_order = [3, 2, 1, 0, 4]
+            poly_order = [1, 0, 3, 2, 4]
     else:
         print('Cannot determine dominant axis')
     # Assign the surfaces to the correct key
@@ -385,7 +386,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
     return bfull, hfull, dfull
 
 
-def map_tap_data(bldg, tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, rect):
+def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict):
     # Read in pressure data file:
     tpu_file = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/TPU/' + model_file
     tpu_data = loadmat(tpu_file)
@@ -585,10 +586,10 @@ def map_tap_data(bldg, tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side
                         else:
                             # Building orientation is determined using surface 1 geometry:
                             spts = list(surf_dict[1].exterior.coords)
-                            theta = degrees(atan2((spts[1][1]-spts[2][1]), (spts[1][0]-spts[2][0])))
+                            theta = degrees(atan2((spts[1][0]-spts[2][0]), (spts[1][1]-spts[2][1])))
                             # Rotate the roof point about the building's equivalent rectangle centroid:
-                            rotate_pt = affinity.rotate(Point(df_csurf.loc[row, 'x'], df_csurf.loc[row, 'y']), theta, rect.centroid)
-                            rl_point = Point(rotate_pt.x, rotate_pt.y, hfull)
+                            rotate_pt = affinity.rotate(Point(df_csurf.loc[row, 'x'], df_csurf.loc[row, 'y']), -1*theta, (0,0))
+                            rl_point = Point(rotate_pt.x+surf_dict[5].centroid.x, rotate_pt.y+surf_dict[5].centroid.y, hfull)
                     # Save the point's real-life location:
                     proj_dict['Real Life Location'].append(rl_point)
                     # Save the point's mean Cp value:
@@ -644,8 +645,16 @@ def map_tap_data(bldg, tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side
     ax3.set_xlabel('x [m]')
     ax3.set_ylabel('y [m]')
     ax3.set_zlabel('z [m]')
+    # Plot all surface geometries for verification
+    for key in surf_dict:
+        xsurf, ysurf, zsurf = [], [], []
+        for p in list(surf_dict[key].exterior.coords):
+            xsurf.append(p[0])
+            ysurf.append(p[1])
+            zsurf.append(p[2])
+        ax3.plot(np.array(xsurf)/3.281, np.array(ysurf)/3.281, np.array(zsurf)/3.281, 'k')
     plt.show()
-    print('a')
+    return df_tpu_pressures
 
 
 def create_zcoords(footprint, zcoord):
