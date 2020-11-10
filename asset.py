@@ -971,21 +971,24 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     new_point_list.append(Point(xcoord[idx], ycoord[idx]))
                 self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
                 xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
-                # Rotate the footprint to create a "local" axis:
-                #rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle
-                #spts = list(rect.exterior.coords)
-                #theta = degrees(atan2((spts[1][0] - spts[2][0]), (spts[1][1] - spts[2][1])))
-                # Rotate the the building footprint to create the TPU axis:
-                #rotated_b = affinity.rotate(Polygon(new_point_list), theta, origin='centroid')
-                #rx, ry = rotated_b.exterior.xy
-                # Uncomment to plot the footprint:
-                #plt.plot(np.array(xfpt)/3.281, np.array(yfpt)/3.281, 'k')
-                #plt.plot(np.array(rx) / 3.281, np.array(ry) / 3.281, 'k')
-                #plt.xlabel('x [m]', fontsize=12)
-                #plt.ylabel('y [m]', fontsize=12)
-                #plt.xticks(fontsize=12)
-                #plt.yticks(fontsize=12)
-                #plt.show()
+                plt.plot(np.array(xfpt) / 3.281, np.array(yfpt) / 3.281, 'k')
+                #if key == 'local':
+                    # Rotate the footprint to create a "rotated cartesian" axis:
+                    #rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle
+                    #spts = list(rect.exterior.coords)
+                    #theta = degrees(atan2((spts[1][0] - spts[2][0]), (spts[1][1] - spts[2][1])))
+                    # Rotate the the building footprint to create the TPU axis:
+                    #rotated_b = affinity.rotate(Polygon(new_point_list), theta, origin='centroid')
+                    #self.hasGeometry['Footprint']['rotated'] = rotated_b
+                    #rx, ry = rotated_b.exterior.xy
+                    #plt.plot(np.array(rx) / 3.281, np.array(ry) / 3.281, color='gray', linestyle='dashed')
+                    #plt.legend(['local cartesian', 'rotated cartesian'], prop={"size":12})
+                    # Uncomment to plot the footprint:
+                plt.xlabel('x [m]', fontsize=12)
+                plt.ylabel('y [m]', fontsize=12)
+                plt.xticks(fontsize=12)
+                plt.yticks(fontsize=12)
+                plt.show()
         # Pull building/story height information from DOE reference buildings:
         survey_data = SurveyData()  # create an instance of the survey data class
         survey_data.run(self, ref_bldg_flag=True, parcel_flag=False)
