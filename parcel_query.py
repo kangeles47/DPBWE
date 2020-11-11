@@ -93,6 +93,40 @@ for parcel in range(0, len(parcel_list)):
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                     writer.writerow(
                         {'Parcel Id': parcel_id, 'Address': address, 'Permit Number': permit_list})
+    elif 'COND' in use_code:
+        # Extract features for condo parcels:
+        for tab in table:
+            if 'Unit' in tab.find_all('tr')[0].get_text():
+                # Extract values for Unit No, Floor, and Living Area:
+                cvalues = tab.find_all('span')
+                unit_no = cvalues[0].get_text()
+                floor = cvalues[1].get_text()
+                living_area = cvalues[2].get_text()
+            elif 'Bed' in tab.find_all('tr')[0].get_text():
+                # Extract values for Number of Bedrooms and Bathrooms and Year Built:
+                cvalues2 = tab.find_all('span')
+                num_bed = cvalues2[0].get_text()
+                num_bath = cvalues2[1].get_text()
+                yr_built = cvalues2[3].get_text()
+            elif 'Permit' in tab.find_all('tr')[0].get_text():
+                permit_list = []
+                count = 0
+                for row in tab.find_all('tr'):
+                    if count == 0:
+                        count = count + 1
+                    elif count > 0:
+                        permit_list.append(row.get_text().splitlines()[2])
+                # Save the address, parcel number, and permit numbers in a separate CSV:
+                with open('CondoParcelsPermits.csv', 'a', newline='') as csvfile:
+                    fieldnames = ['Parcel Id', 'Address', 'Permit Number']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                    writer.writerow(
+                        {'Parcel Id': parcel_id, 'Address': address, 'Permit Number': permit_list})
+            # Save the condo feature information:
+            with open('CondoParcels.csv', 'a', newline='') as csvfile:
+                fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Unit No.', 'Floor', 'Living Area', 'Number of Bedrooms', 'Number of Bathrooms', 'Year Built']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writerow({'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Unit No.': unit_no, 'Floor': floor, 'Living Area': living_area, 'Number of Bedrooms': num_bed, 'Number of Bathrooms': num_bath, 'Year Built': yr_built})
     else:
         # If the parcel is not a vacant lot, access all parcel attributes:
         for tab in table:
