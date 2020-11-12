@@ -972,7 +972,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
                 xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
                 plt.plot(np.array(xfpt) / 3.281, np.array(yfpt) / 3.281, 'k')
-                if key == 'local':
+                #if key == 'local':
                     # Rotate the footprint to create a "rotated cartesian" axis:
                     #rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle
                     #spts = list(rect.exterior.coords)
