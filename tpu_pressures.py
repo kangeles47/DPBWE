@@ -234,6 +234,14 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
         else:
             pass
     # Create general surface geometries:
+    xs = [dfull/2, dfull/2, -dfull/2, -dfull/2, dfull/2]
+    ys = [-bfull/2, bfull/2, bfull/2, -bfull/2, -bfull/2]
+    plt.plot(np.array(xs)/3.281, np.array(ys)/3.281, linestyle = 'dashed', color='gray')
+    xbldg, ybldg = bldg.hasGeometry['Footprint']['local'].exterior.xy
+    plt.plot(np.array(xbldg)/3.281, np.array(ybldg)/3.281, 'k')
+    plt.xlabel('x [m]')
+    plt.ylabel('y [m]')
+    plt.show()
     # Set up plotting:
     fig = plt.figure()
     ax = plt.axes(projection='3d')
@@ -252,7 +260,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
                     surf_ys.append(surf_points[1])
                     surf_zs.append(surf_points[2])
                 # Plot the surfaces for the entire building to verify:
-                ax.plot(np.array(surf_xs) / 3.281, np.array(surf_ys) / 3.281, np.array(surf_zs) / 3.281, linestyle='dashed', color='gray')
+                #ax.plot(np.array(surf_xs) / 3.281, np.array(surf_ys) / 3.281, np.array(surf_zs) / 3.281, linestyle='dashed', color='gray')
                 # Repeat this process for buildings with geometries that do not exactly match TPU:
                 if not match_flag:
                     bldg_surf = Polygon([bldg_zpts[plane][zpt], bldg_zpts[plane + 1][zpt], bldg_zpts[plane + 1][zpt + 1], bldg_zpts[plane][zpt + 1]])
