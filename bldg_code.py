@@ -315,15 +315,15 @@ class ASCE7(BldgCode):
                         rpoly = Polygon([lst_points1[pt], lst_points1[pt + 1], lst_points2[pt + 1],
                                          lst_points2[pt]])  # order ccw like min_rect
                         xpoly, ypoly = rpoly.exterior.xy
-                        plt.plot(xpoly, ypoly, label='Zone ' + str(pt + 1))
+                        #plt.plot(xpoly, ypoly, label='Zone ' + str(pt + 1))
+                        plt.plot(np.array(xpoly) / 3.281, np.array(ypoly) / 3.281,color='gray', linestyle='dashed')
                         # Add to DataFrame object:
                         poly_list.append(rpoly)
                     prmwfrs[zonepoly_name] = poly_list
-                    plt.legend()
-                    plt.plot(xfpt, yfpt, 'k')
+                    #plt.legend()
+                    plt.plot(np.array(xfpt)/3.281, np.array(yfpt)/3.281, 'k')
                     plt.xlabel('x [m]')
                     plt.ylabel('y [m]')
-                    plt.axis('off')
                     plt.show()
                 else:
                     if direction == 'parallel':
@@ -400,10 +400,32 @@ class ASCE7(BldgCode):
             if wind_speed == ref_speed:
                 vfactor = 0.0
             else:
-                if edition == 'ASCE 7-93':
-                    vfactor = pd.read_csv(file_path + 'v93.csv', index_col='Edition')[str(wind_speed)][edition]
+                # Check to see if similitude parameter will need to be interpolated:
+                if wind_speed not in np.arange(70, 180, 5):
+                    if wind_speed % 10 < 5:
+                        v1 = wind_speed - wind_speed % 10
+                        v2 = 5 - wind_speed % 10 + wind_speed
+                    else:
+                        v1 = wind_speed - wind_speed % 10 + 5
+                        v2 = 10 - wind_speed % 10 + wind_speed
+                    input_v = [v1, v2]
                 else:
-                    vfactor = pd.read_csv(file_path + 'v.csv', index_col='Edition')[str(wind_speed)][edition]  # Leave here for now, for regional simulation will probably want to load everything somewhere outside
+                    input_v = [wind_speed]
+                # Pull wind speed similitude paramter:
+                if edition == 'ASCE 7-93':
+                    if len(input_v) == 1:
+                        vfactor = pd.read_csv(file_path + 'v93.csv', index_col='Edition')[str(input_v[0])][edition]
+                    else:
+                        vfactor1 = pd.read_csv(file_path + 'v93.csv', index_col='Edition')[str(input_v[0])][edition]  # Leave here for now, for regional simulation will probably want to load everything somewhere outside
+                        vfactor2 = pd.read_csv(file_path + 'v93.csv', index_col='Edition')[str(input_v[1])][edition]
+                        vfactor = np.interp(wind_speed, input_v, [vfactor1, vfactor2])
+                else:
+                    if len(input_v) == 1:
+                        vfactor = pd.read_csv(file_path + 'v.csv', index_col='Edition')[str(input_v[0])][edition]
+                    else:
+                        vfactor1 = pd.read_csv(file_path + 'v.csv', index_col='Edition')[str(input_v[0])][edition]  # Leave here for now, for regional simulation will probably want to load everything somewhere outside
+                        vfactor2 = pd.read_csv(file_path + 'v.csv', index_col='Edition')[str(input_v[1])][edition]
+                        vfactor = np.interp(wind_speed, input_v, [vfactor1, vfactor2])
             # Similitude in height:
             if bldg.hasGeometry['Height'] == ref_hbldg:
                 hfactor = 0.0
