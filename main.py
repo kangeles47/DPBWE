@@ -23,11 +23,11 @@ tpu_wdir = 0
 key = 'local'
 edition = 'ASCE 7-16'
 exposure = 'B'
-wind_speed = 123.34
+wind_speed = 134
 cat = 2
 hpr = True
 wind_direction = 0
-df_tpu_pressures = calc_tpu_pressures(test, key, tpu_wdir, wind_speed, exposure, edition, cat, hpr)
+#df_tpu_pressures = calc_tpu_pressures(test, key, tpu_wdir, wind_speed, exposure, edition, cat, hpr)
 # Populate component capacities:
 asce7 = ASCE7(test, loading_flag=True)
 asce7.assign_rmwfrs_pressures(test, edition, exposure, wind_speed)
