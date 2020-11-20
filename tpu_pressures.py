@@ -233,15 +233,6 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
             bldg_zpts.append(create_zcoords(rect, zcoord_roof))
         else:
             pass
-    # Create general surface geometries:
-    xs = [dfull/2, dfull/2, -dfull/2, -dfull/2, dfull/2]
-    ys = [-bfull/2, bfull/2, bfull/2, -bfull/2, -bfull/2]
-    plt.plot(np.array(xs)/3.281, np.array(ys)/3.281, linestyle = 'dashed', color='gray')
-    xbldg, ybldg = bldg.hasGeometry['Footprint']['local'].exterior.xy
-    plt.plot(np.array(xbldg)/3.281, np.array(ybldg)/3.281, 'k')
-    plt.xlabel('x [m]')
-    plt.ylabel('y [m]')
-    plt.show()
     # Set up plotting:
     fig = plt.figure()
     ax = plt.axes(projection='3d')
@@ -306,6 +297,26 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
             pass
     else:
         pass
+    # Plotting: Footprints
+    fig_ex = plt.figure()
+    ax_ex = plt.axes()
+    rfx, rfy = roof_surf.exterior.xy
+    ax_ex.plot(np.array(rfx)/3.281, np.array(rfy)/3.281, linestyle='dashed', color='gray')
+    xrect, yrect = rect.exterior.xy
+    ax_ex.plot(np.array(xrect) / 3.281, np.array(yrect) / 3.281, 'k')
+    # Create general surface geometries:
+    xs = [dfull/2, dfull/2, -dfull/2, -dfull/2, dfull/2]
+    ys = [-bfull/2, bfull/2, bfull/2, -bfull/2, -bfull/2]
+    #ax_ex.plot(np.array(xs)/3.281, np.array(ys)/3.281, linestyle = 'dashed', color='gray')
+    # plt.plot(0, 0, 'o', color='gray')
+    xbldg, ybldg = bldg.hasGeometry['Footprint']['local'].exterior.xy
+    ax_ex.plot(np.array(xbldg) / 3.281, np.array(ybldg) / 3.281, 'k')
+    # plt.plot(bldg.hasGeometry['Footprint']['local'].centroid.x/3.281, bldg.hasGeometry['Footprint']['local'].centroid.y/3.281, 'ko')
+    ax_ex.xaxis.set_tick_params(labelsize=16)
+    ax_ex.yaxis.set_tick_params(labelsize=16)
+    ax_ex.set_xlabel('x [m]', fontsize=16)
+    ax_ex.set_ylabel('y [m]', fontsize=16)
+    plt.show()
     # Next step: Determine the surface numberings:
     # First need to establish which polygons correspond to specific TPU surface numbers:
     if side_lines['TPU direction'][1] == 'x':
@@ -632,7 +643,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         rl_ys.append(df_tpu_pressures['Real Life Location'][k].y)
         rl_zs.append(df_tpu_pressures['Real Life Location'][k].z)
     img = ax3.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281,
-                        c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('hot'))
+                        c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('Greys'))
     fig3.colorbar(img)
     # Make the panes transparent:
     ax3.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
