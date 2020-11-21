@@ -34,7 +34,8 @@ class PressureCalc:
         # Determine components and cladding pressure for building facade components:
         is_cc = True
         # All components and cladding calculations require qh:
-        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean)
+        tpu_flag = False
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag)
         # Get GCps and calculate the pressure for each zone:
         wpos = [True, True, False, False]
         wzone = [4, 5, 4, 5]
@@ -48,7 +49,7 @@ class PressureCalc:
             else:
                 pass
             # Calculate pressure at the zone:
-            p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
+            p = PressureCalc.calc_pressure(self, h_bldg, edition, is_cc, qh, gcp, gcpi)
             wps.append(p)
 
         return wps
