@@ -1,5 +1,6 @@
 from asset import Parcel
 from matplotlib import pyplot as plt
+import numpy as np
 from shapely.geometry import Polygon
 from bldg_code import ASCE7
 from tpu_pressures import calc_tpu_pressures
@@ -34,9 +35,9 @@ asce7.assign_rmwfrs_pressures(test, edition, exposure, wind_speed)
 # Assign pressures to roof assembly:
 a = asce7.get_cc_zone_width(test)
 print('zone width in ft:', a)
-roof_flag = True
+roof_flag = False
 zone_pts, int_poly, zone2_polys = asce7.find_cc_zone_points(test, a, roof_flag, edition)
-asce7.assign_wcc_pressures(test, zone_pts, edition, exposure, wind_speed)
+#asce7.assign_wcc_pressures(test, zone_pts, edition, exposure, wind_speed)
 #assign_rcc_pressures(test, zone_pts, int_poly, edition, exposure, wind_speed)
 # Create a polygon with full surf points:
 poly_xs = []
@@ -67,7 +68,7 @@ for plane in range(0, len(surf_list)-1):
         wcc_surf = Polygon([surf_list[plane][pt], surf_list[plane + 1][pt], surf_list[plane + 1][pt + 1], surf_list[plane][pt + 1]])
         poly_list.append(wcc_surf)
 # Set up plotting:
-fig = plt.figure(dpi=200)
+fig = plt.figure()
 ax = plt.axes(projection='3d')
 for poly in poly_list:
     xs = []
@@ -78,7 +79,8 @@ for poly in poly_list:
         ys.append(pts[1])
         zs.append(pts[2])
         # Plot the surface geometry:
-        ax.plot(xs, ys, zs, color='k')
+        ax.plot(np.array(xs)/3.281, np.array(ys)/3.281, np.array(zs)/3.281
+                , color='k')
 # Make the panes transparent:
 ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
 ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
@@ -91,7 +93,6 @@ ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
 ax.set_xlabel('x [m]')
 ax.set_ylabel('y [m]')
 ax.set_zlabel('z [m]')
-plt.axis('off')
 plt.show()
 print(exposure)
 
