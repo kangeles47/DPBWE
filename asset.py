@@ -128,6 +128,11 @@ class Zone:
                 print('Roof already defined as an adjacent element for this building')
             else:
                 self.adjacentElement.update({'Roof': self.hasStorey[-1].adjacentElement['Roof']})
+            # Add the bottom floor as an adjacentElement for the building:
+            if 'Floor' in self.adjacentElement:
+                print('Bottom floor already added as an adjacent element for this building')
+            else:
+                self.adjacentElement.update({'Floor': self.hasStorey[0].adjacentElement['Floor'][0]})
         elif isinstance(self, Storey):
             for space in self.hasSpace:
                 # Update the hasElement attribute:
