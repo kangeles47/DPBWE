@@ -2,8 +2,6 @@ class Element:
     def __init__(self):
         # Elements can have subelements:
         self.hasSubElement = None
-        # Elements can be adjacent to other elements
-        self.adjacentElement = None
         # Elements can be modeled as well:
         self.has3DModel = None
         self.hasSimpleModel = None
