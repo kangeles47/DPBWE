@@ -397,7 +397,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     self.hasGeometry['3D Geometry'][key].append(bsurf_poly)
                     self.hasGeometry['Surfaces'][key].append(bsurf_poly)
         # Generate a set of building elements (with default attributes) for the parcel:
-        self.parcel_elements(self)
+        self.parcel_elements(self, zone_flag=False)
         # Update the Building's Elements:
         self.update_elements()
         # Populate instance attributes informed by national survey data:
@@ -508,14 +508,17 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         #plt.plot(xrect, yrect)
         #plt.show()
 
-
-    def parcel_elements(self, parcel):
+    def parcel_elements(self, parcel, zone_flag):
         # Generate parcel elements with (default) attributes:
         # Floor, Ceiling, and Roof Instances - These are conducted by storey to facilitate "hasElement" assignment
-        # Exterior Walls - Geometries are derived considering ASCE 7 zone locations on the building footprint:
-        asce7 = bldg_code.ASCE7(parcel, loading_flag=True)
-        a = asce7.get_cc_zone_width(parcel)  # Determine the zone width
-        zone_pts, int_poly, zone2_polys = asce7.find_cc_zone_points(parcel, a, roof_flag=True, edition=None)  # Coordinates for start/end of zone locations
+        # Exterior Walls - Parcel approach: Geometries are derived considering ASCE 7 C&C zone locations:
+        # Exterior Walls - Other approach: Geometries are derived using footprint vertices
+        if zone_flag:
+            asce7 = bldg_code.ASCE7(parcel, loading_flag=True)
+            a = asce7.get_cc_zone_width(parcel)  # Determine the zone width
+            zone_pts, int_poly, zone2_polys = asce7.find_cc_zone_points(parcel, a, roof_flag=True, edition=None)  # Coordinates for start/end of zone locations
+        else:
+            pass
         # Assume that walls span one story for now:
         for storey in range(0, len(parcel.hasStorey)):
             # Create an empty list to hold all elements:
@@ -547,15 +550,27 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             # Parcel models: Use ASCE 7 C&C zones to create a preliminary set of wall elements
             # Loop through zone_pts and assign geometries to wall elements:
             new_wall_list = []
-            for ind in zone_pts.index:
-                for col in range(0, len(zone_pts.loc[ind]) - 1):
+            if zone_flag:
+                for ind in zone_pts.index:
+                    for col in range(0, len(zone_pts.loc[ind]) - 1):
+                        # Create a new Wall Instance:
+                        ext_wall = Wall()
+                        ext_wall.isExterior = True
+                        ext_wall.inLoadPath = True
+                        ext_wall.hasGeometry['Height'] = parcel.hasStorey[storey].hasGeometry['Height']
+                        ext_wall.hasGeometry['1D Geometry'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[
+                            ind, col + 1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
+                        ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry'].length
+                        new_wall_list.append(ext_wall)
+            else:
+                xf, yf = parcel.hasGeometry['Footprint']['local'].exterior.xy
+                for pt in range(0, len(xf)-1):
                     # Create a new Wall Instance:
                     ext_wall = Wall()
                     ext_wall.isExterior = True
                     ext_wall.inLoadPath = True
                     ext_wall.hasGeometry['Height'] = parcel.hasStorey[storey].hasGeometry['Height']
-                    ext_wall.hasGeometry['1D Geometry'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[
-                        ind, col + 1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
+                    ext_wall.hasGeometry['1D Geometry'] = LineString([(xf[pt], yf[pt]), (xf[pt+1], yf[pt+1])])  # Line segment with start/end coordinates of wall (respetive to building origin)
                     ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry'].length
                     new_wall_list.append(ext_wall)
             # Add all walls to element_dict:
