@@ -408,7 +408,10 @@ class PressureCalc:
                 else:
                     pass
         else:
-            pass
+            if exposure == 'B' and edition == 'ASCE 7-16' and z < 30:
+                z = 30
+            else:
+                pass
         # Calculate the velocity pressure coefficient:
         if z <= 15:  # [ft]
             kz = factor * (15 / zg) ** (2 / alpha)
