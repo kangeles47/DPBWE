@@ -36,6 +36,7 @@ class PressureCalc:
         # All components and cladding calculations require qh:
         tpu_flag = False
         qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag)
+        print(qh)
         # Get GCps and calculate the pressure for each zone:
         wpos = [True, True, False, False]
         wzone = [4, 5, 4, 5]
@@ -43,6 +44,7 @@ class PressureCalc:
         for ind in range(0, len(wpos)):
             # Find the GCp
             gcp = PressureCalc.get_wcc_gcp(self, area_eff, wpos[ind], wzone[ind], edition)
+            print(gcp)
             # Reduce GCp for walls if roof pitch is <= 10 degrees:
             if pitch <= 10:
                 gcp = 0.9 * gcp
@@ -164,7 +166,7 @@ class PressureCalc:
     def tpu_pressure(self, wind_speed, exposure, edition, z, cp, cat, hpr, encl_class='Enclosed'):
         if edition != 'ASCE 7-88' or edition != 'ASCE 7-93' or edition != 'ASCE 7-95':
             # Determine GCpis for pressure calculation:
-            gcpi = 0
+            gcpi = 0.18
             #gcpi = PressureCalc.get_gcpi(self, edition, encl_class)
             # Determine the velocity pressure:
             is_cc = False  # Don't include code adjustments for C&C < 30 ft
