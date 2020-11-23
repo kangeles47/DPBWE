@@ -83,7 +83,7 @@ class PressureCalc:
         # Determine components and cladding pressure for building roof components:
         is_cc = True
         # All components and cladding calculations require qh:
-        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean)
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag=False)
         # Get GCps and calculate the pressure for each zone:
         rpos = [True, True, True, False, False, False]
         rzone = [1, 2, 3, 1, 2, 3]
@@ -96,7 +96,7 @@ class PressureCalc:
             rps.append(p)
         return rps
 
-    def rmwfrs_pressure(self, wind_speed, exposure, edition, h_bldg, length, ratio, pitch, cat, hpr, h_ocean, encl_class):
+    def rmwfrs_pressure(self, wind_speed, exposure, edition, h_bldg, direction, length, ratio, pitch, cat, hpr, h_ocean, encl_class):
         """
         Orchestrates the calculation of design pressures per zone for roof uplift pressures.
 
@@ -127,26 +127,28 @@ class PressureCalc:
         # Determine the velocity pressure:
         is_cc = False
         # Roof uplift pressures require qh:
-        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean)
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag=False)
+        print(qh)
         # Get the gust effect or gust response factor:
         g = PressureCalc.get_g(self, edition, exposure, is_cc, alpha, h_bldg)
-        # Set up to find Cp values:
-        direction = 'parallel'
+        print(g)
+        print(gcpi)
         # Set up placeholders for Cp values:
         rmps = list()
         # Find the Cps:
         cp = PressureCalc.get_cp_rmwfrs(self, h_bldg, direction, ratio, pitch, length, edition)
+        print(cp[0])
         if len(cp) == 1: # In cases when there is only one zone
             gcp = g*cp[0]
             # Calculate uplift pressure at the zone:
-            p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
+            p = PressureCalc.calc_pressure(self, h_bldg, edition, is_cc, qh, gcp, gcpi)
             # Add pressure to list:
             rmps.append(p)
         else:
             for row in cp:
                 gcp = g * row[0]  # Take the first Cp value for uplift calculations
                 # Calculate uplift pressure at the zone:
-                p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
+                p = PressureCalc.calc_pressure(self, h_bldg, edition, is_cc, qh, gcp, gcpi)
                 # Minimum design pressures for roof MWFRS:
                 #if abs(p) < 10:
                     #if edition != 'ASCE 7-10':  # [psf]
