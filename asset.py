@@ -175,29 +175,19 @@ class Zone:
 
 class Site(Zone):
     # Sub-class of Zone
-    def __init__(self, bldg_list, site_num, num_sites):
+    def __init__(self, bldg_list):
         # Populate Zone attributes:
         new_zone = self
         Zone.__init__(self, new_zone)
         # Sites contain one or more buildings
         # Sites contain all of the zones, spaces, elements, etc. within each building model:
         # Given the number of buildings, create instances of Building and pull attributes
-        for i in range(0, len(bldg_list)):
-            # Sites contain one or more buildings
-            new_bldg = Building(pid, num_stories, occupancy, yr_built, address, area, lon,
-                                lat)  # These attributes come from building list
-            self.hasBuilding.append(new_bldg)
-            # Sites contain all of the zones, spaces, elements, etc. within each building model:
-            self.update_zones()
-            self.update_elements()
-        # Sites can be adjacent to/intersect with other sites (which are also zones)
-        if num_sites > 0:
-            self.adjacentZone = None  # Update these for future regional analysis
-            self.intersectsZone = None
-        else:
-            pass
+        for bldg in bldg_list:
+            self.hasBuilding.append(bldg)
+        # Sites contain all of the zones, spaces, elements, etc. within each building model:
+        self.update_zones()
+        self.update_elements()
         # Add the site as a Zone:
-        self.hasName = 'Site' + str(site_num)
         self.containsZone.append(self)
 
 
