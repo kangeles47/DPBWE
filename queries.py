@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from geopy.distance import distance
 from asset import Site, Building
 
@@ -39,7 +40,7 @@ def get_bldgs_at_dist(site, ref_bldg, dist, unit, plot_flag):
 
 
 def get_debris_types(bldg_list):
-    # What are the debris types of buildings?
+    # What are the debris types of the buildings in bldg_list?
     debris_type_list = []
     for bldg in bldg_list:
         debris_type_list.append(bldg.adjacentElement['Roof'].hasType[0])
@@ -53,3 +54,23 @@ def get_debris_types_at_dist(site, ref_bldg, dist, unit, plot_flag):
     # Find their debris types:
     debris_type_list = get_debris_types(bldg_list)
     return debris_type_list
+
+
+def calculate_new_internal_pressure(bldg):
+    # Internal pressure recalculated as the average of external pressures at breached locations
+    # Create an empty list to hold external pressures at breached locations:
+    ext_pressures = []
+    # Create an empty list to hold undamaged components:
+    comp_list = []
+    for key in bldg.adjacentElement:
+        if key != 'Floor':
+            for component in bldg.adjacentElement[key]:
+                # Identify envelope components that have failed due to wind pressure:
+                if component.hasFailure['wind pressure']:
+                    # Access the component's wind pressure demand:
+                    ext_pressures.append(component.hasDemand['wind pressure'])
+                else:
+                    comp_list.append(component)
+    # Calculate the new internal pressure:
+    ip = np.array(ext_pressures).mean()
+    # Recalculate the wind pressures for each of the undamaged components:
