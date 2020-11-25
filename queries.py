@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from geopy.distance import distance
 from asset import Site, Building
+from element import Wall, Roof
 
 
 def get_bldgs_at_dist(site, ref_bldg, dist, unit, plot_flag):
@@ -74,6 +75,37 @@ def calculate_new_internal_pressure(bldg):
     # Calculate the new internal pressure:
     ip = np.array(ext_pressures).mean()
     # Recalculate the wind pressures for each of the undamaged components:
+
+
+def redistribute_r2w_loads(bldg):
+    # Access the interfaces in the bldg and collect the r2w connections:
+    # Create an empty list to hold all r2w connections:
+    r2w_list = []
+    # Create an empty list to hold all failed r2w connections:
+    r2w_fail = []
+    for interface in bldg.hasStorey[-1].hasInterface:
+        # Check if this interface object includes a Roof object:
+        if isinstance(interface.interfaceOf[0], Roof) or isinstance(interface.interfaceOf[1], Roof):
+            # Check if this interface object includes a Wall object:
+            if isinstance(interface.interfaceOf[0], Wall) or isinstance(interface.interfaceOf[1], Wall):
+                r2w_list.append(interface)
+                # Check the r2w connection for failure:
+                if interface.hasFailure['shear force']:
+                    r2w_fail.append(interface)
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
+    # For each failed r2w connection, find its nearest neighbors:
+    for conn in r2w_fail:
+        # For each failed r2w connection, find its nearest neighbors:
+        near_conn = []
+        for j in r2w_list:
+            j.hasLocation
+
+
 
 
 def get_num_wtype(bldg, story_num, wtype, is_exterior, is_interior, direction):
