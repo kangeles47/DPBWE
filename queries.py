@@ -74,3 +74,60 @@ def calculate_new_internal_pressure(bldg):
     # Calculate the new internal pressure:
     ip = np.array(ext_pressures).mean()
     # Recalculate the wind pressures for each of the undamaged components:
+
+
+def get_num_wtype(bldg, story_num, wtype, is_exterior, is_interior, direction):
+    # For a given building, how many walls of type wtype are in Story story_num?
+    # Create a dummy variable to start the count:
+    count = 0
+    # If direction query is needed, create empty list to hold all identified walls of wtype:
+    if direction == 'x' or direction == 'y':
+        wtype_list = []
+    else:
+        pass
+    # Facilitate faster queries for strictly exterior components:
+    if is_exterior:
+        for wall in bldg.hasStorey[story_num-1].adjacentElement['Walls']:
+            if wall.hasType == wtype:
+                count = count+1
+                if direction == 'x' or direction == 'y':
+                    wtype_list.append(wall)
+            else:
+                pass
+    elif is_interior:
+        # Facilitate faster queries for strictly interior components:
+        if is_interior:
+            for wall in bldg.hasStorey[story_num-1].containsElement['Walls']:
+                if wall.hasType == wtype:
+                    count = count + 1
+                    if direction == 'x' or direction == 'y':
+                        wtype_list.append(wall)
+                else:
+                    pass
+    else:
+        # Count the number of wtypes over all wall components:
+        for wall in bldg.hasStorey[story_num-1].hasElement['Walls']:
+            if wall.hasType == wtype:
+                count = count+1
+                if direction == 'x' or direction == 'y':
+                    wtype_list.append(wall)
+            else:
+                pass
+    # Determine the number of walls in the specified direction:
+    if direction == 'x' or direction == 'y':
+        direction_count = 0
+        for wall in wtype_list:
+            wline = wall.hasGeometry['1D Geometry']
+            xs, ys = wline.xy
+            xdist = xs[1]-xs[0]
+            ydist = ys[1]-ys[0]
+            if direction == 'x' and xdist > ydist:
+                direction_count = direction_count + 1
+            elif direction == 'y' and ydist > xdist:
+                direction_count = direction_count + 1
+            else:
+                pass
+    else:
+        direction_count = None
+
+    return count, direction_count
