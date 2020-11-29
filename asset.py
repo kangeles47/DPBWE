@@ -189,6 +189,8 @@ class Site(Zone):
         self.update_elements()
         # Add the site as a Zone:
         self.containsZone.append(self)
+        # Add roughness attributes for the site:
+        self.hasRoughness = None
 
 
 class Building(Zone):
@@ -216,7 +218,7 @@ class Building(Zone):
         # Buildings contain all of the zones, spaces, elements, etc. within each storey:
         self.update_zones()
         # Attributes outside of BOT:
-        self.hasName = pid
+        self.hasID = pid
         self.hasOccupancy = occupancy
         self.hasYearBuilt = int(yr_built)
         self.hasLocation = {'Address': address, 'State': None, 'County': None, 'Geodesic': Point(lon, lat)}
@@ -225,6 +227,7 @@ class Building(Zone):
                             'Height': None, '3D Geometry': {'geodesic': [], 'local': []},
                             'Surfaces': {'geodesic': [], 'local': []}, 'TPU_surfaces': {'geodesic': [], 'local': []}}
         self.hasOrientation = None
+        self.hasOutputVariable = {'repair cost': None, 'downtime': None, 'fatalities': None}
         self.hasFundamentalPeriod = {'x': None, 'y': None}
         self.hasStructuralSystem = {'type': None, 'elements': []}
         self.hasImportanceFactor = None
