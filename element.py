@@ -12,7 +12,7 @@ class Element:
         self.hasGeometry = {'3D Geometry': None, '2D Geometry': None, '1D Geometry': None, 'Thickness': None, 'Length': None, 'Height': None}
         self.hasFragility = None
         self.hasModeOfFabrication = None  # options: on-site, off-site, unknown (None object)
-        edp_dict = {'peak interstory drift ratio': None, 'peak absolute velocity': None, 'peak absolute acceleration': None, 'wind speed': None, 'wind pressure': None, 'impact': None, 'axial force': None, 'shear force': None, 'bending moment': None, 'peak flexural stress': None, 'peak shear stress': None, 'peak flexural strain': None, 'curvature': None, 'rotation': None, 'elongation': None}
+        edp_dict = {'peak interstory drift ratio': None, 'peak absolute velocity': None, 'peak absolute acceleration': None, 'wind speed': None, 'wind pressure': {'external': None, 'internal': None, 'total': None}, 'debris impact': None, 'axial force': None, 'shear force': None, 'bending moment': None, 'peak flexural stress': None, 'peak shear stress': None, 'peak flexural strain': None, 'curvature': None, 'rotation': None, 'elongation': None}
         self.hasEDP = {'x direction': edp_dict, 'y direction': edp_dict}  # Specifying direction for of out-of-plane
         self.hasCapacity = edp_dict
         self.hasLoadingDemand = edp_dict
@@ -23,6 +23,7 @@ class Element:
         self.hasManufacturer = None
         self.inLoadPath = None
         self.hasDirection = None  # options here are x or y as defined by building geometry
+        self.hasYearBuilt = None
 
 
 class Wall(Element):
