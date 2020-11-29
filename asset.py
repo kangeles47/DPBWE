@@ -456,10 +456,10 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             parcel.hasGeometry['Footprint']['type'] = 'default'
             length = (sqrt(self.hasGeometry['Total Floor Area'] / num_stories)) * (1 / (2 * sin(
                 pi / 4)))  # Divide total building area by number of stories and take square root, divide by 2
-            p1 = distance.distance(kilometers=length / 1000).destination((ref_pt.y, ref_pt.x), 45)
-            p2 = distance.distance(kilometers=length / 1000).destination((ref_pt.y, ref_pt.x), 135)
-            p3 = distance.distance(kilometers=length / 1000).destination((ref_pt.y, ref_pt.x), 225)
-            p4 = distance.distance(kilometers=length / 1000).destination((ref_pt.y, ref_pt.x), 315)
+            p1 = distance.distance(miles=length / 5280).destination((ref_pt.y, ref_pt.x), 45)
+            p2 = distance.distance(miles=length / 5280).destination((ref_pt.y, ref_pt.x), 135)
+            p3 = distance.distance(miles=length / 5280).destination((ref_pt.y, ref_pt.x), 225)
+            p4 = distance.distance(miles=length / 5280).destination((ref_pt.y, ref_pt.x), 315)
             parcel.hasGeometry['Footprint']['geodesic'] = Polygon(
                 [(p1.longitude, p1.latitude), (p2.longitude, p2.latitude), (p3.longitude, p3.latitude),
                  (p4.longitude, p4.latitude)])

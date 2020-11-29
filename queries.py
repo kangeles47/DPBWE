@@ -1,17 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from geopy.distance import distance
-from asset import Site, Building
+from asset import Site, Parcel
 from element import Wall, Roof
 
 
 def get_bldgs_at_dist(site, ref_bldg, dist, unit, plot_flag):
     # Given that a ref_bldg is within a site, what bldgs are within distance=dist from ref_bldg?
-    ref_pt = ref_bldg.hasLocation['Geodesic']
+    ref_pt = ref_bldg.hasLocation['Geodesic'].coords[:][0]  # Shapely Point object
     # Create an empty list to hold any qualifying bldg:
     bldg_list = []
     for bldg in site.hasBuilding:
-        bldg_location = bldg.hasLocation['Geodesic']
+        bldg_location = bldg.hasLocation['Geodesic'].coords[:][0]  # Shapely Point object
         # Calculate the distance between ref_bldg and bldg:
         if unit == 'mi':
             bldg_dist = distance(ref_pt, bldg_location).miles
@@ -207,3 +208,27 @@ def get_wall_dir(wall, geom_rep):
             wall.hasOrientation = 'y'
     else:
         print('Please define rotated Cartesian geometry')
+
+parcel_data = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/Parcels/ResSub.csv')
+bldg_list = []
+lon = -85.676188
+lat = 30.190142
+test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
+# Create Building objects out of each parcel in list:
+for parcel in parcel_data:
+    bldg_point = (parcel['Latitude'], parcel['Longitude'])
+    bldg_dist = distance((lat, lon), bldg_point).miles
+    if bldg_dist < 0.497:
+        # Create a Parcel object:
+        pid = parcel['Parcel ID']
+        address = parcel['Address']
+        occupancy = parcel['Use Code']
+        area = parcel['Square Footage']
+        num_stories = parcel['Stories']
+        yr_built = parcel['Year Built']
+        lat = parcel['Latitude']
+        lon= parcel['Longitude']
+        new_parcel = Parcel(pid, num_stories, occupancy, yr_built, address, area, lon, lat)
+        bldg_list.append(new_parcel)
+site = Site(bldg_list)
+new_list = get_bldgs_at_dist(site, test, 0.497, 'mi', plot_flag=True)
