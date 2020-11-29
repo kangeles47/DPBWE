@@ -57,25 +57,30 @@ def get_debris_types_at_dist(site, ref_bldg, dist, unit, plot_flag):
     return debris_type_list
 
 
-def calculate_new_internal_pressure(bldg):
-    # Internal pressure recalculated as the average of external pressures at breached locations
-    # Create an empty list to hold external pressures at breached locations:
+def calculate_new_opening_internal_pressure(bldg):
+    # Internal pressure recalculated as average of external pressures at breaches
+    # Create empty list to hold external pressures at breaches:
     ext_pressures = []
     # Create an empty list to hold undamaged components:
     comp_list = []
     for key in bldg.adjacentElement:
-        if key != 'Floor':
+        if key == 'Walls' or key == 'Roof' or key == 'Windows':
             for component in bldg.adjacentElement[key]:
-                # Identify envelope components that have failed due to wind pressure:
-                if component.hasFailure['wind pressure']:
+                # Identify envelope components that have failed due to wind pressure or debris:
+                if component.hasFailure['wind pressure'] or component.hasFailure['debris impact']:
                     # Access the component's wind pressure demand:
-                    ext_pressures.append(component.hasDemand['wind pressure'])
+                    ext_pressures.append(component.hasDemand['wind pressure']['external'])
                 else:
+                    # Add undamaged component:
                     comp_list.append(component)
+        else:
+            pass
     # Calculate the new internal pressure:
-    ip = np.array(ext_pressures).mean()
-    # Recalculate the wind pressures for each of the undamaged components:
-
+    int_pressure = np.array(ext_pressures).mean()
+    # Recalculate wind pressures for each undamaged component:
+    for comp in comp_list:
+        comp.hasDemand['wind pressure']['internal'] = int_pressure
+        comp.hasDemand['wind pressure']['total'] = comp.hasDemand['wind pressure']['external'] + int_pressure
 
 def redistribute_r2w_loads(bldg):
     # Access the interfaces in the bldg and collect the r2w connections:
@@ -108,7 +113,7 @@ def redistribute_r2w_loads(bldg):
 
 
 
-def get_num_wtype(bldg, story_num, wtype, is_exterior, is_interior, direction):
+def get_num_and_dir_wtype(bldg, story_num, wtype, is_exterior, is_interior, direction):
     # For a given building, how many walls of type wtype are in Story story_num?
     # Create a dummy variable to start the count:
     count = 0
@@ -121,7 +126,7 @@ def get_num_wtype(bldg, story_num, wtype, is_exterior, is_interior, direction):
     if is_exterior:
         for wall in bldg.hasStorey[story_num-1].adjacentElement['Walls']:
             if wall.hasType == wtype:
-                count = count+1
+                count = count + 1
                 if direction == 'x' or direction == 'y':
                     wtype_list.append(wall)
             else:
@@ -163,3 +168,42 @@ def get_num_wtype(bldg, story_num, wtype, is_exterior, is_interior, direction):
         direction_count = None
 
     return count, direction_count
+
+
+def get_story_wtype(bldg, story_num, wtype, is_exterior, is_interior):
+    wall_list = []  # Create empty list to store Wall objects:
+    if is_exterior:  # Query for exterior components
+        for wall in bldg.hasStorey[story_num-1].adjacentElement['Walls']:
+            if wall.hasType == wtype:
+                wall_list.append(wall)
+            else:
+                pass
+    elif is_interior:  # Query for interior components
+        if is_interior:
+            for wall in bldg.hasStorey[story_num-1].containsElement['Walls']:
+                if wall.hasType == wtype:
+                    wall_list.append(wall)
+                else:
+                    pass
+    else:  # Loop through all components
+        for wall in bldg.hasStorey[story_num-1].hasElement['Walls']:
+            if wall.hasType == wtype:
+                wall_list.append(wall)
+            else:
+                pass
+    print('Number of walls with type ' + wtype + '=' + str(len(wall_list)))
+    return wall_list
+
+
+def get_wall_dir(wall, geom_rep):
+    if geom_rep == 'rotated':
+        wline = wall.hasGeometry['1D Geometry']['rotated']  # Shapely LineString Object
+        xs, ys = wline.xy  # Access line points
+        xdist = xs[1] - xs[0]  # Calculate x distance
+        ydist = ys[1] - ys[0]  # Calculate y distance
+        if xdist > ydist:
+            wall.hasOrientation = 'x'
+        else:
+            wall.hasOrientation = 'y'
+    else:
+        print('Please define rotated Cartesian geometry')
