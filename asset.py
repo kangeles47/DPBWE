@@ -186,7 +186,7 @@ class Site(Zone):
             self.hasBuilding.append(bldg)
         # Sites contain all of the zones, spaces, elements, etc. within each building model:
         self.update_zones()
-        self.update_elements()
+#        self.update_elements()
         # Add the site as a Zone:
         self.containsZone.append(self)
         # Add roughness attributes for the site:
@@ -272,6 +272,11 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
     def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
         Building.__init__(self, pid, num_stories, occupancy, yr_built, address, area, lon,
                           lat)  # Bring in all of the attributes that are defined in the BIM class for the parcel model
+        # Exception for single family homes:
+        if num_stories == 0:
+            num_stories = int(num_stories) + 1
+        else:
+            num_stories = int(num_stories)
         # Define building-level attributes that are specific to parcel models
         # Building footprint:
         self.assign_footprint(self, num_stories)
@@ -283,9 +288,12 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             else:
                 xcoord, ycoord = self.hasGeometry['Footprint'][key].exterior.xy
                 new_point_list = []
-                for idx in range(2, len(xcoord) - 2):
-                    new_point_list.append(Point(xcoord[idx], ycoord[idx]))
-                self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
+                if address == '1002 23RD ST W PANAMA CITY 32405':
+                    for idx in range(2, len(xcoord) - 2):
+                        new_point_list.append(Point(xcoord[idx], ycoord[idx]))
+                    self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
+                else:
+                    pass
                 xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
                 plt.plot(np.array(xfpt) / 3.281, np.array(yfpt) / 3.281, 'k')
                 #if key == 'local':
@@ -304,7 +312,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 plt.ylabel('y [m]', fontsize=12)
                 plt.xticks(fontsize=12)
                 plt.yticks(fontsize=12)
-                plt.show()
+                #plt.show()
         # Pull building/story height information from DOE reference buildings:
         survey_data = SurveyData()  # create an instance of the survey data class
         survey_data.run(self, ref_bldg_flag=True, parcel_flag=False)
@@ -336,7 +344,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 new_zpts.append(roof_zs)
                 # With new 3D coordinates for each horizontal plane, create surface geometry:
                 # Set up plotting:
-                fig = plt.figure()
+                #fig = plt.figure()
                 ax = plt.axes(projection='3d')
                 for plane in range(0, len(new_zpts) - 1):
                     # Add the bottom and top planes for the Story:
@@ -377,7 +385,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 ax.xaxis.set_tick_params(labelsize=12)
                 ax.yaxis.set_tick_params(labelsize=12)
                 ax.zaxis.set_tick_params(labelsize=12)
-                plt.show()
+                #plt.show()
                 # Define full 3D surface renderings for the building using base plane and top plane:
                 base_poly = Polygon(new_zpts[0])
                 top_poly = Polygon(new_zpts[-1])
@@ -446,7 +454,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 parcel.hasGeometry['Footprint']['geodesic'] = data['geometry'][neigh_list[1][0]]
                 parcel.hasGeometry['Footprint']['type'] = 'open data'
             else:
-                print('More than 1 building footprint identified', parcel.pid, parcel.address)
+                print('More than 1 building footprint identified', parcel.hasID, parcel.hasLocation['Address'])
                 # In the future, might be able to do a match by considering the height of the parcel and it's area
 
         # Assign a regular footprint to any buildings without an open data footprint:
