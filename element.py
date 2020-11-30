@@ -16,6 +16,7 @@ class Element:
         self.hasEDP = {'x direction': edp_dict, 'y direction': edp_dict}  # Specifying direction for of out-of-plane
         self.hasCapacity = edp_dict
         self.hasLoadingDemand = edp_dict
+        self.hasFailure = {}
         for key in edp_dict:
             self.hasFailure[key] = False
         self.hasOutputVariable = {'repair cost': None, 'downtime': None, 'fatalities': None}
