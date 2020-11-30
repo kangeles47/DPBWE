@@ -180,6 +180,11 @@ class PressureCalc:
             print('ASCE 7 edition cannot be used to calculate TPU pressures. Averaging period mismatch or modifications in formulation. Please choose a modern version of ASCE 7.')
         return p
 
+    def tpu_pressures_2(self, wind_speed, cp):
+        rho = 1.225 / 16.018
+        p = 0.5*rho*cp*(wind_speed)**2
+        return p
+
     def get_gcpi(self, edition, encl_class):
         """
         Determines the GCpi for the building.
