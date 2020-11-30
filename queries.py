@@ -11,30 +11,43 @@ def get_bldgs_at_dist(site, ref_bldg, dist, unit, plot_flag):
     ref_pt = ref_bldg.hasLocation['Geodesic'].coords[:][0]  # Shapely Point object
     # Create an empty list to hold any qualifying bldg:
     bldg_list = []
+    fig = plt.figure()
+    ax = plt.axes()
     for bldg in site.hasBuilding:
         bldg_location = bldg.hasLocation['Geodesic'].coords[:][0]  # Shapely Point object
         # Calculate the distance between ref_bldg and bldg:
         if unit == 'mi':
-            bldg_dist = distance(ref_pt, bldg_location).miles
+            bldg_dist = distance((ref_pt[1], ref_pt[0]), (bldg_location[1], bldg_location[0])).miles
         elif unit == 'km':
-            bldg_dist = distance(ref_pt, bldg_location).km
+            bldg_dist = distance((ref_pt[1], ref_pt[0]), (bldg_location[1], bldg_location[0])).km
         # Check if the building is within the specified distance:
         if bldg_dist < dist:
             bldg_list.append(bldg)
             if plot_flag:
                 # Plot the bldg's footprint:
                 xs, ys = bldg.hasGeometry['Footprint']['geodesic'].exterior.xy
-                plt.plot(xs, ys)
+                ax.plot(xs, ys)
         else:
             pass
     # Finish plotting:
     if plot_flag:
         # Plot the ref_bldg footprint:
         rxs, rys = ref_bldg.hasGeometry['Footprint']['geodesic'].exterior.xy
-        plt.plot(rxs, rys)
+        ax.plot(rxs, rys)
+        # Plot the query area:
+        angles = np.linspace(0, 360, 20)
+        xlist, ylist = [], []
+        for angle in angles:
+            if unit == 'mi':
+                new_pt = distance(miles=dist).destination((ref_pt[1], ref_pt[0]), angle)
+            elif unit == 'km':
+                new_pt = distance(kilometers=dist).destination((ref_pt[1], ref_pt[0]), angle)
+            xlist.append(new_pt[1])
+            ylist.append(new_pt[0])
+        ax.plot(xlist, ylist)
         # Add axes labels:
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
+        ax.set_xlabel('Longitude')
+        ax.set_ylabel('Latitude')
         plt.show()
     else:
         pass
@@ -215,20 +228,23 @@ lon = -85.676188
 lat = 30.190142
 test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
 # Create Building objects out of each parcel in list:
-for parcel in parcel_data:
-    bldg_point = (parcel['Latitude'], parcel['Longitude'])
+for row in range(0, len(parcel_data)):
+    bldg_point = (parcel_data['Latitude'][row], parcel_data['Longitude'][row])
     bldg_dist = distance((lat, lon), bldg_point).miles
     if bldg_dist < 0.497:
         # Create a Parcel object:
-        pid = parcel['Parcel ID']
-        address = parcel['Address']
-        occupancy = parcel['Use Code']
-        area = parcel['Square Footage']
-        num_stories = parcel['Stories']
-        yr_built = parcel['Year Built']
-        lat = parcel['Latitude']
-        lon= parcel['Longitude']
-        new_parcel = Parcel(pid, num_stories, occupancy, yr_built, address, area, lon, lat)
-        bldg_list.append(new_parcel)
+        pid = parcel_data['Parcel ID'][row]
+        address = parcel_data['Address'][row]
+        occupancy = parcel_data['Use Code'][row]
+        area = parcel_data['Square Footage'][row]
+        num_stories = parcel_data['Stories'][row]
+        yr_built = parcel_data['Year Built'][row]
+        lat = parcel_data['Latitude'][row]
+        lon= parcel_data['Longitude'][row]
+        if 'VAC' in occupancy:
+            pass
+        else:
+            new_parcel = Parcel(pid, num_stories, occupancy, yr_built, address, area, lon, lat)
+            bldg_list.append(new_parcel)
 site = Site(bldg_list)
 new_list = get_bldgs_at_dist(site, test, 0.497, 'mi', plot_flag=True)
