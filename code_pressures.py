@@ -180,14 +180,16 @@ class PressureCalc:
         return p
 
     def tpu_pressures_2(self, wind_speed, cp, exposure, z):
-        rho = 1.225
-        wind_speed = wind_speed/2.237  # convert to [m]
+        rho = 1.225  # [kg]/[m^3]
+        wind_speed = wind_speed/2.237  # convert to [m]/[s^2]
         if exposure == 'B':
             alpha = 4.0
+            coeff = 0.45
         elif exposure == 'C':
             alpha = 6.5
-        mean_wind_speed = wind_speed*0.45*(z/10)**(1/alpha)
-        p = 0.5*rho*cp*(mean_wind_speed)**2
+            coeff = 0.65
+        mean_wind_speed = wind_speed*coeff*(z/10)**(1/alpha)
+        p = 0.5*rho*cp*(mean_wind_speed)**2  # [N]/[m^2]
         # Switch back to lb/ft^2
         p = p * 0.020885
         return p
