@@ -303,7 +303,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
     rfx, rfy = roof_surf.exterior.xy
     ax_ex.plot(np.array(rfx)/3.281, np.array(rfy)/3.281, linestyle='dashed', color='gray')
     xrect, yrect = rect.exterior.xy
-    ax_ex.plot(np.array(xrect) / 3.281, np.array(yrect) / 3.281, 'k')
+    ax_ex.plot(np.array(xrect) / 3.281, np.array(yrect) / 3.281, linestyle='dashed', color='gray')
     # Create general surface geometries:
     xs = [dfull/2, dfull/2, -dfull/2, -dfull/2, dfull/2]
     ys = [-bfull/2, bfull/2, bfull/2, -bfull/2, -bfull/2]
@@ -621,9 +621,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
     pressure_calc = PressureCalc()
     pressures = []
     for k in df_tpu_pressures.index.to_list():
-        pressures.append(
-            pressure_calc.tpu_pressure(wind_speed, exposure, edition, df_tpu_pressures['Real Life Location'][k].z,
-                                       df_tpu_pressures['Mean Cp'][k], cat, hpr))
+        pressures.append(pressure_calc.tpu_pressures_2(wind_speed, df_tpu_pressures['Mean Cp'][k], 'B', df_tpu_pressures['Real Life Location'][k].z))
     # Add a new column with the calculated pressures to the DataFrame:
     df_tpu_pressures['Pressure'] = pressures
     # Plot the real-life pressure tap locations:
@@ -643,7 +641,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         rl_ys.append(df_tpu_pressures['Real Life Location'][k].y)
         rl_zs.append(df_tpu_pressures['Real Life Location'][k].z)
     img = ax3.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281,
-                        c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 5))
+                        c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 6))
     fig3.colorbar(img)
     print('max and min Surface 1')
     print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 1, 'Pressure'])/0.020885)

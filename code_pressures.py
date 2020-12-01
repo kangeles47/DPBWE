@@ -5,7 +5,7 @@ from element import Wall, Roof
 
 class PressureCalc:
 
-    def wcc_pressure(self, wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class):
+    def wcc_pressure(self, wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class, tpu_flag):
         """
         Orchestrates the calculation of design pressures per zone for the given C&C effective area (facade C&C).
 
@@ -34,7 +34,6 @@ class PressureCalc:
         # Determine components and cladding pressure for building facade components:
         is_cc = True
         # All components and cladding calculations require qh:
-        tpu_flag = False
         qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag)
         print(qh)
         # Get GCps and calculate the pressure for each zone:
@@ -51,12 +50,12 @@ class PressureCalc:
             else:
                 pass
             # Calculate pressure at the zone:
-            p = PressureCalc.calc_pressure(self, h_bldg, edition, is_cc, qh, gcp, gcpi)
+            p = PressureCalc.calc_pressure(self, h_bldg, edition, is_cc, qh, gcp, gcpi, tpu_flag)
             wps.append(p)
 
         return wps
 
-    def rcc_pressure(self, wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class):
+    def rcc_pressure(self, wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class, tpu_flag):
         """
         Orchestrates the calculation of design pressures per zone for the given C&C effective area (roof C&C).
 
@@ -85,7 +84,7 @@ class PressureCalc:
         # Determine components and cladding pressure for building roof components:
         is_cc = True
         # All components and cladding calculations require qh:
-        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag=False)
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag)
         # Get GCps and calculate the pressure for each zone:
         rpos = [True, True, True, False, False, False]
         rzone = [1, 2, 3, 1, 2, 3]
@@ -94,11 +93,11 @@ class PressureCalc:
             # Find the GCp
             gcp = PressureCalc.get_roof_gcp(self, pitch, area_eff, rpos[ind], rzone[ind], edition)
             # Calculate pressure at the zone:
-            p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi)
+            p = PressureCalc.calc_pressure(self, h_bldg, exposure, edition, is_cc, qh, gcp, gcpi, tpu_flag)
             rps.append(p)
         return rps
 
-    def rmwfrs_pressure(self, wind_speed, exposure, edition, h_bldg, direction, length, ratio, pitch, cat, hpr, h_ocean, encl_class):
+    def rmwfrs_pressure(self, wind_speed, exposure, edition, h_bldg, direction, length, ratio, pitch, cat, hpr, h_ocean, encl_class, tpu_flag):
         """
         Orchestrates the calculation of design pressures per zone for roof uplift pressures.
 
@@ -129,7 +128,7 @@ class PressureCalc:
         # Determine the velocity pressure:
         is_cc = False
         # Roof uplift pressures require qh:
-        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag=False)
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag)
         print(qh)
         # Get the gust effect or gust response factor:
         g = PressureCalc.get_g(self, edition, exposure, is_cc, alpha, h_bldg)
@@ -143,14 +142,14 @@ class PressureCalc:
         if len(cp) == 1: # In cases when there is only one zone
             gcp = g*cp[0]
             # Calculate uplift pressure at the zone:
-            p = PressureCalc.calc_pressure(self, h_bldg, edition, is_cc, qh, gcp, gcpi)
+            p = PressureCalc.calc_pressure(self, h_bldg, edition, is_cc, qh, gcp, gcpi, tpu_flag)
             # Add pressure to list:
             rmps.append(p)
         else:
             for row in cp:
                 gcp = g * row[0]  # Take the first Cp value for uplift calculations
                 # Calculate uplift pressure at the zone:
-                p = PressureCalc.calc_pressure(self, h_bldg, edition, is_cc, qh, gcp, gcpi)
+                p = PressureCalc.calc_pressure(self, h_bldg, edition, is_cc, qh, gcp, gcpi, tpu_flag)
                 # Minimum design pressures for roof MWFRS:
                 #if abs(p) < 10:
                     #if edition != 'ASCE 7-10':  # [psf]
@@ -175,14 +174,22 @@ class PressureCalc:
             g = PressureCalc.get_g(self, edition, exposure, is_cc, alpha, z)
             gcp = g*cp
             # Calculate the pressure at the pressure tap location:
-            p = PressureCalc.calc_pressure(self, z, edition, is_cc, qz, gcp, gcpi)
+            p = PressureCalc.calc_pressure(self, z, edition, is_cc, qz, gcp, gcpi, tpu_flag=True)
         else:
             print('ASCE 7 edition cannot be used to calculate TPU pressures. Averaging period mismatch or modifications in formulation. Please choose a modern version of ASCE 7.')
         return p
 
-    def tpu_pressures_2(self, wind_speed, cp):
-        rho = 1.225 / 16.018
-        p = 0.5*rho*cp*(wind_speed)**2
+    def tpu_pressures_2(self, wind_speed, cp, exposure, z):
+        rho = 1.225
+        wind_speed = wind_speed/2.237  # convert to [m]
+        if exposure == 'B':
+            alpha = 4.0
+        elif exposure == 'C':
+            alpha = 6.5
+        mean_wind_speed = wind_speed*0.45*(z/10)**(1/alpha)
+        p = 0.5*rho*cp*(mean_wind_speed)**2
+        # Switch back to lb/ft^2
+        p = p * 0.020885
         return p
 
     def get_gcpi(self, edition, encl_class):
@@ -266,7 +273,7 @@ class PressureCalc:
         return g
 
     # Laying out the code needed to replicate the pressures from ASCE 7
-    def calc_pressure(self, z, edition, is_cc, q, gcp, gcpi):
+    def calc_pressure(self, z, edition, is_cc, q, gcp, gcpi, tpu_flag):
         """
         Determines the Gust effect or gust response factor for the building.
 
@@ -284,11 +291,14 @@ class PressureCalc:
         # Pressure calc: will need to code in a procedure to determine both +/- cases for GCpi
         if is_cc:
             if z <= 60:  # [ft]
-                # Calculate pressure for the controlling case:
-                if gcp > 0:
-                    p = q * (gcp + gcpi)
-                elif gcp < 0:
-                    p = q * (gcp - gcpi)
+                if tpu_flag:
+                    p = q * gcp
+                else:
+                    # Calculate pressure for the controlling case:
+                    if gcp > 0:
+                        p = q * (gcp + gcpi)
+                    elif gcp < 0:
+                        p = q * (gcp - gcpi)
             else:
                 pass  # same equation, except q = qz
             # Exception for ASCE 7-95: For buildings in Exposure B, calculated pressure shall be multiplied by 0.85
@@ -297,7 +307,10 @@ class PressureCalc:
             else:
                 pass
         else:
-            p = q * gcp - q * gcpi  # q = qz for roof (at mean roof height)
+            if tpu_flag:
+                p = q * gcp
+            else:
+                p = q * gcp - q * gcpi  # q = qz for roof (at mean roof height)
 
         return p
 
@@ -1145,7 +1158,7 @@ class PressureCalc:
                 pass
             for speed in wind_speed:
                 # Calculate the pressure across various wind speeds for each code edition:
-                wps = self.wcc_pressure(speed, ref_exposure, ed, ref_hbldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class)
+                wps = self.wcc_pressure(speed, ref_exposure, ed, ref_hbldg, ref_pitch, area_eff, ref_cat, hpr, h_ocean, encl_class, tpu_flag=False)
                 # Add values to Dataframe:
                 df_wcc = df_wcc.append({'Zone 4+': wps[0], 'Zone 5+': wps[1], 'Zone 4-': wps[2], 'Zone 5-': wps[3]}, ignore_index=True)
             # Add DataFrame to list:
@@ -1737,7 +1750,10 @@ class PressureCalc:
         for component in ctype:
             self.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat, wind_speed, edition, component, parcel_flag, hpr, h_ocean, encl_class)
 
-#pressures = PressureCalc()
+#pcalc = PressureCalc()
+#p=pcalc.wcc_pressure(134, 'B', 'ASCE 7-16', 52.5, 0, 75, 2, True, True, 'Enclosed', False)
+#print(np.array(p)/0.020885)
+
 #wind_speed = np.arange(70, 185, 5)
 #ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
 #edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
