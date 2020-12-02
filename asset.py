@@ -296,23 +296,23 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     pass
                 xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
                 plt.plot(np.array(xfpt) / 3.281, np.array(yfpt) / 3.281, 'k')
-                #if key == 'local':
+                if key == 'local':
                     # Rotate the footprint to create a "rotated cartesian" axis:
-                    #rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle
-                    #spts = list(rect.exterior.coords)
-                    #theta = degrees(atan2((spts[1][0] - spts[2][0]), (spts[1][1] - spts[2][1])))
+                    rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle
+                    spts = list(rect.exterior.coords)
+                    theta = degrees(atan2((spts[1][0] - spts[2][0]), (spts[1][1] - spts[2][1])))
                     # Rotate the the building footprint to create the TPU axis:
-                    #rotated_b = affinity.rotate(Polygon(new_point_list), theta, origin='centroid')
-                    #self.hasGeometry['Footprint']['rotated'] = rotated_b
-                    #rx, ry = rotated_b.exterior.xy
-                    #plt.plot(np.array(rx) / 3.281, np.array(ry) / 3.281, color='gray', linestyle='dashed')
-                    #plt.legend(['local Cartesian', 'rotated Cartesian'], prop={"size":12})
+                    rotated_b = affinity.rotate(Polygon(new_point_list), theta, origin='centroid')
+                    self.hasGeometry['Footprint']['rotated'] = rotated_b
+                    rx, ry = rotated_b.exterior.xy
+                    plt.plot(np.array(rx) / 3.281, np.array(ry) / 3.281, color='gray', linestyle='dashed')
+                    plt.legend(['local Cartesian', 'rotated Cartesian'], prop={"size":14}, loc='upper right')
                     # Uncomment to plot the footprint:
-                plt.xlabel('x [m]', fontsize=12)
-                plt.ylabel('y [m]', fontsize=12)
-                plt.xticks(fontsize=12)
-                plt.yticks(fontsize=12)
-                #plt.show()
+                plt.xlabel('x [m]', fontsize=14)
+                plt.ylabel('y [m]', fontsize=14)
+                plt.xticks(fontsize=14)
+                plt.yticks(fontsize=14)
+                plt.show()
         # Pull building/story height information from DOE reference buildings:
         survey_data = SurveyData()  # create an instance of the survey data class
         survey_data.run(self, ref_bldg_flag=True, parcel_flag=False)
@@ -471,6 +471,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             parcel.hasGeometry['Footprint']['geodesic'] = Polygon(
                 [(p1.longitude, p1.latitude), (p2.longitude, p2.latitude), (p3.longitude, p3.latitude),
                  (p4.longitude, p4.latitude)])
+            print('default building footprint:' + parcel.hasLocation['Address'])
         # Given the geodesic footprint, calculate the local (x,y) coordinates for the building footprint:
         # Find the distance between exterior points and the building centroid (origin) to define a new coordinate system:
         xs, ys = parcel.hasGeometry['Footprint']['geodesic'].exterior.xy
