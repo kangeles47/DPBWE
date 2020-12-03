@@ -9,4 +9,4 @@ class Interface:
         self.hasCapacity = {'type': None, 'value': None}
         self.hasLoadingDemand = {'type': None, 'value': None}
         self.hasFailure = None
-        self.hasType = None  # options here are point or plane
+        self.hasGeometry = {'point': None, 'plane': None}  # Suggested Shapely Point and Polgon objects
