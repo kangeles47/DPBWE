@@ -4,7 +4,7 @@ import pandas as pd
 import geopandas as gpd
 from geopy.distance import distance
 from shapely.geometry import Polygon, Point
-from asset import Site, Parcel
+from zone import Site, Parcel
 from element import Wall, Roof
 
 
