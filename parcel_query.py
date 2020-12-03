@@ -19,8 +19,8 @@ agreeButton.click()
 # Parcels numbered between 14805-101-000 to 14805-191-000 AND 14876-501-000 to 14876-614-000
 parcel_list = []
 
-for num in range(0, 15):
-    parcel_list.append('32378-00' + str(num)+ '-000')
+for num in range(14, 54):
+    parcel_list.append('04172-100-0' + str(num))
 
 # for num2 in range(501,615):
     # parcel_list.append('14876-' + str(num2) + '-000')
@@ -99,15 +99,20 @@ for parcel in range(0, len(parcel_list)):
             if 'Unit' in tab.find_all('tr')[0].get_text():
                 # Extract values for Unit No, Floor, and Living Area:
                 cvalues = tab.find_all('span')
-                unit_no = cvalues[0].get_text()
-                floor = cvalues[1].get_text()
-                living_area = cvalues[2].get_text()
+                if len(cvalues) == 3:
+                    unit_no = cvalues[0].get_text()
+                    floor = cvalues[1].get_text()
+                    living_area = cvalues[2].get_text()
+                elif len(cvalues) == 4:
+                    unit_no = cvalues[1].get_text()
+                    floor = cvalues[2].get_text()
+                    living_area = cvalues[3].get_text()
             elif 'Bed' in tab.find_all('tr')[0].get_text():
                 # Extract values for Number of Bedrooms and Bathrooms and Year Built:
                 cvalues2 = tab.find_all('span')
                 num_bed = cvalues2[0].get_text()
                 num_bath = cvalues2[1].get_text()
-                yr_built = cvalues2[3].get_text()
+                yr_built = cvalues2[2].get_text()
             elif 'Permit' in tab.find_all('tr')[0].get_text():
                 permit_list = []
                 count = 0
@@ -122,15 +127,17 @@ for parcel in range(0, len(parcel_list)):
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                     writer.writerow(
                         {'Parcel Id': parcel_id, 'Address': address, 'Permit Number': permit_list})
-            # Save the condo feature information:
-            with open('CondoParcels.csv', 'a', newline='') as csvfile:
-                fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Unit No.', 'Floor', 'Living Area', 'Number of Bedrooms', 'Number of Bathrooms', 'Year Built']
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                writer.writerow({'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Unit No.': unit_no, 'Floor': floor, 'Living Area': living_area, 'Number of Bedrooms': num_bed, 'Number of Bathrooms': num_bath, 'Year Built': yr_built})
+        # Save the condo feature information:
+        with open('CondoParcels.csv', 'a', newline='') as csvfile:
+            fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Unit No.', 'Floor', 'Living Area', 'Number of Bedrooms', 'Number of Bathrooms', 'Year Built']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writerow({'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Unit No.': unit_no, 'Floor': floor, 'Living Area': living_area, 'Number of Bedrooms': num_bed, 'Number of Bathrooms': num_bath, 'Year Built': yr_built})
     else:
         # If the parcel is not a vacant lot, access all parcel attributes:
+        bldg_flag = False
         for tab in table:
             if 'Building' in tab.find_all('tr')[0].get_text():  # Some parcels have multiple bldgs
+                bldg_flag = True
                 for row in tab.find_all('tr'):
                     columns = row.find_all('td')
                     tag = row.get_text().splitlines()[2]
@@ -189,6 +196,28 @@ for parcel in range(0, len(parcel_list)):
                         {'Parcel Id': parcel_id, 'Address': address, 'Permit Number': permit_list})
             else:
                 pass
+        if not bldg_flag:
+            # Create dummy data for Parcels without 'VAC' in use code
+            sq_ft = 'N/A'
+            stories = 'N/A'
+            yr_built = 'N/A'
+            occ_type = 'N/A'
+            ewall_type = 'N/A'
+            rcover_type = 'N/A'
+            iwall_type = 'N/A'
+            ftype = 'N/A'
+            fcover_type = 'N/A'
+            with open('CommParcels.csv', 'a', newline='') as csvfile:
+                fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType',
+                              'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writerow(
+                    {'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Square Footage': sq_ft,
+                     'Stories': stories, 'Year Built': yr_built, 'OccType': occ_type,
+                     'Exterior Walls': ewall_type, 'Roof Cover': rcover_type, 'Interior Walls': iwall_type,
+                     'Frame Type': ftype, 'Floor Cover': fcover_type})
+        else:
+            pass
     # Move on to the next parcel or stop once we have gone through all of the parcels:
     if parcel_id != parcel_list[-1]:
         # Going to next page in the search results
