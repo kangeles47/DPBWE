@@ -212,7 +212,7 @@ class Building(Zone):
             self.hasStorey.append(new_storey)
         # Create Interface instances to relate stories:
         for stry in range(0, len(self.hasStorey) - 1):
-            self.hasInterface.append(Interface(self.hasStorey[stry], self.hasStorey[stry + 1]))
+            self.hasInterface.append(Interface([self.hasStorey[stry], self.hasStorey[stry + 1]]))
         # Buildings contain all of the zones, spaces, elements, etc. within each storey:
         self.update_zones()
         # Attributes outside of BOT:
@@ -578,7 +578,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             # Each wall shares interfaces with the walls before and after it:
             for w in range(0, len(new_wall_list) - 1):
                 # Create new Interface instance
-                new_interface = Interface(new_wall_list[w], new_wall_list[w + 1])
+                new_interface = Interface([new_wall_list[w], new_wall_list[w + 1]])
                 parcel.hasStorey[storey].hasInterface.append(new_interface)
             # Add all elements to the storey's "hasElement" attribute:
             parcel.hasStorey[storey].containsElement.update({'Ceiling': element_dict['Ceiling']})
