@@ -7,15 +7,14 @@ class Element:
         self.hasSimpleModel = None
         # Attributes outside of BOT Ontology:
         self.hasType = None
-        self.isLoadbearing = None
-        self.hasMaterial = None
-        self.hasGeometry = {'3D Geometry': None, '2D Geometry': None, '1D Geometry': None, 'Thickness': None, 'Length': None, 'Height': None}
+        self.hasMaterial = []
+        self.hasGeometry = {'3D Geometry': {'geodesic': None, 'local': None, 'rotated': None}, '2D Geometry': {'geodesic': None, 'local': None, 'rotated': None}, '1D Geometry': {'geodesic': None, 'local': None, 'rotated': None}, 'Thickness': None, 'Length': None, 'Height': None}
         self.hasFragility = None
         self.hasModeOfFabrication = None  # options: on-site, off-site, unknown (None object)
         edp_dict = {'peak interstory drift ratio': None, 'peak absolute velocity': None, 'peak absolute acceleration': None, 'wind speed': None, 'wind pressure': {'external': None, 'internal': None, 'total': None}, 'debris impact': None, 'axial force': None, 'shear force': None, 'bending moment': None, 'peak flexural stress': None, 'peak shear stress': None, 'peak flexural strain': None, 'curvature': None, 'rotation': None, 'elongation': None}
         self.hasEDP = {'x direction': edp_dict, 'y direction': edp_dict}  # Specifying direction for of out-of-plane
         self.hasCapacity = edp_dict
-        self.hasLoadingDemand = edp_dict
+        self.hasDemand = edp_dict
         self.hasFailure = {}
         for key in edp_dict:
             self.hasFailure[key] = False

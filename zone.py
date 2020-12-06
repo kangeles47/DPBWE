@@ -558,7 +558,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         ext_wall.isExterior = True
                         ext_wall.inLoadPath = True
                         ext_wall.hasGeometry['Height'] = parcel.hasStorey[storey].hasGeometry['Height']
-                        ext_wall.hasGeometry['1D Geometry'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[
+                        ext_wall.hasGeometry['1D Geometry']['local'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[
                             ind, col + 1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
                         ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry'].length
                         new_wall_list.append(ext_wall)
@@ -570,8 +570,8 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     ext_wall.isExterior = True
                     ext_wall.inLoadPath = True
                     ext_wall.hasGeometry['Height'] = parcel.hasStorey[storey].hasGeometry['Height']
-                    ext_wall.hasGeometry['1D Geometry'] = LineString([(xf[pt], yf[pt]), (xf[pt+1], yf[pt+1])])  # Line segment with start/end coordinates of wall (respetive to building origin)
-                    ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry'].length
+                    ext_wall.hasGeometry['1D Geometry']['local'] = LineString([(xf[pt], yf[pt]), (xf[pt+1], yf[pt+1])])  # Line segment with start/end coordinates of wall (respetive to building origin)
+                    ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry']['local'].length
                     new_wall_list.append(ext_wall)
             # Add all walls to element_dict:
             element_dict['Walls'] = new_wall_list
