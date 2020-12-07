@@ -19,8 +19,8 @@ agreeButton.click()
 # Parcels numbered between 14805-101-000 to 14805-191-000 AND 14876-501-000 to 14876-614-000
 parcel_list = []
 
-for num in range(0, 52):
-    parcel_list.append('04172-250-00' + str(num))
+for num in range(0, 105):
+    parcel_list.append('31416-073-00' + str(num))
 
 # for num2 in range(501,615):
     # parcel_list.append('14876-' + str(num2) + '-000')
@@ -42,6 +42,11 @@ for parcel in range(0, len(parcel_list)):
     # Parcel Summary page - We can now parse the parcel details
     parcelSoup = BeautifulSoup(browser.page_source, "html.parser")
     table = parcelSoup.find_all('table')
+    #try:
+     #   table1 = table[0]
+      #  table1.get_text()
+    #except:
+     #   table1 = table[1]
     table1 = table[0]  # First table provides overview of the Parcel
     for row in table1.find_all('tr'):
         tag = row.get_text().splitlines()[1]
