@@ -553,6 +553,30 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         # plt.show()
     # Create a new DataFrame with new set of (x, y) and Cps:
     df_contour = pd.DataFrame(contour_values)
+    # Step 3b: Coordinate transformation (for tpu_wdir > 90)
+    if tpu_wdir > 90:
+        for row in range(0, len(df_contour['Mean Cp'])):
+            surf_num = df_contour['Surface Number'][row]
+            if 90 < tpu_wdir <= 180:
+                if surf_num == 1 or surf_num == 3 or surf_num == 5:
+                    # Reflect Surface 1, 3, and 5 coordinates over x-axis:
+                    df_contour['x'][row] = df_contour['x'][row] * -1
+                elif surf_num == 2 or surf_num == 4:
+                    # Reflect Surface 2 and 4 coordinates over x-axis:
+                    df_contour['y'][row] = df_contour['y'][row] * -1
+            elif 180 < tpu_wdir <= 270:
+                    # Reflect all Surface coordinates over x-axis and y-axis:
+                    df_contour['x'][row] = df_contour['x'][row] * -1
+                    df_contour['y'][row] = df_contour['y'][row] * -1
+            else:
+                if surf_num == 1 or surf_num == 3 or surf_num == 5:
+                    # Reflect Surface 1, 3, and 5 coordinates over x-axis:
+                    df_contour['y'][row] = df_contour['y'][row] * -1
+                elif surf_num == 2 or surf_num == 4:
+                    # Reflect Surface 2 and 4 coordinates over x-axis:
+                    df_contour['x'][row] = df_contour['x'][row] * -1
+    else:
+        pass
     # Step 4: Mapping pressure tap locations to real-life scenario and calculating pressure
     proj_dict = {'Index': [], 'Real Life Location': [], 'Surface Number': [], 'Mean Cp': []}
     for surf in surf_dict:  # surf_dict holds surface geometries for each TPU surface number
@@ -577,42 +601,76 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                     surf_origin = Point(max(df_csurf['x']), max(df_csurf['y']))
                 elif surf == 5:
                     surf_origin = Point(min(df_csurf['x']), min(df_csurf['y']))  # Intersection of surfaces 1 and 2
-                # Re-reference surface pressure tap locations according to real-life geometry and orientation:
-                for row in df_csurf.index:
-                    # Find the distance between surf_origin and pressure tap location:
-                    if surf == 1 or surf == 3:
-                        distx = abs(df_csurf.loc[row, 'y'] - surf_origin.y)
-                        disty = abs(df_csurf.loc[row, 'x'] - surf_origin.x)
-                    else:
-                        distx = abs(df_csurf.loc[row, 'x'] - surf_origin.x)
-                        disty = abs(df_csurf.loc[row, 'y'] - surf_origin.y)
-                    # Use these distances to define a new point within the real-life geometry:
-                    if surf != 5:
-                        spts = list(surf_dict[surf].exterior.coords)
-                        # Surface coordinates at the same elevation follow ccw rotation around building footprint
-                        # For wind directions <= 90, this is the direction we want to project in
+            elif 90 < tpu_wdir <= 180:
+                if surf == 1:
+                    surf_origin = Point(max(df_csurf['x']), max(df_csurf['y']))
+                elif surf == 2:
+                    surf_origin = Point(max(df_csurf['x']), min(df_csurf['y']))
+                elif surf == 3:
+                    surf_origin = Point(min(df_csurf['x']), min(df_csurf['y']))
+                elif surf == 4:
+                    surf_origin = Point(min(df_csurf['x']), max(df_csurf['y']))
+                elif surf == 5:
+                    surf_origin = Point(max(df_csurf['x']), min(df_csurf['y']))
+            elif 180 < tpu_wdir <= 270:
+                if surf == 1:
+                    surf_origin = Point(max(df_csurf['x']), min(df_csurf['y']))
+                elif surf == 2:
+                    surf_origin = Point(max(df_csurf['x']), max(df_csurf['y']))
+                elif surf == 3:
+                    surf_origin = Point(min(df_csurf['x']), max(df_csurf['y']))
+                elif surf == 4:
+                    surf_origin = Point(min(df_csurf['x']), min(df_csurf['y']))
+                elif surf == 5:
+                    surf_origin = Point(max(df_csurf['x']), max(df_csurf['y']))
+            elif 270 < tpu_wdir <= 360:
+                if surf == 1:
+                    surf_origin = Point(min(df_csurf['x']), min(df_csurf['y']))
+                elif surf == 2:
+                    surf_origin = Point(min(df_csurf['x']), max(df_csurf['y']))
+                elif surf == 3:
+                    surf_origin = Point(max(df_csurf['x']), max(df_csurf['y']))
+                elif surf == 4:
+                    surf_origin = Point(max(df_csurf['x']), min(df_csurf['y']))
+                elif surf == 5:
+                    surf_origin = Point(min(df_csurf['x']), max(df_csurf['y']))
+            # Re-reference surface pressure tap locations according to real-life geometry and orientation:
+            for row in df_csurf.index:
+                # Find the distance between surf_origin and pressure tap location:
+                if surf == 1 or surf == 3:
+                    distx = abs(df_csurf.loc[row, 'y'] - surf_origin.y)
+                    disty = abs(df_csurf.loc[row, 'x'] - surf_origin.x)
+                else:
+                    distx = abs(df_csurf.loc[row, 'x'] - surf_origin.x)
+                    disty = abs(df_csurf.loc[row, 'y'] - surf_origin.y)
+                # Use these distances to define a new point within the real-life geometry:
+                if surf != 5:
+                    spts = list(surf_dict[surf].exterior.coords)
+                    # Surface coordinates at the same elevation follow ccw rotation around building footprint
+                    # For wind directions <= 90, this is the direction we want to project in
+                    if tpu_wdir < 90 or (180 < tpu_wdir <= 270):
                         surf_2D = LineString([spts[1], spts[2]])
-                        # Given an x-value, determine the corresponding (x, y) coordinate:
-                        proj_pt = surf_2D.interpolate(distx)
-                        # Use disty to determine points z location of the surface:
-                        rl_point = Point(proj_pt.x, proj_pt.y, disty)
                     else:
-                        # Use sidelines and surf_dict to determine building orientation:
-                        if side_lines['TPU direction'][1] == 'x':
-                            pass
-                        else:
-                            # Building orientation is determined using surface 1 geometry:
-                            spts = list(surf_dict[1].exterior.coords)
-                            theta = degrees(atan2((spts[1][0]-spts[2][0]), (spts[1][1]-spts[2][1])))
-                            # Rotate the roof point about the building's equivalent rectangle centroid:
-                            rotate_pt = affinity.rotate(Point(df_csurf.loc[row, 'x'], df_csurf.loc[row, 'y']), -1*theta, (0,0))
-                            rl_point = Point(rotate_pt.x+surf_dict[5].centroid.x, rotate_pt.y+surf_dict[5].centroid.y, hfull)
-                    # Save the point's real-life location:
-                    proj_dict['Real Life Location'].append(rl_point)
-                    # Save the point's mean Cp value:
-                    proj_dict['Mean Cp'].append(df_csurf['Mean Cp'][row])
-            else:
-                pass
+                        surf_2D = LineString([spts[2], spts[1]])
+                    # Given an x-value, determine the corresponding (x, y) coordinate:
+                    proj_pt = surf_2D.interpolate(distx)
+                    # Use disty to determine points z location of the surface:
+                    rl_point = Point(proj_pt.x, proj_pt.y, disty)
+                else:
+                    # Use sidelines and surf_dict to determine building orientation:
+                    if side_lines['TPU direction'][1] == 'x':
+                        pass
+                    else:
+                        # Building orientation is determined using surface 1 geometry:
+                        spts = list(surf_dict[1].exterior.coords)
+                        theta = degrees(atan2((spts[1][0]-spts[2][0]), (spts[1][1]-spts[2][1])))
+                        # Rotate the roof point about the building's equivalent rectangle centroid:
+                        rotate_pt = affinity.rotate(Point(df_csurf.loc[row, 'x'], df_csurf.loc[row, 'y']), -1*theta, (0,0))
+                        rl_point = Point(rotate_pt.x+surf_dict[5].centroid.x, rotate_pt.y+surf_dict[5].centroid.y, hfull)
+                # Save the point's real-life location:
+                proj_dict['Real Life Location'].append(rl_point)
+                # Save the point's mean Cp value:
+                proj_dict['Mean Cp'].append(df_csurf['Mean Cp'][row])
         else:
             print('gable and hip roofs not yet supported')
     # Convert the dictionary into a DataFrame:
