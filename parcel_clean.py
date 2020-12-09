@@ -1,49 +1,133 @@
 import pandas as pd
+import ast
 import matplotlib.pyplot as plt
 
-# Import the parcel data:
-col_names = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType', 'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover']
-df = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/CommParcels.csv', header=0, names=col_names)
-# Step 1: Clear any repetitive parcels:
-df = df.drop_duplicates()
-# Step 2: Drop any single family homes, mobile homes, multi-family, and condos
+# Step 1: Import the Commercial Building parcel data and clean the data:
+col_names = ['Parcel ID', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType', 'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover']
+df = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/CommParcels.csv', header=0, names=col_names)
+df = df.drop_duplicates()  # Clear any repetitive parcels:
 sfh_indices = df[df['Use Code'] == 'SINGLE FAM (000100)'].index
-df = df.drop(sfh_indices)
+df = df.drop(sfh_indices)  # Drop any single family homes
 mh_indices = df[df['Use Code'] == 'MOBILE HOM (000200)'].index
-df = df.drop(mh_indices)
+df = df.drop(mh_indices)  # Drop any mobile homes
 mfh_indices = df[df['Use Code'] == 'MULTI-FAMI (000800)'].index
 mfh_indices2 = df[df['Use Code'] == 'MULTI-FAMI (000300)'].index
 df = df.drop(mfh_indices)
-df = df.drop(mfh_indices2)
-c_indices = df[df['Use Code'] == 'RES COMMON (000900)'].index
-df = df.drop(c_indices)
-# Reset the index:
-df = df.reset_index(drop=True)
-# Step 3: Find the number of occurrences for a given column tag:
-# Use Code
-print('----------------Overview of Typologies in Panama City Beach and Mexico Beach:------------------')
-print(df['Use Code'].value_counts())  # Stores, hotels, office bldg
-# Roof cover type
-print('Roof Cover type:')
-print(df['Roof Cover'].value_counts())  # Modular mt, stand seam, built-up, etc.
-# Number of stories
-print('Number of Stories:')
-print(df['Stories'].value_counts()) # 1, 2, 1.5, 3, 5 (12)
-print('Exterior Wall Type:')
-print(df['Exterior Walls'].value_counts())
-# Step 4: Merge the parcel permit information:
-col_names2 = ['Parcel Id', 'Address', 'Permit Number']
-df2 = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/CommParcelsPermits.csv', header=0, names=col_names2)
+df = df.drop(mfh_indices2)  # Drop all instances of multi-family complexes
+df = df.reset_index(drop=True)  # Reset the index for the DataFrame
+# Step 2: Load and merge the condo parcel data:
+col_cnames = ['Parcel ID', 'Address', 'Use Code', 'Unit No.', 'Floor', 'Living Area', 'Number of Bedrooms', 'Number of Bathrooms', 'Year Built']
+df_condo = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/CondoParcels.csv', header=0, names=col_cnames)
+df_condo = df_condo.drop_duplicates()  # Clear any repetitive parcels
+df_condo = df_condo.reset_index(drop=True)  # Reset the index for the DataFrame
+df_full = pd.concat([df, df_condo], axis=0, ignore_index=True)  # Merge condo parcels with commercial parcel data
+# Step 3: Link individual condo units to their "home parcel" - Valid for units within a tower
+# Use condo addresses to establish a set of condo bldg addresses:
+cbldg_addresses = []
+for cond in range(0, len(df_condo['Parcel ID'])):
+    address = df_condo['Address'][cond].split()[0:2]
+    if cond == 0:
+        condo_bldg_address = address
+        cbldg_addresses.append(address)
+    else:
+        if address == condo_bldg_address:
+            pass
+        else:
+            condo_bldg_address = address
+            cbldg_addresses.append(address)
+# Get the indices for all potential condo buildings:
+cbldg_indices = df_full[(df_full['Use Code'] == 'PLAT HEADI (H.)') | (df_full['Use Code'] == 'RES COMMON (000900)')].index.to_list()
+cbldg = []
+for idx in range(0, len(df_full['Parcel ID'])):
+    if 'COND' in df_full['Use Code'][idx]:
+        address = df_full['Address'][idx].split()[0:2]
+        condo_id = df_full['Parcel ID'][idx].split('-')
+        # Loop through all condo buildings and collect potential parcel numbers:
+        pbldg_list = []
+        for j in cbldg_indices:
+            if df_full['Address'][j].split()[0:2] == address:
+                pbldg_list.append(df_full['Parcel ID'][j])
+            else:
+                pass
+        # Determine the appropriate condo building for the unit:
+        if len(pbldg_list) == 1:
+            cbldg.append(pbldg_list[0])
+        elif len(pbldg_list) > 1:
+            bldg_ids = {0: [], 1:[], 2:[]}  # Parcel numbers consist of three sets of numbers
+            for bldg in pbldg_list:
+                pid = bldg.split('-')
+                bldg_ids[0].append(pid[0])
+                bldg_ids[1].append(pid[1])
+                bldg_ids[2].append(pid[2])
+            # Individual condo units have larger parcel numbers than the tower they belong to:
+            if len(set(bldg_ids[0])) == 1 and len(set(bldg_ids[1])) > 1:
+                # Get the index of the bldg parcel closest (and smaller) than condo unit:
+                for i in range(0, len(bldg_ids[1])):
+                    if i == 0:
+                        start_num = int(bldg_ids[1][i])
+                        cparcel = pbldg_list[i]
+                    else:
+                        new_num = int(bldg_ids[1][i])
+                        if start_num < new_num < int(condo_id[1]):
+                            cparcel = pbldg_list[i]
+                        else:
+                            pass
+                cbldg.append(cparcel)
+            elif len(set(bldg_ids[0])) == 1 and len(set(bldg_ids[1])) == 1:
+                # Get the index of the bldg parcel closest (and smaller) than condo unit:
+                for i in range(0, len(bldg_ids[2])):
+                    if i == 0:
+                        start_num = int(bldg_ids[2][i])
+                        cparcel = pbldg_list[i]
+                    else:
+                        new_num = int(bldg_ids[2][i])
+                        if start_num < new_num < int(condo_id[2]):
+                            cparcel = pbldg_list[i]
+                        else:
+                            pass
+                cbldg.append(cparcel)
+        else:
+            #print(condo_id)
+            cbldg.append('N/A')
+    else:
+        cbldg.append('N/A')
+df_full['Condo Bldg'] = cbldg
+# Step 4: Print an overview of the typologies in df_full:
+print_flag = False
+if print_flag:
+    # Use Code
+    print('----------------Overview of Typologies in Panama City Beach and Mexico Beach:------------------')
+    print(df_full['Use Code'].value_counts())  # Stores, hotels, office bldg
+    # Roof cover type
+    print('Roof Cover type:')
+    print(df_full['Roof Cover'].value_counts())  # Modular mt, stand seam, built-up, etc.
+    # Number of stories
+    print('Number of Stories:')
+    print(df_full['Stories'].value_counts()) # 1, 2, 1.5, 3, 5 (12)
+    print('Exterior Wall Type:')
+    print(df_full['Exterior Walls'].value_counts())
+else:
+    pass
+# Step 5: Merge the parcel permit information:
+# Load the Commercial parcel permit info:
+col_names2 = ['Parcel ID', 'Address', 'Permit Number']
+df2 = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/CommParcelsPermits.csv', header=0, names=col_names2)
 df2 = df2.drop_duplicates()
-df2['Permit Number'] = df2['Permit Number'].apply(eval)
-# Step 5: Use the parcel number to merge the permit information:
+# Load the condo parcel permit info:
+df2c = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/CondoParcelsPermits.csv', header=0, names=col_names2)
+df2c = df2c.drop_duplicates()
+# Step 6: Use the parcel number to merge the permit information:
 permit_data = []
 dis_permit = []
-for row in range(0, len(df['Parcel Id'])):
+for row in range(0, len(df_full['Parcel ID'])):
     # Find the permit number for the given Parcel ID:
-    parcel_str = df['Parcel Id'][row]
+    parcel_str = df_full['Parcel ID'][row]
+    if 'COND' in df_full['Use Code'][row]:
+        ref_df = df2c
+    else:
+        ref_df = df2
     try:
-        permit_list = df2.loc[df2['Parcel Id'] == parcel_str, 'Permit Number'].values[0]
+        permit_list = ast.literal_eval(ref_df.loc[ref_df['Parcel ID'] == parcel_str, 'Permit Number'].values[0])
         permit_data.append(permit_list)
         # Check if a disaster permit is available:
         for permit in permit_list:
@@ -56,18 +140,20 @@ for row in range(0, len(df['Parcel Id'])):
     except:
         permit_data.append('N/A')
         dis_permit.append(False)
-df['Permit Number'] = permit_data
-df['Disaster Permit'] = dis_permit
-print(df['Disaster Permit'].value_counts())
-# Step 6: Bring in the Permit Subtypes and Permit Descriptions:
-df_18 = pd.read_excel('D:/Users/Karen/Documents/GitHub/DPBWE/BayCountyMichael_Permits.xlsx', sheet_name='Sheet1')
-df_19 = pd.read_excel('D:/Users/Karen/Documents/GitHub/DPBWE/BayCountyMichael_Permits.xlsx', sheet_name='Sheet2')
-df_20 = pd.read_excel('D:/Users/Karen/Documents/GitHub/DPBWE/BayCountyMichael_Permits.xlsx', sheet_name='Sheet3')
+# Add parcel permit data:
+df_full['Permit Number'] = permit_data
+df_full['Disaster Permit'] = dis_permit
+# Uncomment to see how many parcels have a disaster permit:
+#print(df['Disaster Permit'].value_counts())
+# Step 7: Bring in the Permit Subtypes and Permit Descriptions:
+df_18 = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.xlsx', sheet_name='Sheet1')
+df_19 = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.xlsx', sheet_name='Sheet2')
+df_20 = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.xlsx', sheet_name='Sheet3')
 # Setting up two lists: all_permit_desc and permit_desc b/c some parcels have more than one Disaster permit
 dis_permit_desc = []
 dis_permit_type = []
-for parcel in range(0, len(df['Parcel Id'])):
-    plist = df['Permit Number'][parcel]
+for parcel in range(0, len(df_full['Parcel ID'])):
+    plist = df_full['Permit Number'][parcel]
     if plist == 'N/A':
         dis_permit_desc.append('N/A')
         dis_permit_type.append('N/A')
@@ -95,11 +181,11 @@ for parcel in range(0, len(df['Parcel Id'])):
         dis_permit_desc.append(permit_desc)
         dis_permit_type.append(type_desc)
 # Add permit descriptions and subtypes
-df['Disaster Permit Type'] = dis_permit_type
-df['Disaster Permit Description'] = dis_permit_desc
-# Step 7: Let's figure out the typologies of the buildings with permits:
-damage_indices = df.index[df['Disaster Permit'] == True].to_list()
-df_damage = df.loc[damage_indices]
+df_full['Disaster Permit Type'] = dis_permit_type
+df_full['Disaster Permit Description'] = dis_permit_desc
+# Step 7: Overview of damaged building typologies:
+damage_indices = df_full.index[df_full['Disaster Permit'] == True].to_list()
+df_damage = df_full.loc[damage_indices]
 # Reset the index:
 df_damage = df_damage.reset_index(drop=True)
 print('-----------------------Overview of Damaged Building Typologies-----------------------')
@@ -109,3 +195,21 @@ print('Stories:')
 print(df_damage['Stories'].value_counts())
 print('Frame Type:')
 print(df_damage['Frame Type'].value_counts())
+print('a')
+# Start working through the Building Permits:
+# First tackle the ones with actual roof SQs:
+# Will need to compare the footprint to the roof SQ number for an estimate:
+#numbers = []
+#for word in a_string.split():
+   #if word.isdigit():
+      #numbers.append(int(word))
+# Pull the permits that indicate a re-roof
+# Pull the permits that indicate a replacement
+damage_cat = []
+for p in range(0, len(df_damage['Disaster Permit'])):
+    if 'ROOF' in df_damage['Disaster Permit Type']:
+        # Check for re-roof:
+        row = df_damage['Disaster Permit Description'][p]
+        print('a')
+    else:
+        pass
