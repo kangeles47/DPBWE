@@ -1,6 +1,8 @@
 import pandas as pd
 import ast
 import matplotlib.pyplot as plt
+from zone import Parcel
+
 
 # Step 1: Import the Commercial Building parcel data and clean the data:
 col_names = ['Parcel ID', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType', 'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover']
@@ -37,6 +39,7 @@ for cond in range(0, len(df_condo['Parcel ID'])):
             cbldg_addresses.append(address)
 # Get the indices for all potential condo buildings:
 cbldg_indices = df_full[(df_full['Use Code'] == 'PLAT HEADI (H.)') | (df_full['Use Code'] == 'RES COMMON (000900)')].index.to_list()
+# Match condo units to their buildings:
 cbldg = []
 for idx in range(0, len(df_full['Parcel ID'])):
     if 'COND' in df_full['Use Code'][idx]:
@@ -92,6 +95,26 @@ for idx in range(0, len(df_full['Parcel ID'])):
     else:
         cbldg.append('N/A')
 df_full['Condo Bldg'] = cbldg
+# Add dummy values to square footage and stories for condo buildings
+for i in cbldg_indices:
+    df_full['Square Footage'][i] = 0
+    df_full['Stories'][i] = 0
+# Extract condos indices:
+condo_indices = df_full[df_full['Use Code'] == 'CONDOMINIU (000400)'].index.to_list()
+# Add condo unit living area and floor information to condo building:
+for c in condo_indices:
+    # Find the condo's respective building:
+    try:
+        bldg_idx = df_full[df_full['Parcel ID'] == df_full['Condo Bldg'][c]].index.to_list()[0]
+    except:
+        print(df_full['Parcel ID'][c])
+    # Update the condo building's square footage:
+    df_full['Square Footage'][bldg_idx] = df_full['Square Footage'][bldg_idx] + df_full['Living Area'][c]
+    # Update the condo building's story information:
+    if df_full['Stories'][bldg_idx] < df_full['Floor'][c]:
+        df_full['Stories'][bldg_idx] = df_full['Floor'][c]
+    else:
+        pass
 # Step 4: Print an overview of the typologies in df_full:
 print_flag = False
 if print_flag:
@@ -153,27 +176,32 @@ df_20 = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Per
 dis_permit_desc = []
 dis_permit_type = []
 for parcel in range(0, len(df_full['Parcel ID'])):
-    plist = df_full['Permit Number'][parcel]
-    if plist == 'N/A':
+    if not df_full['Disaster Permit'][parcel]:
         dis_permit_desc.append('N/A')
         dis_permit_type.append('N/A')
     else:
+        plist = df_full['Permit Number'][parcel]
         permit_desc = []
         type_desc = []
         for p in plist:
             if 'DIS' in p:
                 if 'DIS18' in p:
-                    row = df_18.index[df_18['Permit Number'] == p].to_list()
-                    desc = df_18['DESCRIPTION'][row]
-                    tdesc = df_18['PERMITSUBTYPE'][row]
+                    row = df_18.index[df_18['Permit Number'] == p].to_list()[0]
+                    desc = df_18['DESCRIPTION'][row].upper()
+                    tdesc = df_18['PERMITSUBTYPE'][row].upper()
                 elif 'DIS19' in p:
-                    row = df_19.index[df_19['Permit Number'] == p].to_list()
-                    desc = df_19['DESCRIPTION'][row]
-                    tdesc = df_19['PERMITSUBTYPE'][row]
+                    row = df_19.index[df_19['Permit Number'] == p].to_list()[0]
+                    desc = df_19['DESCRIPTION'][row].upper()
+                    tdesc = df_19['PERMITSUBTYPE'][row].upper()
                 elif 'DIS20' in p:
-                    row = df_20.index[df_20['Permit Number'] == p].to_list()
-                    desc = df_20['DESCRIPTION'][row]
-                    tdesc = df_20['PERMITSUBTYPE'][row]
+                    try:
+                        row = df_20.index[df_20['Permit Number'] == p].to_list()[0]
+                        desc = df_20['DESCRIPTION'][row].upper()
+                        tdesc = df_20['PERMITSUBTYPE'][row].upper()
+                    except:
+                        print(p)
+                        desc = 'Bring in new info'
+                        tdesc = 'Bring in new info'
                 permit_desc.append(desc)
                 type_desc.append(tdesc)
             else:
@@ -195,21 +223,5 @@ print('Stories:')
 print(df_damage['Stories'].value_counts())
 print('Frame Type:')
 print(df_damage['Frame Type'].value_counts())
-print('a')
-# Start working through the Building Permits:
-# First tackle the ones with actual roof SQs:
-# Will need to compare the footprint to the roof SQ number for an estimate:
-#numbers = []
-#for word in a_string.split():
-   #if word.isdigit():
-      #numbers.append(int(word))
-# Pull the permits that indicate a re-roof
-# Pull the permits that indicate a replacement
-damage_cat = []
-for p in range(0, len(df_damage['Disaster Permit'])):
-    if 'ROOF' in df_damage['Disaster Permit Type']:
-        # Check for re-roof:
-        row = df_damage['Disaster Permit Description'][p]
-        print('a')
-    else:
-        pass
+# Export the Damage DataFrame to a .csv:
+df_damage.to_csv('Bay_Parcels_Permits.csv', index=False)
