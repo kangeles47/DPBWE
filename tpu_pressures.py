@@ -1,5 +1,5 @@
 import numpy as np
-from math import atan2, degrees
+from math import atan2, degrees, cos, sin
 from shapely.geometry import Point, Polygon, LineString
 from shapely import affinity
 from scipy.interpolate import griddata
@@ -361,6 +361,10 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
     ax2 = plt.axes(projection='3d')
     for i in idx:
         surf_dict[i] = tpu_polys[poly_order[i - 1]]
+        if not match_flag:
+            rect_surf_dict[i] = bldg_polys[poly_order[i-1]]
+        else:
+            rect_surf_dict = {}
         # Optional: Plotting:
         # Extract xs, ys, and zs and plot
         poly_xs = []
@@ -402,10 +406,10 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
     plt.show()
     # Step 5: Save the surfaces to the building description:
     bldg.hasGeometry['TPU_surfaces'][key] = surf_dict
-    return bfull, hfull, dfull
+    return bfull, hfull, dfull, rect_surf_dict
 
 
-def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, exposure, edition, cat, hpr):
+def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, match_flag, h_bldg, rect_surf_dict):
     # Read in pressure data file:
     tpu_file = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/TPU/' + model_file
     tpu_data = loadmat(tpu_file)
@@ -737,6 +741,94 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             zsurf.append(p[2])
         ax3.plot(np.array(xsurf)/3.281, np.array(ysurf)/3.281, np.array(zsurf)/3.281, 'k')
     plt.show()
+    # When geometries between actual building and model building are not fully compatible:
+    # Wrap the pressures to the the parcel's full scale geometry:
+    if match_flag:
+        pass
+    else:
+        # First check if there is a difference between the actual vs. model building height:
+        if hfull == h_bldg:
+            pass
+        else:
+            # Quantify the difference between the model bldg height and actual height:
+            hdiff = h_bldg-hfull
+            # Add or subtract the height difference to each coordinate:
+            for pt in df_tpu_pressures['Real Life Location']:
+                if pt.z == 0:
+                    pass
+                else:
+                    df_tpu_pressures['Real Life Location'][pt] = Point(pt.x, pt.y, pt.z+hdiff)
+        # Plot the new pressure tap locations and their pressures:
+        # Plot the full-scale pressures:
+        fig4 = plt.figure()
+        ax4 = plt.axes(projection='3d')
+        rl_xs = []
+        rl_ys = []
+        rl_zs = []
+        for k in df_tpu_pressures.index.to_list():
+            rl_xs.append(df_tpu_pressures['Real Life Location'][k].x)
+            rl_ys.append(df_tpu_pressures['Real Life Location'][k].y)
+            rl_zs.append(df_tpu_pressures['Real Life Location'][k].z)
+        img = ax4.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281,
+                                c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 6))
+        fig4.colorbar(img)
+        # Make the panes transparent:
+        ax4.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax4.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax4.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # Make the grids transparent:
+        ax4.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax4.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax4.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # Plot labels
+        ax4.set_xlabel('x [m]')
+        ax4.set_ylabel('y [m]')
+        ax4.set_zlabel('z [m]')
+        # Plot the surface geometries for verification
+        for key in rect_surf_dict:
+            xsurf, ysurf, zsurf = [], [], []
+            for p in list(surf_dict[key].exterior.coords):
+                xsurf.append(p[0])
+                ysurf.append(p[1])
+                zsurf.append(p[2])
+            ax4.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, 'k')
+        plt.show()
+        # Check difference in depth:
+        # Note: No need to check for breadth since these are an exact match
+        depth_idx = side_lines['TPU direction'].index('x')
+        if dfull == side_lines['length'][depth_idx]:
+            pass
+        else:
+            # Quantify the difference between the model bldg height and actual height:
+            ddiff = side_lines['length'][depth_idx] - dfull
+            # Differences in depth only apply to Surface 2, 4, and 5:
+            # Surface line geometries were created starting at the origin and out to distance d/2
+            # Find the midpoint of each surface's line geometry:
+            dsurf = [2, 4, 5]
+            for surf in dsurf:
+                # Use surface geometries to create line geometry and determine the midpoint (x,y) for the surface:
+                surf_pts = list(surf_dict[surf].exterior.coords)
+                mid_pt = LineString([surf_pts[1], surf_pts[2]]).centroid
+                # Find the equation of the line:
+                m = (surf_pts[1][1] - surf_pts[2][1])/(surf_pts[1][0] - surf_pts[2][0])  # slope
+                # Point-slope form: Use the first point to find the intercept
+                b = -1*m*surf_pts[1][0] + surf_pts[1][1]
+                # Calculate the cosine angle of the line:
+                theta = atan2((surf_pts[1][1] - surf_pts[2][1]), (surf_pts[1][0] - surf_pts[2][0]))
+                # Loop through the pressure tap locations:
+                for pt in range(0, len(df_tpu_pressures['Real Life Location'])):
+                    if df_tpu_pressures['Surface Number'][pt] == 1 or df_tpu_pressures['Surface Number'][pt] == 3:
+                        pass
+                    else:
+                        # Use the current point and the equation of the line to find new point:
+                        tap_loc = df_tpu_pressures['Real Life Location'][pt]
+                        new_x = ddiff/cos(theta) + tap_loc.x
+                        new_y = ddiff/sin(theta) + tap_loc.y
+                        #if ddiff < 0:
+                            #new_dpt = LineString([mid_pt, tap_loc]).interpolate(dfull+ddiff)
+                        #else:
+                            #new_dpt = LineString([mid_pt, tap_loc]).interpolate(dfull + ddiff)
+                        df_tpu_pressures['Real Life Location'][pt] = Point(new_x, new_y, tap_loc.z)
     return df_tpu_pressures
 
 
