@@ -769,11 +769,18 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         else:
             # Quantify the difference between the model bldg height and actual height:
             dscale = side_lines['length'][depth_idx]/dfull
+            xrect, yrect = rect_surf_dict[surf_num].exterior.xy
+            surf_pts = df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 1, 'Real Life Location']
+            
             for pt in range(0, len(df_tpu_pressures['Real Life Location'])):
-                tap_loc = df_tpu_pressures['Real Life Location'][pt
+                tap_loc = df_tpu_pressures['Real Life Location'][pt]
+                surf_num = df_tpu_pressures['Surface Number'][pt]
                 # Calculate offsets for x, y for Surfaces 1 and 3
-                if df_tpu_pressures['Surface Number'][pt] == 1 or df_tpu_pressures['Surface Number'][pt] == 3:
-                    new_pt = affinity.translate(geom, xoff=0.0, yoff=0.0, zoff=0.0)
+                if surf_num == 1 or surf_num == 3:
+                    xrect, yrect = rect_surf_dict[surf_num].exterior.xy
+                    xsurf = df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == surf_num, 'Real Life Location']
+                    print('a')
+                    #new_pt = affinity.translate(geom, xoff=0.0, yoff=0.0, zoff=0.0)
                 else:
                     # Use the current point and the equation of the line to find new point:
                     df_tpu_pressures['Real Life Location'][pt] = Point(tap_loc.x*dscale, tap_loc.y*dscale, tap_loc.z)
