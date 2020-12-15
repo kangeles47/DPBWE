@@ -1,5 +1,5 @@
 import numpy as np
-from math import atan2, degrees, cos, sin
+from math import atan2, degrees, cos, sin, sqrt
 from shapely.geometry import Point, Polygon, LineString
 from shapely import affinity
 from scipy.interpolate import griddata
@@ -362,7 +362,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
     # Assign the surfaces to the correct key
     idx = surf_dict.keys()
     # Set up plotting:
-    fig2 = plt.figure(dpi=200)
+    fig2 = plt.figure()
     ax2 = plt.axes(projection='3d')
     for i in idx:
         surf_dict[i] = tpu_polys[poly_order[i - 1]]
@@ -416,7 +416,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
 
 def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, match_flag, h_bldg, rect_surf_dict):
     # Read in pressure data file:
-    tpu_file = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/TPU/' + model_file
+    tpu_file = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/TPU/' + model_file
     tpu_data = loadmat(tpu_file)
     # Export Location_of_measured_points into a DataFrame for easier manipulation:
     df = pd.DataFrame(tpu_data['Location_of_measured_points'], index=['x', 'y', 'Point Number', 'Surface Number'])
@@ -767,30 +767,95 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         if dfull == side_lines['length'][depth_idx]:
             pass
         else:
-            # Quantify the difference between the model bldg height and actual height:
-            dscale = side_lines['length'][depth_idx]/dfull
-            xrect, yrect = rect_surf_dict[surf_num].exterior.xy
-            surf_pts = df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 1, 'Real Life Location']
-            
-            for pt in range(0, len(df_tpu_pressures['Real Life Location'])):
-                tap_loc = df_tpu_pressures['Real Life Location'][pt]
-                surf_num = df_tpu_pressures['Surface Number'][pt]
-                # Calculate offsets for x, y for Surfaces 1 and 3
-                if surf_num == 1 or surf_num == 3:
-                    xrect, yrect = rect_surf_dict[surf_num].exterior.xy
-                    xsurf = df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == surf_num, 'Real Life Location']
-                    print('a')
-                    #new_pt = affinity.translate(geom, xoff=0.0, yoff=0.0, zoff=0.0)
+            # In order to wrap the model building geometry to the equivalent rectangle geometry:
+            # 1) Translate Surface 1 and 3 planes to the full depth
+            # 2) Re-space the coordinates in Surfaces 2, 4, and 5
+            for snum in surf_dict:
+                # Setting up variables:
+                # Pull up the coordinate pairs for the equivalent rectangle and the model bldg geometry (only need x,y):
+                xrect, yrect = rect_surf_dict[snum].exterior.xy  # equiv. rect (x,y) pairs
+                xmodel, ymodel = surf_dict[snum].exterior.xy  # model bldg (x,y) pairs
+                # Determine if this surface has unique x, y values or if it is exception case
+                if len(set(xrect)) > 1:
+                    xflag = True
+                    min_rect_idx = xrect.index(min(xrect))  # first index for minimum x in equiv rect surface description
+                    min_idx = xmodel.index(min(xmodel))  # first index for minimum x for model bldg description
                 else:
-                    # Use the current point and the equation of the line to find new point:
-                    df_tpu_pressures['Real Life Location'][pt] = Point(tap_loc.x*dscale, tap_loc.y*dscale, tap_loc.z)
+                    xflag = False  # Exception: all x values are the same
+                    min_rect_idx = yrect.index(min(yrect))  # first index for minimum x in equiv rect surface description
+                    min_idx = ymodel.index(min(ymodel))  # first index for minimum x for model bldg description
+                # Calculate the difference in x, y between coordinates:
+                xdiff = xrect[min_rect_idx] - xmodel[min_idx]
+                ydiff = yrect[min_rect_idx] - ymodel[min_idx]
+                # Pull this surface's points from the DataFrame:
+                surf_pts = df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == snum, 'Real Life Location']
+                if snum == 1 or snum == 3:
+                    # Translate all points for this surface:
+                    for pt in surf_pts.index.to_list():
+                        current_pt = df_tpu_pressures['Real Life Location'][pt]
+                        df_tpu_pressures['Real Life Location'][pt] = Point(current_pt.x + xdiff, current_pt.y + ydiff, current_pt.z)
+                else:
+                    # To conduct the re-spacing, points are first shifted to the edge of the surface:
+                    dist = sqrt(xdiff**2 + ydiff**2)  # distance between model and equiv. rectangle surface corners
+                    if side_lines['length'][depth_idx] < dfull:
+                        dist = -1*dist
+                    else:
+                        pass
+                    # Determine the model bldg and equiv rect spacing:
+                    # Note: xvals previously defined for creating mesh in contour plot: use to determine spacing
+                    current_space = dfull / (len(xvals) - 1)  # model building coordinate spacing
+                    new_space = side_lines['length'][depth_idx] / (len(xvals) - 1)  # new spacing
+                    # To conduct the re-spacing, will need to project cosine and since components for x, y:
+                    theta = atan2(ydiff, xdiff)  # Angle of the line
+                    # Pull all x and y values for the surface in order to determine multipliers for spacing
+                    xpt, ypt = [], []
+                    for spt in surf_pts:
+                        xpt.append(spt.x)
+                        ypt.append(spt.y)
+                    x_unique = np.unique(xpt)
+                    y_unique = np.unique(ypt)
+                    # Update the coordinates for each point in the surface:
+                    for pt in surf_pts.index.to_list():
+                        current_pt = df_tpu_pressures['Real Life Location'][pt]
+                        # Find the index of the current x or y value - used for spacing multipliers:
+                        if xflag:
+                            idx = np.where(x_unique == current_pt.x)[0] - 1
+                        else:
+                            idx = np.where(y_unique == current_pt.y)[0] - 1  # Exception: Surf 2 and 4 || to N-S direction
+                        # Shift all points to the corner of the surface:
+                        df_tpu_pressures['Real Life Location'][pt] = Point(current_pt.x + dist * cos(theta), current_pt.y + dist * sin(theta), current_pt.z)
+                        if snum != 5:
+                            if current_pt.x == xmodel[min_idx] and current_pt.y == ymodel[min_idx]:
+                                pass
+                            else:
+                                # Shift the point again to create the new spacing:
+                                update_pt = df_tpu_pressures['Real Life Location'][pt]
+                                # Calculate the new point location:
+                                df_tpu_pressures['Real Life Location'][pt] = Point(update_pt.x - (new_space-current_space) * idx * cos(theta), update_pt.y - (new_space-current_space) * idx * sin(theta), update_pt.z)
+                        else:
+                            pass
+                    if snum != 5:
+                        pass
+                    else:
+                        pass
+                        # Finish new spacing for roof coordinates
+                        # Note: Roof coordinates are not grouped in the direction of the new spacing
+                        # Grouping roof coordinates in direction of new spacing facilitates the procedure
+                        # Determine the number of point lines there are:
+                        point_indices = surf_pts.index.to_list()
+                        origin_idx = point_indices[0:len(xvals)]  # Starting points for new spacing
+                        for idx in origin_idx:
+                            origin_pt = df_tpu_pressures['Real Life Location'][idx]
+                            for multiplier in range(1, len(xvals)):  # Start at 1 b/c origin_idx points are already where they need to be
+                                pt_idx = idx + len(xvals)*multiplier
+                                roof_pt = df_tpu_pressures['Real Life Location'][pt_idx]
+                               # Roof lines are parallel to surface 2 and 4 lines, so we can conduct coordinate translation directly:
+                                df_tpu_pressures['Real Life Location'][pt_idx] = Point(origin_pt.x - (new_space * multiplier * cos(theta)), origin_pt.y - (new_space * multiplier * sin(theta)), roof_pt.z)
         # Plot the new pressure tap locations and their pressures:
         # Plot the full-scale pressures:
         fig4 = plt.figure()
         ax4 = plt.axes(projection='3d')
-        rl_xs = []
-        rl_ys = []
-        rl_zs = []
+        rl_xs, rl_ys, rl_zs = [], [], []
         for k in df_tpu_pressures.index.to_list():
             rl_xs.append(df_tpu_pressures['Real Life Location'][k].x)
             rl_ys.append(df_tpu_pressures['Real Life Location'][k].y)
@@ -812,41 +877,18 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         # Plot the surface geometries for verification
         for key in rect_surf_dict:
             xsurf, ysurf, zsurf = [], [], []
+            #xm, ym, zm = [], [], []
             for p in list(rect_surf_dict[key].exterior.coords):
                 xsurf.append(p[0])
                 ysurf.append(p[1])
                 zsurf.append(p[2])
+            #for p in list(surf_dict[key].exterior.coords):
+             #   xm.append(p[0])
+              #  ym.append(p[1])
+               # zm.append(p[2])
             ax4.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, 'k')
+            #ax4.plot(np.array(xm) / 3.281, np.array(ym) / 3.281, np.array(zm) / 3.281, 'k')
         plt.show()
-            #ddiff = side_lines['length'][depth_idx] - dfull
-            # Differences in depth only apply to Surface 2, 4, and 5:
-            # Surface line geometries were created starting at the origin and out to distance d/2
-            # Find the midpoint of each surface's line geometry:
-            #dsurf = [2, 4, 5]
-            #for surf in dsurf:
-                # Use surface geometries to create line geometry and determine the midpoint (x,y) for the surface:
-                #surf_pts = list(surf_dict[surf].exterior.coords)
-                #mid_pt = LineString([surf_pts[1], surf_pts[2]]).centroid
-                # Find the equation of the line:
-                #m = (surf_pts[1][1] - surf_pts[2][1])/(surf_pts[1][0] - surf_pts[2][0])  # slope
-                # Point-slope form: Use the first point to find the intercept
-                #b = -1*m*surf_pts[1][0] + surf_pts[1][1]
-                # Calculate the cosine angle of the line:
-                #theta = atan2((surf_pts[1][1] - surf_pts[2][1]), (surf_pts[1][0] - surf_pts[2][0]))
-                # Loop through the pressure tap locations:
-                #for pt in range(0, len(df_tpu_pressures['Real Life Location'])):
-                 #   if df_tpu_pressures['Surface Number'][pt] == 1 or df_tpu_pressures['Surface Number'][pt] == 3:
-                  #      pass
-                   # else:
-                        # Use the current point and the equation of the line to find new point:
-                    #    tap_loc = df_tpu_pressures['Real Life Location'][pt]
-                     #   new_x = ddiff/cos(theta) + tap_loc.x
-                      #  new_y = ddiff/sin(theta) + tap_loc.y
-                        #if ddiff < 0:
-                            #new_dpt = LineString([mid_pt, tap_loc]).interpolate(dfull+ddiff)
-                        #else:
-                            #new_dpt = LineString([mid_pt, tap_loc]).interpolate(dfull + ddiff)
-                        #df_tpu_pressures['Real Life Location'][pt] = Point(new_x, new_y, tap_loc.z)
     return df_tpu_pressures
 
 
