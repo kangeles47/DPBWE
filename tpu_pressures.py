@@ -894,6 +894,60 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             ax4.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, 'k', linewidth=2)
         plt.show()
         # Last part: Mapping pressures onto the true 3D geometry:
+        df_tpu_pressures['Surface Match'] = False  # Start by assuming there is not a perfect match with actual geometry
+        # Set up plotting:
+        fig5 = plt.figure()
+        ax5 = plt.axes(projection='3d')
+        # Use the actual constructed building's 3D geometry to define boundaries for the points:
+        # First figure out what surface is directly in line with the 3D building geometry:
+        for bsurf in bldg.hasGeometry['3D Geometry']['local']:
+            xb, yb = bsurf.exterior.xy
+            b1 = Point(xb[0], yb[0])
+            b2 = Point(xb[2], yb[2])
+            # Plot the surface geometry:
+            xsurf, ysurf, zsurf = [], [], []
+            for surf_pt in list(bsurf.exterior.coords):
+                xsurf.append(surf_pt[0])
+                ysurf.append(surf_pt[1])
+                zsurf.append(surf_pt[2])
+            ax5.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, 'k', linewidth=2)
+            for key in rect_surf_dict:
+                xr, yr = rect_surf_dict[key].exterior.xy
+                range_poly = Polygon([(xr[0], yr[0]), (xr[0], yr[2]), (xr[2], yr[2]), (xr[2], yr[0])])
+                if b1.within(range_poly) and b2.within(range_poly):
+                    # Create a polygon to define the range of x,y values for the building's surface:
+                    surf_range_poly = Polygon([(xb[0], yb[0]), (xb[0], yb[2]), (xb[2], yb[2]), (xb[2], yb[0])])
+                    # Pull the corresponding pressure taps:
+                    tap_indices = df_tpu_pressures[df_tpu_pressures['Surface Number'] == key].index.to_list()
+                    tap_list = []
+                    for tap_idx in tap_indices:
+                        ref_pt = Point(df_tpu_pressures['Real Life Location'][tap_idx].x, df_tpu_pressures['Real Life Location'][tap_idx].y)
+                        if ref_pt.within(surf_range_poly):
+                            tap_list.append(tap_idx)
+                            df_tpu_pressures['Surface Match'][tap_idx] = True
+                            # Plot the pressure tap:
+                            tap_location = df_tpu_pressures['Real Life Location'][tap_idx]
+                            ax5.scatter3D(np.array([tap_location.x])/3.281, np.array([tap_location.y])/3.281, np.array([tap_location.z])/3.281, 'ro')
+                        else:
+                            pass
+                    # Create a DataFrame for this building's surface that contains the identified pressure taps and their data:
+                    #df_bsurf = df_tpu_pressures[tap_list, :]
+                else:
+                    pass
+        # Make the panes transparent:
+        ax5.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax5.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax5.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # Make the grids transparent:
+        ax5.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax5.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax5.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # Plot labels
+        ax5.set_xlabel('x [m]')
+        ax5.set_ylabel('y [m]')
+        ax5.set_zlabel('z [m]')
+        plt.show()
+        print('a')
     return df_tpu_pressures
 
 
@@ -906,27 +960,3 @@ def create_zcoords(footprint, zcoord):
         # Define z-coordinates for bottom floor of each story:
         zs.append(Point(xs[pt], ys[pt], zcoord))
     return zs
-
-
-
-
-# Let's play with rotations for a little bit:
-                #theta = radians(self.hasOrientation)
-                #zrot_mat = np.array([[cos(theta), -sin(theta), 0], [sin(theta), cos(theta), 0], [0, 0, 1]])
-                #roof_pts = new_zpts[-1]
-                #roof_pts = [Point(0,0,0), Point()]
-                #rotate_x = []
-                #rotate_y = []
-                #rotate_z = []
-                #for pt in roof_pts:
-                    # Create an array with the points x, y, z:
-                    #vec = np.array([[pt.x], [pt.y], [pt.z]])
-                    # Rotate x, y about z plane:
-                    #rpts = zrot_mat.dot(vec)
-                    # Save these as a new point:
-                    #rotate_x.append(rpts[0][0])
-                    #rotate_y.append(rpts[1][0])
-                    #rotate_z.append(rpts[2][0])
-                # Plot the rotated x, y pairs:
-                #plt.plot(rotate_x, rotate_y)
-                #plt.show()
