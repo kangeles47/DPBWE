@@ -892,8 +892,8 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                 z_bpoly.append(bpt[2])
                 # Plot the building geometry:
             ax4.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, 'k', linewidth=2)
-            #ax4.plot(np.array(xm) / 3.281, np.array(ym) / 3.281, np.array(zm) / 3.281, 'k')
         plt.show()
+        # Last part: Mapping pressures onto the true 3D geometry:
     return df_tpu_pressures
 
 
