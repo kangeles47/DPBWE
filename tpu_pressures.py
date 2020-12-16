@@ -15,7 +15,7 @@ def calc_tpu_pressures(bldg, key, tpu_wdir, wind_speed, exposure, edition, cat, 
     h_bldg = bldg.hasGeometry['Height']
     match_flag, num_surf, side_lines, model_file, hb_ratio, db_ratio, rect, surf_dict, rect_surf_dict = find_tpu_use_case(bldg, key, tpu_wdir, eave_length)
     bfull, hfull, dfull, rect_surf_dict = get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict, rect_surf_dict)
-    df_tpu_pressures = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, match_flag, h_bldg, rect_surf_dict)
+    df_tpu_pressures = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, match_flag, h_bldg, rect_surf_dict, bldg)
     return df_tpu_pressures
 
 def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
@@ -414,7 +414,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
     return bfull, hfull, dfull, rect_surf_dict
 
 
-def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, match_flag, h_bldg, rect_surf_dict):
+def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, match_flag, h_bldg, rect_surf_dict, bldg):
     # Read in pressure data file:
     tpu_file = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/TPU/' + model_file
     tpu_data = loadmat(tpu_file)
@@ -740,11 +740,17 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
     # Plot all surface geometries for verification
     for key in surf_dict:
         xsurf, ysurf, zsurf = [], [], []
+        xr, yr, zr = [], [], []
         for p in list(surf_dict[key].exterior.coords):
             xsurf.append(p[0])
             ysurf.append(p[1])
             zsurf.append(p[2])
-        ax3.plot(np.array(xsurf)/3.281, np.array(ysurf)/3.281, np.array(zsurf)/3.281, 'k')
+        for b in list(rect_surf_dict[key].exterior.coords):
+            xr.append(b[0])
+            yr.append(b[1])
+            zr.append(b[2])
+        ax3.plot(np.array(xsurf)/3.281, np.array(ysurf)/3.281, np.array(zsurf)/3.281, linestyle='dashed', color='gray')
+        ax3.plot(np.array(xr) / 3.281, np.array(yr) / 3.281, np.array(zr) / 3.281, linestyle='dashed', color='gray')
     plt.show()
     # When geometries between actual building and model building are not fully compatible:
     # Wrap the pressures to the the parcel's full scale geometry:
@@ -831,7 +837,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                                 # Shift the point again to create the new spacing:
                                 update_pt = df_tpu_pressures['Real Life Location'][pt]
                                 # Calculate the new point location:
-                                df_tpu_pressures['Real Life Location'][pt] = Point(update_pt.x - (new_space-current_space) * idx * cos(theta), update_pt.y - (new_space-current_space) * idx * sin(theta), update_pt.z)
+                                df_tpu_pressures['Real Life Location'][pt] = Point(xrect[min_rect_idx] - new_space * idx * cos(theta), yrect[min_rect_idx] - new_space * idx * sin(theta), update_pt.z)
                         else:
                             pass
                     if snum != 5:
@@ -877,16 +883,20 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         # Plot the surface geometries for verification
         for key in rect_surf_dict:
             xsurf, ysurf, zsurf = [], [], []
-            #xm, ym, zm = [], [], []
             for p in list(rect_surf_dict[key].exterior.coords):
                 xsurf.append(p[0])
                 ysurf.append(p[1])
                 zsurf.append(p[2])
-            #for p in list(surf_dict[key].exterior.coords):
-             #   xm.append(p[0])
-              #  ym.append(p[1])
-               # zm.append(p[2])
-            ax4.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, 'k')
+            ax4.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, linestyle='dashed', color='gray', linewidth=2)
+            # Plot the building 3D Geometry:
+        for poly in bldg.hasGeometry['3D Geometry']['local']:
+            x_bpoly, y_bpoly, z_bpoly = [], [], []
+            for bpt in list(poly.exterior.coords):
+                x_bpoly.append(bpt[0])
+                y_bpoly.append(bpt[1])
+                z_bpoly.append(bpt[2])
+                # Plot the building geometry:
+            ax4.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, 'k', linewidth=2)
             #ax4.plot(np.array(xm) / 3.281, np.array(ym) / 3.281, np.array(zm) / 3.281, 'k')
         plt.show()
     return df_tpu_pressures
