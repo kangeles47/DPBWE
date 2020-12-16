@@ -809,7 +809,6 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                         pass
                     # Determine the model bldg and equiv rect spacing:
                     # Note: xvals previously defined for creating mesh in contour plot: use to determine spacing
-                    current_space = dfull / (len(xvals) - 1)  # model building coordinate spacing
                     new_space = side_lines['length'][depth_idx] / (len(xvals) - 1)  # new spacing
                     # To conduct the re-spacing, will need to project cosine and since components for x, y:
                     theta = atan2(ydiff, xdiff)  # Angle of the line
@@ -835,9 +834,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                                 pass
                             else:
                                 # Shift the point again to create the new spacing:
-                                update_pt = df_tpu_pressures['Real Life Location'][pt]
-                                # Calculate the new point location:
-                                df_tpu_pressures['Real Life Location'][pt] = Point(xrect[min_rect_idx] - new_space * idx * cos(theta), yrect[min_rect_idx] - new_space * idx * sin(theta), update_pt.z)
+                                df_tpu_pressures['Real Life Location'][pt] = Point(xrect[min_rect_idx] - new_space * idx * cos(theta), yrect[min_rect_idx] - new_space * idx * sin(theta), current_pt.z)
                         else:
                             pass
                     if snum != 5:
@@ -845,18 +842,16 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                     else:
                         pass
                         # Finish new spacing for roof coordinates
-                        # Note: Roof coordinates are not grouped in the direction of the new spacing
-                        # Grouping roof coordinates in direction of new spacing facilitates the procedure
-                        # Determine the number of point lines there are:
+                        # Note: Roof coordinates run in the direction of Surfaces 1 and 3
                         point_indices = surf_pts.index.to_list()
-                        origin_idx = point_indices[0:len(xvals)]  # Starting points for new spacing
+                        origin_idx = point_indices[0:len(xvals)]  # Starting points for new spacing (these are at edge)
                         for idx in origin_idx:
                             origin_pt = df_tpu_pressures['Real Life Location'][idx]
-                            for multiplier in range(1, len(xvals)):  # Start at 1 b/c origin_idx points are already where they need to be
+                            for multiplier in range(1, len(xvals)):  # Note: origin_idx already where they need to be
                                 pt_idx = idx + len(xvals)*multiplier
-                                roof_pt = df_tpu_pressures['Real Life Location'][pt_idx]
-                               # Roof lines are parallel to surface 2 and 4 lines, so we can conduct coordinate translation directly:
-                                df_tpu_pressures['Real Life Location'][pt_idx] = Point(origin_pt.x - (new_space * multiplier * cos(theta)), origin_pt.y - (new_space * multiplier * sin(theta)), roof_pt.z)
+                                # Note: Point lines are parallel to surface 2 and 4
+                                # Use origin pts and multiplier to define new coordinate pairs:
+                                df_tpu_pressures['Real Life Location'][pt_idx] = Point(origin_pt.x - (new_space * multiplier * cos(theta)), origin_pt.y - (new_space * multiplier * sin(theta)), origin_pt.z)
         # Plot the new pressure tap locations and their pressures:
         # Plot the full-scale pressures:
         fig4 = plt.figure()
