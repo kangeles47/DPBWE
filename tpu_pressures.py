@@ -911,29 +911,55 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                 ysurf.append(surf_pt[1])
                 zsurf.append(surf_pt[2])
             ax5.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, 'k', linewidth=2)
+            rsurf_list = []
             for key in rect_surf_dict:
                 xr, yr = rect_surf_dict[key].exterior.xy
-                range_poly = Polygon([(xr[0], yr[0]), (xr[0], yr[2]), (xr[2], yr[2]), (xr[2], yr[0])])
+                if key != 5:
+                    range_poly = Polygon([(xr[0], yr[0]), (xr[0], yr[2]), (xr[2], yr[2]), (xr[2], yr[0])])
+                else:
+                    range_poly = rect_surf_dict[key]
                 if b1.within(range_poly) and b2.within(range_poly):
-                    # Create a polygon to define the range of x,y values for the building's surface:
-                    surf_range_poly = Polygon([(xb[0], yb[0]), (xb[0], yb[2]), (xb[2], yb[2]), (xb[2], yb[0])])
+                    if key != 5:
+                        # Create a polygon to define the range of x,y values for the building's surface:
+                        surf_range_poly = Polygon([(xb[0], yb[0]), (xb[0], yb[2]), (xb[2], yb[2]), (xb[2], yb[0])])
+                    else:
+                        xroof, yroof = bldg.hasGeometry['3D Geometry']['local'][0].exterior.xy
+                        roof_pts = []
+                        for i in range(0, len(xroof)):
+                            roof_pts.append(Point(xroof[i], yroof[i]))
+                        surf_range_poly = Polygon(roof_pts)
                     # Pull the corresponding pressure taps:
                     tap_indices = df_tpu_pressures[df_tpu_pressures['Surface Number'] == key].index.to_list()
                     tap_list = []
                     for tap_idx in tap_indices:
                         ref_pt = Point(df_tpu_pressures['Real Life Location'][tap_idx].x, df_tpu_pressures['Real Life Location'][tap_idx].y)
                         if ref_pt.within(surf_range_poly):
-                            tap_list.append(tap_idx)
-                            df_tpu_pressures['Surface Match'][tap_idx] = True
-                            # Plot the pressure tap:
-                            tap_location = df_tpu_pressures['Real Life Location'][tap_idx]
-                            ax5.scatter3D(np.array([tap_location.x])/3.281, np.array([tap_location.y])/3.281, np.array([tap_location.z])/3.281, 'ro')
+                            if key == 5 and df_tpu_pressures['Surface Number'][tap_idx] != 5:
+                                pass
+                            else:
+                                tap_list.append(tap_idx)
+                                df_tpu_pressures['Surface Match'][tap_idx] = True
+                                # Plot the pressure tap:
+                                tap_location = df_tpu_pressures['Real Life Location'][tap_idx]
+                                ax5.scatter3D(np.array([tap_location.x])/3.281, np.array([tap_location.y])/3.281, np.array([tap_location.z])/3.281, 'ro')
                         else:
                             pass
                     # Create a DataFrame for this building's surface that contains the identified pressure taps and their data:
                     #df_bsurf = df_tpu_pressures[tap_list, :]
+                elif b1.within(range_poly) or b2.within(range_poly):
+                    rsurf_list.append(key)
                 else:
                     pass
+            if len(rsurf_list) > 1:
+                print(rsurf_list)
+                # Need to create new pressure tap locations according to the surface's line geometry:
+                sline = LineString([b1, b2])
+                # Grab the points for each surface on the model building geometry:
+                surf1_pts = df_tpu_pressures[df_tpu_pressures['Surface Number'] == rsurf_list[0]]
+                surf2_pts = df_tpu_pressures[df_tpu_pressures['Surface Number'] == rsurf_list[1]]
+                # For every point in each of these surfaces: Choose the largest of the two
+            else:
+                pass
         # Make the panes transparent:
         ax5.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
         ax5.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
