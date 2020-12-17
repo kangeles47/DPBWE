@@ -213,7 +213,6 @@ class ASCE7(BldgCode):
         # Create an instance of PressureCalc:
         pressures = PressureCalc()
         # Assign MWFRS pressures for the roof:
-        bldg.hasElement['Roof'][0].hasCapacity['type'].append('MWFRS Pressure')
         # Set up parameters to access pressures:
         # (1) Roof pitch
         roof_elem = bldg.hasStorey[-1].hasElement['Roof'][0]
@@ -357,7 +356,7 @@ class ASCE7(BldgCode):
         pressures = PressureCalc()  # Create an instance of PressureCalc to pull reference building parameters
         if direction == 'parallel' or (direction == 'normal' and pitch < 10):
             ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-            file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_MWFRS/RBLDG1/'
+            file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Similitude Parameters/Roof_MWFRS/RBLDG1/'
         elif direction == 'normal' and (edition == 'ASCE 7-88' or edition == 'ASCE 7-93'):
             pass
         # Step 2: Determine the use case:
@@ -408,9 +407,9 @@ class ASCE7(BldgCode):
                     else:
                         v1 = wind_speed - wind_speed % 10 + 5
                         v2 = 10 - wind_speed % 10 + wind_speed
-                    input_v = [v1, v2]
+                    input_v = [int(v1), int(v2)]
                 else:
-                    input_v = [wind_speed]
+                    input_v = [int(wind_speed)]
                 # Pull wind speed similitude paramter:
                 if edition == 'ASCE 7-93':
                     if len(input_v) == 1:
@@ -585,7 +584,7 @@ class ASCE7(BldgCode):
             pitch = 11
         if h_story == 9 and pitch <= 10:  # [ft]
             ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-            file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Wall_CC/RBLDG1/'
+            file_path = 'D:/Users/Karen/PycharmProjects/DPBWE/Similitude Parameters/Wall_CC/RBLDG1/'
         else:
             pass
         # Step 4: Extract the reference pressures for the component type
@@ -750,13 +749,13 @@ class ASCE7(BldgCode):
             if pitch <= 10:
                 use_case = 1
                 ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-                file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
+                file_path = 'D:/Users/Karen/PycharmProjects/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
         else:
             if (
                     edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and pitch <= 7:  # Still including this logic for non-Parcel models
                 use_case = 1
                 ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-                file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
+                file_path = 'D:/Users/Karen/PycharmProjects/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
             elif (edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and 7 < pitch <= 27:
                 use_case = 2
                 print('Roof use case currently not supported')
