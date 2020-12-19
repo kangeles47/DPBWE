@@ -229,6 +229,7 @@ class Building(Zone):
         self.hasFundamentalPeriod = {'x': None, 'y': None}
         self.hasStructuralSystem = {'type': None, 'elements': []}
         self.hasImportanceFactor = None
+        self.hasDemand = {'Surfaces': [], 'Pressures': []}
         self.hasRiskCategory = None
         self.hasEffectiveSeismicWeight = None
         self.hasDampingValue = None
