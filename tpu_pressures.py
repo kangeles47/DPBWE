@@ -840,7 +840,6 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                     if snum != 5:
                         pass
                     else:
-                        pass
                         # Finish new spacing for roof coordinates
                         # Note: Roof coordinates run in the direction of Surfaces 1 and 3
                         point_indices = surf_pts.index.to_list()
@@ -895,12 +894,16 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         plt.show()
         # Last part: Mapping pressures onto the true 3D geometry:
         df_tpu_pressures['Surface Match'] = False  # Start by assuming there is not a perfect match with actual geometry
+        df_bldg_pressures = pd.DataFrame(columns=df_tpu_pressures.columns)  # Create master DataFrame for entire building
         # Set up plotting:
         fig5 = plt.figure()
         ax5 = plt.axes(projection='3d')
         # Use the actual constructed building's 3D geometry to define boundaries for the points:
         # First figure out what surface is directly in line with the 3D building geometry:
         for bsurf in bldg.hasGeometry['3D Geometry']['local']:
+            # Create a DataFrame to save pressure tap data for this surface:
+            df_surf_pressures = pd.DataFrame(columns=df_tpu_pressures.columns)
+            # Pull the surface geometry:
             xb, yb = bsurf.exterior.xy
             b1 = Point(xb[0], yb[0])
             b2 = Point(xb[2], yb[2])
@@ -930,36 +933,117 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                         surf_range_poly = Polygon(roof_pts)
                     # Pull the corresponding pressure taps:
                     tap_indices = df_tpu_pressures[df_tpu_pressures['Surface Number'] == key].index.to_list()
-                    tap_list = []
                     for tap_idx in tap_indices:
                         ref_pt = Point(df_tpu_pressures['Real Life Location'][tap_idx].x, df_tpu_pressures['Real Life Location'][tap_idx].y)
                         if ref_pt.within(surf_range_poly):
                             if key == 5 and df_tpu_pressures['Surface Number'][tap_idx] != 5:
                                 pass
                             else:
-                                tap_list.append(tap_idx)
                                 df_tpu_pressures['Surface Match'][tap_idx] = True
+                                tap_info = df_tpu_pressures.iloc[tap_idx]
+                                df_surf_pressures = df_surf_pressures.append(tap_info, ignore_index=True)
                                 # Plot the pressure tap:
                                 tap_location = df_tpu_pressures['Real Life Location'][tap_idx]
-                                ax5.scatter3D(np.array([tap_location.x])/3.281, np.array([tap_location.y])/3.281, np.array([tap_location.z])/3.281, 'ro')
                         else:
                             pass
-                    # Create a DataFrame for this building's surface that contains the identified pressure taps and their data:
-                    #df_bsurf = df_tpu_pressures[tap_list, :]
                 elif b1.within(range_poly) or b2.within(range_poly):
                     rsurf_list.append(key)
                 else:
                     pass
             if len(rsurf_list) > 1:
                 print(rsurf_list)
-                # Need to create new pressure tap locations according to the surface's line geometry:
-                sline = LineString([b1, b2])
+                # Define surface line geometries:
+                bsurf_line = LineString([b1, b2])  # Line geometry of incompatible surface
+                rx1, ry1 = rect_surf_dict[rsurf_list[0]].exterior.xy
+                rx2, ry2 = rect_surf_dict[rsurf_list[1]].exterior.xy
+                rline1 = LineString([(rx1[0], ry1[0]), (rx1[2], ry1[2])])
+                rline2 = LineString([(rx2[0], ry2[0]), (rx2[2], ry2[2])])
+                # Find the shared point between the two surfaces:
+                if rline1.coords[0] == rline2.coords[0] or rline1.coords[0] == rline2.coords[1]:
+                    origin_pt = rline1.coords[0]
+                else:
+                    origin_pt = rline1.coords[1]
                 # Grab the points for each surface on the model building geometry:
-                surf1_pts = df_tpu_pressures[df_tpu_pressures['Surface Number'] == rsurf_list[0]]
-                surf2_pts = df_tpu_pressures[df_tpu_pressures['Surface Number'] == rsurf_list[1]]
-                # For every point in each of these surfaces: Choose the largest of the two
+                surf_pts = df_tpu_pressures[(df_tpu_pressures['Surface Number'] == rsurf_list[0]) | (df_tpu_pressures['Surface Number'] == rsurf_list[1])]
+                # Use a dictionary to keep track of data for this surface:
+                new_dict = {}
+                for col in df_tpu_pressures.columns:
+                    new_dict[col] = []
+                # Loop through the surface points
+                # Two things that need to be done here:
+                # (1) For each tap, project the point onto the desired surface and determine if intersection occurs
+                #   (a) Need a perpendicular line from the tap's surface to desired surface at tap location
+                #   (b) Equivalent line is line || to the adjacent surface at the tap location
+                for p in surf_pts.index.to_list():
+                    # Calculate the distance between this tap location and the origin_pt:
+                    xd = surf_pts['Real Life Location'][p].x - origin_pt[0]
+                    yd = surf_pts['Real Life Location'][p].y - origin_pt[1]
+                    pt_dist = sqrt(xd**2 + yd**2)
+                    # Create the parallel line:
+                    if surf_pts['Surface Number'][p] == rsurf_list[0]:
+                        pline = rline2.parallel_offset(pt_dist, side='Left')
+                    else:
+                        pline = rline1.parallel_offset(pt_dist, side='Left')
+                    # Determine if intersection occurs with desired surface:
+                    int_flag = pline.intersects(bsurf_line)
+                    if int_flag:
+                        int_pt = pline.intersection(bsurf_line)
+                        # Save this point's information:
+                        for key in new_dict:
+                            if key == 'Real Life Location':
+                                new_dict[key].append(Point(int_pt.x, int_pt.y, surf_pts['Real Life Location'][p].z))
+                            else:
+                                new_dict[key].append(surf_pts[key][p])
+                    else:
+                        pass
+                # Create a new dictionary to hold the final pressure tap locations and pressures:
+                proj_tap_dict = {}
+                for key in new_dict:
+                    proj_tap_dict[key] = []
+                # Loop through projected points, check if there is a duplicate point (from other surface)
+                # In case of duplicate point, choose the larger pressure:
+                for row in range(0, len(new_dict['Real Life Location'])):
+                    new_pt = new_dict['Real Life Location'][row]
+                    # Check for a duplicate point:
+                    if new_dict['Real Life Location'].count(new_pt) > 1:
+                        # Find the duplicate point:
+                        try:
+                            dup_idx = new_dict['Real Life Location'][row:].index(new_pt) + row  # Use remaining part of list
+                            # Choose the larger pressure:
+                            if abs(new_dict['Pressure'][row]) > abs(new_dict['Pressure'][dup_idx]):
+                                pmax = new_dict['Pressure'][row]
+                            else:
+                                pmax = new_dict['Pressure'][dup_idx]
+                            # Add the tap information to the final dictionary:
+                            for k in proj_tap_dict:
+                                if k == 'Pressure':
+                                    proj_tap_dict[k].append(pmax)
+                                else:
+                                    proj_tap_dict[k].append(new_dict[k][row])
+                        except:
+                            pass  # Case when duplicate point has already been taken care of earlier in the loop
+                    else:
+                        for k in proj_tap_dict:
+                            proj_tap_dict[k].append(new_dict[k][row])
+                tap_info = pd.DataFrame(new_dict)
+                # Add this information to the surface's DataFrame:
+                df_surf_pressures = df_surf_pressures.append(tap_info, ignore_index=True)
             else:
                 pass
+            # Load the surface and its corresponding DataFrame into the building's data model:
+            bldg.hasDemand['Surfaces'].append(bsurf)
+            bldg.hasDemand['Pressures'].append(df_surf_pressures)
+            # Add the surface pressure tap data to the master DataFrame:
+            df_bldg_pressures = df_bldg_pressures.append(df_surf_pressures, ignore_index=True)
+        # Plot the projected pressure taps:
+        xf, yf, zf = [], [], []
+        for k in df_bldg_pressures.index.to_list():
+            xf.append(df_bldg_pressures['Real Life Location'][k].x)
+            yf.append(df_bldg_pressures['Real Life Location'][k].y)
+            zf.append(df_bldg_pressures['Real Life Location'][k].z)
+        img = ax5.scatter3D(np.array([xf]) / 3.281, np.array([yf]) / 3.281, np.array([zf]) / 3.281,
+                            c=df_bldg_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 6))
+        fig5.colorbar(img)
         # Make the panes transparent:
         ax5.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
         ax5.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
