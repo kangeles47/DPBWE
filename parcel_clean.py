@@ -107,6 +107,7 @@ for c in condo_indices:
     try:
         bldg_idx = df_full[df_full['Parcel ID'] == df_full['Condo Bldg'][c]].index.to_list()[0]
     except:
+        print('Condos without a home building:')
         print(df_full['Parcel ID'][c])
     # Update the condo building's square footage:
     df_full['Square Footage'][bldg_idx] = df_full['Square Footage'][bldg_idx] + df_full['Living Area'][c]
