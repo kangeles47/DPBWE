@@ -71,14 +71,19 @@ for p in range(0, len(df['Disaster Permit'])):
             if permit_cat[permit] > 0:
                 pass
             else:
-                if 'RE-ROOF' or 'REROOF' or 'ROOF REPAIR' in permit_desc[permit]:
+                if 'RE-ROOF' in permit_desc[permit]:
                     permit_cat[permit] = 1
-                elif 'REPLACEMENT' in permit_desc[permit]:
+                elif 'REROOF' in permit_desc[permit]:
+                    permit_cat[permit] = 1
+                elif 'ROOF REPAIR' in permit_desc[permit]:
+                    permit_cat[permit] = 1
+                elif 'REPLACE' in permit_desc[permit]:
                     permit_cat[permit] = 2
                 else:
                     print(permit_desc[permit])
-            damage_cat.append(permit_cat)
         else:
             permit_cat.append(0)
-            print(df['Parcel ID'][p])
+    damage_cat.append(permit_cat)
+# Integrate damage categories into the DataFrame and Roof Damage percentages:
+df['HAZUS Damage Category'] = damage_cat
 print('a')
