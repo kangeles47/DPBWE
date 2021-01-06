@@ -86,4 +86,4 @@ for p in range(0, len(df['Disaster Permit'])):
     damage_cat.append(permit_cat)
 # Integrate damage categories into the DataFrame and Roof Damage percentages:
 df['HAZUS Damage Category'] = damage_cat
-print('a')
+# Need to create a column of roof damage percentages
