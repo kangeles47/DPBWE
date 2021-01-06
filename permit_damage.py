@@ -1,6 +1,8 @@
 import pandas as pd
 import ast
 import math
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def roof_square_damage_cat(total_area, stories, num_roof_squares, unit):
@@ -85,5 +87,25 @@ for p in range(0, len(df['Disaster Permit'])):
             permit_cat.append(0)
     damage_cat.append(permit_cat)
 # Integrate damage categories into the DataFrame and Roof Damage percentages:
-df['HAZUS Damage Category'] = damage_cat
+df['HAZUS Roof Damage Category'] = damage_cat
 # Need to create a column of roof damage percentages
+# Bring in ARA wind speeds:
+df_wind_speeds = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/2018-Michael_windgrid_ver36.xlsx')
+# Round the lat and lon values to two decimal places:
+df_wind_speeds['Lon'] = round(df_wind_speeds['Lon'], 2)
+df_wind_speeds['Lat'] = round(df_wind_speeds['Lat'], 2)
+for parcel in df.index.to_list():
+    cat = max(df['HAZUS Roof Damage Category'][parcel])
+    # Use the parcel's geodesic location to determine its corresponding wind speed (interpolation):
+    # Get the subsection of the DataFrame pertaining to values with lat = parcel lat:
+    if np.sign(df['Latitude'][parcel]) < 0:
+        v1_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(df['Latitude'][parcel], 2)) & (df_wind_speeds['Lon'] < round(df['Longitude'][parcel], 2))].index[0]
+        v2_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(df['Latitude'][parcel], 2)) & (df_wind_speeds['Lon'] > round(df['Longitude'][parcel], 2))].index[-1]
+        # Now find the index of the two longitude values larger/smaller than parcel's longitude:
+        v_site = np.interp(df['Longitude'][parcel], [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]], [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
+    else:
+        v1_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(df['Latitude'][parcel], 2)) & (df_wind_speeds['Lon'] > round(df['Longitude'][parcel], 2))].index[0]
+        v2_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(df['Latitude'][parcel], 2)) & (df_wind_speeds['Lon'] < round(df['Longitude'][parcel], 2))].index[-1]
+        # Now find the index of the two longitude values larger/smaller than parcel's longitude:
+        v_site = np.interp(df['Longitude'][parcel], [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]], [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
+    plt.plot(cat, v_site)
