@@ -1,5 +1,6 @@
 import pandas as pd
 import ast
+import numpy as np
 import matplotlib.pyplot as plt
 from zone import Parcel
 
@@ -17,6 +18,13 @@ mfh_indices2 = df[df['Use Code'] == 'MULTI-FAMI (000300)'].index
 df = df.drop(mfh_indices)
 df = df.drop(mfh_indices2)  # Drop all instances of multi-family complexes
 df = df.reset_index(drop=True)  # Reset the index for the DataFrame
+sqf_list = []
+for sqf in df['Square Footage']:
+    try:
+        sqf_list.append(float(sqf.replace(',', '')))
+    except:
+        sqf_list.append(sqf)
+df['Square Footage'] = sqf_list
 # Step 2: Load and merge the condo parcel data:
 col_cnames = ['Parcel ID', 'Address', 'Use Code', 'Unit No.', 'Floor', 'Living Area', 'Number of Bedrooms', 'Number of Bathrooms', 'Year Built']
 df_condo = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/CondoParcels.csv', header=0, names=col_cnames)
