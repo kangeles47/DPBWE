@@ -21,7 +21,7 @@ class Element:
         self.hasOutputVariable = {'repair cost': None, 'downtime': None, 'fatalities': None}
         self.hasServiceLife = None  # placeholder for typical replacement times (i.e., maintenance)
         self.hasManufacturer = None
-        self.inLoadPath = None
+        self.inLoadPath = False
         self.hasDirection = None  # options here are x or y as defined by building geometry
         self.hasYearBuilt = None
 
@@ -30,14 +30,14 @@ class Wall(Element):
     def __init__(self):
         Element.__init__(self)
         # Add in wall instance attributes:
-        self.isImpactResistant = None
+        self.isImpactResistant = False
 
 
 class Window(Element):
     def __init__(self):
         Element.__init__(self)
         # Add in wall instance attributes:
-        self.isImpactResistant = None
+        self.isImpactResistant = False
 
 
 class Roof(Element):
