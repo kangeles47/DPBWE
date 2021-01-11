@@ -121,7 +121,7 @@ for p in range(0, len(df['Disaster Permit'])):
     damage_percent.append(permit_dpercent)
 # Integrate damage categories into the DataFrame and Roof Damage percentages:
 df['HAZUS Roof Damage Category'] = damage_cat
-df['Percent Roof Damage'] = damage_percent
+df['Percent Roof Cover Damage'] = damage_percent
 # Clean-up roof damage categories:
 for dparcel in range(0, len(df['HAZUS Roof Damage Category'])):
     rcat = df['HAZUS Roof Damage Category'][dparcel]
@@ -133,7 +133,7 @@ for dparcel in range(0, len(df['HAZUS Roof Damage Category'])):
             dcat = max(rcat)
             dcat_idx = rcat.index(dcat)
             df.at[dparcel, 'HAZUS Roof Damage Category'] = [dcat]
-            df.at[dparcel, 'Percent Roof Damage'] = df['Percent Roof Damage'][dparcel][dcat_idx]
+            df.at[dparcel, 'Percent Roof Cover Damage'] = df['Percent Roof Cover Damage'][dparcel][dcat_idx]
         else:
             pass
 # Need to create a column of roof damage percentages
@@ -160,8 +160,8 @@ for parcel in df.index.to_list():
 
 # Lay out preliminary code to access the StEER Buildings:
 # Read in the datafile:
-steer_file_path = ''
-bldg_file_path = ''
+steer_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/StEER/HM_D2D_Building.csv'
+bldg_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Geocode_Comm_Parcels.csv'
 # Convert into .csv file into a DataFrame for easier manipulation:
 df_steer = pd.read_csv(steer_file_path)
 df_bldgs = pd.read_csv(bldg_file_path)
@@ -170,6 +170,7 @@ df_bldgs = pd.read_csv(bldg_file_path)
 # Eliminate any buildings non-engineered residential:
 sf_indices = df_steer.loc[df_steer['building_type'] == 'Single Family'].index
 df_steer = df_steer.drop(sf_indices)
+parcel_flag = False
 # Merge the StEER data with the augmented building dataset:
 # Parcel ID,Address,Use Code,Square Footage,Stories,Year Built,OccType,Exterior Walls,Roof Cover,Interior Walls,Frame Type,Floor Cover,Unit No.,Floor,Living Area,Number of Bedrooms,Number of Bathrooms,Condo Bldg,Permit Number,Disaster Permit,Disaster Permit Type,Disaster Permit Description
 for row in df_steer:
@@ -182,7 +183,10 @@ for row in df_steer:
     yr_built = 'Lookup needed'
     occ_type = 'Lookup needed'
     ext_walls = 'Lookup needed'
-    roof_cover = 'Lookup needed'
+    if parcel_flag:
+        roof_cover = df_steer['roof_cover'][row]
+    else:
+        roof_cover = 'Lookup needed'
     int_walls = 'Lookup needed'
     frame_type = 'Lookup needed'
     floor_cover = 'Lookup needed'
@@ -197,11 +201,13 @@ for row in df_steer:
     dis_permit_type = 'Lookup needed'
     dis_permit_desc = 'Lookup needed'
     hazus_rdamage_cat = 'Lookup needed'
-    percent_rdamage = 'Lookup needed'
+    percent_rdamage = df_steer['roof_cover_damage'][row]
+    latitude = df_steer['latitude'][row]
+    longitude = df_steer['longitude'][row]
     bldg_dict = {'Parcel ID': parcel_id, 'Address': address, 'Use Code': use_code,'Square Footage': area, 'Stories': num_stories,
                  'Year Built': yr_built, 'OccType': occ_type, 'Exterior Walls': ext_walls, 'Roof Cover': roof_cover, 'Interior Walls': int_walls,
                  'Frame Type': frame_type, 'Floor Cover': floor_cover,'Unit No.': unit_no,'Floor': floor_num,'Living Area': living_area,
                  'Number of Bedrooms': num_bedrooms, 'Number of Bathrooms': num_bathrooms, 'Condo Bldg': condo_bldg, 'Permit Number': permit_num,
                  'Disaster Permit': dis_permit, 'Disaster Permit Type': dis_permit_type, 'Disaster Permit Description': dis_permit_desc,
-                 'HAZUS Roof Damage Category': hazus_rdamage_cat, 'Percent Roof Damage': percent_rdamage}
+                 'HAZUS Roof Damage Category': hazus_rdamage_cat, 'Percent Roof Cover Damage': percent_rdamage, 'Latitude': latitude, 'Longitude': longitude}
     df_bldgs = df_bldgs.append(bldg_dict, ignore_index=True)
