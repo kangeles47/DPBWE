@@ -157,3 +157,51 @@ for parcel in df.index.to_list():
         # Now find the index of the two longitude values larger/smaller than parcel's longitude:
         v_site = np.interp(df['Longitude'][parcel], [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]], [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
     plt.plot(cat, v_site)
+
+# Lay out preliminary code to access the StEER Buildings:
+# Read in the datafile:
+steer_file_path = ''
+bldg_file_path = ''
+# Convert into .csv file into a DataFrame for easier manipulation:
+df_steer = pd.read_csv(steer_file_path)
+df_bldgs = pd.read_csv(bldg_file_path)
+# Will need [latitude] and [longitude] to identify site wind speed:
+# [project] == 'Hurricane Michael (2018)'
+# Eliminate any buildings non-engineered residential:
+sf_indices = df_steer.loc[df_steer['building_type'] == 'Single Family'].index
+df_steer = df_steer.drop(sf_indices)
+# Merge the StEER data with the augmented building dataset:
+# Parcel ID,Address,Use Code,Square Footage,Stories,Year Built,OccType,Exterior Walls,Roof Cover,Interior Walls,Frame Type,Floor Cover,Unit No.,Floor,Living Area,Number of Bedrooms,Number of Bathrooms,Condo Bldg,Permit Number,Disaster Permit,Disaster Permit Type,Disaster Permit Description
+for row in df_steer:
+    # Idea here: modify the parcel_query script so that it will look up specific addresses
+    parcel_id = 'Lookup needed'
+    address = df_steer['address_full'][row]
+    use_code = 'Lookup needed'
+    area = 'Lookup needed'
+    num_stories = 'Lookup needed'
+    yr_built = 'Lookup needed'
+    occ_type = 'Lookup needed'
+    ext_walls = 'Lookup needed'
+    roof_cover = 'Lookup needed'
+    int_walls = 'Lookup needed'
+    frame_type = 'Lookup needed'
+    floor_cover = 'Lookup needed'
+    unit_no = 'Lookup needed'
+    floor_num = 'Lookup needed'
+    living_area = 'Lookup needed'
+    num_bedrooms = 'Lookup needed'
+    num_bathrooms = 'Lookup needed'
+    condo_bldg = 'Lookup needed'
+    permit_num = 'Lookup needed'
+    dis_permit = 'Lookup needed'
+    dis_permit_type = 'Lookup needed'
+    dis_permit_desc = 'Lookup needed'
+    hazus_rdamage_cat = 'Lookup needed'
+    percent_rdamage = 'Lookup needed'
+    bldg_dict = {'Parcel ID': parcel_id, 'Address': address, 'Use Code': use_code,'Square Footage': area, 'Stories': num_stories,
+                 'Year Built': yr_built, 'OccType': occ_type, 'Exterior Walls': ext_walls, 'Roof Cover': roof_cover, 'Interior Walls': int_walls,
+                 'Frame Type': frame_type, 'Floor Cover': floor_cover,'Unit No.': unit_no,'Floor': floor_num,'Living Area': living_area,
+                 'Number of Bedrooms': num_bedrooms, 'Number of Bathrooms': num_bathrooms, 'Condo Bldg': condo_bldg, 'Permit Number': permit_num,
+                 'Disaster Permit': dis_permit, 'Disaster Permit Type': dis_permit_type, 'Disaster Permit Description': dis_permit_desc,
+                 'HAZUS Roof Damage Category': hazus_rdamage_cat, 'Percent Roof Damage': percent_rdamage}
+    df_bldgs = df_bldgs.append(bldg_dict, ignore_index=True)
