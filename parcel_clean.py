@@ -234,3 +234,15 @@ print('Frame Type:')
 print(df_damage['Frame Type'].value_counts())
 # Export the Damage DataFrame to a .csv:
 df_damage.to_csv('Bay_Parcels_Permits.csv', index=False)
+# Drop any parcels that are both vacant and do not have a damage permit:
+vac_dam_indices = df_full.loc[(df['Use Code'] == 'VACANT COM (001000)') & (df_full['Disaster Permit'] == False)].index
+vac_dam_indices2 = df_full.loc[(df['Use Code'] == 'VACANT/XFO (000070)') & (df_full['Disaster Permit'] == False)].index
+vac_dam_indices3 = df_full.loc[(df['Use Code'] == 'VACANT (000000)') & (df_full['Disaster Permit'] == False)].index
+vac_dam_indices4 = df_full.loc[(df['Use Code'] == 'VACANT COM (001070)') & (df_full['Disaster Permit'] == False)].index
+vac_dam_indices5 = df_full.loc[(df['Use Code'] == 'PLAT HEADI (H.)') & (df_full['Disaster Permit'] == False)].index
+df_full = df_full.drop(vac_dam_indices)  # Drop any vacant commercial lots without disaster permit information:
+df_full = df_full.drop(vac_dam_indices2)
+df_full = df_full.drop(vac_dam_indices3)
+df_full = df_full.drop(vac_dam_indices4)
+df_full = df_full.drop(vac_dam_indices5)
+df_full.to_csv('Full_Comm_Parcels.csv', index=False)
