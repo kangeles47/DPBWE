@@ -8,8 +8,23 @@ class Interface:
         # Attributes outside of the BOT Ontology:
         # Interfaces like connections can have a 3D Model and capacity:
         self.hasAnalysisModel = None
-        self.hasCapacity = {'type': None, 'value': None}
-        self.hasDemand = {'type': None, 'value': None}
-        self.hasFailure = None
-        self.hasFixity = None  # typ. options: fixed, pinned, roller, free
+        edp_dict = {'peak interstory drift ratio': None, 'peak absolute velocity': None,
+                    'peak absolute acceleration': None, 'wind speed': None,
+                    'wind pressure': {'external': None, 'internal': None, 'total': None}, 'debris impact': None,
+                    'axial force': None, 'shear force': None, 'bending moment': None, 'peak flexural stress': None,
+                    'peak shear stress': None, 'peak flexural strain': None, 'curvature': None, 'rotation': None,
+                    'elongation': None}
+        self.hasCapacity = edp_dict
+        self.hasDemand = edp_dict
+        self.hasFailure = {}
+        for key in edp_dict:
+            self.hasFailure[key] = False
+        self.hasFragility = edp_dict
+        self.hasFixity = {'local': {'x': False, 'y': False, 'z': False, 'user-defined': None}}
         self.hasGeometry = {'point': None, 'plane': None}  # Suggested Shapely Point and Polgon objects
+        self.hasManufacturer = None
+        self.hasMaterial = []
+        self.hasOutputVariable = {'repair cost': None, 'downtime': None, 'fatalities': None}
+        self.hasType = None
+        self.hasYearBuilt = None
+        self.inLoadPath = False
