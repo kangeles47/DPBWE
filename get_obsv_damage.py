@@ -1,144 +1,161 @@
 import pandas as pd
 import ast
-import math
 import matplotlib.pyplot as plt
 import numpy as np
+from query_parcel_info import query_parcel_info
 
 
 # These sets of code are utilized in the construction of observation-informed
 # fragilities for component-based damage assessment:
 
-def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type):
+def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, browser, url, steer_parcel_path):
     # Step 1: Convert .csv files into DataFrames for easier data manipulation:
     df_local = pd.read_csv(local_bldgs_path)
     df_steer = pd.read_csv(steer_bldgs_path)
-    # Step 2: Populate observation-based damage assessment for local bldgs using permit data:
-    get_permit_damage(df_local, obsv_damage_type)
-
-
-def get_ARA_wind_speed(latitude, longitude, wind_speed_file_path):
-    df_wind_speeds = pd.read_excel(wind_speed_file_path)
-    # Round the lat and lon values to two decimal places:
-    df_wind_speeds['Lon'] = round(df_wind_speeds['Lon'], 2)
-    df_wind_speeds['Lat'] = round(df_wind_speeds['Lat'], 2)
-    # Use the parcel's geodesic location to determine its corresponding wind speed (interpolation):
-    if np.sign(latitude) < 0:
-        v1_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
-                    df_wind_speeds['Lon'] < round(longitude, 2))].index[0]
-        v2_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
-                    df_wind_speeds['Lon'] > round(longitude, 2))].index[-1]
-        # Now find the index of the two longitude values larger/smaller than parcel's longitude:
-        v_site = np.interp(longitude, [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]],
-                            [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
+    if find_parcel_flag:
+        pass
     else:
-        v1_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
-                    df_wind_speeds['Lon'] > round(longitude, 2))].index[0]
-        v2_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
-                    df_wind_speeds['Lon'] < round(longitude, 2))].index[-1]
-        # Now find the index of the two longitude values larger/smaller than parcel's longitude:
-        v_site = np.interp(longitude, [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]],
-                            [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
-    return v_site
+        df_steer_parcel = pd.read_csv(steer_parcel_path)
+    # Step 2: Populate observation-based damage assessment for local bldgs using permit data:
+    df = get_permit_damage(df_local, obsv_damage_type)
+    # Step 3: Integrate StEER data with updated local bldgs dataset:
+    if comm_flag:
+        # Eliminate any buildings non-engineered residential:
+        sf_indices = df_steer.loc[df_steer['building_type'] == 'Single Family'].index
+        df_steer = df_steer.drop(sf_indices)
+    else:
+        pass
+    # Merge the StEER data with the augmented building dataset:
+    for row in df_steer.index:
+        if find_parcel_flag:
+            # Query each parcel's data from the property appraiser website:
+            address_flag = True
+            parcel_identifier = df_steer['address'][row]
+            parcel_info = query_parcel_info(browser, url, parcel_identifier, address_flag)
+        else:
+            # Access parcel data from the designated DataFrame:
+            parcel_info = df_steer_parcel.iloc[row].to_dict()
+        # Fill in remaining fields using StEER data:
+        #'HAZUS Roof Damage Category': hazus_rdamage_cat,
+        parcel_info['Percent Roof Cover Damage'] = df_steer['roof_cover_damage'][row]
+        parcel_info['Lat'] = df_steer['latitude'][row]
+        parcel_info['Lon'] = df_steer['longitude'][row]
+        df = df.append(bldg_dict, ignore_index=True)
+    if save_flag:
+        df.to_csv('Augmented_Bldgs_Dataset.csv', index=False)
+    else:
+        pass
+    return df
 
 
 def get_permit_damage(df_local, obsv_damage_type):
     # Allocate empty lists to gather damage information:
-    damage_cat = []
-    damage_percent = []
+    if obsv_damage_type == 'roof_cover':
+        rcover_damage_cat = []
+        rcover_damage_percent = []
+    else:
+        pass
+    # Loop through the parcels:
     for p in range(0, len(df_local['Parcel ID'])):
-        # First check if this building has a disaster permit:
-        if not df_local['Disaster Permit'][p]:
-            damage_cat.append([0])
-            damage_percent.append([0])
-        else:
-            # First check if this building shares a parcel number:
-            if df['Use Code'][p] != 'RES COMMON (000900)':
-                dup_parcel = df.loc[df['Parcel ID'] == df['Parcel ID'][p]]
-                dup_parcel_factor = dup_parcel['Square Footage'][p] / dup_parcel['Square Footage'].sum()
+        if obsv_damage_type == 'roof_cover':
+            # First check if this building has a disaster permit:
+            if not df_local['Disaster Permit'][p]:
+                rcover_damage_cat.append([0])
+                rcover_damage_percent.append([0])
             else:
-                pass
-            permit_type = ast.literal_eval(df['Disaster Permit Type'][p])
-            permit_desc = ast.literal_eval(df['Disaster Permit Description'][p])
-            permit_cat = []
-            permit_dpercent = []
-            for permit in range(0, len(permit_type)):
-                if 'ROOF' in permit_type[permit]:
-                    if 'GAZ' in permit_desc[permit] or 'CANOPY' in permit_desc[permit]:
-                        permit_cat.append(0)
-                        permit_dpercent.append(0)
-                    else:
-                        # Conduct a loop to categorize all quantitative descriptions:
-                        damage_desc = permit_desc[permit].split()
-                        for i in range(0, len(damage_desc)):
-                            if damage_desc[i].isdigit():  # First check if the permit has a quantity for the damage
-                                total_area = df['Square Footage'][p]
-                                stories = df['Stories'][p]
-                                num_roof_squares = float(damage_desc[i]) * dup_parcel_factor
-                                unit = 'ft'
-                                roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories, num_roof_squares,
-                                                                              unit)
-                                permit_cat.append(roof_dcat)
-                                permit_dpercent.append(roof_dpercent)
-                                break
-                            else:
-                                if 'SQ' in damage_desc[i]:  # Case when there is no space between quantity and roof SQ
-                                    total_area = df['Square Footage'][p]
-                                    stories = df['Stories'][p]
-                                    num_roof_squares = float(damage_desc[i][
-                                                         0:-2]) * dup_parcel_factor  # Remove 'SQ' from description and extract value:
+                # First check if this building shares a parcel number:
+                if df_local['Use Code'][p] != 'RES COMMON (000900)':
+                    dup_parcel = df_local.loc[df_local['Parcel ID'] == df_local['Parcel ID'][p]]
+                    dup_parcel_factor = dup_parcel['Square Footage'][p] / dup_parcel['Square Footage'].sum()
+                else:
+                    pass
+                permit_type = ast.literal_eval(df_local['Disaster Permit Type'][p])
+                permit_desc = ast.literal_eval(df_local['Disaster Permit Description'][p])
+                permit_cat = []
+                permit_dpercent = []
+                for permit in range(0, len(permit_type)):
+                    if 'ROOF' in permit_type[permit]:
+                        if 'GAZ' in permit_desc[permit] or 'CANOPY' in permit_desc[permit]:
+                            permit_cat.append(0)
+                            permit_dpercent.append(0)
+                        else:
+                            # Conduct a loop to categorize all quantitative descriptions:
+                            damage_desc = permit_desc[permit].split()
+                            for i in range(0, len(damage_desc)):
+                                if damage_desc[i].isdigit():  # First check if the permit has a quantity for the damage
+                                    total_area = df_local['Square Footage'][p]
+                                    stories = df_local['Stories'][p]
+                                    num_roof_squares = float(damage_desc[i]) * dup_parcel_factor
                                     unit = 'ft'
                                     roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories, num_roof_squares,
-                                                                                  unit)
+                                                                              unit)
                                     permit_cat.append(roof_dcat)
                                     permit_dpercent.append(roof_dpercent)
                                     break
                                 else:
-                                    pass
-                        # Add a dummy value for permits that have a qualitative description:
-                        if len(permit_cat) != permit + 1:
-                            permit_cat.append(0)
-                            permit_dpercent.append(0)
-                        else:
-                            pass
-                        # Conduct a second loop to now categorize qualitative descriptions:
-                        if permit_cat[permit] > 0:
-                            pass
-                        else:
-                            substrings = ['RE-ROO', 'REROOF', 'ROOF REPAIR', 'COMMERCIAL HURRICANE REPAIRS', 'ROOF OVER']
-                            if any([substring in permit_desc[permit] for substring in substrings]):
-                                permit_cat[permit] = 1
-                                permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
-                            elif 'REPLACE' in permit_desc[permit]:
-                                permit_cat[permit] = 2
-                                permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
-                            elif 'WITHDRAWN' in permit_desc[permit]:
-                                permit_cat[permit] = 0
-                                permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
+                                    if 'SQ' in damage_desc[i]:  # Case when there is no space between quantity and roof SQ
+                                        total_area = df_local['Square Footage'][p]
+                                        stories = df_local['Stories'][p]
+                                        num_roof_squares = float(damage_desc[i][
+                                                         0:-2]) * dup_parcel_factor  # Remove 'SQ' from description and extract value:
+                                        unit = 'ft'
+                                        roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories, num_roof_squares,
+                                                                                  unit)
+                                        permit_cat.append(roof_dcat)
+                                        permit_dpercent.append(roof_dpercent)
+                                        break
+                                    else:
+                                        pass
+                            # Add a dummy value for permits that have a qualitative description:
+                            if len(permit_cat) != permit + 1:
+                                permit_cat.append(0)
+                                permit_dpercent.append(0)
                             else:
-                                print(permit_desc[permit])
-                else:
-                    permit_cat.append(0)
-                    permit_dpercent.append(0)
-            damage_cat.append(permit_cat)
-            damage_percent.append(permit_dpercent)
-    # Integrate damage categories into the DataFrame and Roof Damage percentages:
-    df['HAZUS Roof Damage Category'] = damage_cat
-    df['Percent Roof Cover Damage'] = damage_percent
+                                pass
+                            # Conduct a second loop to now categorize qualitative descriptions:
+                            if permit_cat[permit] > 0:
+                                pass
+                            else:
+                                substrings = ['RE-ROO', 'REROOF', 'ROOF REPAIR', 'COMMERCIAL HURRICANE REPAIRS', 'ROOF OVER']
+                                if any([substring in permit_desc[permit] for substring in substrings]):
+                                    permit_cat[permit] = 1
+                                    permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
+                                elif 'REPLACE' in permit_desc[permit]:
+                                    permit_cat[permit] = 2
+                                    permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
+                                elif 'WITHDRAWN' in permit_desc[permit]:
+                                    permit_cat[permit] = 0
+                                    permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
+                                else:
+                                    print(permit_desc[permit])
+                    else:
+                        permit_cat.append(0)
+                        permit_dpercent.append(0)
+                rcover_damage_cat.append(permit_cat)
+                rcover_damage_percent.append(permit_dpercent)
+        else:
+            pass
+    # Integrate damage categories into the DataFrame:
+    if obsv_damage_type == 'roof_cover':
+        df_local['HAZUS Roof Damage Category'] = rcover_damage_cat
+        df_local['Percent Roof Cover Damage'] = rcover_damage_percent
+    else:
+        pass
     # Clean-up roof damage categories:
-    for dparcel in range(0, len(df['HAZUS Roof Damage Category'])):
-        rcat = df['HAZUS Roof Damage Category'][dparcel]
+    for dparcel in range(0, len(df_local['HAZUS Roof Damage Category'])):
+        rcat = df_local['HAZUS Roof Damage Category'][dparcel]
         if len(rcat) == 1:
             pass
         else:
-            if (df['Use Code'][dparcel] != 'RES COMMON (000900)') or (df['Use Code'][dparcel] != 'PLAT HEADI (H.)'):
+            if (df_local['Use Code'][dparcel] != 'RES COMMON (000900)') or (df_local['Use Code'][dparcel] != 'PLAT HEADI (H.)'):
                 # Choose the largest damage category as this parcel's damage category:
                 dcat = max(rcat)
                 dcat_idx = rcat.index(dcat)
-                df.at[dparcel, 'HAZUS Roof Damage Category'] = [dcat]
-                df.at[dparcel, 'Percent Roof Cover Damage'] = df['Percent Roof Cover Damage'][dparcel][dcat_idx]
+                df_local.at[dparcel, 'HAZUS Roof Damage Category'] = [dcat]
+                df_local.at[dparcel, 'Percent Roof Cover Damage'] = df_local['Percent Roof Cover Damage'][dparcel][dcat_idx]
             else:
                 pass
-
+    return df_local
 
 def roof_square_damage_cat(total_area, stories, num_roof_squares, unit):
     try:
@@ -182,6 +199,33 @@ def roof_percent_damage_qual(cat):
     elif cat == 4:
         roof_dpercent = [50, 100]
     return roof_dpercent
+
+
+def get_ARA_wind_speed(latitude, longitude, wind_speed_file_path):
+    df_wind_speeds = pd.read_excel(wind_speed_file_path)
+    # Round the lat and lon values to two decimal places:
+    df_wind_speeds['Lon'] = round(df_wind_speeds['Lon'], 2)
+    df_wind_speeds['Lat'] = round(df_wind_speeds['Lat'], 2)
+    # Use the parcel's geodesic location to determine its corresponding wind speed (interpolation):
+    if np.sign(latitude) < 0:
+        v1_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
+                    df_wind_speeds['Lon'] < round(longitude, 2))].index[0]
+        v2_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
+                    df_wind_speeds['Lon'] > round(longitude, 2))].index[-1]
+        # Now find the index of the two longitude values larger/smaller than parcel's longitude:
+        v_site = np.interp(longitude, [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]],
+                            [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
+    else:
+        v1_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
+                    df_wind_speeds['Lon'] > round(longitude, 2))].index[0]
+        v2_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
+                    df_wind_speeds['Lon'] < round(longitude, 2))].index[-1]
+        # Now find the index of the two longitude values larger/smaller than parcel's longitude:
+        v_site = np.interp(longitude, [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]],
+                            [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
+    return v_site
+
+
 # Load the parcel/permit data:
 df = pd.read_csv('Bay_Parcels_Permits.csv')
 # Start working through the Building Permits:
