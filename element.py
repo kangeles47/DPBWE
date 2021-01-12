@@ -64,8 +64,7 @@ class Floor(Element):  # Consider how we might bring in something like piles
 class Ceiling(Element):
     def __init__(self):
         Element.__init__(self)
-        # Add in roof instance attributes:
-        self.inLoadPath = False
+        # Add in ceiling instance attributes:
         self.hasElevation = None
 
 
