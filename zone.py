@@ -32,14 +32,10 @@ class Zone:
         # hasBuilding, hasStorey, and hasSpace are sub-properties of containsZone
         if isinstance(new_zone, Site):
             self.hasBuilding = []
-        else:
-            pass
-        if isinstance(new_zone, Building):
+        elif isinstance(new_zone, Building):
             self.hasStorey = []
             self.hasSpace = []
-        else:
-            pass
-        if isinstance(new_zone, Storey):
+        elif isinstance(new_zone, Storey):
             self.hasSpace = []
         else:
             pass
