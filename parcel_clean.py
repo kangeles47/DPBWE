@@ -1,8 +1,5 @@
 import pandas as pd
 import ast
-import numpy as np
-import matplotlib.pyplot as plt
-from zone import Parcel
 
 
 # Step 1: Import the Commercial Building parcel data and clean the data:
