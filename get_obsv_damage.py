@@ -7,6 +7,34 @@ from query_parcel_info import query_parcel_info
 
 # These sets of code are utilized in the construction of observation-informed
 # fragilities for component-based damage assessment:
+def build_fragility(aug_bldg_dataset, obsv_damage_type, wind_speed_file_path):
+    df = pd.read_csv(aug_bldg_dataset)
+    # Step 1: Find the site wind speed for each parcel:
+    v_site = []
+    for row in df.index:
+        v_site.append(get_ARA_wind_speed(df['Lat'][row], df['Lon'][row], wind_speed_file_path))
+    # Step 2: Damage occurrences at each wind speed:
+    wind_speeds = np.arange(80, 180, 5)
+    num_bldgs = []
+    key_dict = {'roof_cover': 'Percent Roof Cover Damage'}
+    for speed in wind_speeds:
+        # This first set is noting what buildings experienced failure and which did not (global damage)
+        # Grab the subset of the DataFrame with wind speeds < speed:
+        df_subset = df.loc[df['Site Wind Speed'] <= speed]
+        if len(df_subset['Parcel ID']) == 0:
+            num_bldgs.append(0)
+        else:
+            bldg_count = 0
+            for idx in df_subset.index:
+                if df_subset[key_dict[obsv_damage_type]][idx][0] == 0:
+                    pass
+                else:
+                    bldg_count = bldg_count + 1
+            num_bldgs.append(bldg_count)
+        # This second set is noting what buildings experienced a given percent failure for each wind speed:
+        percent_failure = np.arange(0, 100, 1)
+        for percent in percent_failure:
+            pass
 
 def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, browser, url, steer_parcel_path):
     # Step 1: Convert .csv files into DataFrames for easier data manipulation:
@@ -36,7 +64,7 @@ def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_typ
             # Access parcel data from the designated DataFrame:
             parcel_info = df_steer_parcel.iloc[row].to_dict()
         # Fill in remaining fields using StEER data:
-        #'HAZUS Roof Damage Category': hazus_rdamage_cat,
+        parcel_info['HAZUS Roof Damage Category'] = 'N/A'
         parcel_info['Percent Roof Cover Damage'] = df_steer['roof_cover_damage'][row]
         parcel_info['Lat'] = df_steer['latitude'][row]
         parcel_info['Lon'] = df_steer['longitude'][row]
