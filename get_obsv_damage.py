@@ -13,18 +13,31 @@ def build_fragility(aug_bldg_dataset, obsv_damage_type, wind_speed_file_path, vu
     v_site = []
     for row in df.index:
         v_site.append(get_ARA_wind_speed(df['Lat'][row], df['Lon'][row], wind_speed_file_path))
+    df['Site Wind Speed'] = v_site
     # Step 2: Damage occurrences at each wind speed:
     if vul_parameter == 'wind_speed':
-        vul_values = np.arange(70, 180, 5)
+        vul_values = df['Site Wind Speed'].unique()
     else:
         pass
+    key_dict = {'roof_cover': 'Percent Roof Cover Damage'}
+    # Start by plotting global damage (did damage occur at this vul_parameter):
+    for parcel in df.index():
+        col_key = key_dict[obsv_damage_type]
+        if len(df[col_key][parcel]) == 1:
+            plt.plot(df['Site Wind Speed'][parcel], df[col_key][parcel])
+        else:
+            damage_range = np.arange(df[col_key][parcel][0], df[col_key][parcel][1], 1)
+            for num in damage_range:
+                plt.plot(df['Site Wind Speed'][parcel], num)
+    plt.xlabel(vul_parameter)
+    plt.ylabel(key_dict[obsv_damage_type])
+    # Now let's look at specific damage states for the component damage:
     num_bldgs = []
     num_components = []
     key_dict = {'roof_cover': 'Percent Roof Cover Damage'}
     # Create a DataFrame for easier data manipulation:
-    damage_dict = {vul_parameter: [], 'component': [], 'percent damage': []}
-    #for col in df.columns():
-     #   damage_dict[col]
+    global_damage = {vul_parameter: [], 'num_bldgs': []}
+    comp_damage = {vul_parameter: [], 'component_percent_damage': [], 'num_bldgs': []}
     for val in vul_values:
         # This first loop is noting what buildings experienced failure and which did not (global damage)
         # Grab the subset of the DataFrame with wind speeds < speed:
@@ -32,21 +45,28 @@ def build_fragility(aug_bldg_dataset, obsv_damage_type, wind_speed_file_path, vu
             df_subset = df.loc[df['Site Wind Speed'] <= val]
         else:
             pass
-        if len(df_subset['Parcel ID']) == 0:
-            num_bldgs.append(0)
-            num_components.append(0)
+        if len(df_subset['Parcel ID']) == 0:  # First check if we have any buildings that are at or below the value
+            global_damage[vul_parameter].append(val)
+            global_damage['num_bldgs'].append(0)
+            comp_damage[vul_parameter].append(val)
+            comp_damage['component_percent_damage'].append(0)
+            comp_damage['num_bldgs'].append(0)
         else:
             global_bldg_count = 0
             component_count = 0
             for idx in df_subset.index:
                 comp_damage = df_subset[key_dict[obsv_damage_type]][idx]
                 if comp_damage[0] == 0:
-                    pass
+                    comp_damage[vul_parameter].append(val)
+                    comp_damage['component_percent_damage'].append(0)
+                    comp_damage['num_bldgs'].append(0)
                 else:
                     global_bldg_count = global_bldg_count + 1
                     # Second loop: Components that experience a given percent failure | vulnerability parameter value:
                     percent_failure = np.arange(0, 100, 1)
                     for percent in percent_failure:  # For calculating P(DS >= DSi)
+                        comp_damage[vul_parameter].append(val)
+                        comp_damage['component_percent_damage'].append(percent)
                         if min(comp_damage) > percent:  # Using min and max here b/c we may have range of values
                             component_count = component_count + 1
                         elif max(comp_damage) >= percent:
