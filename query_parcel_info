@@ -155,10 +155,3 @@ def query_parcel_info(browser, url, parcel_identifier, address_flag):
     # Close the browser:
     browser.quit()
     return parcel_info
-
-# Starting the browser and opening tax assessor's data website for the Florida Bay County
-browser = webdriver.Chrome('C:/Users/Karen/Desktop/chromedriver.exe')
-url = "https://qpublic.schneidercorp.com/application.aspx?app=BayCountyFL&PageType=Search"
-address_flag = True
-parcel_identifier = '1022 W 23rd'
-parcel_info = query_parcel_info(browser, url, parcel_identifier, address_flag)
