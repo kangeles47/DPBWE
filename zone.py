@@ -46,6 +46,7 @@ class Zone:
         self.intersectingElement = {}  # Building elements that intersect the zone
         self.hasElement = {}
         self.has3DModel = None
+        self.hasSimple3DModel = None
         # Adding in a hasInterface element to keep track of interface objects:
         self.hasInterface = []
 
@@ -173,6 +174,7 @@ class Site(Zone):
         # Populate Zone attributes:
         new_zone = self
         Zone.__init__(self, new_zone)
+        self.hasZeroPoint = None
         # Sites contain one or more buildings
         # Sites contain all of the zones, spaces, elements, etc. within each building model:
         # Given the number of buildings, create instances of Building and pull attributes
@@ -180,7 +182,7 @@ class Site(Zone):
             self.hasBuilding.append(bldg)
         # Sites contain all of the zones, spaces, elements, etc. within each building model:
         self.update_zones()
-#        self.update_elements()
+        self.update_elements()
         # Add the site as a Zone:
         self.containsZone.append(self)
         # Add roughness attributes for the site:
