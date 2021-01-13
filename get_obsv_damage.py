@@ -7,23 +7,34 @@ from query_parcel_info import query_parcel_info
 
 # These sets of code are utilized in the construction of observation-informed
 # fragilities for component-based damage assessment:
-def build_fragility(aug_bldg_dataset, obsv_damage_type, wind_speed_file_path):
+def build_fragility(aug_bldg_dataset, obsv_damage_type, wind_speed_file_path, vul_parameter):
     df = pd.read_csv(aug_bldg_dataset)
     # Step 1: Find the site wind speed for each parcel:
     v_site = []
     for row in df.index:
         v_site.append(get_ARA_wind_speed(df['Lat'][row], df['Lon'][row], wind_speed_file_path))
     # Step 2: Damage occurrences at each wind speed:
-    wind_speeds = np.arange(70, 180, 5)
+    if vul_parameter == 'wind_speed':
+        vul_values = np.arange(70, 180, 5)
+    else:
+        pass
     num_bldgs = []
     num_components = []
     key_dict = {'roof_cover': 'Percent Roof Cover Damage'}
-    for speed in wind_speeds:
-        # This first set is noting what buildings experienced failure and which did not (global damage)
+    # Create a DataFrame for easier data manipulation:
+    damage_dict = {vul_parameter: [], 'component': [], 'percent damage': []}
+    #for col in df.columns():
+     #   damage_dict[col]
+    for val in vul_values:
+        # This first loop is noting what buildings experienced failure and which did not (global damage)
         # Grab the subset of the DataFrame with wind speeds < speed:
-        df_subset = df.loc[df['Site Wind Speed'] <= speed]
+        if vul_parameter == 'wind_speed':
+            df_subset = df.loc[df['Site Wind Speed'] <= val]
+        else:
+            pass
         if len(df_subset['Parcel ID']) == 0:
             num_bldgs.append(0)
+            num_components.append(0)
         else:
             global_bldg_count = 0
             component_count = 0
@@ -33,14 +44,17 @@ def build_fragility(aug_bldg_dataset, obsv_damage_type, wind_speed_file_path):
                     pass
                 else:
                     global_bldg_count = global_bldg_count + 1
-                    # This second loop is noting what components experienced a given percent failure for each wind speed:
+                    # Second loop: Components that experience a given percent failure | vulnerability parameter value:
                     percent_failure = np.arange(0, 100, 1)
-                    for percent in percent_failure:
-                        if comp_damage[0] > percent:
-                            pass
+                    for percent in percent_failure:  # For calculating P(DS >= DSi)
+                        if min(comp_damage) > percent:  # Using min and max here b/c we may have range of values
+                            component_count = component_count + 1
+                        elif max(comp_damage) >= percent:
+                            component_count = component_count + 1
                         else:
                             pass
-            num_bldgs.append(global_bldg_count)
+                    num_components.append(component_count)
+            num_bldgs.append(global_bldg_count)  # Record # of bldgs with damage for the given IM
 
 def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, browser, url, steer_parcel_path):
     # Step 1: Convert .csv files into DataFrames for easier data manipulation:
