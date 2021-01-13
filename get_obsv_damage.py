@@ -2,6 +2,7 @@ import pandas as pd
 import ast
 import matplotlib.pyplot as plt
 import numpy as np
+from selenium import webdriver
 from query_parcel_info import query_parcel_info
 
 
@@ -78,14 +79,19 @@ def build_fragility(aug_bldg_dataset, obsv_damage_type, wind_speed_file_path, vu
                     num_components.append(component_count)
             num_bldgs.append(global_bldg_count)  # Record # of bldgs with damage for the given IM
 
-def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, browser, url, steer_parcel_path):
+
+def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, driver_path, url, steer_parcel_path):
     # Step 1: Convert .csv files into DataFrames for easier data manipulation:
     df_local = pd.read_csv(local_bldgs_path)
     df_steer = pd.read_csv(steer_bldgs_path)
+    # Pull all parcels in the Bay County:
+    bay_indices = df_steer.loc[df_steer['address_sub_admin_area'] == 'BAY'].index
+    df_steer = df_steer.drop(bay_indices)
     if find_parcel_flag:
-        pass
+        # Define a new DataFrame to save parcel data for StEER bldgs:
+        df_steer_pdata = pd.DataFrame(columns=df_local.columns)
     else:
-        df_steer_parcel = pd.read_csv(steer_parcel_path)
+        df_steer_parcel = pd.read_csv(steer_parcel_path)  # Parcel data has already been collected for the StEER buildings
     # Step 2: Populate observation-based damage assessment for local bldgs using permit data:
     df = get_permit_damage(df_local, obsv_damage_type)
     # Step 3: Integrate StEER data with updated local bldgs dataset:
@@ -98,21 +104,54 @@ def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_typ
     # Merge the StEER data with the augmented building dataset:
     for row in df_steer.index:
         if find_parcel_flag:
-            # Query each parcel's data from the property appraiser website:
-            address_flag = True
-            parcel_identifier = df_steer['address'][row]
-            parcel_info = query_parcel_info(browser, url, parcel_identifier, address_flag)
+            if df_steer['address_sub_admin_area'][row].lower() == 'bay' and df_steer['building_type'][row].lower() != 'general area':
+                # Query each parcel's data from the property appraiser website:
+                address_flag = True
+                parcel_identifier = df_steer['address_full'][row].split(df_steer['address_locality'][row])[0]
+                parcel_info = query_parcel_info(driver_path, url, parcel_identifier, address_flag)
+            else:
+                parcel_info = {}
+                for key in df_local.columns:
+                    if key == 'Address':
+                        parcel_info[key] = df_steer['address_full'][row]
+                    elif key == 'Roof Cover':
+                        parcel_info[key] = df_steer['roof_cover'][row]
+                    elif key == 'Percent Roof Cover Damage':
+                        parcel_info[key] = df_steer['roof_cover_damage_'][row]
+                    elif key == 'Stories':
+                        parcel_info[key] = df_steer['number_of_stories'][row]
+                    elif key == 'OccType':
+                        parcel_info[key] = df_steer['building_type'][row]
+                    elif key == 'Frame Type':
+                        parcel_info[key] = df_steer['mwfrs'][row]
+                    elif key == 'Year Built':
+                        parcel_info[key] = df_steer['year_built'][row]
+                    elif key == 'Latitude':
+                        parcel_info[key] = df_steer['latitude'][row]
+                    elif key == 'Longitude':
+                        parcel_info[key] = df_steer['longitude'][row]
+                    else:
+                        parcel_info[key] = np.nan
         else:
             # Access parcel data from the designated DataFrame:
             parcel_info = df_steer_parcel.iloc[row].to_dict()
         # Fill in remaining fields using StEER data:
-        parcel_info['HAZUS Roof Damage Category'] = 'N/A'
-        parcel_info['Percent Roof Cover Damage'] = df_steer['roof_cover_damage'][row]
-        parcel_info['Lat'] = df_steer['latitude'][row]
-        parcel_info['Lon'] = df_steer['longitude'][row]
-        df = df.append(bldg_dict, ignore_index=True)
-    if save_flag:
+        parcel_info['HAZUS Roof Damage Category'] = np.nan
+        parcel_info['Percent Roof Cover Damage'] = df_steer['roof_cover_damage_'][row]
+        parcel_info['Latitude'] = df_steer['latitude'][row]
+        parcel_info['Longitude'] = df_steer['longitude'][row]
+        df = df.append(parcel_info, ignore_index=True)
+        if find_parcel_flag:
+            df_steer_pdata = df_steer_pdata.append(parcel_info, ignore_index=True)
+        else:
+            pass
+    if save_flag and find_parcel_flag:
         df.to_csv('Augmented_Bldgs_Dataset.csv', index=False)
+        df_steer_pdata.to_csv('StEER_Parcel_Data.csv', index=False)
+    elif save_flag and not find_parcel_flag:
+        df.to_csv('Augmented_Bldgs_Dataset.csv', index=False)
+    elif not save_flag and find_parcel_flag:
+        df_steer_pdata.to_csv('StEER_Parcel_Data.csv', index=False)
     else:
         pass
     return df
@@ -295,6 +334,17 @@ def get_ARA_wind_speed(latitude, longitude, wind_speed_file_path):
                             [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
     return v_site
 
+# Starting the browser and opening tax assessor's data website for the Florida Bay County
+driver_path = 'C:/Users/Karen/Desktop/chromedriver.exe'
+url = "https://qpublic.schneidercorp.com/application.aspx?app=BayCountyFL&PageType=Search"
+local_bldgs_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Geocode_Comm_Parcels.csv'
+steer_bldgs_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/StEER/HM_D2D_Building.csv'
+obsv_damage_type = 'roof_cover'
+comm_flag = True
+save_flag = True
+find_parcel_flag = True
+steer_parcel_path = None
+create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, driver_path, url, steer_parcel_path)
 
 # Load the parcel/permit data:
 #df = pd.read_csv('Bay_Parcels_Permits.csv')
