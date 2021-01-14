@@ -15,7 +15,7 @@ def build_fragility(aug_bldg_dataset, obsv_damage_type, wind_speed_file_path, vu
     # Step 1: Find the site wind speed for each parcel:
     v_site = []
     for row in df.index:
-        v_site.append(get_ARA_wind_speed(df['Lat'][row], df['Lon'][row], wind_speed_file_path))
+        v_site.append(get_ARA_wind_speed(df['Latitude'][row], df['Longitude'][row], wind_speed_file_path))
     df['Site Wind Speed'] = v_site
     # Step 2: Damage occurrences at each wind speed:
     if vul_parameter == 'wind_speed':
@@ -26,14 +26,15 @@ def build_fragility(aug_bldg_dataset, obsv_damage_type, wind_speed_file_path, vu
     # Start by plotting global damage (did damage occur at this vul_parameter):
     for parcel in df.index():
         col_key = key_dict[obsv_damage_type]
-        if len(df[col_key][parcel]) == 1:
+        if len(df[col_key][parcel][0]) == 1:
             plt.plot(df['Site Wind Speed'][parcel], df[col_key][parcel])
         else:
-            damage_range = np.arange(df[col_key][parcel][0], df[col_key][parcel][1], 1)
+            damage_range = np.arange(df[col_key][parcel][0][0], df[col_key][parcel][0][1], 1)
             for num in damage_range:
                 plt.plot(df['Site Wind Speed'][parcel], num)
     plt.xlabel(vul_parameter)
     plt.ylabel(key_dict[obsv_damage_type])
+    plt.show()
     # Now let's look at specific damage states for the component damage:
     num_bldgs = []
     num_components = []
@@ -334,6 +335,7 @@ def get_ARA_wind_speed(latitude, longitude, wind_speed_file_path):
                             [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
     return v_site
 
+
 # Starting the browser and opening tax assessor's data website for the Florida Bay County
 driver_path = 'C:/Users/Karen/Desktop/chromedriver.exe'
 url = "https://qpublic.schneidercorp.com/application.aspx?app=BayCountyFL&PageType=Search"
@@ -341,101 +343,15 @@ local_bldgs_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Geocode_Comm_Parcels.cs
 steer_bldgs_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/StEER/HM_D2D_Building.csv'
 obsv_damage_type = 'roof_cover'
 comm_flag = True
-save_flag = True
-find_parcel_flag = True
-steer_parcel_path = None
-create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, driver_path, url, steer_parcel_path)
+save_flag = False
+find_parcel_flag = False
+steer_parcel_path = 'C:/Users/Karen/PycharmProjects/DPBWE/StEER_Parcel_Data.csv'
+aug_bldg_dataset = 'C:/Users/Karen/PycharmProjects/DPBWE/Augmented_Bldgs_Dataset.csv'
+wind_speed_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/2018-Michael_windgrid_ver36.xlsx'
+vul_parameter = 'wind_speed'
+#create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, driver_path, url, steer_parcel_path)
+build_fragility(aug_bldg_dataset, obsv_damage_type, wind_speed_file_path, vul_parameter)
 
-# Load the parcel/permit data:
-#df = pd.read_csv('Bay_Parcels_Permits.csv')
-# Start working through the Building Permits:
-#damage_cat = []
-#damage_percent = []
-#for p in range(0, len(df['Disaster Permit'])):
-    # First check if this building shares a parcel number:
-#    if df['Use Code'][p] != 'RES COMMON (000900)':
-#        dup_parcel = df.loc[df['Parcel ID'] == df['Parcel ID'][p]]
-#        dup_parcel_factor = dup_parcel['Square Footage'][p] / dup_parcel['Square Footage'].sum()
-#    else:
-#        pass
-#    permit_type = ast.literal_eval(df['Disaster Permit Type'][p])
-#    permit_desc = ast.literal_eval(df['Disaster Permit Description'][p])
-#    permit_cat = []
-#    permit_dpercent = []
-#    for permit in range(0, len(permit_type)):
-#        if 'ROOF' in permit_type[permit]:
-#            if 'GAZ' in permit_desc[permit] or 'CANOPY' in permit_desc[permit]:
-#                permit_cat.append(0)
-#                permit_dpercent.append(0)
-#            else:
-                # Conduct a loop to categorize all quantitative descriptions:
-#                damage_desc = permit_desc[permit].split()
-#                for i in range(0, len(damage_desc)):
-#                    if damage_desc[i].isdigit():  # First check if the permit has a quantity for the damage
-#                        total_area = df['Square Footage'][p]
-#                        stories = df['Stories'][p]
-#                        num_roof_squares = float(damage_desc[i])*dup_parcel_factor
-#                        unit = 'ft'
-#                        roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories, num_roof_squares, unit)
-#                        permit_cat.append(roof_dcat)
-#                        permit_dpercent.append(roof_dpercent)
-#                        break
-#                    else:
-#                        if 'SQ' in damage_desc[i]:  # Case when there is no space between quantity and roof SQ
-#                            total_area = df['Square Footage'][p]
-#                            stories = df['Stories'][p]
-#                            num_roof_squares = float(damage_desc[i][0:-2])*dup_parcel_factor  # Remove 'SQ' from description and extract value:
-#                            unit = 'ft'
-#                            roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories, num_roof_squares, unit)
-#                            permit_cat.append(roof_dcat)
-#                            permit_dpercent.append(roof_dpercent)
-#                            break
-#                        else:
-#                            pass
-                # Add a dummy value for permits that have a qualitative description:
-#                if len(permit_cat) != permit + 1:
-#                    permit_cat.append(0)
-#                    permit_dpercent.append(0)
-#                else:
-#                    pass
-                # Conduct a second loop to now categorize qualitative descriptions:
-#                if permit_cat[permit] > 0:
-#                    pass
-#                else:
-#                    substrings = ['RE-ROO', 'REROOF', 'ROOF REPAIR', 'COMMERCIAL HURRICANE REPAIRS', 'ROOF OVER']
-#                    if any([substring in permit_desc[permit] for substring in substrings]):
-#                        permit_cat[permit] = 1
-#                        permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
-#                    elif 'REPLACE' in permit_desc[permit]:
-#                        permit_cat[permit] = 2
-#                        permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
-#                    elif 'WITHDRAWN' in permit_desc[permit]:
-#                        permit_cat[permit] = 0
-#                        permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
-#                    else:
-#                        print(permit_desc[permit])
-#        else:
-#            permit_cat.append(0)
-#            permit_dpercent.append(0)
-#    damage_cat.append(permit_cat)
-#    damage_percent.append(permit_dpercent)
-# Integrate damage categories into the DataFrame and Roof Damage percentages:
-#df['HAZUS Roof Damage Category'] = damage_cat
-#df['Percent Roof Cover Damage'] = damage_percent
-# Clean-up roof damage categories:
-#for dparcel in range(0, len(df['HAZUS Roof Damage Category'])):
-#    rcat = df['HAZUS Roof Damage Category'][dparcel]
-#    if len(rcat) == 1:
-#        pass
-#    else:
-#        if (df['Use Code'][dparcel] != 'RES COMMON (000900)') or (df['Use Code'][dparcel] != 'PLAT HEADI (H.)'):
-#            # Choose the largest damage category as this parcel's damage category:
-#            dcat = max(rcat)
-#            dcat_idx = rcat.index(dcat)
-#            df.at[dparcel, 'HAZUS Roof Damage Category'] = [dcat]
-#            df.at[dparcel, 'Percent Roof Cover Damage'] = df['Percent Roof Cover Damage'][dparcel][dcat_idx]
-#        else:
-#            pass
 # Need to create a column of roof damage percentages
 # Bring in ARA wind speeds:
 #df_wind_speeds = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/2018-Michael_windgrid_ver36.xlsx')
