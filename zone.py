@@ -54,17 +54,26 @@ class Zone:
         # Simple function to easily update containsZone assignment
         try:
             for bldg in self.hasBuilding:
-                self.containsZone.append(bldg)
+                if bldg in self.containsZone:
+                    pass
+                else:
+                    self.containsZone.append(bldg)
         except AttributeError:
             pass
         try:
             for storey in self.hasStorey:
-                self.containsZone.append(storey)
+                if storey in self.containsZone:
+                    pass
+                else:
+                    self.containsZone.append(storey)
         except AttributeError:
             pass
         try:
             for space in self.hasSpace:
-                self.containsZone.append(space)
+                if space in self.containsZone:
+                    pass
+                else:
+                    self.containsZone.append(space)
         except AttributeError:
             pass
 
@@ -82,7 +91,6 @@ class Zone:
                 for k, v in bldg.hasElement:
                     self.hasElement.append(v)
         elif isinstance(self, Building):
-            print(self.__class__.__name__)
             for storey in self.hasStorey:
                 for k in storey.hasElement:
                     # Update the hasElement attribute:
@@ -170,23 +178,19 @@ class Zone:
 
 class Site(Zone):
     # Sub-class of Zone
-    def __init__(self, bldg_list):
+    def __init__(self):
         # Populate Zone attributes:
         new_zone = self
         Zone.__init__(self, new_zone)
+        # Add Site-specific attributes:
         self.hasZeroPoint = None
-        # Sites contain one or more buildings
-        # Sites contain all of the zones, spaces, elements, etc. within each building model:
-        # Given the number of buildings, create instances of Building and pull attributes
-        for bldg in bldg_list:
-            self.hasBuilding.append(bldg)
+        self.hasRoughness = None
+
+    def add_building(self, bldg):
+        self.hasBuilding.append(bldg)
         # Sites contain all of the zones, spaces, elements, etc. within each building model:
         self.update_zones()
         self.update_elements()
-        # Add the site as a Zone:
-        self.containsZone.append(self)
-        # Add roughness attributes for the site:
-        self.hasRoughness = None
 
 
 class Building(Zone):
@@ -194,8 +198,6 @@ class Building(Zone):
     def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
         new_zone = self
         Zone.__init__(self, new_zone)
-        # Add the Building as a Zone:
-        self.containsZone.append(self)
         # Given the number of stories, create instances of Storey and pull attributes:
         # Exception for single family homes:
         if num_stories == 0:
@@ -218,7 +220,6 @@ class Building(Zone):
         self.hasOccupancy = occupancy
         self.hasYearBuilt = int(yr_built)
         self.hasLocation = {'Address': address, 'State': None, 'County': None, 'Geodesic': Point(lon, lat)}
-        self.hasZeroPoint = Point(lon, lat)
         self.hasGeometry = {'Total Floor Area': float(area), 'Footprint': {'type': None, 'geodesic': None, 'local': None},
                             'Height': None, '3D Geometry': {'geodesic': [], 'local': []},
                             'Surfaces': {'geodesic': [], 'local': []}, 'TPU_surfaces': {'geodesic': [], 'local': []}}
@@ -239,6 +240,36 @@ class Building(Zone):
             self.isComm = False
         # Define additional attributes regarding the building location:
         self.location_data(self)
+
+    def add_parcel_data(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
+        self.hasID = pid
+        # Exception for single family homes:
+        if num_stories == 0:
+            num_stories = int(num_stories) + 1
+        else:
+            num_stories = int(num_stories)
+        # Create Storey instances:
+        for i in range(0, num_stories):
+            # Buildings have Storeys:
+            self.hasStorey.append(Storey())
+        # Create Interface instances to relate stories:
+        for stry in range(0, len(self.hasStorey) - 1):
+            self.hasInterface.append(Interface([self.hasStorey[stry], self.hasStorey[stry + 1]]))
+        # Buildings contain all of the zones, spaces, elements, etc. within each storey:
+        self.update_zones()
+        # Attributes outside of BOT:
+        self.hasGeometry['Total Floor Area'] = float(area)
+        self.hasOccupancy = occupancy
+        self.hasYearBuilt = int(yr_built)
+        self.hasLocation = {'Address': address, 'State': None, 'County': None, 'Geodesic': Point(lon, lat)}
+        # Define additional attributes regarding the building location:
+        self.location_data(self)
+        # Tag the building as "commercial" or "not commercial"
+        comm_occupancies = ['profession', 'hotel', 'motel', 'financial']
+        if self.hasOccupancy.lower() in comm_occupancies:
+            self.isComm = True
+        else:
+            self.isComm = False
 
     def location_data(self, Building):
         # Here is where we are going to populate any characteristics relevant to the parcel's location:
