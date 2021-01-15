@@ -4,27 +4,36 @@ import matplotlib.pyplot as plt
 import numpy as np
 from selenium import webdriver
 from query_parcel_info import query_parcel_info
+from math import isnan
 
 
 # These sets of code are utilized in the construction of observation-informed
 # fragilities for component-based damage assessment:
-def build_fragility(aug_bldg_dataset, obsv_damage_type, wind_speed_file_path, vul_parameter):
+def build_fragility(aug_bldg_dataset, steer_bldgs_dataset, obsv_damage_type, wind_speed_file_path, vul_parameter):
     df = pd.read_csv(aug_bldg_dataset)
     condo_indices = df.loc[df['Use Code'] == 'CONDOMINIU (000400)'].index
     df = df.drop(condo_indices)  # Drop condos so we are only working with buildings
+    story_indices = []
+    for idx in df.index:
+        if isnan(df['Stories'][idx]):
+            story_indices.append(idx)
+        else:
+            pass
+    df = df.drop(story_indices)  # Drop any parcels without story information
     # Step 1: Find the site wind speed for each parcel:
     v_site = []
     for row in df.index:
-        v_site.append(get_ARA_wind_speed(df['Latitude'][row], df['Longitude'][row], wind_speed_file_path))
+        v_basic = get_ARA_wind_speed(df['Latitude'][row], df['Longitude'][row], wind_speed_file_path)
+        # Assume open exposure for now:
+        exposure = 'C'
+        unit = 'english'
+        z = df['Stories'][row]*13.1234  # Use building height from DOE bldgs
+        v_site.append(get_local_wind_speed(v_basic, exposure, z, unit))
     df['Site Wind Speed'] = v_site
     # Step 2: Damage occurrences at each wind speed:
-    if vul_parameter == 'wind_speed':
-        vul_values = df['Site Wind Speed'].unique()
-    else:
-        pass
     key_dict = {'roof_cover': 'Percent Roof Cover Damage'}
     # Start by plotting global damage (did damage occur at this vul_parameter):
-    for parcel in df.index():
+    for parcel in df.index:
         col_key = key_dict[obsv_damage_type]
         if len(df[col_key][parcel][0]) == 1:
             plt.plot(df['Site Wind Speed'][parcel], df[col_key][parcel])
@@ -312,7 +321,7 @@ def roof_percent_damage_qual(cat):
 
 
 def get_ARA_wind_speed(latitude, longitude, wind_speed_file_path):
-    df_wind_speeds = pd.read_excel(wind_speed_file_path)
+    df_wind_speeds = pd.read_csv(wind_speed_file_path)
     # Round the lat and lon values to two decimal places:
     df_wind_speeds['Lon'] = round(df_wind_speeds['Lon'], 2)
     df_wind_speeds['Lat'] = round(df_wind_speeds['Lat'], 2)
@@ -323,19 +332,56 @@ def get_ARA_wind_speed(latitude, longitude, wind_speed_file_path):
         v2_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
                     df_wind_speeds['Lon'] > round(longitude, 2))].index[-1]
         # Now find the index of the two longitude values larger/smaller than parcel's longitude:
-        v_site = np.interp(longitude, [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]],
+        v_basic = np.interp(longitude, [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]],
                             [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
     else:
-        v1_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
-                    df_wind_speeds['Lon'] > round(longitude, 2))].index[0]
-        v2_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
-                    df_wind_speeds['Lon'] < round(longitude, 2))].index[-1]
-        # Now find the index of the two longitude values larger/smaller than parcel's longitude:
-        v_site = np.interp(longitude, [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]],
-                            [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
+        # Check first if there is a datapoint with lat, lon of parcel rounded two 2 decimal places:
+        try:
+            v_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
+                        df_wind_speeds['Lon'] == round(longitude, 2))].index[0]
+        except IndexError:
+            # Choose the wind speed based off of the closest lat, lon coordinate:
+            lat_idx = df_wind_speeds.loc[df_wind_speeds['Lat'] == round(latitude, 2)].index.to_list()
+            new_series = abs(longitude - df_wind_speeds['Lon'][lat_idx])
+            v_idx = new_series.idxmin()
+        v_basic = df_wind_speeds['Vg_mph'][v_idx]
+    return v_basic
+
+
+def get_local_wind_speed(v_basic, exposure, z, unit):
+    if unit == 'metric':
+        v_basic = v_basic*2.237
+        z = z*3.281
+    else:
+        pass
+    if exposure == 'C':
+        alpha = 9.5
+        # An adjustment for height is all that is needed:
+        v_site = v_basic*(z/33)**(1/alpha)
+    else:
+        # Power law - calculate the wind speed at gradient height for exposure C:
+        alpha_c = 9.5
+        zg_c = 900
+        v_gradient = v_basic / ((33 / zg_c) ** (1 / alpha_c))
+        if exposure == 'B':
+            alpha = 7.0
+            zg = 1200
+        elif exposure == 'D':
+            alpha = 11.5
+            zg = 900
+        # Calculate the new wind speed for exposure, 10 m height:
+        v_new = v_gradient*((33/zg)**(1/alpha))
+        if z != 33:
+            # Adjust for height:
+            v_site = v_new*((z/33)**(1/alpha))
+        else:
+            v_site = v_new
+        if unit == 'metric':
+            v_site = v_site/2.237
+        else:
+            pass
     return v_site
-
-
+    # Calculate the local wind speed at height z:
 # Starting the browser and opening tax assessor's data website for the Florida Bay County
 driver_path = 'C:/Users/Karen/Desktop/chromedriver.exe'
 url = "https://qpublic.schneidercorp.com/application.aspx?app=BayCountyFL&PageType=Search"
@@ -347,10 +393,11 @@ save_flag = False
 find_parcel_flag = False
 steer_parcel_path = 'C:/Users/Karen/PycharmProjects/DPBWE/StEER_Parcel_Data.csv'
 aug_bldg_dataset = 'C:/Users/Karen/PycharmProjects/DPBWE/Augmented_Bldgs_Dataset.csv'
-wind_speed_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/2018-Michael_windgrid_ver36.xlsx'
+wind_speed_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/2018-Michael_windgrid_ver36.csv'
 vul_parameter = 'wind_speed'
 #create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, driver_path, url, steer_parcel_path)
-build_fragility(aug_bldg_dataset, obsv_damage_type, wind_speed_file_path, vul_parameter)
+steer_bldgs_dataset = 'C:/Users/Karen/PycharmProjects/DPBWE/StEER_Parcel_Data.csv'
+build_fragility(aug_bldg_dataset, steer_bldgs_dataset, obsv_damage_type, wind_speed_file_path, vul_parameter)
 
 # Need to create a column of roof damage percentages
 # Bring in ARA wind speeds:
