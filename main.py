@@ -25,7 +25,6 @@ key = 'local'
 edition = 'ASCE 7-16'
 exposure = 'B'
 wind_speed = 123.342
-tpu_wind_speed = wind_speed/1.52
 cat = 2
 hpr = True
 wind_direction = 0

@@ -162,36 +162,30 @@ class PressureCalc:
 
         return rmps
 
-    def tpu_pressure(self, wind_speed, exposure, edition, z, cp, cat, hpr, encl_class='Enclosed'):
-        if edition != 'ASCE 7-88' or edition != 'ASCE 7-93' or edition != 'ASCE 7-95':
-            # Determine GCpis for pressure calculation:
-            gcpi = 0.18
-            #gcpi = PressureCalc.get_gcpi(self, edition, encl_class)
-            # Determine the velocity pressure:
-            is_cc = False  # Don't include code adjustments for C&C < 30 ft
-            qz, alpha = PressureCalc.qz_calc(self, z, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean=True, tpu_flag=True)
-            # Get the gust effect or gust response factor:
-            g = PressureCalc.get_g(self, edition, exposure, is_cc, alpha, z)
-            gcp = g*cp
-            # Calculate the pressure at the pressure tap location:
-            p = PressureCalc.calc_pressure(self, z, edition, is_cc, qz, gcp, gcpi, tpu_flag=True)
+    def get_tpu_pressure(self, v_basic, cp, exposure, z, unit):
+        if unit == 'mph':
+            v_basic = v_basic/2.237  # convert to [m]/[s^2]
+            z = z/3.281  # convert height from [ft] to [m]
         else:
-            print('ASCE 7 edition cannot be used to calculate TPU pressures. Averaging period mismatch or modifications in formulation. Please choose a modern version of ASCE 7.')
-        return p
-
-    def tpu_pressures_2(self, wind_speed, cp, exposure, z):
-        rho = 1.225  # [kg]/[m^3]
-        wind_speed = wind_speed/2.237  # convert to [m]/[s^2]
+            pass
+        # TPU pressure coefficients are referenced at 10 m height in Exposure B:
         if exposure == 'B':
-            alpha = 4.0
-            coeff = 0.45
-        elif exposure == 'C':
-            alpha = 6.5
-            coeff = 0.65
-        mean_wind_speed = wind_speed*coeff*(z/10)**(1/alpha)
-        p = 0.5*rho*cp*(mean_wind_speed)**2  # [N]/[m^2]
-        # Switch back to lb/ft^2
-        p = p * 0.020885
+            # Calculate the equivalent wind speed for this terrain using the wind speed in Exposure C:
+            vg = v_basic / ((10/274.32)**(1/9.5))
+            zg_b = 365.76
+            alpha_b = 7
+            v = vg*(z/zg_b)**(1/alpha_b)  # Wind speed Exposure B, at height z
+        else:
+            print('only suburban terrain supported at this time')
+        # Calculate the pressure at the tap location: p = 1/2*rho*Cp*V^2
+        rho = 1.225  # [kg]/[m^3]
+        avg_factor = 1.52  # Factor to switch between mean hourly and 3-s wind speeds
+        p = 0.5 * rho * cp/avg_factor * (v) ** 2  # [N]/[m^2]
+        if unit == 'mph':
+            # Covert pressure to lb/ft^2
+            p = p * 0.020885
+        else:
+            pass
         return p
 
     def get_gcpi(self, edition, encl_class):
