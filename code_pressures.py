@@ -43,7 +43,6 @@ class PressureCalc:
         for ind in range(0, len(wpos)):
             # Find the GCp
             gcp = PressureCalc.get_wcc_gcp(self, area_eff, wpos[ind], wzone[ind], edition)
-            print(gcp)
             # Reduce GCp for walls if roof pitch is <= 10 degrees:
             if pitch <= 10:
                 gcp = 0.9 * gcp
