@@ -711,7 +711,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         rl_ys.append(df_tpu_pressures['Real Life Location'][k].y)
         rl_zs.append(df_tpu_pressures['Real Life Location'][k].z)
     img = ax3.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281,
-                        c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 5))
+                        c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 6))
     fig3.colorbar(img)
     print('max and min Surface 1')
     print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 1, 'Pressure'])/0.020885)
