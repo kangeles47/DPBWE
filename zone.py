@@ -228,9 +228,16 @@ class Building(Zone):
         self.hasFundamentalPeriod = {'x': None, 'y': None}
         self.hasStructuralSystem = {'type': None, 'elements': []}
         self.hasImportanceFactor = None
-        self.hasDemand = {'Surfaces': [], 'Pressures': []}
+        edp_dict = {'peak interstory drift ratio': None, 'peak absolute velocity': None,
+                    'peak absolute acceleration': None, 'wind speed': None,
+                    'wind pressure': {'external': None, 'internal': None, 'total': None}, 'debris impact': None,
+                    'axial force': None, 'shear force': None, 'bending moment': None, 'peak flexural stress': None,
+                    'peak shear stress': None, 'peak flexural strain': None, 'curvature': None, 'rotation': None,
+                    'elongation': None}
+        self.hasCapacity = edp_dict
+        self.hasDemand = edp_dict
         self.hasRiskCategory = None
-        self.hasEffectiveSeismicWeight = None
+        self.hasEffSeismicWeight = None
         self.hasDampingValue = None
         self.hasServiceLife = None
         # Tag the building as "commercial" or "not commercial"
@@ -641,3 +648,4 @@ class Space(Zone):
         new_zone = self
         Zone.__init__(self, new_zone)
         self.hasName = None
+        self.hasGeometry = {'3D Geometry': {'geodesic': [], 'local': []}, 'Surfaces': {'geodesic': [], 'local': []}}
