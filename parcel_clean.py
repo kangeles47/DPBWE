@@ -22,6 +22,12 @@ for sqf in df['Square Footage']:
     except:
         sqf_list.append(sqf)
 df['Square Footage'] = sqf_list
+# Fix stories designations:
+for row in range(0, len(df['Stories'])):
+    if df['Stories'][row] == 0:
+        df.at[row, 'Stories'] = 0
+    else:
+        pass
 # Step 2: Load and merge the condo parcel data:
 col_cnames = ['Parcel ID', 'Address', 'Use Code', 'Unit No.', 'Floor', 'Living Area', 'Number of Bedrooms', 'Number of Bathrooms', 'Year Built']
 df_condo = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/CondoParcels.csv', header=0, names=col_cnames)
@@ -200,14 +206,9 @@ for parcel in range(0, len(df_full['Parcel ID'])):
                     desc = df_19['DESCRIPTION'][row].upper()
                     tdesc = df_19['PERMITSUBTYPE'][row].upper()
                 elif 'DIS20' in p:
-                    try:
-                        row = df_20.index[df_20['Permit Number'] == p].to_list()[0]
-                        desc = df_20['DESCRIPTION'][row].upper()
-                        tdesc = df_20['PERMITSUBTYPE'][row].upper()
-                    except:
-                        print(p)
-                        desc = 'Bring in new info'
-                        tdesc = 'Bring in new info'
+                    row = df_20.index[df_20['Permit Number'] == p].to_list()[0]
+                    desc = df_20['DESCRIPTION'][row].upper()
+                    tdesc = df_20['PERMITSUBTYPE'][row].upper()
                 permit_desc.append(desc)
                 type_desc.append(tdesc)
             else:
