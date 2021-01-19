@@ -2,7 +2,7 @@ import pandas as pd
 import ast
 import matplotlib.pyplot as plt
 import numpy as np
-from selenium import webdriver
+from scipy.stats import lognorm
 from query_parcel_info import query_parcel_info
 from math import isnan
 
@@ -30,17 +30,18 @@ def build_fragility(aug_bldg_dataset, steer_bldgs_dataset, obsv_damage_type, win
         z = df['Stories'][row]*13.1234  # Use building height from DOE bldgs
         v_site.append(get_local_wind_speed(v_basic, exposure, z, unit))
     df['Site Wind Speed'] = v_site
+    df.to_csv('Comm_Parcels_V.csv', index=False)
     # Step 2: Damage occurrences at each wind speed:
-    key_dict = {'roof_cover': 'Percent Roof Cover Damage'}
+    key_dict = {'roof_cover': 'Roof Cover Damage'}
     # Start by plotting global damage (did damage occur at this vul_parameter):
     for parcel in df.index:
         col_key = key_dict[obsv_damage_type]
-        if len(df[col_key][parcel][0]) == 1:
-            plt.plot(df['Site Wind Speed'][parcel], df[col_key][parcel])
-        else:
-            damage_range = np.arange(df[col_key][parcel][0][0], df[col_key][parcel][0][1], 1)
+        if col_key == 'Roof Cover Damage':
+            damage_range = np.arange(df['Min ' + col_key][parcel], df['Max ' + col_key][parcel], 1)
             for num in damage_range:
-                plt.plot(df['Site Wind Speed'][parcel], num)
+                plt.plot(df['Site Wind Speed'][parcel], num, 'bo')
+        else:
+            pass
     plt.xlabel(vul_parameter)
     plt.ylabel(key_dict[obsv_damage_type])
     plt.show()
@@ -89,6 +90,25 @@ def build_fragility(aug_bldg_dataset, steer_bldgs_dataset, obsv_damage_type, win
                     num_components.append(component_count)
             num_bldgs.append(global_bldg_count)  # Record # of bldgs with damage for the given IM
 
+def get_fragility_params(x, y, total_num_components, damaged_num_components):
+    # Perform Maximum Likelihood Estimation to find the parameters mu, sigma of the lognormal pdf
+    mu = 0
+    sigma = 0
+
+    return mu, sigma
+
+
+def create_fragility_curve(x, filter_by):
+    s = sigma
+    scale = exp(mu)
+    lognorm.pdf(x, s, scale)
+    # Display the lognormal distribution:
+    x = np.linspace(lognorm.ppf(0.01, s),
+                    lognorm.ppf(0.99, s), 100)
+    ax = plt.axes()
+    ax.plot(x, lognorm.pdf(x, s),
+            'r-', lw=5, alpha=0.6, label='lognorm pdf')
+
 
 def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, driver_path, url, steer_parcel_path):
     # Step 1: Convert .csv files into DataFrames for easier data manipulation:
@@ -111,22 +131,29 @@ def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_typ
         df_steer = df_steer.drop(sf_indices)
     else:
         pass
-    # Merge the StEER data with the augmented building dataset:
-    for row in df_steer.index:
-        if find_parcel_flag:
+    # If needed, obtain the parcel data for StEER buildings:
+    if find_parcel_flag:
+        for row in df_steer.index:
             if df_steer['address_sub_admin_area'][row].lower() == 'bay' and df_steer['building_type'][row].lower() != 'general area':
                 # Query each parcel's data from the property appraiser website:
                 address_flag = True
                 parcel_identifier = df_steer['address_full'][row].split(df_steer['address_locality'][row])[0]
                 parcel_info = query_parcel_info(driver_path, url, parcel_identifier, address_flag)
+                parcel_info['HAZUS Roof Damage Category'] = np.nan
+                parcel_info['Max Roof Cover Damage'] = df_steer['roof_cover_damage_'][row]
+                parcel_info['Min Roof Cover Damage'] = df_steer['roof_cover_damage_'][row]
+                parcel_info['Latitude'] = df_steer['latitude'][row]
+                parcel_info['Longitude'] = df_steer['longitude'][row]
             else:
                 parcel_info = {}
-                for key in df_local.columns:
+                for key in df.columns:
                     if key == 'Address':
                         parcel_info[key] = df_steer['address_full'][row]
                     elif key == 'Roof Cover':
                         parcel_info[key] = df_steer['roof_cover'][row]
-                    elif key == 'Percent Roof Cover Damage':
+                    elif key == 'Max Roof Cover Damage':
+                        parcel_info[key] = df_steer['roof_cover_damage_'][row]
+                    elif key == 'Min Roof Cover Damage':
                         parcel_info[key] = df_steer['roof_cover_damage_'][row]
                     elif key == 'Stories':
                         parcel_info[key] = df_steer['number_of_stories'][row]
@@ -142,25 +169,14 @@ def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_typ
                         parcel_info[key] = df_steer['longitude'][row]
                     else:
                         parcel_info[key] = np.nan
-        else:
-            # Access parcel data from the designated DataFrame:
-            parcel_info = df_steer_parcel.iloc[row].to_dict()
-        # Fill in remaining fields using StEER data:
-        parcel_info['HAZUS Roof Damage Category'] = np.nan
-        parcel_info['Percent Roof Cover Damage'] = df_steer['roof_cover_damage_'][row]
-        parcel_info['Latitude'] = df_steer['latitude'][row]
-        parcel_info['Longitude'] = df_steer['longitude'][row]
-        df = df.append(parcel_info, ignore_index=True)
-        if find_parcel_flag:
             df_steer_pdata = df_steer_pdata.append(parcel_info, ignore_index=True)
-        else:
-            pass
-    if save_flag and find_parcel_flag:
+    else:
+        pass
+    if save_flag:
         df.to_csv('Augmented_Bldgs_Dataset.csv', index=False)
-        df_steer_pdata.to_csv('StEER_Parcel_Data.csv', index=False)
-    elif save_flag and not find_parcel_flag:
-        df.to_csv('Augmented_Bldgs_Dataset.csv', index=False)
-    elif not save_flag and find_parcel_flag:
+    else:
+        pass
+    if find_parcel_flag:
         df_steer_pdata.to_csv('StEER_Parcel_Data.csv', index=False)
     else:
         pass
@@ -245,6 +261,9 @@ def get_permit_damage(df_local, obsv_damage_type):
                                 elif 'WITHDRAWN' in permit_desc[permit]:
                                     permit_cat[permit] = 0
                                     permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
+                                elif 'NEW' in permit_desc[permit]:
+                                    permit_cat[permit] = 3
+                                    permit_dpercent[permit] = 100
                                 else:
                                     print(permit_desc[permit])
                     else:
@@ -274,7 +293,47 @@ def get_permit_damage(df_local, obsv_damage_type):
                 df_local.at[dparcel, 'Percent Roof Cover Damage'] = df_local['Percent Roof Cover Damage'][dparcel][dcat_idx]
             else:
                 pass
+    # Clean up percent categories:
+    max_percent = []
+    min_percent = []
+    for item in rcover_damage_percent:
+        if len(item) == 1:
+            try:
+                if len(item[0]) > 1:  # Percent damage description is a range of values
+                    min_percent.append(item[0][0])
+                    max_percent.append(item[0][1])
+            except TypeError:   # Percent damage description is one value
+                min_percent.append(item[0])
+                max_percent.append(item[0])
+        else:
+            for subitem in range(0, len(item)):
+                if subitem == 0:  # Use the first index in this list to initialize values
+                    try:  # Percent damage description is a range of values
+                        min_item = item[subitem][0]
+                        max_item = item[subitem][1]
+                    except TypeError:  # Percent damage description is one value
+                        min_item = item[subitem]
+                        max_item = item[subitem]
+                else:
+                    try:
+                        if item[subitem] > min_item:
+                            min_item = item[subitem]
+                            max_item = item[subitem]
+                        else:
+                            pass
+                    except TypeError:
+                        if item[subitem][1] > max_item:
+                            min_item = item[subitem][0]
+                            max_item = item[subitem][1]
+                        else:
+                            pass
+            min_percent.append(min_item)
+            max_percent.append(max_item)
+    df_local['Max Roof Cover Damage'] = max_percent
+    df_local['Min Roof Cover Damage'] = min_percent
+    df_local = df_local.drop('Percent Roof Cover Damage', axis=1)
     return df_local
+
 
 def roof_square_damage_cat(total_area, stories, num_roof_squares, unit):
     try:
@@ -291,6 +350,10 @@ def roof_square_damage_cat(total_area, stories, num_roof_squares, unit):
     elif unit == 'm':
         roof_square = 100/10.764  # sq m
     roof_dpercent = 100*(roof_square*num_roof_squares/floor_area)
+    if roof_dpercent > 100:
+        roof_dpercent = 100
+    else:
+        pass
     # Determine damage category:
     if roof_dpercent <= 2:
         roof_dcat = 0
