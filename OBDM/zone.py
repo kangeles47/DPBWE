@@ -18,9 +18,8 @@ class Zone:
     Defines class attributes and methods for objects within the Zone class.
 
     Notes:
-        Zone attributes and supporting methods are derived considering the Building Topology Ontology (BOT)
-        BOT is a minimal ontology for describing the core topological concepts of a building
-        BOT Documentation: https://w3c-lbd-cg.github.io/bot/#
+        Original Zone attributes according to the BOT ontology can be found at:
+        https://w3c-lbd-cg.github.io/bot/#Zone
     """
     # Zones represent any 3D geometry
     # Sub-classes include Site, Building, Story, Space
