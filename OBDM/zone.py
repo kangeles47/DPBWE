@@ -328,7 +328,7 @@ class Building(Zone):
         self.hasLocation['Address'] = address
         self.hasLocation['Geodesic'] = Point(lon, lat)
         # Tag the building as "commercial" or "not commercial"
-        comm_occupancies = ['profession', 'hotel', 'motel', 'financial']  # example occupancies
+        comm_occupancies = ['profession', 'hotel', 'motel', 'financial', 'commercial']  # example occupancies
         if self.hasOccupancy.lower() in comm_occupancies:
             self.isComm = True
         else:
