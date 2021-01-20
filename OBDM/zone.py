@@ -2,7 +2,7 @@
 # Name:             zone.py
 # Purpose:          Define Zone classes and sub-classes for the ontology-based data model
 #
-# Author:           Karen Irely Angeles kangeles@nd.edu
+# Author:           Karen Irely Angeles (kangeles@nd.edu)
 # Affiliation:      Department of Civil and Environmental Engineering and Earth Sciences,
 #                   University of Notre Dame, Notre Dame, IN
 
