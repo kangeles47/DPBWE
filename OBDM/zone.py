@@ -6,7 +6,7 @@
 # Affiliation:      Department of Civil and Environmental Engineering and Earth Sciences,
 #                   University of Notre Dame, Notre Dame, IN
 
-# Created:          (v1) 01/20/2021
+# Last updated:          (v1) 01/20/2021
 # ------------------------------------------------------------------------------
 
 from shapely.geometry import Point, Polygon
@@ -254,7 +254,6 @@ class Zone:
 
 
 class Site(Zone):
-    # Sub-class of Zone
     def __init__(self):
         # Populate Zone attributes:
         new_zone = self
@@ -263,15 +262,8 @@ class Site(Zone):
         self.hasZeroPoint = None
         self.hasRoughness = None
 
-    def add_building(self, bldg):
-        self.hasBuilding.append(bldg)
-        # Sites contain all of the zones, spaces, elements, etc. within each building model:
-        self.update_zones()
-        self.update_elements()
-
 
 class Building(Zone):
-    # Sub-class of Zone
     def __init__(self):
         new_zone = self
         Zone.__init__(self, new_zone)
@@ -305,6 +297,18 @@ class Building(Zone):
         self.isComm = False
 
     def add_parcel_data(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
+        """
+        A simple function to update Building attributes with parcel data and instantiate Story objects
+
+        :param pid: A string containing a unique identifier for the building (e.g., parcel identification number)
+        :param num_stories: A number denoting the total number of stories in the building
+        :param occupancy: A string describing the building's occupancy class
+        :param yr_built: A number describing the building's year of construction
+        :param address: A string with the building's address
+        :param area: A number providing the building's total floor area
+        :param lon: A number providing the building's longitude location
+        :param lat: A number providing the building's latitude location
+        """
         self.hasID = pid
         # Exception for single family homes:
         if num_stories == 0:
@@ -313,14 +317,12 @@ class Building(Zone):
             num_stories = int(num_stories)
         # Create Story instances:
         for i in range(0, num_stories):
-            # Buildings have Storys:
+            # Buildings have Stories:
             self.hasStory.append(Story())
         # Create Interface instances to relate stories:
         for stry in range(0, len(self.hasStory) - 1):
             self.hasInterface.append(Interface([self.hasStory[stry], self.hasStory[stry + 1]]))
-        # Buildings contain all of the zones, spaces, elements, etc. within each story:
-        self.update_zones()
-        # Attributes outside of BOT:
+        self.update_zones()  # Add the stories as zones for this building:
         self.hasGeometry['Total Floor Area'] = float(area)
         self.hasOccupancy = occupancy
         self.hasYearBuilt = int(yr_built)
@@ -335,7 +337,6 @@ class Building(Zone):
 
 
 class Story(Zone):
-    # Sub-class of Zone
     def __init__(self):
         # Populate zone properties:
         new_zone = self
@@ -347,7 +348,6 @@ class Story(Zone):
 
 
 class Space(Zone):
-    # Sub-class of Zone
     def __init__(self, parcel_flag):
         # Populate zone properties:
         new_zone = self
