@@ -214,7 +214,7 @@ class Building(Zone):
         self.hasLocation = {'Address': None, 'State': None, 'County': None, 'Geodesic': None}
         self.hasGeometry = {'Total Floor Area': None, 'Footprint': {'type': None, 'geodesic': None, 'local': None},
                             'Height': None, '3D Geometry': {'geodesic': [], 'local': []},
-                            'Surfaces': {'geodesic': [], 'local': []}, 'TPU_surfaces': {'geodesic': [], 'local': []}}
+                            'Facade': {'geodesic': [], 'local': []}, 'TPU_surfaces': {'geodesic': [], 'local': []}}
         self.hasOrientation = None
         self.hasOutputVariable = {'repair cost': None, 'downtime': None, 'fatalities': None}
         self.hasFundamentalPeriod = {'x': None, 'y': None}
@@ -368,7 +368,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         surf_poly = Polygon([new_zpts[plane][zpt], new_zpts[plane + 1][zpt], new_zpts[plane + 1][zpt + 1], new_zpts[plane][zpt + 1]])
                         # Save the polygon to the storey's geometry:
                         self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(surf_poly)
-                        self.hasStorey[plane].hasGeometry['Surfaces'][key].append(surf_poly)
+                        self.hasStorey[plane].hasGeometry['Facade'][key].append(surf_poly)
                         # Extract xs, ys, and zs and plot
                         surf_xs = []
                         surf_ys = []
@@ -407,7 +407,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     bsurf_poly = Polygon([new_zpts[0][pt], new_zpts[-1][pt], new_zpts[-1][pt + 1], new_zpts[0][pt + 1]])
                     # Save the polygon to the building geometry:
                     self.hasGeometry['3D Geometry'][key].append(bsurf_poly)
-                    self.hasGeometry['Surfaces'][key].append(bsurf_poly)
+                    self.hasGeometry['Facade'][key].append(bsurf_poly)
         # Generate a set of building elements (with default attributes) for the parcel:
         self.parcel_elements(self, zone_flag=False)
         # Update the Building's Elements:
@@ -610,7 +610,7 @@ class Storey(Zone):
         # Attributes outside of BOT Ontology:
         self.hasName = None
         self.hasElevation = []
-        self.hasGeometry = {'3D Geometry': {'geodesic': [], 'local': []}, 'Surfaces': {'geodesic': [], 'local': []}}
+        self.hasGeometry = {'3D Geometry': {'geodesic': [], 'local': []}, 'Facade': {'geodesic': [], 'local': []}}
 
 
 class Space(Zone):
@@ -620,4 +620,4 @@ class Space(Zone):
         new_zone = self
         Zone.__init__(self, new_zone)
         self.hasName = None
-        self.hasGeometry = {'3D Geometry': {'geodesic': [], 'local': []}, 'Surfaces': {'geodesic': [], 'local': []}}
+        self.hasGeometry = {'3D Geometry': {'geodesic': [], 'local': []}, 'Facade': {'geodesic': [], 'local': []}}
