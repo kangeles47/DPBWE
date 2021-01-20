@@ -79,13 +79,6 @@ class Zone:
 
     def update_elements(self):
         # Simple function to easily update hasElement assignment
-        inst_types = ['Site', 'Building', 'Parcel', 'Storey', 'Space']
-        a = str(type(self))
-        for itype in inst_types:
-            if a in itype:
-                print(type)
-            else:
-                pass
         if isinstance(self, Site):
             for bldg in self.hasBuilding:
                 for k, v in bldg.hasElement:
@@ -185,6 +178,7 @@ class Zone:
             zs.append(Point(xs[pt], ys[pt], zcoord))
         return zs
 
+
 class Site(Zone):
     # Sub-class of Zone
     def __init__(self):
@@ -254,7 +248,8 @@ class Building(Zone):
         self.hasGeometry['Total Floor Area'] = float(area)
         self.hasOccupancy = occupancy
         self.hasYearBuilt = int(yr_built)
-        self.hasLocation = {'Address': address, 'State': None, 'County': None, 'Geodesic': Point(lon, lat)}
+        self.hasLocation['Address'] = address
+        self.hasLocation['Geodesic'] = Point(lon, lat)
         # Define additional attributes regarding the building location:
         self.location_data()
         # Tag the building as "commercial" or "not commercial"
