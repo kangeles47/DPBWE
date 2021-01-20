@@ -175,6 +175,15 @@ class Zone:
                     else:
                         pass
 
+    def create_zcoords(self, footprint, zcoord):
+        # Input footprint polygon (either local or geodesic) and elevation:
+        zs = []
+        # Create z coordinates for the given building footprint and elevation:
+        xs, ys = footprint.exterior.xy
+        for pt in range(0, len(xs)):
+            # Define z-coordinates for bottom floor of each story:
+            zs.append(Point(xs[pt], ys[pt], zcoord))
+        return zs
 
 class Site(Zone):
     # Sub-class of Zone
@@ -195,32 +204,15 @@ class Site(Zone):
 
 class Building(Zone):
     # Sub-class of Zone
-    def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
+    def __init__(self):
         new_zone = self
         Zone.__init__(self, new_zone)
-        # Given the number of stories, create instances of Storey and pull attributes:
-        # Exception for single family homes:
-        if num_stories == 0:
-            num_stories = int(num_stories) + 1
-        else:
-            num_stories = int(num_stories)
-        # Create Storey instances:
-        for i in range(0, num_stories):
-            # Buildings have Storeys:
-            new_storey = Storey()
-            new_storey.hasName = 'Storey' + str(i)
-            self.hasStorey.append(new_storey)
-        # Create Interface instances to relate stories:
-        for stry in range(0, len(self.hasStorey) - 1):
-            self.hasInterface.append(Interface([self.hasStorey[stry], self.hasStorey[stry + 1]]))
-        # Buildings contain all of the zones, spaces, elements, etc. within each storey:
-        self.update_zones()
         # Attributes outside of BOT:
-        self.hasID = pid
-        self.hasOccupancy = occupancy
-        self.hasYearBuilt = int(yr_built)
-        self.hasLocation = {'Address': address, 'State': None, 'County': None, 'Geodesic': Point(lon, lat)}
-        self.hasGeometry = {'Total Floor Area': float(area), 'Footprint': {'type': None, 'geodesic': None, 'local': None},
+        self.hasID = None
+        self.hasOccupancy = None
+        self.hasYearBuilt = None
+        self.hasLocation = {'Address': None, 'State': None, 'County': None, 'Geodesic': None}
+        self.hasGeometry = {'Total Floor Area': None, 'Footprint': {'type': None, 'geodesic': None, 'local': None},
                             'Height': None, '3D Geometry': {'geodesic': [], 'local': []},
                             'Surfaces': {'geodesic': [], 'local': []}, 'TPU_surfaces': {'geodesic': [], 'local': []}}
         self.hasOrientation = None
@@ -230,7 +222,7 @@ class Building(Zone):
         self.hasImportanceFactor = None
         edp_dict = {'peak interstory drift ratio': None, 'peak absolute velocity': None,
                     'peak absolute acceleration': None, 'wind speed': None,
-                    'wind pressure': {'external': None, 'internal': None, 'total': None}, 'debris impact': None,
+                    'wind pressure': {'external': {'surfaces': [], 'values': []}, 'internal': {'surfaces': [], 'values': []}, 'total': {'surfaces': [], 'values': []}}, 'debris impact': None,
                     'axial force': None, 'shear force': None, 'bending moment': None, 'peak flexural stress': None,
                     'peak shear stress': None, 'peak flexural strain': None, 'curvature': None, 'rotation': None,
                     'elongation': None}
@@ -240,13 +232,7 @@ class Building(Zone):
         self.hasEffSeismicWeight = None
         self.hasDampingValue = None
         self.hasServiceLife = None
-        # Tag the building as "commercial" or "not commercial"
-        if self.hasOccupancy == "Profession" or self.hasOccupancy == "Hotel" or self.hasOccupancy == "Motel" or self.hasOccupancy == "Financial":
-            self.isComm = True
-        else:
-            self.isComm = False
-        # Define additional attributes regarding the building location:
-        self.location_data(self)
+        self.isComm = False
 
     def add_parcel_data(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
         self.hasID = pid
@@ -270,7 +256,7 @@ class Building(Zone):
         self.hasYearBuilt = int(yr_built)
         self.hasLocation = {'Address': address, 'State': None, 'County': None, 'Geodesic': Point(lon, lat)}
         # Define additional attributes regarding the building location:
-        self.location_data(self)
+        self.location_data()
         # Tag the building as "commercial" or "not commercial"
         comm_occupancies = ['profession', 'hotel', 'motel', 'financial']
         if self.hasOccupancy.lower() in comm_occupancies:
@@ -278,40 +264,26 @@ class Building(Zone):
         else:
             self.isComm = False
 
-    def location_data(self, Building):
+    def location_data(self):
         # Here is where we are going to populate any characteristics relevant to the parcel's location:
         # What we get back from the parcel data is the address and zip code:
-        zipcode = int(Building.hasLocation['Address'].split()[-1])
+        zipcode = int(self.hasLocation['Address'].split()[-1])
         BayCountyZipCodes = np.arange(32401, 32418)
         BayCountyZipCodes = np.append(BayCountyZipCodes, [32438, 32444, 32466])
 
         if zipcode in BayCountyZipCodes:
-            Building.hasLocation['State'] = 'FL'
-            Building.hasLocation['County'] = 'Bay'
+            self.hasLocation['State'] = 'FL'
+            self.hasLocation['County'] = 'Bay'
         else:
             print('County and State Information not currently supported')
-
-    def create_zcoords(self, footprint, zcoord):
-        # Input footprint polygon (either local or geodesic) and elevation:
-        zs = []
-        # Create z coordinates for the given building footprint and elevation:
-        xs, ys = footprint.exterior.xy
-        for pt in range(0, len(xs)):
-            # Define z-coordinates for bottom floor of each story:
-            zs.append(Point(xs[pt], ys[pt], zcoord))
-        return zs
 
 
 class Parcel(Building):  # Note here: Consider how story/floor assignments may need to change for elevated structures
 
     def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
-        Building.__init__(self, pid, num_stories, occupancy, yr_built, address, area, lon,
-                          lat)  # Bring in all of the attributes that are defined in the BIM class for the parcel model
-        # Exception for single family homes:
-        if num_stories == 0:
-            num_stories = int(num_stories) + 1
-        else:
-            num_stories = int(num_stories)
+        Building.__init__(self)  # Bring in all of the attributes that are defined in the BIM class for the parcel model
+        # Add parcel data:
+        self.add_parcel_data(pid, num_stories, occupancy, yr_built, address, area, lon, lat)
         # Define building-level attributes that are specific to parcel models
         # Building footprint:
         self.assign_footprint(self, num_stories)

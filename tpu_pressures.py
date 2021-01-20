@@ -1056,13 +1056,13 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             if roof_flag:
                 roof_poly = bsurf
             else:
-                bldg.hasDemand['Surfaces'].append(bsurf)
-                bldg.hasDemand['Pressures'].append(df_surf_pressures)
+                bldg.hasDemand['wind pressure']['external']['surfaces'].append(bsurf)
+                bldg.hasDemand['wind pressure']['external']['values'].append(df_surf_pressures)
                 # Add the surface pressure tap data to the master DataFrame:
                 df_bldg_pressures = df_bldg_pressures.append(df_surf_pressures, ignore_index=True)
         # Save the roof surface and data:
-        bldg.hasDemand['Surfaces'].append(roof_poly)
-        bldg.hasDemand['Pressures'].append(df_roof_pressures)
+        bldg.hasDemand['wind pressure']['external']['surfaces'].append(roof_poly)
+        bldg.hasDemand['wind pressure']['external']['values'].append(df_roof_pressures)
         df_bldg_pressures = df_bldg_pressures.append(df_roof_pressures, ignore_index=True)
         # Plot the projected pressure taps:
         xf, yf, zf = [], [], []
