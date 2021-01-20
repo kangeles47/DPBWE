@@ -347,7 +347,7 @@ class Story(Zone):
 
 
 class Space(Zone):
-    def __init__(self, parcel_flag):
+    def __init__(self):
         # Populate zone properties:
         new_zone = self
         Zone.__init__(self, new_zone)
