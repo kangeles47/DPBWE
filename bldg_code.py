@@ -7,6 +7,7 @@ from shapely.geometry import Point, LineString, Polygon
 from code_pressures import PressureCalc
 import math
 
+
 class BldgCode:
 
     def __init__(self, parcel, loading_flag):
@@ -331,7 +332,7 @@ class ASCE7(BldgCode):
                         pass
                 # Once zone geometries have been defined and pressures mapped, store the Dataframe:
                 uplift_pressures[direction] = prmwfrs
-        bldg.hasElement['Roof'][0].hasCapacity['value'].append(uplift_pressures)
+        bldg.hasElement['Roof'][0].hasCapacity['wind pressure']['total'].append(uplift_pressures)
 
     def get_roof_uplift_pressure(self, edition, bldg, length, exposure, wind_speed, direction, pitch):
         """
