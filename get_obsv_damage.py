@@ -11,6 +11,7 @@ from math import isnan
 # fragilities for component-based damage assessment:
 def build_fragility(aug_bldg_dataset, steer_bldgs_dataset, obsv_damage_type, wind_speed_file_path, vul_parameter):
     df = pd.read_csv(aug_bldg_dataset)
+    df_steer = pd.read_csv(steer_bldgs_dataset)
     condo_indices = df.loc[df['Use Code'] == 'CONDOMINIU (000400)'].index
     df = df.drop(condo_indices)  # Drop condos so we are only working with buildings
     story_indices = []
@@ -22,6 +23,7 @@ def build_fragility(aug_bldg_dataset, steer_bldgs_dataset, obsv_damage_type, win
     df = df.drop(story_indices)  # Drop any parcels without story information
     # Step 1: Find the site wind speed for each parcel:
     v_site = []
+    v_site_steer = []
     for row in df.index:
         v_basic = get_ARA_wind_speed(df['Latitude'][row], df['Longitude'][row], wind_speed_file_path)
         # Assume open exposure for now:
@@ -29,8 +31,17 @@ def build_fragility(aug_bldg_dataset, steer_bldgs_dataset, obsv_damage_type, win
         unit = 'english'
         z = df['Stories'][row]*13.1234  # Use building height from DOE bldgs
         v_site.append(get_local_wind_speed(v_basic, exposure, z, unit))
+    for row in df_steer.index:
+        v_basic = get_ARA_wind_speed(df_steer['Latitude'][row], df_steer['Longitude'][row], wind_speed_file_path)
+        # Assume open exposure for now:
+        exposure = 'C'
+        unit = 'english'
+        z = df_steer['Stories'][row] * 13.1234  # Use building height from DOE bldgs
+        v_site_steer.append(get_local_wind_speed(v_basic, exposure, z, unit))
     df['Site Wind Speed'] = v_site
+    df_steer['Site Wind Speed'] = v_site_steer
     df.to_csv('Comm_Parcels_V.csv', index=False)
+    df_steer.to_csv('StEER_Parcels_V.csv', index=False)
     # Step 2: Damage occurrences at each wind speed:
     key_dict = {'roof_cover': 'Roof Cover Damage'}
     # Start by plotting global damage (did damage occur at this vul_parameter):
@@ -52,43 +63,55 @@ def build_fragility(aug_bldg_dataset, steer_bldgs_dataset, obsv_damage_type, win
     # Create a DataFrame for easier data manipulation:
     global_damage = {vul_parameter: [], 'num_bldgs': []}
     comp_damage = {vul_parameter: [], 'component_percent_damage': [], 'num_bldgs': []}
-    for val in vul_values:
-        # This first loop is noting what buildings experienced failure and which did not (global damage)
-        # Grab the subset of the DataFrame with wind speeds < speed:
-        if vul_parameter == 'wind_speed':
-            df_subset = df.loc[df['Site Wind Speed'] <= val]
-        else:
-            pass
-        if len(df_subset['Parcel ID']) == 0:  # First check if we have any buildings that are at or below the value
-            global_damage[vul_parameter].append(val)
-            global_damage['num_bldgs'].append(0)
-            comp_damage[vul_parameter].append(val)
-            comp_damage['component_percent_damage'].append(0)
-            comp_damage['num_bldgs'].append(0)
-        else:
-            global_bldg_count = 0
-            component_count = 0
-            for idx in df_subset.index:
-                comp_damage = df_subset[key_dict[obsv_damage_type]][idx]
-                if comp_damage[0] == 0:
-                    comp_damage[vul_parameter].append(val)
-                    comp_damage['component_percent_damage'].append(0)
-                    comp_damage['num_bldgs'].append(0)
+
+
+def get_data_points(local_bldgs_vpath, steer_bldgs_vpath, filter_by):
+    df_local = pd.read_csv(local_bldgs_vpath)
+    df_steer = pd.read_csv(steer_bldgs_vpath)
+    if filter_by == 'roof cover':
+        user_input = 'stand seam'
+        steer_input = 'standing seam'
+        # Pull all buildings that have stand seam roof cover:
+        bldg_idx = []
+        for bldg in df_local.index:
+            try:
+                if user_input in df_local['Roof Cover'][bldg].lower():
+                    bldg_idx.append(bldg)
                 else:
-                    global_bldg_count = global_bldg_count + 1
-                    # Second loop: Components that experience a given percent failure | vulnerability parameter value:
-                    percent_failure = np.arange(0, 100, 1)
-                    for percent in percent_failure:  # For calculating P(DS >= DSi)
-                        comp_damage[vul_parameter].append(val)
-                        comp_damage['component_percent_damage'].append(percent)
-                        if min(comp_damage) > percent:  # Using min and max here b/c we may have range of values
-                            component_count = component_count + 1
-                        elif max(comp_damage) >= percent:
-                            component_count = component_count + 1
-                        else:
-                            pass
-                    num_components.append(component_count)
-            num_bldgs.append(global_bldg_count)  # Record # of bldgs with damage for the given IM
+                    pass
+            except AttributeError:  # Case when there is no roof cover type listed
+                pass
+        # Check if there are any StEER buildings:
+        sbldg_idx = []
+        for sbldg in df_steer.index:
+            try:
+                if (steer_input in df_steer['Roof Cover'][sbldg].lower()) and (df_steer['OccType'][sbldg] != 'Warehouse'):
+                    sbldg_idx.append(sbldg)
+                else:
+                    pass
+            except AttributeError:
+                pass
+    else:
+        pass
+    # Create a new DataFrame to play with:
+    df_filter = df_local.iloc[bldg_idx]
+    df_filter_steer = df_steer.iloc[sbldg_idx]
+    # Plot the local buildings:
+    for row in df_filter.index:
+        if df_filter['Max Roof Cover Damage'][row] == df_filter['Min Roof Cover Damage'][row]:
+            plt.plot(df_filter['Site Wind Speed'][row], df_filter['Max Roof Cover Damage'][row], 'bo')
+        else:
+            plt.plot(df_filter['Site Wind Speed'][row], df_filter['Max Roof Cover Damage'][row], 'bo')
+            #damage_range = np.arange(df_filter['Min Roof Cover Damage'][row], df_filter['Max Roof Cover Damage'][row], 1)
+            #for d in damage_range:
+             #   plt.plot(df_filter['Site Wind Speed'][row], d, 'bo')
+    # Plot the StEER buildings:
+    plt.plot(df_filter_steer['Site Wind Speed'], df_filter_steer['Max Roof Cover Damage'], 'ro')
+    plt.xlabel('Wind Speed [mph]')
+    plt.ylabel('Roof Cover Damage Percent')
+    plt.title('Damage to ' + user_input)
+    plt.show()
+    print('a')
 
 def get_fragility_params(x, y, total_num_components, damaged_num_components):
     # Perform Maximum Likelihood Estimation to find the parameters mu, sigma of the lognormal pdf
@@ -99,9 +122,15 @@ def get_fragility_params(x, y, total_num_components, damaged_num_components):
 
 
 def create_fragility_curve(x, filter_by):
+    sigma = 0
+    mu = 0
     s = sigma
+    x = np.arange(0,200,1)
     scale = exp(mu)
     lognorm.pdf(x, s, scale)
+    x = np.linspace(0, 6, 200)
+    #plt.plot(x, dist.pdf(x))
+    #plt.plot(x, dist.cdf(x))
     # Display the lognormal distribution:
     x = np.linspace(lognorm.ppf(0.01, s),
                     lognorm.ppf(0.99, s), 100)
@@ -460,80 +489,8 @@ wind_speed_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/2018-Michael_windgr
 vul_parameter = 'wind_speed'
 #create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, driver_path, url, steer_parcel_path)
 steer_bldgs_dataset = 'C:/Users/Karen/PycharmProjects/DPBWE/StEER_Parcel_Data.csv'
-build_fragility(aug_bldg_dataset, steer_bldgs_dataset, obsv_damage_type, wind_speed_file_path, vul_parameter)
-
-# Need to create a column of roof damage percentages
-# Bring in ARA wind speeds:
-#df_wind_speeds = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/2018-Michael_windgrid_ver36.xlsx')
-# Round the lat and lon values to two decimal places:
-#df_wind_speeds['Lon'] = round(df_wind_speeds['Lon'], 2)
-#df_wind_speeds['Lat'] = round(df_wind_speeds['Lat'], 2)
-#for parcel in df.index.to_list():
-    #cat = max(df['HAZUS Roof Damage Category'][parcel])
-    # Use the parcel's geodesic location to determine its corresponding wind speed (interpolation):
-    # Get the subsection of the DataFrame pertaining to values with lat = parcel lat:
-    #if np.sign(df['Latitude'][parcel]) < 0:
-        #v1_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(df['Latitude'][parcel], 2)) & (df_wind_speeds['Lon'] < round(df['Longitude'][parcel], 2))].index[0]
-       # v2_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(df['Latitude'][parcel], 2)) & (df_wind_speeds['Lon'] > round(df['Longitude'][parcel], 2))].index[-1]
-      #  # Now find the index of the two longitude values larger/smaller than parcel's longitude:
-     #   v_site = np.interp(df['Longitude'][parcel], [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]], [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
-    #else:
-    #    v1_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(df['Latitude'][parcel], 2)) & (df_wind_speeds['Lon'] > round(df['Longitude'][parcel], 2))].index[0]
-   #     v2_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(df['Latitude'][parcel], 2)) & (df_wind_speeds['Lon'] < round(df['Longitude'][parcel], 2))].index[-1]
-  #      # Now find the index of the two longitude values larger/smaller than parcel's longitude:
- #       v_site = np.interp(df['Longitude'][parcel], [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]], [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
-#    plt.plot(cat, v_site)
-
-# Lay out preliminary code to access the StEER Buildings:
-# Read in the datafile:
-#steer_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/StEER/HM_D2D_Building.csv'
-#local_bldg_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Geocode_Comm_Parcels.csv'
-# Convert into .csv file into a DataFrame for easier manipulation:
-#df_steer = pd.read_csv(steer_file_path)
-#df_bldgs = pd.read_csv(local_bldg_file_path)
-# Will need [latitude] and [longitude] to identify site wind speed:
-# [project] == 'Hurricane Michael (2018)'
-# Eliminate any buildings non-engineered residential:
-#sf_indices = df_steer.loc[df_steer['building_type'] == 'Single Family'].index
-#df_steer = df_steer.drop(sf_indices)
-#parcel_flag = False
-# Merge the StEER data with the augmented building dataset:
-# Parcel ID,Address,Use Code,Square Footage,Stories,Year Built,OccType,Exterior Walls,Roof Cover,Interior Walls,Frame Type,Floor Cover,Unit No.,Floor,Living Area,Number of Bedrooms,Number of Bathrooms,Condo Bldg,Permit Number,Disaster Permit,Disaster Permit Type,Disaster Permit Description
-#for row in df_steer:
-    # Idea here: modify the parcel_query script so that it will look up specific addresses
-    #parcel_id = 'Lookup needed'
-    #address = df_steer['address_full'][row]
-    #use_code = 'Lookup needed'
-    #area = 'Lookup needed'
-    #num_stories = 'Lookup needed'
-    #yr_built = 'Lookup needed'
-    #occ_type = 'Lookup needed'
-    #ext_walls = 'Lookup needed'
-    #if parcel_flag:
-     #   roof_cover = df_steer['roof_cover'][row]
-    #else:
-     #   roof_cover = 'Lookup needed'
-    #int_walls = 'Lookup needed'
-    #frame_type = 'Lookup needed'
-    #floor_cover = 'Lookup needed'
-    #unit_no = 'Lookup needed'
-    #floor_num = 'Lookup needed'
-    #living_area = 'Lookup needed'
-    #num_bedrooms = 'Lookup needed'
-    #num_bathrooms = 'Lookup needed'
-    #condo_bldg = 'Lookup needed'
-    #permit_num = 'Lookup needed'
-    #dis_permit = 'Lookup needed'
-    #dis_permit_type = 'Lookup needed'
-    #dis_permit_desc = 'Lookup needed'
-    #hazus_rdamage_cat = 'Lookup needed'
-    #percent_rdamage = df_steer['roof_cover_damage'][row]
-    #latitude = df_steer['latitude'][row]
-    #longitude = df_steer['longitude'][row]
-    #bldg_dict = {'Parcel ID': parcel_id, 'Address': address, 'Use Code': use_code,'Square Footage': area, 'Stories': num_stories,
-         #        'Year Built': yr_built, 'OccType': occ_type, 'Exterior Walls': ext_walls, 'Roof Cover': roof_cover, 'Interior Walls': int_walls,
-        #         'Frame Type': frame_type, 'Floor Cover': floor_cover,'Unit No.': unit_no,'Floor': floor_num,'Living Area': living_area,
-       #          'Number of Bedrooms': num_bedrooms, 'Number of Bathrooms': num_bathrooms, 'Condo Bldg': condo_bldg, 'Permit Number': permit_num,
-      #           'Disaster Permit': dis_permit, 'Disaster Permit Type': dis_permit_type, 'Disaster Permit Description': dis_permit_desc,
-     #            'HAZUS Roof Damage Category': hazus_rdamage_cat, 'Percent Roof Cover Damage': percent_rdamage, 'Latitude': latitude, 'Longitude': longitude}
-    #df_bldgs = df_bldgs.append(bldg_dict, ignore_index=True)
+#build_fragility(aug_bldg_dataset, steer_bldgs_dataset, obsv_damage_type, wind_speed_file_path, vul_parameter)
+local_bldgs_vpath = 'C:/Users/Karen/PycharmProjects/DPBWE/Comm_Parcels_V.csv'
+steer_bldgs_vpath = 'C:/Users/Karen/PycharmProjects/DPBWE/StEER_Parcels_V.csv'
+filter_by = 'roof cover'
+get_data_points(local_bldgs_vpath, steer_bldgs_vpath, filter_by)
