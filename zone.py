@@ -53,11 +53,11 @@ class Zone:
     def update_zones(self):
         # Simple function to easily update containsZone assignment
         try:
-            for bldg in self.hasBuilding:
-                if bldg in self.containsZone:
+            for space in self.hasSpace:
+                if space in self.containsZone:
                     pass
                 else:
-                    self.containsZone.append(bldg)
+                    self.containsZone.append(space)
         except AttributeError:
             pass
         try:
@@ -69,21 +69,45 @@ class Zone:
         except AttributeError:
             pass
         try:
-            for space in self.hasSpace:
-                if space in self.containsZone:
+            for bldg in self.hasBuilding:
+                if bldg in self.containsZone:
                     pass
                 else:
-                    self.containsZone.append(space)
+                    self.containsZone.append(bldg)
         except AttributeError:
             pass
 
     def update_elements(self):
         # Simple function to easily update hasElement assignment
-        if isinstance(self, Site):
-            for bldg in self.hasBuilding:
-                for k, v in bldg.hasElement:
-                    self.hasElement.append(v)
-        elif isinstance(self, Building):
+        try:
+            for space in self.hasSpace:
+                # Update the hasElement attribute:
+                for k in space.hasElement:
+                    if k in self.hasElement:
+                        if space.hasElement[k] == self.hasElement[k]:
+                            print('Story space-wise elements have already been updated')
+                        else:
+                            # Create a list with existing and new story's elements and choose only unique values:
+                            elem_list = self.hasElement[k] + space.hasElement[k]
+                            unique_elem = set(elem_list)
+                            self.hasElement.update({k: list(unique_elem)})
+                    else:
+                        self.hasElement.update({k: space.hasElement[k]})
+                # Update the containsElement attribute:
+                for k in space.containsElement:
+                    if k in self.containsElement:
+                        if space.containsElement[k] == self.containsElement[k]:
+                            print('Story space-wise (contains) elements have already been updated')
+                        else:
+                            # Create a list with existing and new space's elements and choose only unique values:
+                            elem_list = self.containsElement[k] + space.containsElement[k]
+                            unique_elem = set(elem_list)
+                            self.containsElement.update({k: list(unique_elem)})
+                    else:
+                        self.containsElement.update({k: space.containsElement[k]})
+        except AttributeError:
+            pass
+        try:
             for storey in self.hasStorey:
                 for k in storey.hasElement:
                     # Update the hasElement attribute:
@@ -109,64 +133,88 @@ class Zone:
                     else:
                         if k in storey.containsElement:
                             self.containsElement.update({k: storey.containsElement[k]})
-                        else:
-                            pass
-                # Update adjacentElement attribute (exterior walls):
-                if 'Walls' in self.adjacentElement:
-                    # Create a list with existing and new story's elements and choose only unique values:
-                    wall_list = self.adjacentElement['Walls'] + storey.adjacentElement['Walls']
-                    unique_walls = set(wall_list)
-                    self.adjacentElement.update({'Walls': list(unique_walls)})
-                else:
-                    self.adjacentElement.update({'Walls': storey.adjacentElement['Walls']})
-            # Add the roof as an adjacentElement for the building:
-            if 'Roof' in self.adjacentElement:
-                print('Roof already defined as an adjacent element for this building')
-            else:
-                self.adjacentElement.update({'Roof': self.hasStorey[-1].adjacentElement['Roof']})
-            # Add the bottom floor as an adjacentElement for the building:
-            if 'Floor' in self.adjacentElement:
-                print('Bottom floor already added as an adjacent element for this building')
-            else:
-                self.adjacentElement.update({'Floor': self.hasStorey[0].adjacentElement['Floor'][0]})
-        elif isinstance(self, Storey):
-            for space in self.hasSpace:
-                # Update the hasElement attribute:
-                for k in space.hasElement:
-                    if k in self.hasElement:
-                        if space.hasElement[k] == self.hasElement[k]:
-                            print('Story space-wise elements have already been updated')
-                        else:
-                            # Create a list with existing and new story's elements and choose only unique values:
-                            elem_list = self.hasElement[k] + space.hasElement[k]
-                            unique_elem = set(elem_list)
-                            self.hasElement.update({k: list(unique_elem)})
+                # For Building objects: Update adjacentElement attribute (exterior walls):
+                if isinstance(self, Building):
+                    if 'Walls' in self.adjacentElement:
+                        # Create a list with existing and new story's elements and choose only unique values:
+                        wall_list = self.adjacentElement['Walls'] + storey.adjacentElement['Walls']
+                        unique_walls = set(wall_list)
+                        self.adjacentElement.update({'Walls': list(unique_walls)})
                     else:
-                        self.hasElement.update({k: space.hasElement[k]})
+                        self.adjacentElement.update({'Walls': storey.adjacentElement['Walls']})
+                else:
+                    pass
+            # Building objects: Add the roof and bottom floor into adjacentElement if needed:
+            if isinstance(self, Building):
+                if 'Roof' in self.adjacentElement:
+                    print('Roof already defined as an adjacent element for this building')
+                else:
+                    self.adjacentElement.update({'Roof': self.hasStorey[-1].adjacentElement['Roof']})
+                # Add the bottom floor as an adjacentElement for the building:
+                if 'Floor' in self.adjacentElement:
+                    print('Bottom floor already added as an adjacent element for this building')
+                else:
+                    self.adjacentElement.update({'Floor': self.hasStorey[0].adjacentElement['Floor'][0]})
+            else:
+                pass
+        except AttributeError:
+            pass
+        try:
+            for bldg in self.hasBuilding:
+                # Update the hasElement attribute:
+                for k in bldg.hasElement:
+                    if k in self.hasElement:
+                        if bldg.hasElement[k] == self.hasElement[k]:
+                            print('Site building-wise elements have already been updated')
+                    else:
+                        # Create a list with existing and new building's elements and choose only unique values:
+                        elem_list = self.hasElement[k] + bldg.hasElement[k]
+                        unique_elem = set(elem_list)
+                        self.hasElement.update({k: list(unique_elem)})
+                # Update the containsElement attribute:
+                for k in bldg.containsElement:
+                    if k in self.containsElement:
+                        if bldg.containsElement[k] == self.containsElement[k]:
+                            print('Site building-wise (contains) elements have already been updated')
+                        else:
+                            # Create a list with existing and new space's elements and choose only unique values:
+                            elem_list = self.containsElement[k] + bldg.containsElement[k]
+                            unique_elem = set(elem_list)
+                            self.containsElement.update({k: list(unique_elem)})
+                    else:
+                        self.containsElement.update({k: bldg.containsElement[k]})
+        except AttributeError:
+            pass
 
     def update_interfaces(self):
         # Simple function to easily update hasElement assignment
-        if isinstance(self, Site):
-            for bldg in self.hasBuilding:
-                for interface in bldg.hasInterface:
-                    if interface not in self.hasInterface:
-                        self.hasInterface.append(interface)
-                    else:
-                        pass
-        elif isinstance(self, Building):
-            for storey in self.hasStorey:
-                for interface in storey.hasInterface:
-                    if interface not in self.hasInterface:
-                        self.hasInterface.append(interface)
-                    else:
-                        pass
-        elif isinstance(self, Storey):
+        try:
             for space in self.hasSpace:
                 for interface in space.hasInterface:
                     if interface not in self.hasInterface:
                         self.hasInterface.append(interface)
                     else:
                         pass
+        except AttributeError:
+            pass
+        try:
+            for storey in self.hasStorey:
+                for interface in storey.hasInterface:
+                    if interface not in self.hasInterface:
+                        self.hasInterface.append(interface)
+                    else:
+                        pass
+        except AttributeError:
+            pass
+        try:
+            for bldg in self.hasBuilding:
+                for interface in bldg.hasInterface:
+                    if interface not in self.hasInterface:
+                        self.hasInterface.append(interface)
+                    else:
+                        pass
+        except AttributeError:
+            pass
 
     def create_zcoords(self, footprint, zcoord):
         # Input footprint polygon (either local or geodesic) and elevation:

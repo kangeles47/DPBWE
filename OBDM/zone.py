@@ -13,15 +13,23 @@ from shapely.geometry import Point, Polygon
 from interface import Interface
 
 
-# The Building Topology Ontology (BOT) is a minimal ontology for describing the core topological concepts of a building.
-# BOT representation (logic) is used to organize asset(s) description(s)
-# BOT Documentation: https://w3c-lbd-cg.github.io/bot/#
-
-
 class Zone:
+    """
+    Defines class attributes and methods for objects within the Zone class.
+
+    Notes:
+        Zone attributes and supporting methods are derived considering the Building Topology Ontology (BOT)
+        BOT is a minimal ontology for describing the core topological concepts of a building
+        BOT Documentation: https://w3c-lbd-cg.github.io/bot/#
+    """
     # Zones represent any 3D geometry
     # Sub-classes include Site, Building, Story, Space
     def __init__(self, new_zone):
+        """
+        Initializes the base attributes for objects belonging to the Zone Class.
+
+        :param new_zone: A Site, Building, Story, or Space instance
+        """
         # Zones can be adjacent to other zones:
         self.adjacentZone = []
         # Zones can intersect:
@@ -38,24 +46,28 @@ class Zone:
         else:
             pass
         self.containsZone = []
-        # Zones have elements (hasElement). The following are subproperties of hasElement:
+        # Zones have elements (hasElement). The following are sub-properties of hasElement:
         self.containsElement = {}
         self.adjacentElement = {}  # Adjacent building elements contribute to bounding the zone
         self.intersectingElement = {}  # Building elements that intersect the zone
         self.hasElement = {}
         self.has3DModel = None
         self.hasSimple3DModel = None
-        # Adding in a hasInterface element to keep track of interface objects:
-        self.hasInterface = []
+        # Attribute(s) outside BOT Ontology:
+        self.hasInterface = []  # to keep track of interface objects between zones
 
     def update_zones(self):
-        # Simple function to easily update containsZone assignment
+        """"
+        A function to easily update the containsZone assignment for any object within the Zone class.
+
+        This function begins at the bottom of the Zone class hierarchy to update the containsZone attribute.
+        """
         try:
-            for bldg in self.hasBuilding:
-                if bldg in self.containsZone:
+            for space in self.hasSpace:
+                if space in self.containsZone:
                     pass
                 else:
-                    self.containsZone.append(bldg)
+                    self.containsZone.append(space)
         except AttributeError:
             pass
         try:
@@ -67,21 +79,52 @@ class Zone:
         except AttributeError:
             pass
         try:
-            for space in self.hasSpace:
-                if space in self.containsZone:
+            for bldg in self.hasBuilding:
+                if bldg in self.containsZone:
                     pass
                 else:
-                    self.containsZone.append(space)
+                    self.containsZone.append(bldg)
         except AttributeError:
             pass
 
     def update_elements(self):
-        # Simple function to easily update hasElement assignment
-        if isinstance(self, Site):
-            for bldg in self.hasBuilding:
-                for k, v in bldg.hasElement:
-                    self.hasElement.append(v)
-        elif isinstance(self, Building):
+        """
+        A function to easily update the hasElement and containsElement assignment for any object within the Zone class.
+        A function to easily update the adjacentElement assignment for Building objects.
+
+        This function begins at the bottom of the Zone class hierarchy to update the Zone object's
+        hasElement, containsElement, (and for Buildings) adjacentElement attributes.
+        :return: Various print statement to inform the user that element(s) have already been updated (when applicable)
+        """
+        try:
+            for space in self.hasSpace:
+                # Update the hasElement attribute:
+                for k in space.hasElement:
+                    if k in self.hasElement:
+                        if space.hasElement[k] == self.hasElement[k]:
+                            print('Story space-wise elements have already been updated')
+                        else:
+                            # Create a list with existing and new story's elements and choose only unique values:
+                            elem_list = self.hasElement[k] + space.hasElement[k]
+                            unique_elem = set(elem_list)
+                            self.hasElement.update({k: list(unique_elem)})
+                    else:
+                        self.hasElement.update({k: space.hasElement[k]})
+                # Update the containsElement attribute:
+                for k in space.containsElement:
+                    if k in self.containsElement:
+                        if space.containsElement[k] == self.containsElement[k]:
+                            print('Story space-wise (contains) elements have already been updated')
+                        else:
+                            # Create a list with existing and new space's elements and choose only unique values:
+                            elem_list = self.containsElement[k] + space.containsElement[k]
+                            unique_elem = set(elem_list)
+                            self.containsElement.update({k: list(unique_elem)})
+                    else:
+                        self.containsElement.update({k: space.containsElement[k]})
+        except AttributeError:
+            pass
+        try:
             for story in self.hasStory:
                 for k in story.hasElement:
                     # Update the hasElement attribute:
@@ -107,73 +150,106 @@ class Zone:
                     else:
                         if k in story.containsElement:
                             self.containsElement.update({k: story.containsElement[k]})
-                        else:
-                            pass
-                # Update adjacentElement attribute (exterior walls):
-                if 'Walls' in self.adjacentElement:
-                    # Create a list with existing and new story's elements and choose only unique values:
-                    wall_list = self.adjacentElement['Walls'] + story.adjacentElement['Walls']
-                    unique_walls = set(wall_list)
-                    self.adjacentElement.update({'Walls': list(unique_walls)})
-                else:
-                    self.adjacentElement.update({'Walls': story.adjacentElement['Walls']})
-            # Add the roof as an adjacentElement for the building:
-            if 'Roof' in self.adjacentElement:
-                print('Roof already defined as an adjacent element for this building')
-            else:
-                self.adjacentElement.update({'Roof': self.hasStory[-1].adjacentElement['Roof']})
-            # Add the bottom floor as an adjacentElement for the building:
-            if 'Floor' in self.adjacentElement:
-                print('Bottom floor already added as an adjacent element for this building')
-            else:
-                self.adjacentElement.update({'Floor': self.hasStory[0].adjacentElement['Floor'][0]})
-        elif isinstance(self, Story):
-            for space in self.hasSpace:
-                # Update the hasElement attribute:
-                for k in space.hasElement:
-                    if k in self.hasElement:
-                        if space.hasElement[k] == self.hasElement[k]:
-                            print('Story space-wise elements have already been updated')
-                        else:
-                            # Create a list with existing and new story's elements and choose only unique values:
-                            elem_list = self.hasElement[k] + space.hasElement[k]
-                            unique_elem = set(elem_list)
-                            self.hasElement.update({k: list(unique_elem)})
+                # For Building objects: Update adjacentElement attribute (exterior walls):
+                if isinstance(self, Building):
+                    if 'Walls' in self.adjacentElement:
+                        # Create a list with existing and new story's elements and choose only unique values:
+                        wall_list = self.adjacentElement['Walls'] + story.adjacentElement['Walls']
+                        unique_walls = set(wall_list)
+                        self.adjacentElement.update({'Walls': list(unique_walls)})
                     else:
-                        self.hasElement.update({k: space.hasElement[k]})
+                        self.adjacentElement.update({'Walls': story.adjacentElement['Walls']})
+                else:
+                    pass
+            # Building objects: Add the roof and bottom floor into adjacentElement if needed:
+            if isinstance(self, Building):
+                if 'Roof' in self.adjacentElement:
+                    print('Roof already defined as an adjacent element for this building')
+                else:
+                    self.adjacentElement.update({'Roof': self.hasStory[-1].adjacentElement['Roof']})
+                # Add the bottom floor as an adjacentElement for the building:
+                if 'Floor' in self.adjacentElement:
+                    print('Bottom floor already added as an adjacent element for this building')
+                else:
+                    self.adjacentElement.update({'Floor': self.hasStory[0].adjacentElement['Floor'][0]})
+            else:
+                pass
+        except AttributeError:
+            pass
+        try:
+            for bldg in self.hasBuilding:
+                # Update the hasElement attribute:
+                for k in bldg.hasElement:
+                    if k in self.hasElement:
+                        if bldg.hasElement[k] == self.hasElement[k]:
+                            print('Site building-wise elements have already been updated')
+                    else:
+                        # Create a list with existing and new building's elements and choose only unique values:
+                        elem_list = self.hasElement[k] + bldg.hasElement[k]
+                        unique_elem = set(elem_list)
+                        self.hasElement.update({k: list(unique_elem)})
+                # Update the containsElement attribute:
+                for k in bldg.containsElement:
+                    if k in self.containsElement:
+                        if bldg.containsElement[k] == self.containsElement[k]:
+                            print('Site building-wise (contains) elements have already been updated')
+                        else:
+                            # Create a list with existing and new space's elements and choose only unique values:
+                            elem_list = self.containsElement[k] + bldg.containsElement[k]
+                            unique_elem = set(elem_list)
+                            self.containsElement.update({k: list(unique_elem)})
+                    else:
+                        self.containsElement.update({k: bldg.containsElement[k]})
+        except AttributeError:
+            pass
 
     def update_interfaces(self):
-        # Simple function to easily update hasElement assignment
-        if isinstance(self, Site):
-            for bldg in self.hasBuilding:
-                for interface in bldg.hasInterface:
-                    if interface not in self.hasInterface:
-                        self.hasInterface.append(interface)
-                    else:
-                        pass
-        elif isinstance(self, Building):
-            for story in self.hasStory:
-                for interface in story.hasInterface:
-                    if interface not in self.hasInterface:
-                        self.hasInterface.append(interface)
-                    else:
-                        pass
-        elif isinstance(self, Story):
+        """
+        A function that updates the Zone object's hasInterface attribute.
+        This function begins at the bottom of the Zone class hierarchy to update the hasInterface attribute.
+        """
+        try:
             for space in self.hasSpace:
                 for interface in space.hasInterface:
                     if interface not in self.hasInterface:
                         self.hasInterface.append(interface)
                     else:
                         pass
+        except AttributeError:
+            pass
+        try:
+            for story in self.hasStory:
+                for interface in story.hasInterface:
+                    if interface not in self.hasInterface:
+                        self.hasInterface.append(interface)
+                    else:
+                        pass
+        except AttributeError:
+            pass
+        try:
+            for bldg in self.hasBuilding:
+                for interface in bldg.hasInterface:
+                    if interface not in self.hasInterface:
+                        self.hasInterface.append(interface)
+                    else:
+                        pass
+        except AttributeError:
+            pass
 
-    def create_zcoords(self, footprint, zcoord):
+    def create_zcoords(self, footprint, z):
+        """
+        A simple function to add z coordinates to footprint geometries with points in (x,y)
+        :param footprint: A Shapely Polygon object with (x,y) coordinates
+        :param z: The z value that will be added to footprint coordinates (x,y) to (x,y,z)
+        :return: A list of z coordinates that can be used to create a new Shapely Polygon
+        """
         # Input footprint polygon (either local or geodesic) and elevation:
         zs = []
         # Create z coordinates for the given building footprint and elevation:
         xs, ys = footprint.exterior.xy
         for pt in range(0, len(xs)):
             # Define z-coordinates for bottom floor of each story:
-            zs.append(Point(xs[pt], ys[pt], zcoord))
+            zs.append(Point(xs[pt], ys[pt], z))
         return zs
 
 
