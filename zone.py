@@ -41,10 +41,10 @@ class Zone:
             pass
         self.containsZone = []
         # Zones have elements (hasElement). The following are subproperties of hasElement:
-        self.containsElement = {}
-        self.adjacentElement = {}  # Adjacent building elements contribute to bounding the zone
+        self.containsElement = {'Walls': [], 'Floor': [], 'Ceiling': [], 'Beam': [], 'Column': []}
+        self.adjacentElement = {'Walls': [], 'Floor': [], 'Roof': [], 'Window': []}
         self.intersectingElement = {}  # Building elements that intersect the zone
-        self.hasElement = {}
+        self.hasElement = {'Walls': [], 'Floor': [], 'Ceiling': [], 'Beam': [], 'Column': [], 'Roof': [], 'Window': []}
         self.has3DModel = None
         self.hasSimple3DModel = None
         # Adding in a hasInterface element to keep track of interface objects:
@@ -146,12 +146,12 @@ class Zone:
                     pass
             # Building objects: Add the roof and bottom floor into adjacentElement if needed:
             if isinstance(self, Building):
-                if 'Roof' in self.adjacentElement:
+                if len(self.adjacentElement['Roof']) == 1:
                     print('Roof already defined as an adjacent element for this building')
                 else:
                     self.adjacentElement.update({'Roof': self.hasStory[-1].adjacentElement['Roof']})
                 # Add the bottom floor as an adjacentElement for the building:
-                if 'Floor' in self.adjacentElement:
+                if len(self.adjacentElement['Floor']) == 1:
                     print('Bottom floor already added as an adjacent element for this building')
                 else:
                     self.adjacentElement.update({'Floor': self.hasStory[0].adjacentElement['Floor'][0]})
