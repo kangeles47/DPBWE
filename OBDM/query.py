@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------------
-# Name:             queries.py
+# Name:             query.py
 # Purpose:          Provide example queries to access building information using the ontology-based data model
 #
 # Author:           Karen Irely Angeles (kangeles@nd.edu)
