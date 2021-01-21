@@ -303,7 +303,7 @@ class Building(Zone):
         self.hasLocation = {'Address': None, 'State': None, 'County': None, 'Geodesic': None}
         self.hasGeometry = {'Total Floor Area': None, 'Footprint': {'type': None, 'geodesic': None, 'local': None},
                             'Height': None, '3D Geometry': {'geodesic': [], 'local': []},
-                            'Facade': {'geodesic': [], 'local': []}, 'TPU_surfaces': {'geodesic': [], 'local': []}}
+                            'Facade': {'geodesic': [], 'local': []}}
         self.hasOrientation = None
         self.hasOutputVariable = {'repair cost': None, 'downtime': None, 'fatalities': None}
         self.hasFundamentalPeriod = {'x': None, 'y': None}
