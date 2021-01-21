@@ -73,5 +73,5 @@ def run_example3():
 site = run_example1()
 # Example 2: Adding parcel data to a Building object:
 bldg = run_example2()
-# Example 3: Adding components to a Zone object and attributes to components
+# Example 3: Adding components to a Zone object (relational attributes) and attributes to components
 bldg2 = run_example3()
