@@ -275,12 +275,12 @@ class SurveyData:
         else:
             print('Survey year currently not supported')
         # Assign wall type description to every exterior wall for the parcel and add a Window SubElement:
-        for storey in parcel.hasStorey:
-            for wall in storey.hasElement['Walls']:
+        for story in parcel.hasStory:
+            for wall in story.hasElement['Walls']:
                 wall.hasType = wtype
                 wall.hasSubElement = Window()
         # Roof type descriptions:
-        roof_element = parcel.hasStorey[-1].hasElement['Roof'][0]
+        roof_element = parcel.hasStory[-1].hasElement['Roof'][0]
         if data_yr == 1989:
             if roof_choice == 1:
                 roof_element.hasCover = 'Wooden materials'
@@ -358,8 +358,8 @@ class SurveyData:
                 win_type = 'No windows'
             # Add windows to wall elements:
             if win_choice != 4:
-                for storey in parcel.hasStorey:
-                    wall = storey.adjacentElement['Wall']
+                for story in parcel.hasStory:
+                    wall = story.adjacentElement['Wall']
                     wall.hasSubElement = 'Window: ' + win_type
             # Building glass percentage:
             glsspc_weights = []
@@ -405,19 +405,19 @@ class SurveyData:
                 # Use the building occupancy to identify the appropriate subset of reference buildings:
                 if parcel.hasOccupancy == 'Office' or parcel.hasOccupancy == 'Financial':
                     # All reference buildings have the same floor-to-floor height:
-                    for i in range(0, len(parcel.hasStorey)):
-                        parcel.hasStorey[i].hasGeometry['Height'] = 4.0*3.28084  # [ft]
-                        parcel.hasStorey[i].hasElevation = [4 * i *3.28084, 4 * (i + 1)*3.28084]
+                    for i in range(0, len(parcel.hasStory)):
+                        parcel.hasStory[i].hasGeometry['Height'] = 4.0*3.28084  # [ft]
+                        parcel.hasStory[i].hasElevation = [4 * i *3.28084, 4 * (i + 1)*3.28084]
                     # Building height:
-                    parcel.hasGeometry['Height'] = len(parcel.hasStorey) * 4*3.28084  # [ft]
+                    parcel.hasGeometry['Height'] = len(parcel.hasStory) * 4*3.28084  # [ft]
                     if window_flag:
-                        if len(parcel.hasStorey) == 1:  # Small office building - 1 floor
+                        if len(parcel.hasStory) == 1:  # Small office building - 1 floor
                             window_wall_ratio = [0.244, 0.198, 0.198, 0.198]
                             window_wall_ratio_total = 0.212
-                        elif 1 < len(parcel.hasStorey) < 11:  # Medium office building - 3 floors, 4982 m^2 floor area
+                        elif 1 < len(parcel.hasStory) < 11:  # Medium office building - 3 floors, 4982 m^2 floor area
                             window_wall_ratio = [0.33, 0.33, 0.33, 0.33]
                             window_wall_ratio_total = 0.33
-                        elif len(parcel.hasStorey) >= 11:  # Large office building - 12 floors, 46,320 m^2
+                        elif len(parcel.hasStory) >= 11:  # Large office building - 12 floors, 46,320 m^2
                             window_wall_ratio = [0.244, 0.198, 0.198, 0.198]
                             window_wall_ratio_total = 0.212
                     else:
@@ -455,6 +455,6 @@ class SurveyData:
         else:
             print('Non-engineered residential buildings not yet supported: using dummy data')
             # All reference buildings have the same floor-to-floor height:
-            for i in range(0, len(parcel.hasStorey)):
-                parcel.hasStorey[i].hasGeometry['Height'] = 4.0 * 3.28084  # [ft]
-                parcel.hasStorey[i].hasElevation = [4 * i * 3.28084, 4 * (i + 1) * 3.28084]
+            for i in range(0, len(parcel.hasStory)):
+                parcel.hasStory[i].hasGeometry['Height'] = 4.0 * 3.28084  # [ft]
+                parcel.hasStory[i].hasElevation = [4 * i * 3.28084, 4 * (i + 1) * 3.28084]

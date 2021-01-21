@@ -98,15 +98,15 @@ class FBC(BldgCode):
         # Knowing the code edition, populate this building-level code-informed attributes for the parcel:
         if parcel.hasLocation['State'] == 'FL':
             if 'FBC' in self.hasEdition or self.hasEdition == '1988 SBC':
-                # minimum ceiling height is 7 ft 6 inches - Add to each Storey in Building:
-                for i in range(0, len(parcel.hasStorey)):
-                    parcel.hasStorey[i].hasElement['Ceiling'][0].hasElevation = parcel.hasStorey[i].hasElevation[0] + 7.5
-                    parcel.hasStorey[i].hasElement['Ceiling'][0].hasGeometry['Height'] = 7.5
+                # minimum ceiling height is 7 ft 6 inches - Add to each Story in Building:
+                for i in range(0, len(parcel.hasStory)):
+                    parcel.hasStory[i].hasElement['Ceiling'][0].hasElevation = parcel.hasStory[i].hasElevation[0] + 7.5
+                    parcel.hasStory[i].hasElement['Ceiling'][0].hasGeometry['Height'] = 7.5
             elif 'CABO' in self.hasEdition:
-                # minimum ceiling height is 7 ft 6 inches - Add to each Storey in Building:
-                for i in range(0, len(parcel.hasStorey)):
-                    parcel.hasStorey[i].hasElement['Ceiling'][0].hasElevation = parcel.hasStorey[i].hasElevation[0] + 7.5
-                    parcel.hasStorey[i].hasElement['Ceiling'][0].hasGeometry['Height'] = 7.5
+                # minimum ceiling height is 7 ft 6 inches - Add to each Story in Building:
+                for i in range(0, len(parcel.hasStory)):
+                    parcel.hasStory[i].hasElement['Ceiling'][0].hasElevation = parcel.hasStory[i].hasElevation[0] + 7.5
+                    parcel.hasStory[i].hasElement['Ceiling'][0].hasGeometry['Height'] = 7.5
             else:
                 print('Building level attributes currently not supported')
         else:
@@ -115,7 +115,7 @@ class FBC(BldgCode):
     def roof_attributes(self, edition, parcel, survey):
 
         #Populate roof attributes for this instance (parcel)
-        roof_element = parcel.hasStorey[-1].hasElement['Roof'][0]
+        roof_element = parcel.hasStory[-1].hasElement['Roof'][0]
         if edition == '2001 FBC' and survey == 'CBECS' and parcel.hasYearBuilt < 2003:
             # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
             if roof_element.hasCover == 'Built-up' or roof_element.hasCover == 'Concrete' or roof_element.hasCover == 'Plastic/rubber/synthetic sheeting' or roof_element.hasCover == 'Metal surfacing':
@@ -216,7 +216,7 @@ class ASCE7(BldgCode):
         # Assign MWFRS pressures for the roof:
         # Set up parameters to access pressures:
         # (1) Roof pitch
-        roof_elem = bldg.hasStorey[-1].hasElement['Roof'][0]
+        roof_elem = bldg.hasStory[-1].hasElement['Roof'][0]
         if isinstance(roof_elem.hasPitch, str):
             if roof_elem.hasPitch == 'flat':
                 # Assign angle based on 2:12 slope
@@ -493,10 +493,10 @@ class ASCE7(BldgCode):
         # Create an instance of PressureCalc:
         pressures = PressureCalc()
         # Assign C&C pressures given the component type and its location (zone):
-        for storey in bldg.hasStorey:
+        for story in bldg.hasStory:
             # Create a list of all Wall C&C types within this story
             wcc_lst = pd.DataFrame(columns=['Element', 'Type'])
-            for elem in storey.adjacentElement['Walls']:
+            for elem in story.adjacentElement['Walls']:
                 if elem.isExterior and elem.inLoadPath:
                     # Figure out what ctype the wall component is:
                     ctype = pressures.get_ctype(elem)
@@ -508,8 +508,8 @@ class ASCE7(BldgCode):
             zone_pressures = pd.DataFrame(columns=['Type', 'Pressures'])
             for ctype in wcc_lst['Type'].unique():
                 # (+)/(-) pressures:
-                psim = self.get_wcc_pressure(edition, bldg.hasGeometry['Height'], storey.hasGeometry['Height'], ctype,
-                                        exposure, wind_speed, bldg.hasStorey[-1].hasElement['Roof'][0].hasPitch)
+                psim = self.get_wcc_pressure(edition, bldg.hasGeometry['Height'], story.hasGeometry['Height'], ctype,
+                                        exposure, wind_speed, bldg.hasStory[-1].hasElement['Roof'][0].hasPitch)
                 # Incorporate pressure minimums:
                 if bldg.hasYearBuilt > 2010 and (abs(psim) < 16):  # [lb]/[ft^2]
                     if psim < 0:
@@ -641,7 +641,7 @@ class ASCE7(BldgCode):
         # Create an instance of PressureCalc:
         pressures = PressureCalc()
         # Assign C&C pressures given the component type and its location (zone):
-        roof_elem = bldg.hasStorey[-1].hasElement['Roof'][0]
+        roof_elem = bldg.hasStory[-1].hasElement['Roof'][0]
         # Create a list of all C&C types within the roof:
         rcc_lst = pd.DataFrame(columns=['Element', 'Type'])
         # Figure out what ctype the main roof component is:
@@ -649,7 +649,7 @@ class ASCE7(BldgCode):
         rcc_lst = rcc_lst.append({'Element': roof_elem, 'Type': ctype}, ignore_index=True)
         # Figure out what the ctype is for any additional roof components:
         if roof_elem.hasSubElement is None:
-            bldg.hasStorey[-1].hasElement['Roof'][0].hasCapacity['type'].append('C&C Pressure')
+            bldg.hasStory[-1].hasElement['Roof'][0].hasCapacity['type'].append('C&C Pressure')
             # Figure out what ctype the roof cover is:
             ctype = pressures.get_ctype(roof_elem)
             rcc_lst = rcc_lst.append({'Element': roof_elem, 'Type': ctype}, ignore_index=True)
