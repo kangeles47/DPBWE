@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------------------
 # Name:             example.py
-# Purpose:          Provide a simple example familiarize users with the ontology-based data model
+# Purpose:          Provide a simple examples to familiarize users with the ontology-based data model
 #
 # Author:           Karen Irely Angeles (kangeles@nd.edu)
 # Affiliation:      Department of Civil and Environmental Engineering and Earth Sciences,
