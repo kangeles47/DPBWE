@@ -59,7 +59,6 @@ class Zone:
         """"
         A function to easily update the containsZone assignment for any object within the Zone class.
 
-        This function begins at the bottom of the Zone class hierarchy to update the containsZone attribute.
         """
         if isinstance(self, Site):
             for bldg in self.hasBuilding:
@@ -106,7 +105,33 @@ class Zone:
         hasElement, containsElement, (and for Buildings) adjacentElement attributes.
         :return: Various print statement to inform the user that element(s) have already been updated (when applicable)
         """
-        try:
+        # All Zone classes: Update hasElement attribute first by looking at:
+        # adjacentElement and containsElement attributes:
+        for k in self.adjacentElement:
+            if k in self.hasElement:
+                for v in self.adjacentElement[k]:
+                    if v in self.hasElement:
+                        pass
+                    else:
+                        self.hasElement[k].append(v)
+            else:
+                # Create a list with existing and missing elements and add only unique values:
+                elem_list = self.hasElement[k] + self.adjacentElement[k]
+                unique_elem = set(elem_list)
+                self.hasElement.update({k: list(unique_elem)})
+        for k in self.containsElement:
+            if k in self.hasElement:
+                for v in self.containsElement[k]:
+                    if v in self.hasElement:
+                        pass
+                    else:
+                        self.hasElement[k].append(v)
+            else:
+                # Create a list with existing and missing elements and add only unique values:
+                elem_list = self.hasElement[k] + self.containsElement[k]
+                unique_elem = set(elem_list)
+                self.hasElement.update({k: list(unique_elem)})
+        if isinstance(self, Story):
             for space in self.hasSpace:
                 # Update the hasElement attribute:
                 for k in space.hasElement:
@@ -132,9 +157,7 @@ class Zone:
                             self.containsElement.update({k: list(unique_elem)})
                     else:
                         self.containsElement.update({k: space.containsElement[k]})
-        except AttributeError:
-            pass
-        try:
+        elif isinstance(self, Building):
             for story in self.hasStory:
                 for k in story.hasElement:
                     # Update the hasElement attribute:
@@ -160,39 +183,31 @@ class Zone:
                     else:
                         if k in story.containsElement:
                             self.containsElement.update({k: story.containsElement[k]})
-                # For Building objects: Update adjacentElement attribute (exterior walls):
-                if isinstance(self, Building):
-                    if 'Walls' in self.adjacentElement:
-                        # Create a list with existing and new story's elements and choose only unique values:
-                        wall_list = self.adjacentElement['Walls'] + story.adjacentElement['Walls']
-                        unique_walls = set(wall_list)
-                        self.adjacentElement.update({'Walls': list(unique_walls)})
-                    else:
-                        self.adjacentElement.update({'Walls': story.adjacentElement['Walls']})
+                # Update adjacentElement attribute (exterior walls):
+                if 'Walls' in self.adjacentElement:
+                    # Create a list with existing and new story's elements and choose only unique values:
+                    wall_list = self.adjacentElement['Walls'] + story.adjacentElement['Walls']
+                    unique_walls = set(wall_list)
+                    self.adjacentElement.update({'Walls': list(unique_walls)})
                 else:
-                    pass
-            # Building objects: Add the roof and bottom floor into adjacentElement if needed:
-            if isinstance(self, Building):
-                if len(self.adjacentElement['Roof']) == 1:
-                    print('Roof already defined as an adjacent element for this building')
-                else:
-                    try:
-                        self.adjacentElement.update({'Roof': self.hasStory[-1].adjacentElement['Roof']})
-                    except IndexError:
-                        pass
-                # Add the bottom floor as an adjacentElement for the building:
-                if len(self.adjacentElement['Floor']) == 1:
-                    print('Bottom floor already added as an adjacent element for this building')
-                else:
-                    try:
-                        self.adjacentElement.update({'Floor': self.hasStory[0].adjacentElement['Floor'][0]})
-                    except IndexError:
-                        pass
+                    self.adjacentElement.update({'Walls': story.adjacentElement['Walls']})
+            # Add the roof and bottom floor into adjacentElement if needed:
+            if len(self.adjacentElement['Roof']) == 1:
+                print('Roof already defined as an adjacent element for this building')
             else:
-                pass
-        except AttributeError:
-            pass
-        try:
+                try:
+                    self.adjacentElement.update({'Roof': self.hasStory[-1].adjacentElement['Roof']})
+                except IndexError:
+                    pass
+            # Add the bottom floor as an adjacentElement for the building:
+            if len(self.adjacentElement['Floor']) == 1:
+                print('Bottom floor already added as an adjacent element for this building')
+            else:
+                try:
+                    self.adjacentElement.update({'Floor': self.hasStory[0].adjacentElement['Floor'][0]})
+                except IndexError:
+                    pass
+        elif isinstance(self, Site):
             for bldg in self.hasBuilding:
                 # Update the hasElement attribute:
                 for k in bldg.hasElement:
@@ -216,8 +231,6 @@ class Zone:
                             self.containsElement.update({k: list(unique_elem)})
                     else:
                         self.containsElement.update({k: bldg.containsElement[k]})
-        except AttributeError:
-            pass
 
     def update_interfaces(self):
         """
