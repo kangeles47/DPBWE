@@ -22,20 +22,20 @@ from code_pressures import PressureCalc
 
 class Zone:
     # Zones represent any 3D geometry
-    # Sub-classes include Site, Building, Storey, Space
+    # Sub-classes include Site, Building, Story, Space
     def __init__(self, new_zone):
         # Zones can be adjacent to other zones:
         self.adjacentZone = []
         # Zones can intersect:
         self.intersectsZone = []
         # Zones contain themselves and can contain other zones
-        # hasBuilding, hasStorey, and hasSpace are sub-properties of containsZone
+        # hasBuilding, hasStory, and hasSpace are sub-properties of containsZone
         if isinstance(new_zone, Site):
             self.hasBuilding = []
         elif isinstance(new_zone, Building):
-            self.hasStorey = []
+            self.hasStory = []
             self.hasSpace = []
-        elif isinstance(new_zone, Storey):
+        elif isinstance(new_zone, Story):
             self.hasSpace = []
         else:
             pass
@@ -61,11 +61,11 @@ class Zone:
         except AttributeError:
             pass
         try:
-            for storey in self.hasStorey:
-                if storey in self.containsZone:
+            for story in self.hasStory:
+                if story in self.containsZone:
                     pass
                 else:
-                    self.containsZone.append(storey)
+                    self.containsZone.append(story)
         except AttributeError:
             pass
         try:
@@ -108,40 +108,40 @@ class Zone:
         except AttributeError:
             pass
         try:
-            for storey in self.hasStorey:
-                for k in storey.hasElement:
+            for story in self.hasStory:
+                for k in story.hasElement:
                     # Update the hasElement attribute:
                     if k in self.hasElement:
-                        if storey.hasElement[k] == self.hasElement[k]:
+                        if story.hasElement[k] == self.hasElement[k]:
                             print('Building story-wise elements have already been updated')
                         else:
                             # Create a list with existing and new story's elements and choose only unique values:
-                            elem_list = self.hasElement[k] + storey.hasElement[k]
+                            elem_list = self.hasElement[k] + story.hasElement[k]
                             unique_elem = set(elem_list)
                             self.hasElement.update({k: list(unique_elem)})
                     else:
-                        self.hasElement.update({k: storey.hasElement[k]})
+                        self.hasElement.update({k: story.hasElement[k]})
                     # Update the containsElement attribute:
                     if k in self.containsElement:
-                        if storey.containsElement[k] == self.containsElement[k]:
+                        if story.containsElement[k] == self.containsElement[k]:
                             print('Building story-wise (contains) elements have already been updated')
                         else:
                             # Create a list with existing and new story's elements and choose only unique values:
-                            elem_list = self.containsElement[k] + storey.containsElement[k]
+                            elem_list = self.containsElement[k] + story.containsElement[k]
                             unique_elem = set(elem_list)
                             self.containsElement.update({k: list(unique_elem)})
                     else:
-                        if k in storey.containsElement:
-                            self.containsElement.update({k: storey.containsElement[k]})
+                        if k in story.containsElement:
+                            self.containsElement.update({k: story.containsElement[k]})
                 # For Building objects: Update adjacentElement attribute (exterior walls):
                 if isinstance(self, Building):
                     if 'Walls' in self.adjacentElement:
                         # Create a list with existing and new story's elements and choose only unique values:
-                        wall_list = self.adjacentElement['Walls'] + storey.adjacentElement['Walls']
+                        wall_list = self.adjacentElement['Walls'] + story.adjacentElement['Walls']
                         unique_walls = set(wall_list)
                         self.adjacentElement.update({'Walls': list(unique_walls)})
                     else:
-                        self.adjacentElement.update({'Walls': storey.adjacentElement['Walls']})
+                        self.adjacentElement.update({'Walls': story.adjacentElement['Walls']})
                 else:
                     pass
             # Building objects: Add the roof and bottom floor into adjacentElement if needed:
@@ -149,12 +149,12 @@ class Zone:
                 if 'Roof' in self.adjacentElement:
                     print('Roof already defined as an adjacent element for this building')
                 else:
-                    self.adjacentElement.update({'Roof': self.hasStorey[-1].adjacentElement['Roof']})
+                    self.adjacentElement.update({'Roof': self.hasStory[-1].adjacentElement['Roof']})
                 # Add the bottom floor as an adjacentElement for the building:
                 if 'Floor' in self.adjacentElement:
                     print('Bottom floor already added as an adjacent element for this building')
                 else:
-                    self.adjacentElement.update({'Floor': self.hasStorey[0].adjacentElement['Floor'][0]})
+                    self.adjacentElement.update({'Floor': self.hasStory[0].adjacentElement['Floor'][0]})
             else:
                 pass
         except AttributeError:
@@ -198,8 +198,8 @@ class Zone:
         except AttributeError:
             pass
         try:
-            for storey in self.hasStorey:
-                for interface in storey.hasInterface:
+            for story in self.hasStory:
+                for interface in story.hasInterface:
                     if interface not in self.hasInterface:
                         self.hasInterface.append(interface)
                     else:
@@ -283,14 +283,14 @@ class Building(Zone):
             num_stories = int(num_stories) + 1
         else:
             num_stories = int(num_stories)
-        # Create Storey instances:
+        # Create Story instances:
         for i in range(0, num_stories):
-            # Buildings have Storeys:
-            self.hasStorey.append(Storey())
+            # Buildings have Storys:
+            self.hasStory.append(Story())
         # Create Interface instances to relate stories:
-        for stry in range(0, len(self.hasStorey) - 1):
-            self.hasInterface.append(Interface([self.hasStorey[stry], self.hasStorey[stry + 1]]))
-        # Buildings contain all of the zones, spaces, elements, etc. within each storey:
+        for stry in range(0, len(self.hasStory) - 1):
+            self.hasInterface.append(Interface([self.hasStory[stry], self.hasStory[stry + 1]]))
+        # Buildings contain all of the zones, spaces, elements, etc. within each story:
         self.update_zones()
         # Attributes outside of BOT:
         self.hasGeometry['Total Floor Area'] = float(area)
@@ -385,11 +385,11 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 new_zpts = []
                 roof_zs = []
                 # Create z coordinates for each story:
-                for story_num in range(0, len(self.hasStorey)):
-                    zcoord = self.hasStorey[story_num].hasElevation[0]
+                for story_num in range(0, len(self.hasStory)):
+                    zcoord = self.hasStory[story_num].hasElevation[0]
                     zs = self.create_zcoords(self.hasGeometry['Footprint'][key], zcoord)
-                    if story_num == len(self.hasStorey) - 1:
-                        zcoord_roof = self.hasStorey[story_num].hasElevation[-1]
+                    if story_num == len(self.hasStory) - 1:
+                        zcoord_roof = self.hasStory[story_num].hasElevation[-1]
                         roof_zs = self.create_zcoords(self.hasGeometry['Footprint'][key], zcoord_roof)
                     else:
                         pass
@@ -404,14 +404,14 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     # Add the bottom and top planes for the Story:
                     plane_poly1 = Polygon(new_zpts[plane])
                     plane_poly2 = Polygon(new_zpts[plane + 1])
-                    self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(plane_poly1)
-                    self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(plane_poly2)
+                    self.hasStory[plane].hasGeometry['3D Geometry'][key].append(plane_poly1)
+                    self.hasStory[plane].hasGeometry['3D Geometry'][key].append(plane_poly2)
                     for zpt in range(0, len(new_zpts[plane]) - 1):
                         # Create the surface polygon:
                         surf_poly = Polygon([new_zpts[plane][zpt], new_zpts[plane + 1][zpt], new_zpts[plane + 1][zpt + 1], new_zpts[plane][zpt + 1]])
-                        # Save the polygon to the storey's geometry:
-                        self.hasStorey[plane].hasGeometry['3D Geometry'][key].append(surf_poly)
-                        self.hasStorey[plane].hasGeometry['Facade'][key].append(surf_poly)
+                        # Save the polygon to the story's geometry:
+                        self.hasStory[plane].hasGeometry['3D Geometry'][key].append(surf_poly)
+                        self.hasStory[plane].hasGeometry['Facade'][key].append(surf_poly)
                         # Extract xs, ys, and zs and plot
                         surf_xs = []
                         surf_ys = []
@@ -566,7 +566,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
 
     def parcel_elements(self, parcel, zone_flag):
         # Generate parcel elements with (default) attributes:
-        # Floor, Ceiling, and Roof Instances - These are conducted by storey to facilitate "hasElement" assignment
+        # Floor, Ceiling, and Roof Instances - These are conducted by story to facilitate "hasElement" assignment
         # Exterior Walls - Parcel approach: Geometries are derived considering ASCE 7 C&C zone locations:
         # Exterior Walls - Other approach: Geometries are derived using footprint vertices
         if zone_flag:
@@ -576,27 +576,27 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         else:
             pass
         # Assume that walls span one story for now:
-        for storey in range(0, len(parcel.hasStorey)):
+        for story in range(0, len(parcel.hasStory)):
             # Create an empty list to hold all elements:
             element_dict = {'Floor': [], 'Walls': [], 'Ceiling': [], 'Roof': []}
             # Generate floor and ceiling instance(s):
-            if storey == 0:
+            if story == 0:
                 new_floor1 = Floor()
-                new_floor1.hasElevation = parcel.hasStorey[storey].hasElevation[0]
+                new_floor1.hasElevation = parcel.hasStory[story].hasElevation[0]
                 element_dict['Floor'].append(new_floor1)
             else:
                 # Reference the prior story's top floor:
-                floor1 = parcel.hasStorey[storey - 1].hasElement['Floor'][1]
+                floor1 = parcel.hasStory[story - 1].hasElement['Floor'][1]
                 element_dict['Floor'].append(floor1)
             # Top floor:
-            if storey == len(parcel.hasStorey) - 1:
+            if story == len(parcel.hasStory) - 1:
                 new_roof = Roof()
-                # Add roof to the storey:
-                parcel.hasStorey[storey].adjacentElement.update({'Roof': new_roof})
+                # Add roof to the story:
+                parcel.hasStory[story].adjacentElement.update({'Roof': new_roof})
                 element_dict['Roof'].append(new_roof)
             else:
                 new_floor2 = Floor()
-                new_floor2.hasElevation = parcel.hasStorey[storey].hasElevation[1]
+                new_floor2.hasElevation = parcel.hasStory[story].hasElevation[1]
                 # new_floor_list.append(new_floor2)
                 element_dict['Floor'].append(new_floor2)
             # Create a new ceiling for the floor:
@@ -613,7 +613,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         ext_wall = Wall()
                         ext_wall.isExterior = True
                         ext_wall.inLoadPath = True
-                        ext_wall.hasGeometry['Height'] = parcel.hasStorey[storey].hasGeometry['Height']
+                        ext_wall.hasGeometry['Height'] = parcel.hasStory[story].hasGeometry['Height']
                         ext_wall.hasGeometry['1D Geometry']['local'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[
                             ind, col + 1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
                         ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry'].length
@@ -625,7 +625,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     ext_wall = Wall()
                     ext_wall.isExterior = True
                     ext_wall.inLoadPath = True
-                    ext_wall.hasGeometry['Height'] = parcel.hasStorey[storey].hasGeometry['Height']
+                    ext_wall.hasGeometry['Height'] = parcel.hasStory[story].hasGeometry['Height']
                     ext_wall.hasGeometry['1D Geometry']['local'] = LineString([(xf[pt], yf[pt]), (xf[pt+1], yf[pt+1])])  # Line segment with start/end coordinates of wall (respetive to building origin)
                     ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry']['local'].length
                     new_wall_list.append(ext_wall)
@@ -635,16 +635,16 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             for w in range(0, len(new_wall_list) - 1):
                 # Create new Interface instance
                 new_interface = Interface([new_wall_list[w], new_wall_list[w + 1]])
-                parcel.hasStorey[storey].hasInterface.append(new_interface)
-            # Add all elements to the storey's "hasElement" attribute:
-            parcel.hasStorey[storey].containsElement.update({'Ceiling': element_dict['Ceiling']})
-            parcel.hasStorey[storey].adjacentElement.update({'Floor': element_dict['Floor']})
-            parcel.hasStorey[storey].adjacentElement.update({'Walls': element_dict['Walls']})
-            # Update hasElement attribute for the storey:
-            parcel.hasStorey[storey].hasElement.update(element_dict)
+                parcel.hasStory[story].hasInterface.append(new_interface)
+            # Add all elements to the story's "hasElement" attribute:
+            parcel.hasStory[story].containsElement.update({'Ceiling': element_dict['Ceiling']})
+            parcel.hasStory[story].adjacentElement.update({'Floor': element_dict['Floor']})
+            parcel.hasStory[story].adjacentElement.update({'Walls': element_dict['Walls']})
+            # Update hasElement attribute for the story:
+            parcel.hasStory[story].hasElement.update(element_dict)
 
 
-class Storey(Zone):
+class Story(Zone):
     # Sub-class of Zone
     def __init__(self):
         # Populate zone properties:
