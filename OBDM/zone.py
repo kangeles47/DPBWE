@@ -61,30 +61,41 @@ class Zone:
 
         This function begins at the bottom of the Zone class hierarchy to update the containsZone attribute.
         """
-        try:
-            for space in self.hasSpace:
-                if space in self.containsZone:
-                    pass
-                else:
-                    self.containsZone.append(space)
-        except AttributeError:
-            pass
-        try:
-            for story in self.hasStory:
-                if story in self.containsZone:
-                    pass
-                else:
-                    self.containsZone.append(story)
-        except AttributeError:
-            pass
-        try:
+        if isinstance(self, Site):
             for bldg in self.hasBuilding:
                 if bldg in self.containsZone:
                     pass
                 else:
                     self.containsZone.append(bldg)
-        except AttributeError:
-            pass
+                for story in bldg.hasStory:
+                    if story in self.containsZone:
+                        pass
+                    else:
+                        self.containsZone.append(story)
+                    for space in story.hasSpace:
+                        if space in self.containsZone:
+                            pass
+                        else:
+                            self.containsZone.append(space)
+        elif isinstance(self, Building):
+            for story in self.hasStory:
+                if story in self.containsZone:
+                    pass
+                else:
+                    self.containsZone.append(story)
+                for space in story.hasSpace:
+                    if space in self.containsZone:
+                        pass
+                    else:
+                        self.containsZone.append(space)
+        elif isinstance(self, Story):
+            for space in self.hasSpace:
+                if space in self.containsZone:
+                    pass
+                else:
+                    self.containsZone.append(space)
+        else:
+            print('Zone Space objects cannot contain other Zones')
 
     def update_elements(self):
         """
@@ -165,12 +176,18 @@ class Zone:
                 if len(self.adjacentElement['Roof']) == 1:
                     print('Roof already defined as an adjacent element for this building')
                 else:
-                    self.adjacentElement.update({'Roof': self.hasStory[-1].adjacentElement['Roof']})
+                    try:
+                        self.adjacentElement.update({'Roof': self.hasStory[-1].adjacentElement['Roof']})
+                    except IndexError:
+                        pass
                 # Add the bottom floor as an adjacentElement for the building:
                 if len(self.adjacentElement['Floor']) == 1:
                     print('Bottom floor already added as an adjacent element for this building')
                 else:
-                    self.adjacentElement.update({'Floor': self.hasStory[0].adjacentElement['Floor'][0]})
+                    try:
+                        self.adjacentElement.update({'Floor': self.hasStory[0].adjacentElement['Floor'][0]})
+                    except IndexError:
+                        pass
             else:
                 pass
         except AttributeError:

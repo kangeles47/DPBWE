@@ -51,31 +51,46 @@ class Zone:
         self.hasInterface = []
 
     def update_zones(self):
-        # Simple function to easily update containsZone assignment
-        try:
-            for space in self.hasSpace:
-                if space in self.containsZone:
-                    pass
-                else:
-                    self.containsZone.append(space)
-        except AttributeError:
-            pass
-        try:
-            for story in self.hasStory:
-                if story in self.containsZone:
-                    pass
-                else:
-                    self.containsZone.append(story)
-        except AttributeError:
-            pass
-        try:
+        """"
+        A function to easily update the containsZone assignment for any object within the Zone class.
+
+        This function begins at the bottom of the Zone class hierarchy to update the containsZone attribute.
+        """
+        if isinstance(self, Site):
             for bldg in self.hasBuilding:
                 if bldg in self.containsZone:
                     pass
                 else:
                     self.containsZone.append(bldg)
-        except AttributeError:
-            pass
+                for story in bldg.hasStory:
+                    if story in self.containsZone:
+                        pass
+                    else:
+                        self.containsZone.append(story)
+                    for space in story.hasSpace:
+                        if space in self.containsZone:
+                            pass
+                        else:
+                            self.containsZone.append(space)
+        elif isinstance(self, Building):
+            for story in self.hasStory:
+                if story in self.containsZone:
+                    pass
+                else:
+                    self.containsZone.append(story)
+                for space in story.hasSpace:
+                    if space in self.containsZone:
+                        pass
+                    else:
+                        self.containsZone.append(space)
+        elif isinstance(self, Story):
+            for space in self.hasSpace:
+                if space in self.containsZone:
+                    pass
+                else:
+                    self.containsZone.append(space)
+        else:
+            print('Zone Space objects cannot contain other Zones')
 
     def update_elements(self):
         # Simple function to easily update hasElement assignment
