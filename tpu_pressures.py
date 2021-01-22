@@ -141,7 +141,7 @@ def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
             elif depth_model == 400:
                 dtag = '20'
             # Initialize roof tag, num_surf and, surf_dictionaries for each use case:
-            if bldg.hasStorey[-1].adjacentElement['Roof'].hasShape == 'flat':
+            if bldg.hasStory[-1].adjacentElement['Roof'].hasShape == 'flat':
                 num_surf = 5
                 surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
                 rtag = '00'
@@ -232,8 +232,8 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
         bldg_zpts = []  # Placeholder for x, y, z points
         bldg_polys = []  # Placeholder for surface polygons
         if num_surf == 5:
-            zcoord_base = bldg.hasStorey[0].hasElevation[0]
-            zcoord_roof = bldg.hasStorey[-1].hasElevation[-1]
+            zcoord_base = bldg.hasStory[0].hasElevation[0]
+            zcoord_roof = bldg.hasStory[-1].hasElevation[-1]
             bldg_zpts.append(create_zcoords(rect, zcoord_base))
             bldg_zpts.append(create_zcoords(rect, zcoord_roof))
         else:
