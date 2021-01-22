@@ -178,8 +178,8 @@ class PressureCalc:
             print('only suburban terrain supported at this time')
         # Calculate the pressure at the tap location: p = 1/2*rho*Cp*V^2
         rho = 1.225  # [kg]/[m^3]
-        avg_factor = 1.52  # Factor to switch between mean hourly and 3-s wind speeds
-        p = 0.5 * rho * cp/avg_factor * (v) ** 2  # [N]/[m^2]
+        avg_factor = (1/1.52)**2  # Factor to switch between mean hourly and 3-s wind speeds
+        p = 0.5 * rho * cp*avg_factor * (v) ** 2  # [N]/[m^2]
         if unit == 'mph':
             # Covert pressure to lb/ft^2
             p = p * 0.020885
