@@ -256,7 +256,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
                     surf_ys.append(surf_points[1])
                     surf_zs.append(surf_points[2])
                 # Plot the surfaces for the entire building to verify:
-                #ax.plot(np.array(surf_xs) / 3.281, np.array(surf_ys) / 3.281, np.array(surf_zs) / 3.281, linestyle='dashed', color='gray')
+                ax.plot(np.array(surf_xs) / 3.281, np.array(surf_ys) / 3.281, np.array(surf_zs) / 3.281, linestyle='dashed', color='gray')
                 # Repeat this process for buildings with geometries that do not exactly match TPU:
                 if not match_flag:
                     bldg_surf = Polygon([bldg_zpts[plane][zpt], bldg_zpts[plane + 1][zpt], bldg_zpts[plane + 1][zpt + 1], bldg_zpts[plane][zpt + 1]])
@@ -269,7 +269,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
                         bsurf_ys.append(bsurf_points[1])
                         bsurf_zs.append(bsurf_points[2])
                     # Plot the surfaces for the entire building:
-                    ax.plot(np.array(bsurf_xs) / 3.281, np.array(bsurf_ys) / 3.281, np.array(bsurf_zs) / 3.281, linestyle='dashed', color='gray')
+                    #ax.plot(np.array(bsurf_xs) / 3.281, np.array(bsurf_ys) / 3.281, np.array(bsurf_zs) / 3.281, linestyle='dashed', color='gray')
         # Plot the building geometry:
         for poly in bldg.hasGeometry['3D Geometry'][key]:
             x_bpoly, y_bpoly, z_bpoly = [], [], []
@@ -279,6 +279,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
                 z_bpoly.append(bpt[2])
             ax.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, color='k')
         # Make the panes transparent:
+        ax.set_zlim3d(bottom=0, top=16)
         ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
         ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
         ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
