@@ -143,9 +143,6 @@ def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_typ
     # Step 1: Convert .csv files into DataFrames for easier data manipulation:
     df_local = pd.read_csv(local_bldgs_path)
     df_steer = pd.read_csv(steer_bldgs_path)
-    # Pull all parcels in the Bay County:
-    bay_indices = df_steer.loc[df_steer['address_sub_admin_area'] == 'BAY'].index
-    df_steer = df_steer.drop(bay_indices)
     if find_parcel_flag:
         # Define a new DataFrame to save parcel data for StEER bldgs:
         df_steer_pdata = pd.DataFrame(columns=df_local.columns)
@@ -163,7 +160,7 @@ def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_typ
     # If needed, obtain the parcel data for StEER buildings:
     if find_parcel_flag:
         for row in df_steer.index:
-            if df_steer['address_sub_admin_area'][row].lower() == 'bay' and df_steer['building_type'][row].lower() != 'general area':
+            if df_steer['address_sub_admin_area'][row] == 'BAY' and df_steer['building_type'][row] != 'General Area':
                 # Query each parcel's data from the property appraiser website:
                 address_flag = True
                 parcel_identifier = df_steer['address_full'][row].split(df_steer['address_locality'][row])[0]
@@ -198,14 +195,17 @@ def create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_typ
                         parcel_info[key] = df_steer['longitude'][row]
                     else:
                         parcel_info[key] = np.nan
+            print(row)
+            print(df_steer['address_full'][row])
+            print(parcel_info)
             df_steer_pdata = df_steer_pdata.append(parcel_info, ignore_index=True)
     else:
         pass
     if save_flag:
-        df.to_csv('Augmented_Bldgs_Dataset.csv', index=False)
+        df.to_csv('Local_Bldgs_Dataset.csv', index=False)
     else:
         pass
-    if find_parcel_flag:
+    if find_parcel_flag and save_flag:
         df_steer_pdata.to_csv('StEER_Parcel_Data.csv', index=False)
     else:
         pass
@@ -482,12 +482,12 @@ steer_bldgs_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/StEER/HM_D2D_B
 obsv_damage_type = 'roof_cover'
 comm_flag = True
 save_flag = False
-find_parcel_flag = False
+find_parcel_flag = True
 steer_parcel_path = 'C:/Users/Karen/PycharmProjects/DPBWE/StEER_Parcel_Data.csv'
 aug_bldg_dataset = 'C:/Users/Karen/PycharmProjects/DPBWE/Augmented_Bldgs_Dataset.csv'
 wind_speed_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/2018-Michael_windgrid_ver36.csv'
 vul_parameter = 'wind_speed'
-#create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, driver_path, url, steer_parcel_path)
+create_aug_bldg_database(local_bldgs_path, steer_bldgs_path, obsv_damage_type, comm_flag, save_flag, find_parcel_flag, driver_path, url, steer_parcel_path)
 steer_bldgs_dataset = 'C:/Users/Karen/PycharmProjects/DPBWE/StEER_Parcel_Data.csv'
 #build_fragility(aug_bldg_dataset, steer_bldgs_dataset, obsv_damage_type, wind_speed_file_path, vul_parameter)
 local_bldgs_vpath = 'C:/Users/Karen/PycharmProjects/DPBWE/Comm_Parcels_V.csv'
