@@ -1,5 +1,6 @@
 from selenium import webdriver
 from bs4 import BeautifulSoup
+import csv
 
 
 def query_parcel_info(driver_path, url, parcel_identifier, address_flag):
@@ -203,15 +204,15 @@ def query_parcel_info_2(driver_path, url, parcel_identifier, address_flag):
         elif 'Property Use Code' in tag:
             parcel_info['Use Code'] = value.splitlines()[1]
     # Property value information:
-    prop_values = table[1].get_text()
+    prop_values = table[1].get_text().split('\n')
     # Building value and just market value:
     for i in prop_values:
         if 'Building Value' in i:
             sub_str = i.split('$')
-            parcel_info['Building Value'] = sub_str[-1]
+            parcel_info['Building Value'] = sub_str[-1].replace(',','')
         elif 'Just' in i:
             sub_str = i.split('$')
-            parcel_info['Just Market Value'] = sub_str[-1]
+            parcel_info['Just Market Value'] = sub_str[-1].replace(',','')
         else:
             pass
     # Exception cases: vacant lots and condominiums
@@ -264,7 +265,7 @@ def query_parcel_info_2(driver_path, url, parcel_identifier, address_flag):
     else:
         # If the parcel is not a vacant lot, access all parcel attributes:
         for tab in table:
-            if 'Building' in tab.find_all('tr')[0].get_text():  
+            if 'Building' in tab.find_all('tr')[0].get_text():
                 for row in tab.find_all('tr'):
                     columns = row.find_all('td')
                     tag = row.get_text().splitlines()[2]
@@ -313,4 +314,20 @@ url = "https://qpublic.schneidercorp.com/application.aspx?app=BayCountyFL&PageTy
 address_flag = False
 parcel_identifier = '21084-000-000'
 parcel_info = query_parcel_info_2(driver_path, url, parcel_identifier, address_flag)
-print('a')
+# Save the building's data:
+for bldg in range(0, len(parcel_info['Building Data']['Stories'])):
+    with open('BayCountyCommercialParcels.csv', 'a', newline='') as csvfile:
+        fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType',
+                      'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover', 'Unit No.', 'Floor',
+                      'Living Area', 'Number of Bedrooms', 'Number of Bathrooms', 'Permit Number']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writerow(
+            {'Parcel Id': parcel_info['Parcel Id'], 'Address': parcel_info['Address'], 'Use Code': parcel_info['Use Code'],
+             'Square Footage': parcel_info['Building Data']['Square Footage'][bldg], 'Stories': parcel_info['Building Data']['Stories'][bldg],
+             'Year Built': parcel_info['Building Data']['Year Built'][bldg], 'OccType': parcel_info['Building Data']['OccType'][bldg],
+             'Exterior Walls': parcel_info['Building Data']['Exterior Walls'][bldg], 'Roof Cover': parcel_info['Building Data']['Roof Cover'][bldg],
+             'Interior Walls': parcel_info['Building Data']['Interior Walls'][bldg], 'Frame Type': parcel_info['Building Data']['Frame Type'][bldg],
+             'Floor Cover': parcel_info['Building Data']['Floor Cover'][bldg], 'Unit No.': parcel_info['Building Data']['Unit No.'],
+             'Floor': parcel_info['Building Data']['Floor'], 'Living Area': parcel_info['Building Data']['Living Area'],
+             'Number of Bedrooms': parcel_info['Building Data']['Number of Bedrooms'], 'Number of Bathrooms': parcel_info['Building Data']['Number of Bathrooms'],
+             'Permit Number': parcel_info['Permit Number']})
