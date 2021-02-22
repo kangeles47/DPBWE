@@ -31,7 +31,7 @@ def add_steer_data(bldg, parcel_identifier, steer_file_path):
         pass
 
 
-def add_permit_data(bldg, df_inventory, parcel_identifier, dis_permit_file_path, permit_file_path=None):
+def add_permit_data(bldg, df_inventory, parcel_identifier, dis_permit_file_path, permit_file_path=None, length_unit='ft'):
     # Permit data can be leveraged to inform:
     # (1) the presence of damage (disaster permits) or
     # (2) the presence of a retrofit (e.g., re-roofing)
@@ -48,21 +48,30 @@ def add_permit_data(bldg, df_inventory, parcel_identifier, dis_permit_file_path,
     if parcel_identifier is not None:  # Address or parcel number match
         if dis_permit_file_path is not None:
             dis_permits = df_dis_permit.loc[df_dis_permit['SITE_ADDR'] == parcel_identifier]
+            bldg.hasPermit['disaster'] = dis_permits
+            # Use the permit description to determine the damage type:
+            obsv_damage_type = 'roof_cover'
+            df_dis_new = get_dis_permit_damage(bldg, dis_permits, df_inventory, obsv_damage_type, length_unit)
         if permit_file_path is not None:
             permits = df_permit.loc[df_permit['SITE_ADDR'] == parcel_identifier]
+            bldg.hasPermit['not disaster'] = permits
+            # Use the permit description to determine the retrofit condition:
     else:  # Permit number match
         # Access the parcel's list of permits:
-        for p in bldg.hasPermit:
-            # Find the permit descriptions:
-            if 'DIS' in p and dis_permit_file_path is not None:
+        if dis_permit_file_path is not None:
+            for p in bldg.hasPermit['disaster']:
+                # Find the permit descriptions:
                 dis_permits = df_dis_permit.loc[df_dis_permit['Permit Number'] == p]
-            else:
-                if 'DIS' not in p and permit_file_path is not None:
-                    permits = df_permit.loc[df_permit['Permit Number'] == p]
-    # Use the permit description to determine the damage type or a retrofit condition:
+                # Use the permit description to determine the damage type:
+                obsv_damage_type = 'roof_cover'
+                df_dis_new = get_dis_permit_damage(bldg, dis_permits, df_inventory, obsv_damage_type, length_unit)
+        if permit_file_path is not None:
+            for p in bldg.hasPermit['not disaster']:
+                permits = df_permit.loc[df_permit['Permit Number'] == p]
+                # Use the permit description to determine the retrofit condition:
 
 
-def get_dis_permit_damage(bldg, df_dis_permits, df_inventory, obsv_damage_type):
+def get_dis_permit_damage(bldg, df_dis_permit, df_inventory, obsv_damage_type, length_unit):
     # Allocate empty lists to gather damage information:
     if obsv_damage_type == 'roof_cover':
         rcover_damage_cat = []
@@ -70,7 +79,7 @@ def get_dis_permit_damage(bldg, df_dis_permits, df_inventory, obsv_damage_type):
     else:
         pass
     # Loop through the disaster permits:
-    for p in range(0, len(df_dis_permits['Permit Number'])):
+    for p in range(0, len(df_dis_permit['Permit Number'])):
         if obsv_damage_type == 'roof_cover':
             # First check if this building shares a parcel number:
             if df_inventory['Use Code'][p] != 'RES COMMON (000900)':
@@ -78,8 +87,8 @@ def get_dis_permit_damage(bldg, df_dis_permits, df_inventory, obsv_damage_type):
                 dup_parcel_factor = dup_parcel['Square Footage'][p] / dup_parcel['Square Footage'].sum()
             else:
                 pass
-            permit_type = ast.literal_eval(df_dis_permits['Disaster Permit Type'][p])
-            permit_desc = ast.literal_eval(df_dis_permits['Disaster Permit Description'][p])
+            permit_type = ast.literal_eval(df_dis_permit['Disaster Permit Type'][p])
+            permit_desc = ast.literal_eval(df_dis_permit['Disaster Permit Description'][p])
             permit_cat = []
             permit_dpercent = []
             for permit in range(0, len(permit_type)):
@@ -95,8 +104,7 @@ def get_dis_permit_damage(bldg, df_dis_permits, df_inventory, obsv_damage_type):
                                 total_area = bldg.hasGeometry['Total Area']
                                 stories = len(bldg.hasStory)
                                 num_roof_squares = float(damage_desc[i]) * dup_parcel_factor
-                                unit = 'ft'
-                                roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories, num_roof_squares, unit)
+                                roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories, num_roof_squares, length_unit)
                                 permit_cat.append(roof_dcat)
                                 permit_dpercent.append(roof_dpercent)
                                 break
@@ -105,8 +113,7 @@ def get_dis_permit_damage(bldg, df_dis_permits, df_inventory, obsv_damage_type):
                                     total_area = bldg.hasGeometry['Total Area']
                                     stories = len(bldg.hasStory)
                                     num_roof_squares = float(damage_desc[i][0:-2]) * dup_parcel_factor  # Remove 'SQ' from description and extract value:
-                                    unit = 'ft'
-                                    roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories, num_roof_squares, unit)
+                                    roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories, num_roof_squares, length_unit)
                                     permit_cat.append(roof_dcat)
                                     permit_dpercent.append(roof_dpercent)
                                     break
@@ -146,22 +153,22 @@ def get_dis_permit_damage(bldg, df_dis_permits, df_inventory, obsv_damage_type):
         pass
     # Integrate damage categories into the DataFrame:
     if obsv_damage_type == 'roof_cover':
-        df_local['HAZUS Roof Damage Category'] = rcover_damage_cat
-        df_local['Percent Roof Cover Damage'] = rcover_damage_percent
+        df_dis_permit['HAZUS Roof Damage Category'] = rcover_damage_cat
+        df_dis_permit['Percent Roof Cover Damage'] = rcover_damage_percent
     else:
         pass
     # Clean-up roof damage categories:
-    for dparcel in range(0, len(df_local['HAZUS Roof Damage Category'])):
-        rcat = df_local['HAZUS Roof Damage Category'][dparcel]
+    for dparcel in range(0, len(df_dis_permit['HAZUS Roof Damage Category'])):
+        rcat = df_dis_permit['HAZUS Roof Damage Category'][dparcel]
         if len(rcat) == 1:
             pass
         else:
-            if (df_local['Use Code'][dparcel] != 'RES COMMON (000900)') or (df_local['Use Code'][dparcel] != 'PLAT HEADI (H.)'):
+            if (df_dis_permit['Use Code'][dparcel] != 'RES COMMON (000900)') or (df_dis_permit['Use Code'][dparcel] != 'PLAT HEADI (H.)'):
                 # Choose the largest damage category as this parcel's damage category:
                 dcat = max(rcat)
                 dcat_idx = rcat.index(dcat)
-                df_local.at[dparcel, 'HAZUS Roof Damage Category'] = [dcat]
-                df_local.at[dparcel, 'Percent Roof Cover Damage'] = df_local['Percent Roof Cover Damage'][dparcel][dcat_idx]
+                df_dis_permit.at[dparcel, 'HAZUS Roof Damage Category'] = [dcat]
+                df_dis_permit.at[dparcel, 'Percent Roof Cover Damage'] = df_dis_permit['Percent Roof Cover Damage'][dparcel][dcat_idx]
             else:
                 pass
     # Clean up percent categories:
@@ -200,10 +207,57 @@ def get_dis_permit_damage(bldg, df_dis_permits, df_inventory, obsv_damage_type):
                             pass
             min_percent.append(min_item)
             max_percent.append(max_item)
-    df_local['Max Roof Cover Damage'] = max_percent
-    df_local['Min Roof Cover Damage'] = min_percent
-    df_local = df_local.drop('Percent Roof Cover Damage', axis=1)
-    return df_local
+    df_dis_permit['Max Roof Cover Damage'] = max_percent
+    df_dis_permit['Min Roof Cover Damage'] = min_percent
+    df_dis_permits = df_dis_permit.drop('Percent Roof Cover Damage', axis=1)
+    return df_dis_permits
+
+def roof_square_damage_cat(total_area, stories, num_roof_squares, unit):
+    try:
+        total_area = float(total_area)
+    except:
+        total_area = float(total_area.replace(',',''))
+    if float(stories) == 0:
+        stories = 1
+    else:
+        stories = float(stories)
+    floor_area = total_area/stories
+    if unit == 'ft':
+        roof_square = 100  # sq_ft
+    elif unit == 'm':
+        roof_square = 100/10.764  # sq m
+    roof_dpercent = 100*(roof_square*num_roof_squares/floor_area)
+    if roof_dpercent > 100:
+        roof_dpercent = 100
+    else:
+        pass
+    # Determine damage category:
+    if roof_dpercent <= 2:
+        roof_dcat = 0
+    elif 2 < roof_dpercent <= 15:
+        roof_dcat = 1
+    elif 15 < roof_dpercent <= 50:
+        roof_dcat = 2
+    elif roof_dpercent > 50:
+        roof_dcat = 3
+    else:
+        roof_dcat = num_roof_squares
+    return roof_dcat, roof_dpercent
+
+
+def roof_percent_damage_qual(cat):
+    # Given the HAZUS damage category, return the percent damage to the roof cover (min/max values):
+    if cat == 0:
+        roof_dpercent = [0, 2]
+    elif cat == 1:
+        roof_dpercent = [2, 15]
+    elif cat == 2:
+        roof_dpercent = [15, 50]
+    elif cat == 3:
+        roof_dpercent = [50, 100]
+    elif cat == 4:
+        roof_dpercent = [50, 100]
+    return roof_dpercent
 
 
 def find_damage_data(bldg_identifier, component_type, steer_flag, crowd_sourced_flag, fema_modeled_flag, fema_claims_flag, imagery_postp_flag, ind_recon_flag, bldg_permit_flag):
