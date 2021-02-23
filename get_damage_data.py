@@ -4,13 +4,45 @@ import matplotlib.pyplot as plt
 from zone import Building
 
 
+def get_damage_data(bldg, event_year, steer_flag, bldg_permit_flag, crowd_sourced_flag, fema_modeled_flag,
+                    fema_claims_flag, rsensing_imagery_flag, steer_file_path, bldg_permit_file_path,
+                    bldg_dis_permit_file_path, crowd_sourced_file_path, fema_modeled_file_path, fema_claims_file_path,
+                    rsensing_imagery_file_path):
+    data_details_dict = {'Damage Precision': {'type': None, 'value': None},
+                         'Location Precision': None}
+    damage_data_dict = {'StEER': None, 'Crowd-sourced': None, 'FEMA modeled': None, 'FEMA claims': None,
+                        'Imagery Post-Processed': None, 'Independent Recon Observations': None, 'Building Permits': None}
+    # Check if the building has a damage description for each of the user-defined data sources:
+    damage_data_dict = {}
+    if steer_flag:
+        parcel_identifier = bldg.hasLocation['Address']
+        add_steer_data(bldg, parcel_identifier, steer_file_path)
+    if bldg_permit_flag:
+        # Check to see if the parcel has a damage building permit for this component:
+        pass
+    if crowd_sourced_flag:
+        parcel_identifier = None
+        add_crowd_sourced_data(bldg, parcel_identifier, crowd_sourced_file_path)
+    if fema_modeled_flag:
+        parcel_identifier = None
+        add_fema_modeled_data(bldg, parcel_identifier, fema_modeled_file_path)
+    if fema_claims_flag:
+        pass
+    if rsensing_imagery_flag:
+        parcel_identifier = None
+        add_rsensing_imagery_data(bldg, parcel_identifier, crowd_sourced_file_path)
+    # Figure out which data source is the best data source for this component:
+    # Start with the damage precision description:
+    return damage_data_dict
+
+
 def add_steer_data(bldg, parcel_identifier, steer_file_path):
     # Parcel identifier should be the parcel's address in the following format (not case-sensitive):
     # 1842 BRIDGE ST Panama City BAY FL 32409 USA (number, street, city, county, state, zip, country)
     df_steer = pd.read_csv(steer_file_path)
     try:
         # Check if the parcel has a StEER observation:
-        idx = df_steer.loc[df_steer['address_full'].lower() == parcel_identifier].index[0]
+        idx = df_steer.loc[df_steer['address_full'].lower() == parcel_identifier.lower()].index[0]
         # Extract StEER damage data:
         bldg.hasDamageData['hazard'] = df_steer['hazards_present'][idx]
         bldg.hasDamageData['wind damage rating'] = df_steer['wind_damage_rating'][idx]
@@ -232,6 +264,7 @@ def get_dis_permit_damage(bldg, df_dis_permit, df_inventory, obsv_damage_type, l
     df_dis_permits = df_dis_permit.drop('Percent Roof Cover Damage', axis=1)
     return df_dis_permits
 
+
 def roof_square_damage_cat(total_area, stories, num_roof_squares, unit):
     try:
         total_area = float(total_area)
@@ -279,30 +312,13 @@ def roof_percent_damage_qual(cat):
         roof_dpercent = [50, 100]
     return roof_dpercent
 
+def add_crowd_sourced_data(bldg, parcel_identifier, steer_file_path):
+    pass
 
-def find_damage_data(bldg_identifier, component_type, steer_flag, crowd_sourced_flag, fema_modeled_flag, fema_claims_flag, imagery_postp_flag, ind_recon_flag, bldg_permit_flag):
-    data_details_dict = {'Damage Precision': {'type': None, 'value': None},
-                         'Location Precision': None}
-    damage_data_dict = {'StEER': None, 'Crowd-sourced': None, 'FEMA modeled': None, 'FEMA claims': None,
-                        'Imagery Post-Processed': None, 'Independent Recon Observations': None, 'Building Permits': None}
-    # Check if the building has a damage description for each of the user-defined data sources:
-    damage_data_dict = {}
-    if steer_flag:
-        pass
-        # damage_data_dict['StEER'] = {'Damage Precision': {'type: 'Component, discrete', 'value': None}, 'Location Precision': None}
-    if crowd_sourced_flag:
-        pass
-    if fema_modeled_flag:
-        pass
-    if fema_claims_flag:
-        pass
-    if imagery_postp_flag:
-        pass
-    if ind_recon_flag:
-        pass
-    if bldg_permit_flag:
-        # Check to see if the parcel has a damage building permit for this component:
-        pass
-    # Figure out which data source is the best data source for this component:
-    # Start with the damage precision description:
-    return damage_data_dict
+
+def add_fema_modeled_data(bldg, parcel_identifier, fema_modeled_file_path):
+    pass
+
+
+def add_rsensing_imagery_data(bldg, parcel_identifier, rsensing_imagery_file_path):
+    pass
