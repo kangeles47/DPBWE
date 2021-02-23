@@ -4,22 +4,30 @@ import matplotlib.pyplot as plt
 from zone import Building
 
 
-def get_damage_data(bldg, event_year, steer_flag, bldg_permit_flag, crowd_sourced_flag, fema_modeled_flag,
-                    fema_claims_flag, rsensing_imagery_flag, steer_file_path, bldg_permit_file_path,
-                    bldg_dis_permit_file_path, crowd_sourced_file_path, fema_modeled_file_path, fema_claims_file_path,
+def get_damage_data(bldg, event_year, df_inventory, steer_flag, bldg_permit_flag, find_permit_flag, crowd_sourced_flag,
+                    fema_modeled_flag, fema_claims_flag, rsensing_imagery_flag, steer_file_path, permit_file_path,
+                    dis_permit_file_path, crowd_sourced_file_path, fema_modeled_file_path, fema_claims_file_path,
                     rsensing_imagery_file_path):
-    data_details_dict = {'Damage Precision': {'type': None, 'value': None},
-                         'Location Precision': None}
-    damage_data_dict = {'StEER': None, 'Crowd-sourced': None, 'FEMA modeled': None, 'FEMA claims': None,
-                        'Imagery Post-Processed': None, 'Independent Recon Observations': None, 'Building Permits': None}
+    data_details_dict = {'damage precision': None, 'location precision': None,
+                         'damage scale': {'type': None, 'global_damage_states': []}}
+    damage_data_dict = {'steer': None, 'building permits': None, 'crowd-sourced': None, 'fema modeled': None,
+                        'fema claims': None, 'remote-sensing/imagery': None}
     # Check if the building has a damage description for each of the user-defined data sources:
     damage_data_dict = {}
     if steer_flag:
+        data_details_dict = {'damage precision': 'component', 'location precision': 'exact location',
+                             'damage scale': {'type': 'HAZUS-HM', 'global_damage_states': ['No Damage', 'Minor Damage',
+                                                                                           'Moderate Damage', 'Severe Damage', 'Destruction']}}
+        # Need to find a way to extract damage state definitions for specific components
         parcel_identifier = bldg.hasLocation['Address']
-        add_steer_data(bldg, parcel_identifier, steer_file_path)
+        add_steer_data(bldg, parcel_identifier, steer_file_path, data_details_dict)
     if bldg_permit_flag:
-        # Check to see if the parcel has a damage building permit for this component:
-        pass
+        if find_permit_flag:
+            parcel_identifier = bldg.hasLocation['Address']
+        else:
+            parcel_identifier = None
+        add_permit_data(bldg, df_inventory, parcel_identifier, event_year, dis_permit_file_path, permit_file_path,
+                        length_unit='ft')
     if crowd_sourced_flag:
         parcel_identifier = None
         add_crowd_sourced_data(bldg, parcel_identifier, crowd_sourced_file_path)
@@ -27,7 +35,8 @@ def get_damage_data(bldg, event_year, steer_flag, bldg_permit_flag, crowd_source
         parcel_identifier = None
         add_fema_modeled_data(bldg, parcel_identifier, fema_modeled_file_path)
     if fema_claims_flag:
-        pass
+        parcel_identifier = bldg.hasLocation['Zip Code']
+        add_fema_claims_data(bldg, parcel_identifier, fema_claims_file_path)
     if rsensing_imagery_flag:
         parcel_identifier = None
         add_rsensing_imagery_data(bldg, parcel_identifier, crowd_sourced_file_path)
@@ -36,13 +45,17 @@ def get_damage_data(bldg, event_year, steer_flag, bldg_permit_flag, crowd_source
     return damage_data_dict
 
 
-def add_steer_data(bldg, parcel_identifier, steer_file_path):
+def add_steer_data(bldg, parcel_identifier, steer_file_path, data_details_dict):
     # Parcel identifier should be the parcel's address in the following format (not case-sensitive):
     # 1842 BRIDGE ST Panama City BAY FL 32409 USA (number, street, city, county, state, zip, country)
     df_steer = pd.read_csv(steer_file_path)
     try:
         # Check if the parcel has a StEER observation:
         idx = df_steer.loc[df_steer['address_full'].lower() == parcel_identifier.lower()].index[0]
+        # Input component-level damage levels:
+        damage_dict = {'roof': {'steer': {'data_details': data_details_dict, 'hazards_present': None,
+                                          'wind_damage_rating': None, 'roof_cover_damage': None,
+                                          'roof_structure_damage': None, 'roof_substrate_damage': None}}}
         # Extract StEER damage data:
         bldg.hasDamageData['hazard'] = df_steer['hazards_present'][idx]
         bldg.hasDamageData['wind damage rating'] = df_steer['wind_damage_rating'][idx]
@@ -59,11 +72,12 @@ def add_steer_data(bldg, parcel_identifier, steer_file_path):
             pass
         # Add roof damage data description to Roof Element:
         bldg.hasElement['Roof'].hasDamageData = bldg.hasDamageData['Roof']
-    except IndexError:  # No StEER entry exists for this building
+    except IndexError:  # No StEER entry exists for this exact location: Check General Area or does not exist
         pass
 
 
-def add_permit_data(bldg, df_inventory, parcel_identifier, event_year, dis_permit_file_path, permit_file_path=None, length_unit='ft'):
+def add_permit_data(bldg, df_inventory, parcel_identifier, event_year, dis_permit_file_path, permit_file_path=None,
+                    length_unit='ft'):
     # Permit data can be leveraged to inform:
     # (1) the presence of damage (disaster permits) or
     # (2) the presence of a retrofit (e.g., re-roofing)
@@ -113,7 +127,8 @@ def update_yr_of_construction(bldg, permit_data, event_year):
         if any([substring in permit_data['DESCRIPTION'].upper() for substring in substrings]):
             pass
         else:
-            if 'NEW' in permit_data['PERMITSUBTYPE'] or 'REPLACEMENT' in permit_data['PERMITSUBTYPE']:  # Figure out what to do with roof-over
+            if 'NEW' in permit_data['PERMITSUBTYPE'] or 'REPLACEMENT' in permit_data[
+                'PERMITSUBTYPE']:  # Figure out what to do with roof-over
                 new_year = int(permit_data['ISSUED'][-4:])
                 if bldg.hasElement['Roof'].hasYearBuilt < new_year < event_year:
                     bldg.hasElement['Roof'].hasYearBuilt = new_year
@@ -156,7 +171,8 @@ def get_dis_permit_damage(bldg, df_dis_permit, df_inventory, obsv_damage_type, l
                                 total_area = bldg.hasGeometry['Total Area']
                                 stories = len(bldg.hasStory)
                                 num_roof_squares = float(damage_desc[i]) * dup_parcel_factor
-                                roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories, num_roof_squares, length_unit)
+                                roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories, num_roof_squares,
+                                                                                  length_unit)
                                 permit_cat.append(roof_dcat)
                                 permit_dpercent.append(roof_dpercent)
                                 break
@@ -164,8 +180,10 @@ def get_dis_permit_damage(bldg, df_dis_permit, df_inventory, obsv_damage_type, l
                                 if 'SQ' in damage_desc[i]:  # Case when there is no space between quantity and roof SQ
                                     total_area = bldg.hasGeometry['Total Area']
                                     stories = len(bldg.hasStory)
-                                    num_roof_squares = float(damage_desc[i][0:-2]) * dup_parcel_factor  # Remove 'SQ' from description and extract value:
-                                    roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories, num_roof_squares, length_unit)
+                                    num_roof_squares = float(damage_desc[i][
+                                                             0:-2]) * dup_parcel_factor  # Remove 'SQ' from description and extract value:
+                                    roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories,
+                                                                                      num_roof_squares, length_unit)
                                     permit_cat.append(roof_dcat)
                                     permit_dpercent.append(roof_dpercent)
                                     break
@@ -181,7 +199,8 @@ def get_dis_permit_damage(bldg, df_dis_permit, df_inventory, obsv_damage_type, l
                         if permit_cat[permit] > 0:
                             pass
                         else:
-                            substrings = ['RE-ROO', 'REROOF', 'ROOF REPAIR', 'COMMERCIAL HURRICANE REPAIRS', 'ROOF OVER']
+                            substrings = ['RE-ROO', 'REROOF', 'ROOF REPAIR', 'COMMERCIAL HURRICANE REPAIRS',
+                                          'ROOF OVER']
                             if any([substring in permit_desc[permit] for substring in substrings]):
                                 permit_cat[permit] = 1
                                 permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
@@ -215,12 +234,14 @@ def get_dis_permit_damage(bldg, df_dis_permit, df_inventory, obsv_damage_type, l
         if len(rcat) == 1:
             pass
         else:
-            if (df_dis_permit['Use Code'][dparcel] != 'RES COMMON (000900)') or (df_dis_permit['Use Code'][dparcel] != 'PLAT HEADI (H.)'):
+            if (df_dis_permit['Use Code'][dparcel] != 'RES COMMON (000900)') or (
+                    df_dis_permit['Use Code'][dparcel] != 'PLAT HEADI (H.)'):
                 # Choose the largest damage category as this parcel's damage category:
                 dcat = max(rcat)
                 dcat_idx = rcat.index(dcat)
                 df_dis_permit.at[dparcel, 'HAZUS Roof Damage Category'] = [dcat]
-                df_dis_permit.at[dparcel, 'Percent Roof Cover Damage'] = df_dis_permit['Percent Roof Cover Damage'][dparcel][dcat_idx]
+                df_dis_permit.at[dparcel, 'Percent Roof Cover Damage'] = \
+                df_dis_permit['Percent Roof Cover Damage'][dparcel][dcat_idx]
             else:
                 pass
     # Clean up percent categories:
@@ -232,7 +253,7 @@ def get_dis_permit_damage(bldg, df_dis_permit, df_inventory, obsv_damage_type, l
                 if len(item[0]) > 1:  # Percent damage description is a range of values
                     min_percent.append(item[0][0])
                     max_percent.append(item[0][1])
-            except TypeError:   # Percent damage description is one value
+            except TypeError:  # Percent damage description is one value
                 min_percent.append(item[0])
                 max_percent.append(item[0])
         else:
@@ -269,17 +290,17 @@ def roof_square_damage_cat(total_area, stories, num_roof_squares, unit):
     try:
         total_area = float(total_area)
     except:
-        total_area = float(total_area.replace(',',''))
+        total_area = float(total_area.replace(',', ''))
     if float(stories) == 0:
         stories = 1
     else:
         stories = float(stories)
-    floor_area = total_area/stories
+    floor_area = total_area / stories
     if unit == 'ft':
         roof_square = 100  # sq_ft
     elif unit == 'm':
-        roof_square = 100/10.764  # sq m
-    roof_dpercent = 100*(roof_square*num_roof_squares/floor_area)
+        roof_square = 100 / 10.764  # sq m
+    roof_dpercent = 100 * (roof_square * num_roof_squares / floor_area)
     if roof_dpercent > 100:
         roof_dpercent = 100
     else:
@@ -312,11 +333,16 @@ def roof_percent_damage_qual(cat):
         roof_dpercent = [50, 100]
     return roof_dpercent
 
+
 def add_crowd_sourced_data(bldg, parcel_identifier, steer_file_path):
     pass
 
 
 def add_fema_modeled_data(bldg, parcel_identifier, fema_modeled_file_path):
+    pass
+
+
+def add_fema_claims_data(bldg, parcel_identifier, fema_claims_file_path):
     pass
 
 
