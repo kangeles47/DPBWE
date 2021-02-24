@@ -53,7 +53,8 @@ def add_steer_data(self, bldg, component_type, hazard_type, steer_file_path):
     # Parcel identifier should be the parcel's address in the following format (not case-sensitive):
     # 1842 BRIDGE ST Panama City BAY FL 32409 USA (number, street, city, county, state, zip, country)
     df_steer = pd.read_csv(steer_file_path)
-    data_flag = False  # Tell the user if there is data available for the specific bldg, component, hazard
+    data_details = {'available': False, 'fidelity': None, 'component type': component_type, 'hazard type': hazard_type,
+                    'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
     try:
         # Check if the parcel has a StEER observation at its exact location:
         idx = df_steer.loc[df_steer['address_full'].lower() == parcel_identifier.lower()].index[0]
@@ -65,9 +66,9 @@ def add_steer_data(self, bldg, component_type, hazard_type, steer_file_path):
         for key in steer_data.hasHazard:
             if key in df_steer['hazards_present'].lower():
                 steer_data.hasHazard[key] = True
-        bldg.hasDamageData['hazard_damage_rating']['wind'] = df_steer['wind_damage_rating'][idx]
-        bldg.hasDamageData['hazard_damage_rating']['surge'] = df_steer['surge_damage_rating'][idx]
-        bldg.hasDamageData['hazard_damage_rating']['rain'] = df_steer['rainwater_damage_rating'][idx]
+        data_details['hazard_damage_rating']['wind'] = df_steer['wind_damage_rating'][idx]
+        data_details['hazard_damage_rating']['surge'] = df_steer['surge_damage_rating'][idx]
+        data_details['hazard_damage_rating']['rain'] = df_steer['rainwater_damage_rating'][idx]
         # Update building and component-level attributes:
         bldg.hasStructuralSystem = df_steer['mwfrs'][idx]
         bldg.hasElement['Roof'].hasCover = df_steer['roof_cover'][idx]
@@ -83,20 +84,20 @@ def add_steer_data(self, bldg, component_type, hazard_type, steer_file_path):
             if component_type == 'roof cover':
                 # Check if there are roof-related damage descriptions:
                 if df_steer['roof_cover_damage_'][idx] > 0:
-                    data_flag = True
-                    # Add the damage description to the roof:
-                    bldg.hasElement['Roof'].hasDamageData['cover']['value'] = df_steer['roof_cover_damage_'][idx]
-                    # Add the damage data details:
+                    data_details['available'] = True
+                    data_details['value'] = df_steer['roof_cover_damage_'][idx]
+                    # Update the damage data details:
                     steer_data.get_damage_scale('HAZUS-HM', 'roof cover', damage_states=None, values=None)
-                    bldg.hasElement['Roof'].hasDamageData['cover']['data details'] = steer_data
+                    data_details['fidelity'] = steer_data
         else:
             pass
     except IndexError:  # No StEER entry exists for this exact location: Check General Area or does not exist
         pass
-    return data_flag
+    return data_details
 
 
-def add_permit_data(bldg, df_inventory, parcel_identifier, event_year, dis_permit_file_path, permit_file_path=None,
+def add_permit_data(bldg, component_type, hazard_type, df_inventory, parcel_identifier, event_year,
+                    dis_permit_file_path, permit_file_path=None,
                     length_unit='ft'):
     # Permit data can be leveraged to inform:
     # (1) the presence of damage (disaster permits) or
@@ -117,7 +118,8 @@ def add_permit_data(bldg, df_inventory, parcel_identifier, event_year, dis_permi
             bldg.hasPermit['disaster'] = dis_permits
             # Use the permit description to determine the damage type:
             obsv_damage_type = 'roof_cover'
-            df_dis_new = get_dis_permit_damage(bldg, dis_permits, df_inventory, obsv_damage_type, length_unit)
+            df_dis_new, data_details = get_dis_permit_damage(bldg, component_type, hazard_type, dis_permits,
+                                                             df_inventory, obsv_damage_type, length_unit)
         if permit_file_path is not None:
             permit_data = df_permit.loc[df_permit['SITE_ADDR'] == parcel_identifier]
             bldg.hasPermit['not disaster'] = permit_data
@@ -132,7 +134,8 @@ def add_permit_data(bldg, df_inventory, parcel_identifier, event_year, dis_permi
                 dis_permits = df_dis_permit.loc[df_dis_permit['Permit Number'] == p]
                 # Use the permit description to determine the damage type:
                 obsv_damage_type = 'roof_cover'
-                df_dis_new = get_dis_permit_damage(bldg, dis_permits, df_inventory, obsv_damage_type, length_unit)
+                df_dis_new, data_details = get_dis_permit_damage(bldg, component_type, hazard_type, dis_permits,
+                                                                 df_inventory, obsv_damage_type, length_unit)
         if permit_file_path is not None:
             for p in bldg.hasPermit['not disaster']:
                 permit_data = df_permit.loc[df_permit['Permit Number'] == p]
@@ -147,8 +150,7 @@ def update_yr_of_construction(bldg, permit_data, event_year):
         if any([substring in permit_data['DESCRIPTION'].upper() for substring in substrings]):
             pass
         else:
-            if 'NEW' in permit_data['PERMITSUBTYPE'] or 'REPLACEMENT' in permit_data[
-                'PERMITSUBTYPE']:  # Figure out what to do with roof-over
+            if 'NEW' in permit_data['PERMITSUBTYPE'] or 'REPLACEMENT' in permit_data['PERMITSUBTYPE']:  # Figure out what to do with roof-over
                 new_year = int(permit_data['ISSUED'][-4:])
                 if bldg.hasElement['Roof'].hasYearBuilt < new_year < event_year:
                     bldg.hasElement['Roof'].hasYearBuilt = new_year
@@ -158,7 +160,11 @@ def update_yr_of_construction(bldg, permit_data, event_year):
         pass
 
 
-def get_dis_permit_damage(bldg, df_dis_permit, df_inventory, obsv_damage_type, length_unit):
+def get_dis_permit_damage(bldg, component_type, hazard_type, df_dis_permit, df_inventory, obsv_damage_type,
+                          length_unit):
+    data_details = {'available': False, 'fidelity': None, 'component type': component_type,
+                    'hazard type': hazard_type,
+                    'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
     # Allocate empty lists to gather damage information:
     if obsv_damage_type == 'roof_cover':
         rcover_damage_cat = []
@@ -303,7 +309,7 @@ def get_dis_permit_damage(bldg, df_dis_permit, df_inventory, obsv_damage_type, l
     df_dis_permit['Max Roof Cover Damage'] = max_percent
     df_dis_permit['Min Roof Cover Damage'] = min_percent
     df_dis_permits = df_dis_permit.drop('Percent Roof Cover Damage', axis=1)
-    return df_dis_permits
+    return df_dis_permits, data_details
 
 
 def roof_square_damage_cat(total_area, stories, num_roof_squares, unit):
