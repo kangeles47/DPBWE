@@ -47,4 +47,3 @@ class BayCountyPermits(PostDisasterDamageDataSource):
         self.hasLocationPrecision['exact location'] = True
         self.hasAccuracy = False
         self.hasType['permit data'] = True
-        
