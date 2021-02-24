@@ -39,3 +39,12 @@ class STEER(PostDisasterDamageDataSource):
         self.hasType['field observations'] = True
 
 
+class BayCountyPermits(PostDisasterDamageDataSource):
+    def __init__(self):
+        PostDisasterDamageDataSource.__init__(self)
+        self.hasDamagePrecision['component, discrete'] = True
+        self.hasDamagePrecision['component, range'] = True
+        self.hasLocationPrecision['exact location'] = True
+        self.hasAccuracy = False
+        self.hasType['permit data'] = True
+        
