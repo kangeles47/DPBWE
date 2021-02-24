@@ -2,6 +2,7 @@ import pandas as pd
 import ast
 import matplotlib.pyplot as plt
 from zone import Building
+from post_disaster_damage_data_source import STEER
 
 
 def get_damage_data(bldg, event_year, df_inventory, steer_flag, bldg_permit_flag, find_permit_flag, crowd_sourced_flag,
@@ -17,7 +18,9 @@ def get_damage_data(bldg, event_year, df_inventory, steer_flag, bldg_permit_flag
     if steer_flag:
         data_details_dict = {'damage precision': 'component', 'location precision': 'exact location',
                              'damage scale': {'type': 'HAZUS-HM', 'global_damage_states': ['No Damage', 'Minor Damage',
-                                                                                           'Moderate Damage', 'Severe Damage', 'Destruction']}}
+                                                                                           'Moderate Damage',
+                                                                                           'Severe Damage',
+                                                                                           'Destruction']}}
         # Need to find a way to extract damage state definitions for specific components
         parcel_identifier = bldg.hasLocation['Address']
         add_steer_data(bldg, parcel_identifier, steer_file_path, data_details_dict)
@@ -45,35 +48,52 @@ def get_damage_data(bldg, event_year, df_inventory, steer_flag, bldg_permit_flag
     return damage_data_dict
 
 
-def add_steer_data(bldg, parcel_identifier, steer_file_path, data_details_dict):
+def add_steer_data(self, bldg, component_type, hazard_type, steer_file_path):
+    parcel_identifier = bldg.hasLocation['Address']
     # Parcel identifier should be the parcel's address in the following format (not case-sensitive):
     # 1842 BRIDGE ST Panama City BAY FL 32409 USA (number, street, city, county, state, zip, country)
     df_steer = pd.read_csv(steer_file_path)
+    data_flag = False  # Tell the user if there is data available for the specific bldg, component, hazard
     try:
-        # Check if the parcel has a StEER observation:
+        # Check if the parcel has a StEER observation at its exact location:
         idx = df_steer.loc[df_steer['address_full'].lower() == parcel_identifier.lower()].index[0]
-        # Input component-level damage levels:
-        damage_dict = {'roof': {'steer': {'data_details': data_details_dict, 'hazards_present': None,
-                                          'wind_damage_rating': None, 'roof_cover_damage': None,
-                                          'roof_structure_damage': None, 'roof_substrate_damage': None}}}
+        # Create a new instance of this damage data source:
+        steer_data = STEER()
+        # Update the Location Precision attribute:
+        steer_data.hasLocationPrecision['street level'] = False
         # Extract StEER damage data:
-        bldg.hasDamageData['hazard'] = df_steer['hazards_present'][idx]
-        bldg.hasDamageData['wind damage rating'] = df_steer['wind_damage_rating'][idx]
-        bldg.hasElement['Roof'].hasShape[df_steer['roof_shape'][idx].lower()] = True
-        bldg.hasElement['Roof'].hasPitch = df_steer['roof_slope'][idx]
+        for key in steer_data.hasHazard:
+            if key in df_steer['hazards_present'].lower():
+                steer_data.hasHazard[key] = True
+        bldg.hasDamageData['hazard_damage_rating']['wind'] = df_steer['wind_damage_rating'][idx]
+        bldg.hasDamageData['hazard_damage_rating']['surge'] = df_steer['surge_damage_rating'][idx]
+        bldg.hasDamageData['hazard_damage_rating']['rain'] = df_steer['rainwater_damage_rating'][idx]
+        # Update building and component-level attributes:
         bldg.hasStructuralSystem = df_steer['mwfrs'][idx]
         bldg.hasElement['Roof'].hasCover = df_steer['roof_cover'][idx]
-        bldg.hasDamageData['roof']['cover']['StEER'] = df_steer['roof_cover_damage_'][idx]
-        bldg.hasDamageData['roof']['structure']['StEER'] = df_steer['roof_structure_damage_'][idx]
-        bldg.hasDamageData['roof']['substrate']['StEER'] = df_steer['roof_substrate_damage'][idx]
+        bldg.hasElement['Roof'].hasShape[df_steer['roof_shape'][idx].lower()] = True
+        bldg.hasElement['Roof'].hasPitch = df_steer['roof_slope'][idx]
         if int(df_steer['reroof_year'][idx]) > bldg.hasElement['Roof'].hasYearBuilt:
             bldg.hasElement['Roof'].hasYearBuilt = int(df_steer['reroof_year'][idx])
         else:
             pass
-        # Add roof damage data description to Roof Element:
-        bldg.hasElement['Roof'].hasDamageData = bldg.hasDamageData['Roof']
+        # Extract component-level damage descriptions if the desired hazard is present:
+        if steer_data.hasHazard[hazard_type]:
+            # Extract component-level damage descriptions:
+            if component_type == 'roof cover':
+                # Check if there are roof-related damage descriptions:
+                if df_steer['roof_cover_damage_'][idx] > 0:
+                    data_flag = True
+                    # Add the damage description to the roof:
+                    bldg.hasElement['Roof'].hasDamageData['cover']['value'] = df_steer['roof_cover_damage_'][idx]
+                    # Add the damage data details:
+                    steer_data.get_damage_scale('HAZUS-HM', 'roof cover', damage_states=None, values=None)
+                    bldg.hasElement['Roof'].hasDamageData['cover']['data details'] = steer_data
+        else:
+            pass
     except IndexError:  # No StEER entry exists for this exact location: Check General Area or does not exist
         pass
+    return data_flag
 
 
 def add_permit_data(bldg, df_inventory, parcel_identifier, event_year, dis_permit_file_path, permit_file_path=None,
@@ -241,7 +261,7 @@ def get_dis_permit_damage(bldg, df_dis_permit, df_inventory, obsv_damage_type, l
                 dcat_idx = rcat.index(dcat)
                 df_dis_permit.at[dparcel, 'HAZUS Roof Damage Category'] = [dcat]
                 df_dis_permit.at[dparcel, 'Percent Roof Cover Damage'] = \
-                df_dis_permit['Percent Roof Cover Damage'][dparcel][dcat_idx]
+                    df_dis_permit['Percent Roof Cover Damage'][dparcel][dcat_idx]
             else:
                 pass
     # Clean up percent categories:
