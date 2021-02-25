@@ -5,50 +5,7 @@ from zone import Building
 from post_disaster_damage_data_source import STEER
 
 
-def get_damage_data(bldg, event_year, df_inventory, steer_flag, bldg_permit_flag, find_permit_flag, crowd_sourced_flag,
-                    fema_modeled_flag, fema_claims_flag, rsensing_imagery_flag, steer_file_path, permit_file_path,
-                    dis_permit_file_path, crowd_sourced_file_path, fema_modeled_file_path, fema_claims_file_path,
-                    rsensing_imagery_file_path):
-    data_details_dict = {'damage precision': None, 'location precision': None,
-                         'damage scale': {'type': None, 'global_damage_states': []}}
-    damage_data_dict = {'steer': None, 'building permits': None, 'crowd-sourced': None, 'fema modeled': None,
-                        'fema claims': None, 'remote-sensing/imagery': None}
-    # Check if the building has a damage description for each of the user-defined data sources:
-    damage_data_dict = {}
-    if steer_flag:
-        data_details_dict = {'damage precision': 'component', 'location precision': 'exact location',
-                             'damage scale': {'type': 'HAZUS-HM', 'global_damage_states': ['No Damage', 'Minor Damage',
-                                                                                           'Moderate Damage',
-                                                                                           'Severe Damage',
-                                                                                           'Destruction']}}
-        # Need to find a way to extract damage state definitions for specific components
-        parcel_identifier = bldg.hasLocation['Address']
-        add_steer_data(bldg, parcel_identifier, steer_file_path, data_details_dict)
-    if bldg_permit_flag:
-        if find_permit_flag:
-            parcel_identifier = bldg.hasLocation['Address']
-        else:
-            parcel_identifier = None
-        add_permit_data(bldg, df_inventory, parcel_identifier, event_year, dis_permit_file_path, permit_file_path,
-                        length_unit='ft')
-    if crowd_sourced_flag:
-        parcel_identifier = None
-        add_crowd_sourced_data(bldg, parcel_identifier, crowd_sourced_file_path)
-    if fema_modeled_flag:
-        parcel_identifier = None
-        add_fema_modeled_data(bldg, parcel_identifier, fema_modeled_file_path)
-    if fema_claims_flag:
-        parcel_identifier = bldg.hasLocation['Zip Code']
-        add_fema_claims_data(bldg, parcel_identifier, fema_claims_file_path)
-    if rsensing_imagery_flag:
-        parcel_identifier = None
-        add_rsensing_imagery_data(bldg, parcel_identifier, crowd_sourced_file_path)
-    # Figure out which data source is the best data source for this component:
-    # Start with the damage precision description:
-    return damage_data_dict
-
-
-def add_steer_data(self, bldg, component_type, hazard_type, steer_file_path):
+def add_steer_data(bldg, component_type, hazard_type, steer_file_path):
     parcel_identifier = bldg.hasLocation['Address']
     # Parcel identifier should be the parcel's address in the following format (not case-sensitive):
     # 1842 BRIDGE ST Panama City BAY FL 32409 USA (number, street, city, county, state, zip, country)
