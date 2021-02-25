@@ -903,20 +903,24 @@ class ASCE7(BldgCode):
     def get_rcover_case(self, bldg):
         # Roof C&C cases vary based on the roof pitch:
         if self.hasEdition != 'ASCE 7-16':
-            if self.hasEdition != 'ASCE 7-95' or self.hasEdition != 'ASCE 7-93' or self.hasEdition != 'ASCE 7-88':
-                if bldg.hasElement['Roof'].hasPitch <= 7 or bldg.hasElement['Roof'].hasShape['flat']:
-                    rcover_case = 1  # Case 1 : gable roofs with theta <= 7 degrees
-                elif 7 < bldg.hasElement['Roof'].hasPitch <= 27 or ('shallow' in bldg.hasElement['Roof'].hasPitch) or bldg.hasElement['Roof'].hasShape == 'hip':
-                    rcover_case = 2  # Case 2: gable/hip roofs with 7 < theta < 27
-                elif 27 < bldg.hasElement['Roof'].hasPitch <= 45 or ('steep' in bldg.hasElement['Roof'].hasPitch):
-                    rcover_case = 3  # Case 3: gable roofs with 27< theta <= 45
+            if (bldg.hasGeometry['Length Unit'] == 'ft' and bldg.hasGeometry['Height'] <= 60) or (
+                    bldg.hasGeometry['Length Unit'] == 'm' and bldg.hasGeometry['Height'] <= 18.29):
+                if self.hasEdition != 'ASCE 7-95' or self.hasEdition != 'ASCE 7-93' or self.hasEdition != 'ASCE 7-88':
+                    if bldg.hasElement['Roof'].hasPitch <= 7 or bldg.hasElement['Roof'].hasShape['flat']:
+                        rcover_case = 1  # Case 1 : gable roofs with theta <= 7 degrees
+                    elif 7 < bldg.hasElement['Roof'].hasPitch <= 27 or ('shallow' in bldg.hasElement['Roof'].hasPitch) or bldg.hasElement['Roof'].hasShape == 'hip':
+                        rcover_case = 2  # Case 2: gable/hip roofs with 7 < theta < 27
+                    elif 27 < bldg.hasElement['Roof'].hasPitch <= 45 or ('steep' in bldg.hasElement['Roof'].hasPitch):
+                        rcover_case = 3  # Case 3: gable roofs with 27< theta <= 45
+                else:
+                    if bldg.hasElement['Roof'].hasPitch <= 10 or bldg.hasElement['Roof'].hasShape['flat']:
+                        rcover_case = 1  # Case 1 : gable roofs with theta <= 10 degrees
+                    elif (bldg.hasElement['Roof'].hasShape['gable'] or bldg.hasElement['Roof'].hasShape['gable/hip combo']) and 10 < bldg.hasElement['Roof'].hasPitch <= 45:
+                        rcover_case = 2  # Case 2: gable roofs with 10 < theta < 45
+                    elif ((bldg.hasElement['Roof'].hasShape['hip'] or bldg.hasElement['Roof'].hasShape['gable/hip combo']) and 10 < bldg.hasElement['Roof'].hasPitch <= 30) or ('steep' in bldg.hasElement['Roof'].hasPitch):
+                        rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
             else:
-                if bldg.hasElement['Roof'].hasPitch <= 10 or bldg.hasElement['Roof'].hasShape['flat']:
-                    rcover_case = 1  # Case 1 : gable roofs with theta <= 10 degrees
-                elif (bldg.hasElement['Roof'].hasShape['gable'] or bldg.hasElement['Roof'].hasShape['gable/hip combo']) and 10 < bldg.hasElement['Roof'].hasPitch <= 45:
-                    rcover_case = 2  # Case 2: gable roofs with 10 < theta < 45
-                elif ((bldg.hasElement['Roof'].hasShape['hip'] or bldg.hasElement['Roof'].hasShape['gable/hip combo']) and 10 < bldg.hasElement['Roof'].hasPitch <= 30) or ('steep' in bldg.hasElement['Roof'].hasPitch):
-                    rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
+                rcover_case = 8
         else:
             # Calculate the least horizontal dimension:
             coord_list = list(bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle.exterior.coords)
