@@ -87,6 +87,7 @@ class STEER(PostDisasterDamageDataSource):
             pass
         return data_details
 
+
 class BayCountyPermits(PostDisasterDamageDataSource):
     def __init__(self):
         PostDisasterDamageDataSource.__init__(self)
