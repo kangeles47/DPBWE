@@ -43,16 +43,17 @@ class STEER(PostDisasterDamageDataSource):
         self.hasType['field observations'] = True
 
     def add_steer_data(self, bldg, component_type, hazard_type, steer_file_path):
-        parcel_identifier = bldg.hasLocation['Address']
+        parcel_identifier = bldg.hasLocation['Street Number'] + bldg.hasLocation['City'] + ' ' + bldg.hasLocation['County'] + ' ' + bldg.hasLocation['State'] + ' ' + bldg.hasLocation['Zip Code'] + ' USA'
         # Parcel identifier should be the parcel's address in the following format (not case-sensitive):
         # 1842 BRIDGE ST Panama City BAY FL 32409 USA (number, street, city, county, state, zip, country)
-        df_steer = pd.read_csv(steer_file_path)
+        dtype_dict = {'address_sub_thoroughfare': 'string'}
+        df_steer = pd.read_csv(steer_file_path, dtype=dtype_dict)
         data_details = {'available': False, 'fidelity': None, 'component type': component_type,
                         'hazard type': hazard_type,
                         'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
         try:
             # Check if the parcel has a StEER observation at its exact location:
-            idx = df_steer.loc[df_steer['address_full'].lower() == parcel_identifier.lower()].index[0]
+            idx = df_steer.loc[df_steer['address_sub_thoroughfare'].lower() == bldg.hasLocation['Street Number'].split()[0]].index[0]
             # Update the Location Precision attribute:
             self.hasLocationPrecision['street level'] = False
             # Extract StEER damage data:
