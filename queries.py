@@ -4,8 +4,9 @@ import pandas as pd
 import geopandas as gpd
 from geopy.distance import distance
 from shapely.geometry import Polygon, Point
-from zone import Site, Parcel
-from element import Wall, Roof
+from OBDM.zone import Site
+from parcel import Parcel
+from OBDM.element import Wall, Roof
 
 
 def get_bldgs_at_dist(site, ref_bldg, dist, unit, plot_flag):
