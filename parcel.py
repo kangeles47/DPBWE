@@ -36,8 +36,8 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
                 else:
                     pass
-                xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
-                plt.plot(np.array(xfpt) / 3.281, np.array(yfpt) / 3.281, 'k')
+                #xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
+                #plt.plot(np.array(xfpt) / 3.281, np.array(yfpt) / 3.281, 'k')
                 #if key == 'local':
                     # Rotate the footprint to create a "rotated cartesian" axis:
                  #   rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle
@@ -52,11 +52,11 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 #else:
                  #   rflag= False
                     # Uncomment to plot the footprint:
-                plt.xlabel('x [m]', fontsize=14)
-                plt.ylabel('y [m]', fontsize=14)
-                plt.xticks(fontsize=14)
-                plt.yticks(fontsize=14)
-                plt.show()
+                #plt.xlabel('x [m]', fontsize=14)
+                #plt.ylabel('y [m]', fontsize=14)
+                #plt.xticks(fontsize=14)
+                #plt.yticks(fontsize=14)
+                #plt.show()
         #if rflag:
             #self.hasGeometry['Footprint']['rotated'] = rotated_b
         # Pull building/story height information from DOE reference buildings:
@@ -91,7 +91,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 # With new 3D coordinates for each horizontal plane, create surface geometry:
                 # Set up plotting:
                 #fig = plt.figure()
-                ax = plt.axes(projection='3d')
+                #ax = plt.axes(projection='3d')
                 for plane in range(0, len(new_zpts) - 1):
                     # Add the bottom and top planes for the Story:
                     plane_poly1 = Polygon(new_zpts[plane])
@@ -113,24 +113,24 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                             surf_ys.append(surf_points[1])
                             surf_zs.append(surf_points[2])
                         # Plot the surfaces for the entire building to verify:
-                        ax.plot(np.array(surf_xs)/3.281, np.array(surf_ys)/3.281, np.array(surf_zs)/3.281, 'k')
+                        #ax.plot(np.array(surf_xs)/3.281, np.array(surf_ys)/3.281, np.array(surf_zs)/3.281, 'k')
                         # Make the panes transparent:
-                        ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-                        ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-                        ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+                        #ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+                        #ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+                        #ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
                         # Make the grids transparent:
-                        ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-                        ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-                        ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                        #ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                        #ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                        #ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
                         # Plot labels
-                        ax.set_xlabel('x [m]', fontsize=12)
-                        ax.set_ylabel('y [m]', fontsize=12)
-                        ax.set_zlabel('z [m]', fontsize=12)
-                        ax.set_zlim(0, 16)
+                        #ax.set_xlabel('x [m]', fontsize=12)
+                        #ax.set_ylabel('y [m]', fontsize=12)
+                        #ax.set_zlabel('z [m]', fontsize=12)
+                        #ax.set_zlim(0, 16)
                 # Show the surfaces for each story:
-                ax.xaxis.set_tick_params(labelsize=12)
-                ax.yaxis.set_tick_params(labelsize=12)
-                ax.zaxis.set_tick_params(labelsize=12)
+                #ax.xaxis.set_tick_params(labelsize=12)
+                #ax.yaxis.set_tick_params(labelsize=12)
+                #ax.zaxis.set_tick_params(labelsize=12)
                 #plt.show()
                 # Define full 3D surface renderings for the building using base plane and top plane:
                 base_poly = Polygon(new_zpts[0])
