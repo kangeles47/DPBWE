@@ -9,6 +9,7 @@
 # Last updated:          (v1) 01/20/2021
 # ------------------------------------------------------------------------------
 
+import numpy as np
 from shapely.geometry import Point, Polygon
 from OBDM.interface import Interface
 
@@ -357,12 +358,31 @@ class Building(Zone):
         self.hasYearBuilt = int(yr_built)
         self.hasLocation['Address'] = address
         self.hasLocation['Geodesic'] = Point(lon, lat)
+        self.get_location_data()
         # Tag the building as "commercial" or "not commercial"
         comm_occupancies = ['profession', 'hotel', 'motel', 'financial', 'commercial']  # example occupancies
         if self.hasOccupancy.lower() in comm_occupancies:
             self.isComm = True
         else:
             self.isComm = False
+
+    def get_location_data(self):
+        """
+        A simple function to extract additional information related to the bldg's location.
+        This function currently adds State and County information to the data model of parcels in FL's Bay County.
+        :return:
+        """
+        # Here is where we are going to populate any characteristics relevant to the parcel's location:
+        # What we get back from the parcel data is the address and zip code:
+        zipcode = int(self.hasLocation['Address'].split()[-1])
+        BayCountyZipCodes = np.arange(32401, 32418)
+        BayCountyZipCodes = np.append(BayCountyZipCodes, [32438, 32444, 32466])
+
+        if zipcode in BayCountyZipCodes:
+            self.hasLocation['State'] = 'FL'
+            self.hasLocation['County'] = 'Bay'
+        else:
+            print('County and State Information not currently supported')
 
 
 class Story(Zone):
