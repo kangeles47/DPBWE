@@ -333,7 +333,7 @@ class ASCE7(BldgCode):
                         pass
                 # Once zone geometries have been defined and pressures mapped, store the Dataframe:
                 uplift_pressures[direction] = prmwfrs
-        bldg.hasElement['Roof'][0].hasCapacity['wind pressure']['total'].append(uplift_pressures)
+        bldg.hasElement['Roof'][0].hasCapacity['wind pressure']['total'] = uplift_pressures
 
     def get_roof_uplift_pressure(self, edition, bldg, length, exposure, wind_speed, direction, pitch):
         """
