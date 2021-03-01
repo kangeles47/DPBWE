@@ -1,6 +1,7 @@
 import random #switch later
 import pandas as pd
-from element import Window
+from OBDM.element import Window
+
 
 class SurveyData:
 
