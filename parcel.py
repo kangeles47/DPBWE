@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import geopandas as gpd
 from geopy import distance
@@ -6,10 +7,10 @@ from math import sqrt, pi, sin, atan2, degrees
 from scipy import spatial
 from shapely.geometry import LineString, Point, Polygon
 import bldg_code
-from element import Roof, Wall, Floor, Ceiling
-from interface import Interface
+from OBDM.zone import Building
+from OBDM.element import Roof, Wall, Floor, Ceiling
+from OBDM.interface import Interface
 from survey_data import SurveyData
-from zone import Building
 
 
 class Parcel(Building):  # Note here: Consider how story/floor assignments may need to change for elevated structures
