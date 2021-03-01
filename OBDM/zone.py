@@ -138,7 +138,8 @@ class Zone:
                 for k in space.hasElement:
                     if k in self.hasElement:
                         if space.hasElement[k] == self.hasElement[k]:
-                            print('Story space-wise elements have already been updated')
+                            pass
+                            #print('Story space-wise elements have already been updated')
                         else:
                             # Create a list with existing and new story's elements and choose only unique values:
                             elem_list = self.hasElement[k] + space.hasElement[k]
@@ -150,7 +151,8 @@ class Zone:
                 for k in space.containsElement:
                     if k in self.containsElement:
                         if space.containsElement[k] == self.containsElement[k]:
-                            print('Story space-wise (contains) elements have already been updated')
+                            pass
+                            #print('Story space-wise (contains) elements have already been updated')
                         else:
                             # Create a list with existing and new space's elements and choose only unique values:
                             elem_list = self.containsElement[k] + space.containsElement[k]
@@ -164,7 +166,8 @@ class Zone:
                     # Update the hasElement attribute:
                     if k in self.hasElement:
                         if story.hasElement[k] == self.hasElement[k]:
-                            print('Building story-wise elements have already been updated')
+                            pass
+                            #print('Building story-wise elements have already been updated')
                         else:
                             # Create a list with existing and new story's elements and choose only unique values:
                             elem_list = self.hasElement[k] + story.hasElement[k]
@@ -175,7 +178,8 @@ class Zone:
                     # Update the containsElement attribute:
                     if k in self.containsElement:
                         if story.containsElement[k] == self.containsElement[k]:
-                            print('Building story-wise (contains) elements have already been updated')
+                            pass
+                            #print('Building story-wise (contains) elements have already been updated')
                         else:
                             # Create a list with existing and new story's elements and choose only unique values:
                             elem_list = self.containsElement[k] + story.containsElement[k]
@@ -194,7 +198,8 @@ class Zone:
                     self.adjacentElement.update({'Walls': story.adjacentElement['Walls']})
             # Add the roof and bottom floor into adjacentElement if needed:
             if len(self.adjacentElement['Roof']) == 1:
-                print('Roof already defined as an adjacent element for this building')
+                pass
+                #print('Roof already defined as an adjacent element for this building')
             else:
                 try:
                     self.adjacentElement.update({'Roof': self.hasStory[-1].adjacentElement['Roof']})
@@ -202,7 +207,8 @@ class Zone:
                     pass
             # Add the bottom floor as an adjacentElement for the building:
             if len(self.adjacentElement['Floor']) == 1:
-                print('Bottom floor already added as an adjacent element for this building')
+                pass
+                #print('Bottom floor already added as an adjacent element for this building')
             else:
                 try:
                     self.adjacentElement.update({'Floor': self.hasStory[0].adjacentElement['Floor'][0]})
@@ -214,7 +220,8 @@ class Zone:
                 for k in bldg.hasElement:
                     if k in self.hasElement:
                         if bldg.hasElement[k] == self.hasElement[k]:
-                            print('Site building-wise elements have already been updated')
+                            pass
+                            #print('Site building-wise elements have already been updated')
                     else:
                         # Create a list with existing and new building's elements and choose only unique values:
                         elem_list = self.hasElement[k] + bldg.hasElement[k]
@@ -224,7 +231,8 @@ class Zone:
                 for k in bldg.containsElement:
                     if k in self.containsElement:
                         if bldg.containsElement[k] == self.containsElement[k]:
-                            print('Site building-wise (contains) elements have already been updated')
+                            pass
+                            #print('Site building-wise (contains) elements have already been updated')
                         else:
                             # Create a list with existing and new space's elements and choose only unique values:
                             elem_list = self.containsElement[k] + bldg.containsElement[k]
@@ -301,7 +309,7 @@ class Building(Zone):
         self.hasID = None
         self.hasOccupancy = None
         self.hasYearBuilt = None
-        self.hasLocation = {'Address': None, 'State': None, 'County': None, 'Geodesic': None}
+        self.hasLocation = {'Address': None, 'Street Number': None, 'City': None, 'Zip Code': None, 'State': None, 'County': None, 'Geodesic': None}
         self.hasGeometry = {'Total Floor Area': None, 'Footprint': {'type': None, 'geodesic': None, 'local': None},
                             'Height': None, '3D Geometry': {'geodesic': [], 'local': []},
                             'Facade': {'geodesic': [], 'local': []}}
@@ -375,12 +383,25 @@ class Building(Zone):
         # Here is where we are going to populate any characteristics relevant to the parcel's location:
         # What we get back from the parcel data is the address and zip code:
         zipcode = int(self.hasLocation['Address'].split()[-1])
+        self.hasLocation['Zip Code'] = str(zipcode).strip()
         BayCountyZipCodes = np.arange(32401, 32418)
         BayCountyZipCodes = np.append(BayCountyZipCodes, [32438, 32444, 32466])
 
         if zipcode in BayCountyZipCodes:
             self.hasLocation['State'] = 'FL'
             self.hasLocation['County'] = 'Bay'
+            if 'PANAMA CITY BEACH' in self.hasLocation['Address']:
+                address_split = self.hasLocation['Address'].split(' PANAMA CITY BEACH')
+                self.hasLocation['Street Number'] = address_split[0]
+                self.hasLocation['City'] = 'PANAMA CITY BEACH'
+            elif 'PANAMA CITY' in self.hasLocation['Address']:
+                address_split = self.hasLocation['Address'].split(' PANAMA CITY')
+                self.hasLocation['Street Number'] = address_split[0]
+                self.hasLocation['City'] = 'PANAMA CITY'
+            elif 'MEXICO BEACH' in self.hasLocation['Address']:
+                address_split = self.hasLocation['Address'].split(' MEXICO BEACH')
+                self.hasLocation['Street Number'] = address_split[0]
+                self.hasLocation['City'] = 'MEXICO BEACH'
         else:
             print('County and State Information not currently supported')
 
