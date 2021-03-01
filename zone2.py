@@ -6,11 +6,11 @@ from shapely import affinity
 from scipy import spatial
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from element import Roof, Wall, Floor, Ceiling
+from element2 import Roof, Wall, Floor, Ceiling
 import bldg_code
 from survey_data import SurveyData
 from geopy import distance
-from interface import Interface
+from interface2 import Interface
 import pandas as pd
 from code_pressures import PressureCalc
 

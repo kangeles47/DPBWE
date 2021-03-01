@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from geopy.distance import distance
 from shapely.geometry import Polygon
-from element import Wall, Roof
+from OBDM.element import Wall, Roof
 
 
 def get_bldgs_at_dist(site, ref_bldg, dist, unit, plot_flag):

@@ -9,8 +9,8 @@
 # Last updated:          (v1) 01/20/2021
 # ------------------------------------------------------------------------------
 
-from zone import Site, Building, Story, Space
-from element import Roof, Floor
+from OBDM.zone import Site, Building, Story, Space
+from OBDM.element import Roof, Floor
 
 
 def run_example1():

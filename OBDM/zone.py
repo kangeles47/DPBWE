@@ -10,7 +10,7 @@
 # ------------------------------------------------------------------------------
 
 from shapely.geometry import Point, Polygon
-from interface import Interface
+from OBDM.interface import Interface
 
 
 class Zone:
