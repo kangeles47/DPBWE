@@ -10,6 +10,8 @@ from code_pressures import PressureCalc
 
 
 def calc_tpu_pressures(bldg, key, tpu_wdir, wind_speed, exposure, edition, cat, hpr):
+    # Create new key-value pairs in the data model:
+    bldg.hasGeometry['TPU_surfaces'] = {'geodesic': [], 'local': []}
     # Step 1: Determine the building's TPU use case:
     eave_length = 0
     h_bldg = bldg.hasGeometry['Height']
