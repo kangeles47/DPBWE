@@ -8,7 +8,7 @@ import pyproj
 from functools import partial
 from geopy import distance
 
-from BIM import Parcel
+from parcel import Parcel
 
 class Wind:
 
