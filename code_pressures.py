@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from element import Wall, Roof
+from OBDM.element import Wall, Roof
+
 
 class PressureCalc:
 
