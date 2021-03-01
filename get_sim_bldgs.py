@@ -30,7 +30,7 @@ def get_sim_bldgs(bldg, site, hazard_type, component_type):
 
 
 def check_sim_rcover(bldg, compare_bldg):
-    if bldg.hasElement['Roof'].hasCover == compare_bldg.hasElement['Roof'].hasCover:
+    if bldg.hasElement['Roof'][0].hasCover == compare_bldg.hasElement['Roof'][0].hasCover:
         rcover_flag = True
     else:
         # Check if the roof cover types have similar characteristics:
