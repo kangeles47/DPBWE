@@ -1,4 +1,4 @@
-from zone import Parcel
+from parcel import Parcel
 from matplotlib import pyplot as plt
 import numpy as np
 from shapely.geometry import Polygon
