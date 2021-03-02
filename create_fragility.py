@@ -29,13 +29,27 @@ def create_fragility(bldg, site, component_type, hazard_type, event_year, event_
 
 
 def get_best_data(data_details_list):
-    data_dict = {'component': [], 'building': []}
+    data_dict = {'damage precision':[], 'location precision': [], 'accuracy': [], 'currentness': []}
     for data in data_details_list:
+        # Extract component/building damage descriptions:
         # Prioritize any descriptions that are at the component-level:
-        if data['fidelity'].hasDamagePrecision['component, discrete'] or data['fidelity'].hasDamagePrecision['component, range']:
-            data_dict['component'].append(data)
-        elif data['fidelity'].hasDamagePrecision['building, discrete'] or data['fidelity'].hasDamagePrecision['building, range']:
-            data_dict['building'].append(data)
+        # Data sources may have both component & building level descriptions, if statement flags highest fidelity
+        if data['fidelity'].hasDamagePrecision['component, discrete']:
+            data_dict['damage precision'].append('component, discrete')
+        elif data['fidelity'].hasDamagePrecision['component, range']:
+            data_dict['damage precision'].append('component, range')
+        elif data['fidelity'].hasDamagePrecision['building, discrete']:
+            data_dict['damage precision'].append('building, discrete')
+        elif data['fidelity'].hasDamagePrecision['building, range']:
+            data_dict['damage precision'].append('building, range')
+        # Extract location description:
+        for key in data['fidelity'].hasLocationPrecision:
+            if data['fidelity'].hasLocationPrecision[key]:
+                data_dict['location precision'].append(key)
+        # Extract accuracy indicator:
+        data_dict['accuracy'].append(data['fidelity'].hasAccuracy)
+        # Extract current-ness:
+        data_dict['currentness'].append(data['fidelity'].hasDate)
     # Check for component-level descriptions:
     if len(data_dict['component']) > 0:
         pass
