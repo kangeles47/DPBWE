@@ -9,16 +9,36 @@ from parcel import Parcel
 def create_fragility(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths):
     # Step 1: Find similar buildings based on similarity in features, load path for the given hazard
     sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type)
+    sim_bldgs.append(bldg)  # Add reference building to extract its data as well
     # Step 2: Find damage descriptions for each building
-    data_list = []
-    for i in range(0, len(data_types)):
-        if isinstance(data_types[i], post_disaster_damage_data_source.STEER):
-            data_details = data_types[i].add_steer_data(bldg, component_type, hazard_type, file_paths[i])
-        elif isinstance(data_types[i], post_disaster_damage_data_source.BayCountyPermits):
-            data_details = data_types[i].add_permit_data(bldg, component_type, hazard_type, file_paths[i])
-        data_list.append(data_details)
+    for sim_bldg in sim_bldgs:
+        data_list = []
+        for i in range(0, len(data_types)):
+            if isinstance(data_types[i], post_disaster_damage_data_source.STEER):
+                data_details = data_types[i].add_steer_data(sim_bldg, component_type, hazard_type, file_paths[i])
+            elif isinstance(data_types[i], post_disaster_damage_data_source.BayCountyPermits):
+                data_details = data_types[i].add_permit_data(sim_bldg, component_type, hazard_type, file_paths[i])
+        # Ignore any data sources that do not contain information:
+        if not data_details['availability']:
+            pass
+        else:
+            data_list.append(data_details)
+        # Data Quality Index:
+
     # Step 3: Choose the best data source for this damage description:
 
+
+def get_best_data(data_details_list):
+    data_dict = {'component': [], 'building': []}
+    for data in data_details_list:
+        # Prioritize any descriptions that are at the component-level:
+        if data['fidelity'].hasDamagePrecision['component, discrete'] or data['fidelity'].hasDamagePrecision['component, range']:
+            data_dict['component'].append(data)
+        elif data['fidelity'].hasDamagePrecision['building, discrete'] or data['fidelity'].hasDamagePrecision['building, range']:
+            data_dict['building'].append(data)
+    # Check for component-level descriptions:
+    if len(data_dict['component']) > 0:
+        pass
 
 # Create a Site Class holding all of the data models for the parcels:
 inventory = 'C:/Users/Karen/PycharmProjects/DPBWE/BayCountyCommercialParcels.csv'
