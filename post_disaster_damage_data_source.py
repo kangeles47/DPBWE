@@ -59,6 +59,7 @@ class STEER(PostDisasterDamageDataSource):
         try:
             # Check if the parcel has a StEER observation at its exact location:
             idx = df_steer.loc[df_steer['address_full'] == parcel_identifier].index[0]
+            self.hasDate = df_steer['date'][idx]
             # Update the Location Precision attribute:
             self.hasLocationPrecision['street level'] = False
             # Extract StEER damage data:
