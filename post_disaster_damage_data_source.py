@@ -22,8 +22,8 @@ class PostDisasterDamageDataSource:
                 self.hasDamageScale['damage states'][state] = None
             if component_type == 'roof cover':
                 dstate_values = [[0, 2], [2, 15], [15, 50], [50, 100], [50, 100]]
-                for j in range(0, len(dstate_values)):
-                    self.hasDamageScale['damage_states'][j] = dstate_values[j]
+                for key in dstate_list:
+                    self.hasDamageScale['damage states'][key] = dstate_values[key-1]
             else:
                 pass
         else:
@@ -43,35 +43,40 @@ class STEER(PostDisasterDamageDataSource):
         self.hasType['field observations'] = True
 
     def add_steer_data(self, bldg, component_type, hazard_type, steer_file_path):
-        parcel_identifier = bldg.hasLocation['Street Number'] + bldg.hasLocation['City'] + ' ' + bldg.hasLocation['County'] + ' ' + bldg.hasLocation['State'] + ' ' + bldg.hasLocation['Zip Code'] + ' USA'
+        # Load the StEER Dataset:
+        df_steer = pd.read_csv(steer_file_path)
+        df_steer['address_full'] = df_steer['address_full'].str.lower().replace(' ', '')  # Data clean-up
+        df_steer['address_full'] = df_steer['address_full'].str.replace(' ', '')
+        # Define the parcel identifier:
         # Parcel identifier should be the parcel's address in the following format (not case-sensitive):
         # 1842 BRIDGE ST Panama City BAY FL 32409 USA (number, street, city, county, state, zip, country)
-        dtype_dict = {'address_sub_thoroughfare': 'string'}
-        df_steer = pd.read_csv(steer_file_path, dtype=dtype_dict)
+        parcel_identifier = bldg.hasLocation['Street Number'] + ' ' + bldg.hasLocation['City'] + ' ' + bldg.hasLocation['County'] + ' ' + bldg.hasLocation['State'] + ' ' + bldg.hasLocation['Zip Code'] + ' USA'
+        parcel_identifier = parcel_identifier.lower().replace(' ', '')  # Data clean-up
+        # Set up dictionary with details of data for this bldg, component, hazard:
         data_details = {'available': False, 'fidelity': None, 'component type': component_type,
                         'hazard type': hazard_type,
                         'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
         try:
             # Check if the parcel has a StEER observation at its exact location:
-            idx = df_steer.loc[df_steer['address_sub_thoroughfare'].lower() == bldg.hasLocation['Street Number'].split()[0]].index[0]
+            idx = df_steer.loc[df_steer['address_full'] == parcel_identifier].index[0]
             # Update the Location Precision attribute:
             self.hasLocationPrecision['street level'] = False
             # Extract StEER damage data:
             for key in self.hasHazard:
-                if key in df_steer['hazards_present'].lower():
+                if key in df_steer['hazards_present'][idx].lower():
                     self.hasHazard[key] = True
-            data_details['hazard_damage_rating']['wind'] = df_steer['wind_damage_rating'][idx]
-            data_details['hazard_damage_rating']['surge'] = df_steer['surge_damage_rating'][idx]
-            data_details['hazard_damage_rating']['rain'] = df_steer['rainwater_damage_rating'][idx]
+            data_details['hazard damage rating']['wind'] = df_steer['wind_damage_rating'][idx]
+            data_details['hazard damage rating']['surge'] = df_steer['surge_damage_rating'][idx]
+            data_details['hazard damage rating']['rain'] = df_steer['rainwater_ingress_damage_rating'][idx]
             # Update building and component-level attributes:
             bldg.hasStructuralSystem = df_steer['mwfrs'][idx]
-            bldg.hasElement['Roof'].hasCover = df_steer['roof_cover'][idx]
-            bldg.hasElement['Roof'].hasShape[df_steer['roof_shape'][idx].lower()] = True
-            bldg.hasElement['Roof'].hasPitch = df_steer['roof_slope'][idx]
-            if int(df_steer['reroof_year'][idx]) > bldg.hasElement['Roof'].hasYearBuilt:
-                bldg.hasElement['Roof'].hasYearBuilt = int(df_steer['reroof_year'][idx])
-            else:
-                pass
+            #bldg.hasElement['Roof'].hasCover = df_steer['roof_cover'][idx]
+            bldg.hasElement['Roof'][0].hasShape[df_steer['roof_shape'][idx].lower()] = True
+            if bldg.hasElement['Roof'][0].hasPitch is None:
+                bldg.hasElement['Roof'][0].hasPitch = df_steer['roof_slope'][idx]
+            if bldg.hasElement['Roof'][0].hasYearBuilt is not None:
+                if int(df_steer['reroof_year'][idx]) > bldg.hasElement['Roof'][0].hasYearBuilt:
+                    bldg.hasElement['Roof'][0].hasYearBuilt = int(df_steer['reroof_year'][idx])
             # Extract component-level damage descriptions if the desired hazard is present:
             if self.hasHazard[hazard_type]:
                 # Extract component-level damage descriptions:
