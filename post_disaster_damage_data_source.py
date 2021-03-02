@@ -105,49 +105,36 @@ class BayCountyPermits(PostDisasterDamageDataSource):
         self.hasAccuracy = False
         self.hasType['permit data'] = True
 
-    def add_disaster_permit_data(self, bldg, component_type, hazard_type, df_inventory, parcel_identifier, event_year, permit_file_path,
-                        length_unit='ft'):
+    def add_disaster_permit_data(self, bldg, component_type, hazard_type, df_inventory,
+                                 permit_file_path, length_unit='ft'):
         # Permit data can be leveraged to inform the presence of disaster-related damage
         # To bring in permit data, there needs to be a way to map permit number to parcel
         # E.g., the permit may be listed in the parcel's property listing or
         # the permit database may have the parcel's address
         # Load the disaster permit data:
-        df_18 = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.xlsx', sheet_name='Sheet1')
-        df_19 = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.xlsx', sheet_name='Sheet2')
-        df_20 = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.xlsx', sheet_name='Sheet3')
-        # Find permit descriptions for the parcel:
-        if parcel_identifier is not None:  # Address or parcel number match
-            if dis_permit_file_path is not None:
-                dis_permits = df_dis_permit.loc[df_dis_permit['SITE_ADDR'] == parcel_identifier]
-                bldg.hasPermit['disaster'] = dis_permits
-                # Use the permit description to determine the damage type:
-                obsv_damage_type = 'roof_cover'
-                df_dis_new, data_details = get_dis_permit_damage(bldg, component_type, hazard_type, dis_permits,
-                                                                 df_inventory, obsv_damage_type, length_unit)
-            if permit_file_path is not None:
-                permit_data = df_permit.loc[df_permit['SITE_ADDR'] == parcel_identifier]
-                bldg.hasPermit['not disaster'] = permit_data
-                # Use the permit description to determine the replacement/retrofit condition:
-                for p in permit_data:
-                    update_yr_of_construction(bldg, component_type, p, event_year)
-        else:  # Permit number match
-            # Access the parcel's list of permits:
-            if dis_permit_file_path is not None:
-                for p in bldg.hasPermit['disaster']:
-                    # Find the permit descriptions:
-                    dis_permits = df_dis_permit.loc[df_dis_permit['Permit Number'] == p]
-                    # Use the permit description to determine the damage type:
-                    obsv_damage_type = 'roof_cover'
-                    df_dis_new, data_details = get_dis_permit_damage(bldg, component_type, hazard_type, dis_permits,
-                                                                     df_inventory, obsv_damage_type, length_unit)
-            if permit_file_path is not None:
-                for p in bldg.hasPermit['not disaster']:
-                    permit_data = df_permit.loc[df_permit['Permit Number'] == p]
-                    # Use the permit description to determine the replacement/retrofit condition:
-                    update_yr_of_construction(bldg, component_type, permit_data, event_year)
-
-    def add_permit_data(self, bldg, component_type, permit_file_path):
-        pass
+        df = pd.read_excel(permit_file_path, sheet_name='Sheet1')
+        # Find disaster permit descriptions for the parcel:
+        if len(bldg.hasPermit['disaster']) > 0:
+            for p in bldg.hasPermit['disaster']:
+                idx = df.loc[df['Permit Number'] == p].index[0]
+                bldg.hasPermit['disaster']['description'].append(df['DESCRIPTION'][idx].upper())
+                bldg.hasPermit['disaster']['permit type'].append(df['PERMITSUBTYPE'][idx].upper())
+        else:
+            # Find the disaster permit descriptions using the parcel identifier
+            parcel_identifier = bldg.hasLocation['Street Number'].upper()
+            try:
+                idx = df.loc[df['SITE_ADDR'] == parcel_identifier].index.to_list()
+                for i in idx:
+                    bldg.hasPermit['disaster']['number'].append(df['PERMITNUMBER'][i].upper())
+                    bldg.hasPermit['disaster']['description'].append(df['DESCRIPTION'][i].upper())
+                    bldg.hasPermit['disaster']['permit type'].append(df['PERMITSUBTYPE'][i].upper())
+            except IndexError:
+                pass  # No disaster permits available for this parcel
+        # Find the component damage using the permit description:
+        if len(bldg.hasPermit['disaster']) > 0:
+            data_details = get_dis_permit_damage(self, bldg, component_type, hazard_type, df_inventory, length_unit)
+        else:
+            pass
 
     def update_yr_of_construction(self, bldg, component_type, permit_data, event_year):
         # Update the year of construction for components or building:
