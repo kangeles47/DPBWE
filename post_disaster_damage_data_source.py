@@ -105,21 +105,16 @@ class BayCountyPermits(PostDisasterDamageDataSource):
         self.hasAccuracy = False
         self.hasType['permit data'] = True
 
-    def add_permit_data(self, bldg, component_type, hazard_type, df_inventory, parcel_identifier, event_year,
-                        dis_permit_file_path, permit_file_path=None,
+    def add_disaster_permit_data(self, bldg, component_type, hazard_type, df_inventory, parcel_identifier, event_year, permit_file_path,
                         length_unit='ft'):
-        # Permit data can be leveraged to inform:
-        # (1) the presence of damage (disaster permits) or
-        # (2) the presence of a retrofit (e.g., re-roofing)
+        # Permit data can be leveraged to inform the presence of disaster-related damage
         # To bring in permit data, there needs to be a way to map permit number to parcel
         # E.g., the permit may be listed in the parcel's property listing or
         # the permit database may have the parcel's address
         # Load the disaster permit data:
-        if dis_permit_file_path is not None:
-            df_dis_permit = pd.read_csv(dis_permit_file_path)
-        # Load the regular permit data:
-        if permit_file_path is not None:
-            df_permit = pd.read_csv(permit_file_path)
+        df_18 = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.xlsx', sheet_name='Sheet1')
+        df_19 = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.xlsx', sheet_name='Sheet2')
+        df_20 = pd.read_excel('C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.xlsx', sheet_name='Sheet3')
         # Find permit descriptions for the parcel:
         if parcel_identifier is not None:  # Address or parcel number match
             if dis_permit_file_path is not None:
@@ -134,7 +129,7 @@ class BayCountyPermits(PostDisasterDamageDataSource):
                 bldg.hasPermit['not disaster'] = permit_data
                 # Use the permit description to determine the replacement/retrofit condition:
                 for p in permit_data:
-                    update_yr_of_construction(bldg, p, event_year)
+                    update_yr_of_construction(bldg, component_type, p, event_year)
         else:  # Permit number match
             # Access the parcel's list of permits:
             if dis_permit_file_path is not None:
@@ -149,9 +144,12 @@ class BayCountyPermits(PostDisasterDamageDataSource):
                 for p in bldg.hasPermit['not disaster']:
                     permit_data = df_permit.loc[df_permit['Permit Number'] == p]
                     # Use the permit description to determine the replacement/retrofit condition:
-                    update_yr_of_construction(bldg, permit_data, event_year)
+                    update_yr_of_construction(bldg, component_type, permit_data, event_year)
 
-    def update_yr_of_construction(bldg, permit_data, event_year):
+    def add_permit_data(self, bldg, component_type, permit_file_path):
+        pass
+
+    def update_yr_of_construction(self, bldg, component_type, permit_data, event_year):
         # Update the year of construction for components or building:
         if 'ROOF' in permit_data['PERMITTYPE']:
             substrings = ['CANOPY', 'GAZ', 'BOAT', 'CAR', 'CLUB', 'GARAGE', 'PORCH', 'PATIO']

@@ -17,7 +17,8 @@ def create_fragility(bldg, site, component_type, hazard_type, event_year, event_
             if isinstance(data_types[i], post_disaster_damage_data_source.STEER):
                 data_details = data_types[i].add_steer_data(sim_bldg, component_type, hazard_type, file_paths[i])
             elif isinstance(data_types[i], post_disaster_damage_data_source.BayCountyPermits):
-                data_details = data_types[i].add_permit_data(sim_bldg, component_type, hazard_type, file_paths[i])
+                dis_permit_id = 'DIS'
+                data_details = data_types[i].add_disaster_permit_data(sim_bldg, component_type, hazard_type, file_paths[i], dis_permit_id)
         # Ignore any data sources that do not contain information:
         if not data_details['availability']:
             pass
@@ -76,13 +77,34 @@ for row in range(0, len(df.index[0:5])):
     new_bldg.hasElement['Roof'][0].hasShape = 'flat'
     new_bldg.hasElement['Roof'][0].hasPitch = 0
     new_bldg.hasGeometry['Height'] = 40
+    # Add permit data:
+    permit_data = df['Permit Number'][row]
+    if isinstance(permit_data,str):
+        permit_data = permit_data.split("'")
+        for idx in permit_data:
+            if '-' in idx:
+                if 'DIS' in idx:
+                    new_bldg.hasPermitData['disaster']['number'].append(idx)
+                else:
+                    new_bldg.hasPermitData['other']['number'].append(idx)
+            else:
+                try:
+                    d = int(row)
+                    if 'DIS' in idx:
+                        new_bldg.hasPermitData['disaster']['number'].append(idx)
+                    else:
+                        new_bldg.hasPermitData['other']['number'].append(idx)
+                except ValueError:
+                    pass
+    else:
+        pass
     site.hasBuilding.append(new_bldg)
 site.update_zones()
 site.update_elements()
 # Test out data extraction with one parcel:
 rcover = 'POLY TPO'
-data_types = [post_disaster_damage_data_source.STEER()]
-file_paths = ['C:/Users/Karen/Desktop/HM_D2D_Building.csv']
+data_types = [post_disaster_damage_data_source.BayCountyPermits()]
+file_paths = ['C:/Users/Karen/BayCountyMichaelPermits.xlsx']
 bldg = Parcel('21084-010-000', 6, 'PROFESSION (001900)', 1987, '801 6TH ST E PANAMA CITY 32401', '70788', -85.647660, 30.159210)
 bldg.hasElement['Roof'][0].hasCover = rcover
 create_fragility(bldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths)
