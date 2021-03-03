@@ -133,7 +133,7 @@ class BayCountyPermits(PostDisasterDamageDataSource):
                 pass  # No disaster permits available for this parcel
         # Find the component damage using the permit description:
         if len(bldg.hasPermitData['disaster']) > 0:
-            data_details = self.get_dis_permit_damage(self, bldg, component_type, hazard_type, site, length_unit)
+            data_details = self.get_dis_permit_damage(bldg, component_type, hazard_type, site, length_unit)
         else:
             pass
         return data_details
@@ -143,11 +143,11 @@ class BayCountyPermits(PostDisasterDamageDataSource):
                         'hazard type': hazard_type,
                         'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
         # Allocate empty lists to gather damage information:
-        if component_type == 'roof_cover' and hazard_type == 'wind':
+        if component_type == 'roof cover' and hazard_type == 'wind':
             # Loop through the bldg's disaster permits:
             count = 0  # dummy variable to flag multiple roof permits in a parcel
             for p in range(0, len(bldg.hasPermitData['disaster']['number'])):
-                if 'ROOF' in bldg.hasPermitData['disaster']['number'][p]:
+                if 'ROOF' in bldg.hasPermitData['disaster']['permit type'][p]:
                     # First check to make sure this is a building-related roof permit:
                     if 'GAZ' in bldg.hasPermitData['disaster']['description'][p] or 'CANOPY' in bldg.hasPermitData['disaster']['description'][p]:
                         pass
@@ -203,6 +203,7 @@ class BayCountyPermits(PostDisasterDamageDataSource):
                                 pass
                                 # If no quantiative descriptions are available, then convert the qualitative description:
                         if data_details['value'] is None:
+                            desc = bldg.hasPermitData['disaster']['description'][p]
                             rcover_damage_cat, rcover_damage_percent = self.rcover_percent_damage_qual(desc)
                             data_details['value'] = rcover_damage_percent
                             data_details['hazard damage rating']['wind'] = rcover_damage_cat
@@ -210,6 +211,7 @@ class BayCountyPermits(PostDisasterDamageDataSource):
                             self.hasDamagePrecision['component, discrete'] = False
                         else:
                             if count > 1 and self.hasDamagePrecision['component, discrete'] == False:
+                                desc = bldg.hasPermitData['disaster']['description'][p]
                                 rcover_damage_cat, rcover_damage_percent = self.rcover_percent_damage_qual(desc)
                                 if rcover_damage_cat > data_details['hazard damage rating']['wind']:
                                     data_details['hazard damage rating']['wind'] = rcover_damage_cat
@@ -246,7 +248,7 @@ class BayCountyPermits(PostDisasterDamageDataSource):
     def rcover_percent_damage_qual(self, desc):
         substrings = ['RE-ROO', 'REROOF', 'ROOF REPAIR', 'COMMERCIAL HURRICANE REPAIRS',
                       'ROOF OVER']
-        if self.hasDamageScale == 'HAZUS-HM':
+        if self.hasDamageScale['type'] == 'HAZUS-HM':
             if any([substring in desc for substring in substrings]):
                 rcover_damage_percent = [2, 15]
                 rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
@@ -267,7 +269,7 @@ class BayCountyPermits(PostDisasterDamageDataSource):
 
     def rcover_damage_cat(self, rcover_damage):
         if isinstance(rcover_damage, list):
-            if self.hasDamageScale == 'HAZUS-HM':
+            if self.hasDamageScale['type'] == 'HAZUS-HM':
                 if rcover_damage[0] == 0 and rcover_damage[1] == 2:
                     rcover_damage_cat = 0
                 elif rcover_damage[0] == 2 and rcover_damage[1] == 15:
@@ -279,7 +281,7 @@ class BayCountyPermits(PostDisasterDamageDataSource):
             else:
                 pass
         else:
-            if self.hasDamageScale == 'HAZUS-HM':
+            if self.hasDamageScale['type'] == 'HAZUS-HM':
                 # Determine damage category based on percent damage:
                 if rcover_damage <= 2:
                     rcover_damage_cat = 0
