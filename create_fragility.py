@@ -12,7 +12,7 @@ def create_fragility(bldg, site, component_type, hazard_type, event_year, event_
     sim_bldgs.append(bldg)  # Add reference building to extract its data as well
     # Step 2: Find damage descriptions for each building
     for sim_bldg in sim_bldgs:
-        data_list = []
+        data_details_list = []
         for i in range(0, len(data_types)):
             if isinstance(data_types[i], post_disaster_damage_data_source.STEER):
                 data_details = data_types[i].add_steer_data(sim_bldg, component_type, hazard_type, file_paths[i])
@@ -20,14 +20,14 @@ def create_fragility(bldg, site, component_type, hazard_type, event_year, event_
                 length_unit = 'ft'
                 data_details = data_types[i].add_disaster_permit_data(sim_bldg, component_type, hazard_type, site,
                                  file_paths[i], length_unit, damage_scale_name)
-        # Ignore any data sources that do not contain information:
-        if not data_details['availability']:
-            pass
-        else:
-            data_list.append(data_details)
+            # Ignore any data sources that do not contain information:
+            if not data_details['available']:
+                pass
+            else:
+                data_details_list.append(data_details)
+        # Step 3: Choose the best data for each bldg/component:
         # Data Quality Index:
-
-    # Step 3: Choose the best data source for this damage description:
+        best_data = get_best_data(data_details_list)
 
 
 def get_best_data(data_details_list):
@@ -52,9 +52,38 @@ def get_best_data(data_details_list):
         data_dict['accuracy'].append(data['fidelity'].hasAccuracy)
         # Extract current-ness:
         data_dict['currentness'].append(data['fidelity'].hasDate)
-    # Check for component-level descriptions:
-    if len(data_dict['component']) > 0:
-        pass
+    df_data = pd.DataFrame(data_dict)
+    # Check for component-level damage descriptions first:
+    dprecisions = ['component, discrete', 'component, range', 'building, discrete', 'building, range']
+    for d in dprecisions:
+        idx = df_data.loc[df_data['damage precision']==d].index.to_list()
+        # If statements are ordered so that they replicate the damage precision hierarchy:
+        if len(idx) == 1 and d == 'component, discrete':
+            best_data = data_details_list[idx]
+            break
+        elif len(idx) > 1 and d == 'component, discrete':
+            # Check for location precision:
+            pass
+        elif len(idx) == 1 and d == 'component, range':
+            best_data = data_details_list[idx]
+            break
+        elif len(idx) > 1 and d == 'component, range':
+            pass
+        elif len(idx) == 1 and d == 'building, discrete':
+            best_data = data_details_list[idx]
+            break
+        elif len(idx) > 1 and d == 'building, discrete':
+            pass
+        elif len(idx) == 1 and d == 'building, range':
+            best_data = data_details_list[idx]
+            break
+        elif len(idx) > 1 and d == 'building, range':
+            pass
+
+
+
+    best_data = 0
+    return best_data
 
 # Create a Site Class holding all of the data models for the parcels:
 inventory = 'C:/Users/Karen/PycharmProjects/DPBWE/BayCountyCommercialParcels.csv'
