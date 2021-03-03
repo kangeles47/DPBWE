@@ -6,7 +6,7 @@ from OBDM.element import Roof
 from parcel import Parcel
 
 
-def create_fragility(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale):
+def create_fragility(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name):
     # Step 1: Find similar buildings based on similarity in features, load path for the given hazard
     sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type)
     sim_bldgs.append(bldg)  # Add reference building to extract its data as well
@@ -19,7 +19,7 @@ def create_fragility(bldg, site, component_type, hazard_type, event_year, event_
             elif isinstance(data_types[i], post_disaster_damage_data_source.BayCountyPermits):
                 length_unit = 'ft'
                 data_details = data_types[i].add_disaster_permit_data(sim_bldg, component_type, hazard_type, site,
-                                 file_paths[i], length_unit, damage_scale)
+                                 file_paths[i], length_unit, damage_scale_name)
         # Ignore any data sources that do not contain information:
         if not data_details['availability']:
             pass
@@ -109,4 +109,4 @@ file_paths = ['C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.csv
 bldg = Parcel('21084-010-000', 6, 'PROFESSION (001900)', 1987, '801 6TH ST E PANAMA CITY 32401', '70788', -85.647660, 30.159210)
 bldg.hasElement['Roof'][0].hasCover = rcover
 bldg.hasPermitData['disaster']['number'].append('DIS18-0003')
-create_fragility(bldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale='HAZUS-HM')
+create_fragility(bldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM')
