@@ -105,13 +105,15 @@ class BayCountyPermits(PostDisasterDamageDataSource):
         self.hasType['permit data'] = True
 
     def add_disaster_permit_data(self, bldg, component_type, hazard_type, site,
-                                 permit_file_path, length_unit, damage_scale):
+                                 permit_file_path, length_unit, damage_scale_name):
+        # First activate the damage scale that will be used:
+        self.get_damage_scale(damage_scale_name, component_type, damage_states=None, values=None)
         # Permit data can be leveraged to inform the presence of disaster-related damage
         # To bring in permit data, there needs to be a way to map permit number to parcel
         # E.g., the permit may be listed in the parcel's property listing or
         # the permit database may have the parcel's address
         # Load the disaster permit data:
-        df = pd.read_csv(permit_file_path, encoding= 'unicode_escape')
+        df = pd.read_csv(permit_file_path, encoding='unicode_escape')
         # Find disaster permit descriptions for the parcel:
         if len(bldg.hasPermitData['disaster']) > 0:
             for p in bldg.hasPermitData['disaster']['number']:
@@ -131,202 +133,94 @@ class BayCountyPermits(PostDisasterDamageDataSource):
                 pass  # No disaster permits available for this parcel
         # Find the component damage using the permit description:
         if len(bldg.hasPermitData['disaster']) > 0:
-            data_details = self.get_dis_permit_damage(self, bldg, component_type, hazard_type, site, length_unit, damage_scale)
+            data_details = self.get_dis_permit_damage(self, bldg, component_type, hazard_type, site, length_unit)
         else:
             pass
         return data_details
 
-    def get_dis_permit_damage(self, bldg, component_type, hazard_type, site, length_unit, damage_scale):
+    def get_dis_permit_damage(self, bldg, component_type, hazard_type, site, length_unit):
         data_details = {'available': False, 'fidelity': self, 'component type': component_type,
                         'hazard type': hazard_type,
                         'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
         # Allocate empty lists to gather damage information:
-        if component_type == 'roof_cover':
-            rcover_damage = []
-        else:
-            pass
-        # Loop through the bldg's disaster permits:
-        for p in range(0, len(bldg.hasPermitData['disaster']['number'])):
-            if 'ROOF' in bldg.hasPermitData['disaster']['number'][p]:
-                # First check to make sure this is a building-related roof permit:
-                if 'GAZ' in bldg.hasPermitData['disaster']['description'][p] or 'CANOPY' in bldg.hasPermitData['disaster']['description'][p]:
-                    pass
-                # Now check if this is a quantitative roof permit description: i.e., tells us # of roof squares
-                desc = bldg.hasPermitData['disaster']['description'][p].split()
-                for i in range(0, len(desc)):
-                    if desc[i].isdigit():
-                        # Check if parcel shares a parcel number ( > 1 buildings in lot):
-                        area = bldg.hasGeometry['Total Floor Area']
-                        for b in site.hasBuilding:
-                            if b.hasID == bldg.hasID:
-                                area += b.hasGeometry['Total Floor Area']
-                            else:
-                                pass
-                        area_factor = bldg.hasGeometry['Total Floor Area'] / area
-                        # Calculate the number of roof squares and percent roof cover damage:
-                        num_roof_squares = float(desc[i]) * area_factor
-                        data_details['value'] = self.rcover_damage_percent(bldg.hasGeometry['Total Area'], len(bldg.hasStory),
-                                                                          num_roof_squares, length_unit)
-
-                        data_details['hazard damage rating']['wind'] = 0
-                        # Update data details:
-                        data_details['available'] = True
-                        self.hasDamagePrecision['component, range'] = False
-                        break
+        if component_type == 'roof_cover' and hazard_type == 'wind':
+            # Loop through the bldg's disaster permits:
+            count = 0  # dummy variable to flag multiple roof permits in a parcel
+            for p in range(0, len(bldg.hasPermitData['disaster']['number'])):
+                if 'ROOF' in bldg.hasPermitData['disaster']['number'][p]:
+                    # First check to make sure this is a building-related roof permit:
+                    if 'GAZ' in bldg.hasPermitData['disaster']['description'][p] or 'CANOPY' in bldg.hasPermitData['disaster']['description'][p]:
+                        pass
                     else:
-                        if 'SQ' in desc[i]:  # Case when there is no space between quantity and roof SQ
-                            num_roof_squares = float(desc[i][0:-2]) * area_factor
-                            rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Area'],
-                                                                               len(bldg.hasStory),
-                                                                               num_roof_squares, length_unit)
-                            rcover_damage.append(rcover_damage_percent)
-                            break
-                        else:
-                            pass
-                # Convert qualitative descriptions to the specified damage scale:
-
-            else:
-                pass
-        for p in range(0, len(df_dis_permit['Permit Number'])):
-            if obsv_damage_type == 'roof_cover':
-                # First check if this building shares a parcel number:
-                if df_inventory['Use Code'][p] != 'RES COMMON (000900)':
-                    dup_parcel = df_inventory.loc[df_inventory['Parcel ID'] == df_inventory['Parcel ID'][p]]
-                    dup_parcel_factor = dup_parcel['Square Footage'][p] / dup_parcel['Square Footage'].sum()
-                else:
-                    pass
-                permit_type = ast.literal_eval(df_dis_permit['Disaster Permit Type'][p])
-                permit_desc = ast.literal_eval(df_dis_permit['Disaster Permit Description'][p])
-                permit_cat = []
-                permit_dpercent = []
-                for permit in range(0, len(permit_type)):
-                    if 'ROOF' in permit_type[permit]:
-                        if 'GAZ' in permit_desc[permit] or 'CANOPY' in permit_desc[permit]:
-                            permit_cat.append(0)
-                            permit_dpercent.append(0)
-                        else:
-                            # Conduct a loop to categorize all quantitative descriptions:
-                            damage_desc = permit_desc[permit].split()
-                            for i in range(0, len(damage_desc)):
-                                if damage_desc[i].isdigit():  # First check if the permit has a quantity for the damage
-                                    total_area = bldg.hasGeometry['Total Area']
-                                    stories = len(bldg.hasStory)
-                                    num_roof_squares = float(damage_desc[i]) * dup_parcel_factor
-                                    roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories,
-                                                                                      num_roof_squares,
-                                                                                      length_unit)
-                                    permit_cat.append(roof_dcat)
-                                    permit_dpercent.append(roof_dpercent)
-                                    break
-                                else:
-                                    if 'SQ' in damage_desc[
-                                        i]:  # Case when there is no space between quantity and roof SQ
-                                        total_area = bldg.hasGeometry['Total Area']
-                                        stories = len(bldg.hasStory)
-                                        num_roof_squares = float(damage_desc[i][
-                                                                 0:-2]) * dup_parcel_factor  # Remove 'SQ' from description and extract value:
-                                        roof_dcat, roof_dpercent = roof_square_damage_cat(total_area, stories,
-                                                                                          num_roof_squares, length_unit)
-                                        permit_cat.append(roof_dcat)
-                                        permit_dpercent.append(roof_dpercent)
-                                        break
+                        count += 1
+                        rcover_damage_cat = None
+                        # Now check if this is a quantitative roof permit description: i.e., tells us # of roof squares
+                        desc = bldg.hasPermitData['disaster']['description'][p].split()
+                        for i in range(0, len(desc)):
+                            if desc[i].isdigit():
+                                # Check if parcel shares a parcel number ( > 1 buildings in lot):
+                                area = bldg.hasGeometry['Total Floor Area']
+                                for b in site.hasBuilding:
+                                    if b.hasID == bldg.hasID:
+                                        area += b.hasGeometry['Total Floor Area']
                                     else:
                                         pass
-                            # Add a dummy value for permits that have a qualitative description:
-                            if len(permit_cat) != permit + 1:
-                                permit_cat.append(0)
-                                permit_dpercent.append(0)
+                                area_factor = bldg.hasGeometry['Total Floor Area'] / area
+                                # Calculate the number of roof squares and percent roof cover damage:
+                                num_roof_squares = float(desc[i]) * area_factor
+                                rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Area'], len(bldg.hasStory),
+                                                                                      num_roof_squares, length_unit)
+                                rcover_damage_cat = self.rcover_damage_cat(data_details['value'])
+                                break
                             else:
-                                pass
-                            # Conduct a second loop to now categorize qualitative descriptions:
-                            if permit_cat[permit] > 0:
-                                pass
-                            else:
-                                substrings = ['RE-ROO', 'REROOF', 'ROOF REPAIR', 'COMMERCIAL HURRICANE REPAIRS',
-                                              'ROOF OVER']
-                                if any([substring in permit_desc[permit] for substring in substrings]):
-                                    permit_cat[permit] = 1
-                                    permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
-                                elif 'REPLACE' in permit_desc[permit]:
-                                    permit_cat[permit] = 2
-                                    permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
-                                elif 'WITHDRAWN' in permit_desc[permit]:
-                                    permit_cat[permit] = 0
-                                    permit_dpercent[permit] = roof_percent_damage_qual(permit_cat[permit])
-                                elif 'NEW' in permit_desc[permit]:
-                                    permit_cat[permit] = 3
-                                    permit_dpercent[permit] = 100
+                                if 'SQ' in desc[i]:  # Case when there is no space between quantity and roof SQ
+                                    num_roof_squares = float(desc[i][0:-2]) * area_factor
+                                    rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Area'],
+                                                                                       len(bldg.hasStory),
+                                                                                         num_roof_squares, length_unit)
+                                    rcover_damage_cat = self.rcover_damage_cat(data_details['value'])
+                                    break
                                 else:
-                                    print(permit_desc[permit])
-                    else:
-                        permit_cat.append(0)
-                        permit_dpercent.append(0)
-                rcover_damage_cat.append(permit_cat)
-                rcover_damage_percent.append(permit_dpercent)
-        else:
-            pass
-        # Integrate damage categories into the DataFrame:
-        if obsv_damage_type == 'roof_cover':
-            df_dis_permit['HAZUS Roof Damage Category'] = rcover_damage_cat
-            df_dis_permit['Percent Roof Cover Damage'] = rcover_damage_percent
-        else:
-            pass
-        # Clean-up roof damage categories:
-        for dparcel in range(0, len(df_dis_permit['HAZUS Roof Damage Category'])):
-            rcat = df_dis_permit['HAZUS Roof Damage Category'][dparcel]
-            if len(rcat) == 1:
-                pass
-            else:
-                if (df_dis_permit['Use Code'][dparcel] != 'RES COMMON (000900)') or (
-                        df_dis_permit['Use Code'][dparcel] != 'PLAT HEADI (H.)'):
-                    # Choose the largest damage category as this parcel's damage category:
-                    dcat = max(rcat)
-                    dcat_idx = rcat.index(dcat)
-                    df_dis_permit.at[dparcel, 'HAZUS Roof Damage Category'] = [dcat]
-                    df_dis_permit.at[dparcel, 'Percent Roof Cover Damage'] = \
-                        df_dis_permit['Percent Roof Cover Damage'][dparcel][dcat_idx]
+                                    pass
+                        if rcover_damage_cat is None:
+                            pass
+                        else:
+                            if count == 1:
+                                data_details['value'] = rcover_damage_percent
+                                data_details['hazard damage rating']['wind'] = rcover_damage_cat
+                                self.hasDamagePrecision['component, range'] = False
+                                data_details['available'] = True
+                            elif count > 1:
+                                if isinstance(data_details['value'], list):
+                                    data_details['value'] = rcover_damage_percent
+                                    data_details['hazard damage rating']['wind'] = rcover_damage_cat
+                                    self.hasDamagePrecision['component, range'] = False
+                                else:
+                                    if rcover_damage_percent > data_details['value']:
+                                        data_details['value'] = rcover_damage_percent
+                                        data_details['hazard damage rating']['wind'] = rcover_damage_cat
+                            else:
+                                pass
+                                # If no quantiative descriptions are available, then convert the qualitative description:
+                        if data_details['value'] is None:
+                            rcover_damage_cat, rcover_damage_percent = self.rcover_percent_damage_qual(desc)
+                            data_details['value'] = rcover_damage_percent
+                            data_details['hazard damage rating']['wind'] = rcover_damage_cat
+                            data_details['available'] = True
+                            self.hasDamagePrecision['component, discrete'] = False
+                        else:
+                            if count > 1 and self.hasDamagePrecision['component, discrete'] == False:
+                                rcover_damage_cat, rcover_damage_percent = self.rcover_percent_damage_qual(desc)
+                                if rcover_damage_cat > data_details['hazard damage rating']['wind']:
+                                    data_details['hazard damage rating']['wind'] = rcover_damage_cat
+                                    data_details['value'] = rcover_damage_percent
+                            else:
+                                pass
                 else:
                     pass
-        # Clean up percent categories:
-        max_percent = []
-        min_percent = []
-        for item in rcover_damage_percent:
-            if len(item) == 1:
-                try:
-                    if len(item[0]) > 1:  # Percent damage description is a range of values
-                        min_percent.append(item[0][0])
-                        max_percent.append(item[0][1])
-                except TypeError:  # Percent damage description is one value
-                    min_percent.append(item[0])
-                    max_percent.append(item[0])
-            else:
-                for subitem in range(0, len(item)):
-                    if subitem == 0:  # Use the first index in this list to initialize values
-                        try:  # Percent damage description is a range of values
-                            min_item = item[subitem][0]
-                            max_item = item[subitem][1]
-                        except TypeError:  # Percent damage description is one value
-                            min_item = item[subitem]
-                            max_item = item[subitem]
-                    else:
-                        try:
-                            if item[subitem] > min_item:
-                                min_item = item[subitem]
-                                max_item = item[subitem]
-                            else:
-                                pass
-                        except TypeError:
-                            if item[subitem][1] > max_item:
-                                min_item = item[subitem][0]
-                                max_item = item[subitem][1]
-                            else:
-                                pass
-                min_percent.append(min_item)
-                max_percent.append(max_item)
-        df_dis_permit['Max Roof Cover Damage'] = max_percent
-        df_dis_permit['Min Roof Cover Damage'] = min_percent
-        df_dis_permits = df_dis_permit.drop('Percent Roof Cover Damage', axis=1)
-        return df_dis_permits, data_details
+        else:
+            pass
+        return data_details
 
     def rcover_damage_percent(self, total_area, stories, num_roof_squares, unit):
         try:
@@ -349,42 +243,58 @@ class BayCountyPermits(PostDisasterDamageDataSource):
             pass
         return rcover_damage_percent
 
-    def roof_percent_damage_qual(self, cat):
-        # Given the HAZUS damage category, return the percent damage to the roof cover (min/max values):
-        if cat == 0:
-            roof_dpercent = [0, 2]
-        elif cat == 1:
-            roof_dpercent = [2, 15]
-        elif cat == 2:
-            roof_dpercent = [15, 50]
-        elif cat == 3:
-            roof_dpercent = [50, 100]
-        elif cat == 4:
-            roof_dpercent = [50, 100]
-        return roof_dpercent
+    def rcover_percent_damage_qual(self, desc):
+        substrings = ['RE-ROO', 'REROOF', 'ROOF REPAIR', 'COMMERCIAL HURRICANE REPAIRS',
+                      'ROOF OVER']
+        if self.hasDamageScale == 'HAZUS-HM':
+            if any([substring in desc for substring in substrings]):
+                rcover_damage_percent = [2, 15]
+                rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
+            elif 'REPLACE' in desc:
+                rcover_damage_percent = [15, 50]
+                rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
+            elif 'WITHDRAWN' in desc:
+                rcover_damage_percent = [0, 2]
+                rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
+            elif 'NEW' in desc:
+                rcover_damage_percent = [50, 100]
+                rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
+            else:
+                print(desc)
+                rcover_damage_cat = 'Unknown'
+                rcover_damage_percent = 'Unknown'
+        return rcover_damage_cat, rcover_damage_percent
 
     def rcover_damage_cat(self, rcover_damage):
         if isinstance(rcover_damage, list):
             if self.hasDamageScale == 'HAZUS-HM':
-                pass
+                if rcover_damage[0] == 0 and rcover_damage[1] == 2:
+                    rcover_damage_cat = 0
+                elif rcover_damage[0] == 2 and rcover_damage[1] == 15:
+                    rcover_damage_cat = 1
+                elif rcover_damage[0] == 15 and rcover_damage[1] == 50:
+                    rcover_damage_cat = 2
+                elif rcover_damage[0] == 50:
+                    rcover_damage_cat = 3
             else:
                 pass
         else:
             if self.hasDamageScale == 'HAZUS-HM':
-                pass
+                # Determine damage category based on percent damage:
+                if rcover_damage <= 2:
+                    rcover_damage_cat = 0
+                elif 2 < rcover_damage <= 15:
+                    rcover_damage_cat = 1
+                elif 15 < rcover_damage <= 50:
+                    rcover_damage_cat = 2
+                elif rcover_damage > 50:
+                    rcover_damage_cat = 3
+                else:
+                    pass
             else:
                 pass
-    # Determine damage category based on percent damage:
-    # if roof_dpercent <= 2:
-    #   roof_dcat = 0
-    # elif 2 < roof_dpercent <= 15:
-    #   roof_dcat = 1
-    # elif 15 < roof_dpercent <= 50:
-    #   roof_dcat = 2
-    # elif roof_dpercent > 50:
-    #   roof_dcat = 3
-    # else:
-    #   roof_dcat = num_roof_squares
+        return rcover_damage_cat
+
 
     def update_yr_of_construction(self, bldg, component_type, permit_data, event_year):
         # Update the year of construction for components or building:
