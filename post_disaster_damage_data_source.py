@@ -53,7 +53,7 @@ class STEER(PostDisasterDamageDataSource):
         parcel_identifier = bldg.hasLocation['Street Number'] + ' ' + bldg.hasLocation['City'] + ' ' + bldg.hasLocation['County'] + ' ' + bldg.hasLocation['State'] + ' ' + bldg.hasLocation['Zip Code'] + ' USA'
         parcel_identifier = parcel_identifier.lower().replace(' ', '')  # Data clean-up
         # Set up dictionary with details of data for this bldg, component, hazard:
-        data_details = {'available': False, 'fidelity': None, 'component type': component_type,
+        data_details = {'available': False, 'fidelity': self, 'component type': component_type,
                         'hazard type': hazard_type,
                         'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
         try:
@@ -88,7 +88,6 @@ class STEER(PostDisasterDamageDataSource):
                         data_details['value'] = df_steer['roof_cover_damage_'][idx]
                         # Update the damage data details:
                         self.get_damage_scale('HAZUS-HM', 'roof cover', damage_states=None, values=None)
-                        data_details['fidelity'] = self
             else:
                 pass
         except IndexError:  # No StEER entry exists for this exact location: Check General Area or does not exist
@@ -105,65 +104,89 @@ class BayCountyPermits(PostDisasterDamageDataSource):
         self.hasAccuracy = False
         self.hasType['permit data'] = True
 
-    def add_disaster_permit_data(self, bldg, component_type, hazard_type, df_inventory,
-                                 permit_file_path, length_unit='ft'):
+    def add_disaster_permit_data(self, bldg, component_type, hazard_type, site,
+                                 permit_file_path, length_unit, damage_scale):
         # Permit data can be leveraged to inform the presence of disaster-related damage
         # To bring in permit data, there needs to be a way to map permit number to parcel
         # E.g., the permit may be listed in the parcel's property listing or
         # the permit database may have the parcel's address
         # Load the disaster permit data:
-        df = pd.read_excel(permit_file_path, sheet_name='Sheet1')
+        df = pd.read_csv(permit_file_path, encoding= 'unicode_escape')
         # Find disaster permit descriptions for the parcel:
-        if len(bldg.hasPermit['disaster']) > 0:
-            for p in bldg.hasPermit['disaster']:
-                idx = df.loc[df['Permit Number'] == p].index[0]
-                bldg.hasPermit['disaster']['description'].append(df['DESCRIPTION'][idx].upper())
-                bldg.hasPermit['disaster']['permit type'].append(df['PERMITSUBTYPE'][idx].upper())
+        if len(bldg.hasPermitData['disaster']) > 0:
+            for p in bldg.hasPermitData['disaster']['number']:
+                idx = df.loc[df['PERMITNUMBER'] == p].index[0]
+                bldg.hasPermitData['disaster']['description'].append(df['DESCRIPTION'][idx].upper())
+                bldg.hasPermitData['disaster']['permit type'].append(df['PERMITSUBTYPE'][idx].upper())
         else:
             # Find the disaster permit descriptions using the parcel identifier
             parcel_identifier = bldg.hasLocation['Street Number'].upper()
             try:
                 idx = df.loc[df['SITE_ADDR'] == parcel_identifier].index.to_list()
                 for i in idx:
-                    bldg.hasPermit['disaster']['number'].append(df['PERMITNUMBER'][i].upper())
-                    bldg.hasPermit['disaster']['description'].append(df['DESCRIPTION'][i].upper())
-                    bldg.hasPermit['disaster']['permit type'].append(df['PERMITSUBTYPE'][i].upper())
+                    bldg.hasPermitData['disaster']['number'].append(df['PERMITNUMBER'][i].upper())
+                    bldg.hasPermitData['disaster']['description'].append(df['DESCRIPTION'][i].upper())
+                    bldg.hasPermitData['disaster']['permit type'].append(df['PERMITSUBTYPE'][i].upper())
             except IndexError:
                 pass  # No disaster permits available for this parcel
         # Find the component damage using the permit description:
-        if len(bldg.hasPermit['disaster']) > 0:
-            data_details = get_dis_permit_damage(self, bldg, component_type, hazard_type, df_inventory, length_unit)
+        if len(bldg.hasPermitData['disaster']) > 0:
+            data_details = self.get_dis_permit_damage(self, bldg, component_type, hazard_type, site, length_unit, damage_scale)
         else:
             pass
+        return data_details
 
-    def update_yr_of_construction(self, bldg, component_type, permit_data, event_year):
-        # Update the year of construction for components or building:
-        if 'ROOF' in permit_data['PERMITTYPE']:
-            substrings = ['CANOPY', 'GAZ', 'BOAT', 'CAR', 'CLUB', 'GARAGE', 'PORCH', 'PATIO']
-            if any([substring in permit_data['DESCRIPTION'].upper() for substring in substrings]):
-                pass
-            else:
-                if 'NEW' in permit_data['PERMITSUBTYPE'] or 'REPLACEMENT' in permit_data['PERMITSUBTYPE']:  # Figure out what to do with roof-over
-                    new_year = int(permit_data['ISSUED'][-4:])
-                    if bldg.hasElement['Roof'].hasYearBuilt < new_year < event_year:
-                        bldg.hasElement['Roof'].hasYearBuilt = new_year
-                    else:
-                        pass
-        else:
-            pass
-
-    def get_dis_permit_damage(self, bldg, component_type, hazard_type, df_dis_permit, df_inventory, obsv_damage_type,
-                              length_unit):
-        data_details = {'available': False, 'fidelity': None, 'component type': component_type,
+    def get_dis_permit_damage(self, bldg, component_type, hazard_type, site, length_unit, damage_scale):
+        data_details = {'available': False, 'fidelity': self, 'component type': component_type,
                         'hazard type': hazard_type,
                         'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
         # Allocate empty lists to gather damage information:
-        if obsv_damage_type == 'roof_cover':
-            rcover_damage_cat = []
-            rcover_damage_percent = []
+        if component_type == 'roof_cover':
+            rcover_damage = []
         else:
             pass
-        # Loop through the disaster permits:
+        # Loop through the bldg's disaster permits:
+        for p in range(0, len(bldg.hasPermitData['disaster']['number'])):
+            if 'ROOF' in bldg.hasPermitData['disaster']['number'][p]:
+                # First check to make sure this is a building-related roof permit:
+                if 'GAZ' in bldg.hasPermitData['disaster']['description'][p] or 'CANOPY' in bldg.hasPermitData['disaster']['description'][p]:
+                    pass
+                # Now check if this is a quantitative roof permit description: i.e., tells us # of roof squares
+                desc = bldg.hasPermitData['disaster']['description'][p].split()
+                for i in range(0, len(desc)):
+                    if desc[i].isdigit():
+                        # Check if parcel shares a parcel number ( > 1 buildings in lot):
+                        area = bldg.hasGeometry['Total Floor Area']
+                        for b in site.hasBuilding:
+                            if b.hasID == bldg.hasID:
+                                area += b.hasGeometry['Total Floor Area']
+                            else:
+                                pass
+                        area_factor = bldg.hasGeometry['Total Floor Area'] / area
+                        # Calculate the number of roof squares and percent roof cover damage:
+                        num_roof_squares = float(desc[i]) * area_factor
+                        data_details['value'] = self.rcover_damage_percent(bldg.hasGeometry['Total Area'], len(bldg.hasStory),
+                                                                          num_roof_squares, length_unit)
+
+                        data_details['hazard damage rating']['wind'] = 0
+                        # Update data details:
+                        data_details['available'] = True
+                        self.hasDamagePrecision['component, range'] = False
+                        break
+                    else:
+                        if 'SQ' in desc[i]:  # Case when there is no space between quantity and roof SQ
+                            num_roof_squares = float(desc[i][0:-2]) * area_factor
+                            rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Area'],
+                                                                               len(bldg.hasStory),
+                                                                               num_roof_squares, length_unit)
+                            rcover_damage.append(rcover_damage_percent)
+                            break
+                        else:
+                            pass
+                # Convert qualitative descriptions to the specified damage scale:
+
+            else:
+                pass
         for p in range(0, len(df_dis_permit['Permit Number'])):
             if obsv_damage_type == 'roof_cover':
                 # First check if this building shares a parcel number:
@@ -305,7 +328,7 @@ class BayCountyPermits(PostDisasterDamageDataSource):
         df_dis_permits = df_dis_permit.drop('Percent Roof Cover Damage', axis=1)
         return df_dis_permits, data_details
 
-    def roof_square_damage_cat(self, total_area, stories, num_roof_squares, unit):
+    def rcover_damage_percent(self, total_area, stories, num_roof_squares, unit):
         try:
             total_area = float(total_area)
         except:
@@ -319,23 +342,12 @@ class BayCountyPermits(PostDisasterDamageDataSource):
             roof_square = 100  # sq_ft
         elif unit == 'm':
             roof_square = 100 / 10.764  # sq m
-        roof_dpercent = 100 * (roof_square * num_roof_squares / floor_area)
-        if roof_dpercent > 100:
-            roof_dpercent = 100
+        rcover_damage_percent = 100 * (roof_square * num_roof_squares / floor_area)
+        if rcover_damage_percent > 100:
+            rcover_damage_percent = 100
         else:
             pass
-        # Determine damage category:
-        if roof_dpercent <= 2:
-            roof_dcat = 0
-        elif 2 < roof_dpercent <= 15:
-            roof_dcat = 1
-        elif 15 < roof_dpercent <= 50:
-            roof_dcat = 2
-        elif roof_dpercent > 50:
-            roof_dcat = 3
-        else:
-            roof_dcat = num_roof_squares
-        return roof_dcat, roof_dpercent
+        return rcover_damage_percent
 
     def roof_percent_damage_qual(self, cat):
         # Given the HAZUS damage category, return the percent damage to the roof cover (min/max values):
@@ -350,3 +362,42 @@ class BayCountyPermits(PostDisasterDamageDataSource):
         elif cat == 4:
             roof_dpercent = [50, 100]
         return roof_dpercent
+
+    def rcover_damage_cat(self, rcover_damage):
+        if isinstance(rcover_damage, list):
+            if self.hasDamageScale == 'HAZUS-HM':
+                pass
+            else:
+                pass
+        else:
+            if self.hasDamageScale == 'HAZUS-HM':
+                pass
+            else:
+                pass
+    # Determine damage category based on percent damage:
+    # if roof_dpercent <= 2:
+    #   roof_dcat = 0
+    # elif 2 < roof_dpercent <= 15:
+    #   roof_dcat = 1
+    # elif 15 < roof_dpercent <= 50:
+    #   roof_dcat = 2
+    # elif roof_dpercent > 50:
+    #   roof_dcat = 3
+    # else:
+    #   roof_dcat = num_roof_squares
+
+    def update_yr_of_construction(self, bldg, component_type, permit_data, event_year):
+        # Update the year of construction for components or building:
+        if 'ROOF' in permit_data['PERMITTYPE']:
+            substrings = ['CANOPY', 'GAZ', 'BOAT', 'CAR', 'CLUB', 'GARAGE', 'PORCH', 'PATIO']
+            if any([substring in permit_data['DESCRIPTION'].upper() for substring in substrings]):
+                pass
+            else:
+                if 'NEW' in permit_data['PERMITSUBTYPE'] or 'REPLACEMENT' in permit_data['PERMITSUBTYPE']:  # Figure out what to do with roof-over
+                    new_year = int(permit_data['ISSUED'][-4:])
+                    if bldg.hasElement['Roof'].hasYearBuilt < new_year < event_year:
+                        bldg.hasElement['Roof'].hasYearBuilt = new_year
+                    else:
+                        pass
+        else:
+            pass

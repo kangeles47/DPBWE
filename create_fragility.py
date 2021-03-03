@@ -6,7 +6,7 @@ from OBDM.element import Roof
 from parcel import Parcel
 
 
-def create_fragility(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths):
+def create_fragility(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale):
     # Step 1: Find similar buildings based on similarity in features, load path for the given hazard
     sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type)
     sim_bldgs.append(bldg)  # Add reference building to extract its data as well
@@ -17,8 +17,9 @@ def create_fragility(bldg, site, component_type, hazard_type, event_year, event_
             if isinstance(data_types[i], post_disaster_damage_data_source.STEER):
                 data_details = data_types[i].add_steer_data(sim_bldg, component_type, hazard_type, file_paths[i])
             elif isinstance(data_types[i], post_disaster_damage_data_source.BayCountyPermits):
-                dis_permit_id = 'DIS'
-                data_details = data_types[i].add_disaster_permit_data(sim_bldg, component_type, hazard_type, file_paths[i], dis_permit_id)
+                length_unit = 'ft'
+                data_details = data_types[i].add_disaster_permit_data(sim_bldg, component_type, hazard_type, site,
+                                 file_paths[i], length_unit, damage_scale)
         # Ignore any data sources that do not contain information:
         if not data_details['availability']:
             pass
@@ -104,7 +105,8 @@ site.update_elements()
 # Test out data extraction with one parcel:
 rcover = 'POLY TPO'
 data_types = [post_disaster_damage_data_source.BayCountyPermits()]
-file_paths = ['C:/Users/Karen/BayCountyMichaelPermits.xlsx']
+file_paths = ['C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.csv']
 bldg = Parcel('21084-010-000', 6, 'PROFESSION (001900)', 1987, '801 6TH ST E PANAMA CITY 32401', '70788', -85.647660, 30.159210)
 bldg.hasElement['Roof'][0].hasCover = rcover
-create_fragility(bldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths)
+bldg.hasPermitData['disaster']['number'].append('DIS18-0003')
+create_fragility(bldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale='HAZUS-HM')
