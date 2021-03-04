@@ -334,6 +334,7 @@ class Building(Zone):
         self.hasServiceLife = None
         self.isComm = False
         self.hasPermitData = {'disaster': {'number': [], 'description': [], 'permit type': []}, 'other': {'number': [], 'description': [], 'permit type': []}}
+        self.hasDamageData = {'available': False, 'fidelity': None, 'component type': None, 'hazard type': None, 'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
 
     def add_parcel_data(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
         """

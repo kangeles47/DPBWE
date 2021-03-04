@@ -47,6 +47,7 @@ class Element:
         self.inLoadPath = False
         self.hasDirection = None  # options here are x or y as defined by building geometry
         self.hasYearBuilt = None
+        self.hasDamageData = {'available': False, 'fidelity': None, 'component type': None, 'hazard type': None, 'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
 
 
 class Wall(Element):
