@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import get_sim_bldgs
 import post_disaster_damage_data_source
 from OBDM.zone import Site, Building
@@ -20,14 +21,27 @@ def create_fragility(bldg, site, component_type, hazard_type, event_year, event_
                 length_unit = 'ft'
                 data_details = data_types[i].add_disaster_permit_data(sim_bldg, component_type, hazard_type, site,
                                  file_paths[i], length_unit, damage_scale_name)
+            #elif isinstance(data_types[i], post_disaster_damage_data_source.FEMA_Claims):
+             #   fema_claims_details = data_types[i].add_fema_claims_data(sim_bldg, component_type, hazard_type, file_paths[i])
             # Ignore any data sources that do not contain information:
             if not data_details['available']:
                 pass
             else:
                 data_details_list.append(data_details)
-        # Step 3: Choose the best data for each bldg/component:
-        # Data Quality Index:
-        best_data = get_best_data(data_details_list, analysis_date)
+        if len(data_details_list) > 0:
+            # Step 3a: Choose the best data for each bldg/component and add to data model:
+            best_data = get_best_data(data_details_list, analysis_date)  # Data Fidelity Index
+            sim_bldg.hasDamageData = best_data
+            sim_bldg.hasElement['Roof'][0].hasDamageData = best_data
+        else:
+            pass
+            # Step 3b: Buildings with no other damage descriptions, use regional info:
+            #if fema_claims_details['available'] == False:
+             #   pass
+            #else:
+             #   sim_bldg.hasDamageData = fema_claims_details
+              #  sim_bldg.hasElement['Roof'][0].hasDamageData = fema_claims_details
+        # Step 4: Get the intensity measure or engineering demand parameter for this building:
 
 
 def get_best_data(data_details_list, analysis_date):
@@ -82,6 +96,70 @@ def get_best_data(data_details_list, analysis_date):
                                 print('Multiple data sources with the same fidelity for this bldg/component')
                                 best_data = data_details_list[idx]
     return best_data
+
+
+def get_local_wind_speed(bldg, z, wind_speed_file_path, exposure, unit):
+    df_wind_speeds = pd.read_csv(wind_speed_file_path)
+    # Round the lat and lon values to two decimal places:
+    df_wind_speeds['Lon'] = round(df_wind_speeds['Lon'], 2)
+    df_wind_speeds['Lat'] = round(df_wind_speeds['Lat'], 2)
+    # Use the parcel's geodesic location to determine its corresponding wind speed (interpolation):
+    latitude = bldg.hasLocation['Geodesic'].y
+    longitude = bldg.hasLocation['Geodesic'].x
+    if np.sign(latitude) < 0:
+        v1_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
+                df_wind_speeds['Lon'] < round(longitude, 2))].index[0]
+        v2_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
+                df_wind_speeds['Lon'] > round(longitude, 2))].index[-1]
+        # Now find the index of the two longitude values larger/smaller than parcel's longitude:
+        v_basic = np.interp(longitude, [df_wind_speeds['Lon'][v1_idx], df_wind_speeds['Lon'][v2_idx]],
+                            [df_wind_speeds['Vg_mph'][v1_idx], df_wind_speeds['Vg_mph'][v2_idx]])
+    else:
+        # Check first if there is a datapoint with lat, lon of parcel rounded two 2 decimal places:
+        try:
+            v_idx = df_wind_speeds.loc[(df_wind_speeds['Lat'] == round(latitude, 2)) & (
+                    df_wind_speeds['Lon'] == round(longitude, 2))].index[0]
+        except IndexError:
+            # Choose the wind speed based off of the closest lat, lon coordinate:
+            lat_idx = df_wind_speeds.loc[df_wind_speeds['Lat'] == round(latitude, 2)].index.to_list()
+            new_series = abs(longitude - df_wind_speeds['Lon'][lat_idx])
+            v_idx = new_series.idxmin()
+        v_basic = df_wind_speeds['Vg_mph'][v_idx]
+    if unit == 'metric':
+        v_basic = v_basic*2.237
+        ref_height = 10
+        zg_c = 274.32
+    else:
+        ref_height = 33
+        zg_c = 900
+    # Populate the paramters for exposure C:
+    alpha_c = 9.5
+    if exposure == 'C':
+        # An adjustment for height is all that is needed:
+        v_site = v_basic*(z/ref_height)**(1/alpha_c)
+    else:
+        # Power law - calculate the wind speed at gradient height for exposure C:
+        v_gradient = v_basic / ((ref_height / zg_c) ** (1 / alpha_c))
+        if exposure == 'B':
+            alpha = 7.0
+            if unit == 'metric':
+                zg = 365.76
+            else:
+                zg = 1200
+        elif exposure == 'D':
+            alpha = 11.5
+            if unit == 'metric':
+                zg = 213.35
+            else:
+                zg = 900
+        # Calculate the wind speed for the specified exposure, at its reference height:
+        v_new = v_gradient*((z/zg)**(1/alpha))
+        if bldg.hasGeometry['Height'] != ref_height:
+            # Adjust for roof height:
+            v_site = v_new*((z/ref_height)**(1/alpha))
+        else:
+            v_site = v_new
+    return v_site
 
 # Create a Site Class holding all of the data models for the parcels:
 inventory = 'C:/Users/Karen/PycharmProjects/DPBWE/BayCountyCommercialParcels.csv'
