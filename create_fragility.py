@@ -6,7 +6,7 @@ from OBDM.element import Roof
 from parcel import Parcel
 
 
-def create_fragility(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name):
+def create_fragility(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, analysis_date):
     # Step 1: Find similar buildings based on similarity in features, load path for the given hazard
     sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type)
     sim_bldgs.append(bldg)  # Add reference building to extract its data as well
@@ -27,15 +27,15 @@ def create_fragility(bldg, site, component_type, hazard_type, event_year, event_
                 data_details_list.append(data_details)
         # Step 3: Choose the best data for each bldg/component:
         # Data Quality Index:
-        best_data = get_best_data(data_details_list)
+        best_data = get_best_data(data_details_list, analysis_date)
 
 
-def get_best_data(data_details_list):
+def get_best_data(data_details_list, analysis_date):
     data_dict = {'damage precision':[], 'location precision': [], 'accuracy': [], 'currentness': []}
     for data in data_details_list:
         # Extract component/building damage descriptions:
         # Prioritize any descriptions that are at the component-level:
-        # Data sources may have both component & building level descriptions, if statement flags highest fidelity
+        # Data sources may have component & building level descriptions, if statement adds highest fidelity to data_dict
         if data['fidelity'].hasDamagePrecision['component, discrete']:
             data_dict['damage precision'].append('component, discrete')
         elif data['fidelity'].hasDamagePrecision['component, range']:
@@ -52,37 +52,35 @@ def get_best_data(data_details_list):
         data_dict['accuracy'].append(data['fidelity'].hasAccuracy)
         # Extract current-ness:
         data_dict['currentness'].append(data['fidelity'].hasDate)
+    # Convert to DataFrame for easier data manipulation:
     df_data = pd.DataFrame(data_dict)
     # Check for component-level damage descriptions first:
-    dprecisions = ['component, discrete', 'component, range', 'building, discrete', 'building, range']
-    for d in dprecisions:
-        idx = df_data.loc[df_data['damage precision']==d].index.to_list()
-        # If statements are ordered so that they replicate the damage precision hierarchy:
-        if len(idx) == 1 and d == 'component, discrete':
-            best_data = data_details_list[idx]
+    data_fidelity_index = {'damage precision': ['component, discrete', 'component, range', 'building, discrete',
+                                                'building, range'], 'location precision': ['exact location',
+                                                                                           'street level', 'city/town level', 'zipcode/censusblock level'], 'accuracy': [True, False, None, None]}
+    best_data = None
+    for i in data_fidelity_index['location precision']:
+        if best_data is not None:
             break
-        elif len(idx) > 1 and d == 'component, discrete':
-            # Check for location precision:
-            pass
-        elif len(idx) == 1 and d == 'component, range':
-            best_data = data_details_list[idx]
-            break
-        elif len(idx) > 1 and d == 'component, range':
-            pass
-        elif len(idx) == 1 and d == 'building, discrete':
-            best_data = data_details_list[idx]
-            break
-        elif len(idx) > 1 and d == 'building, discrete':
-            pass
-        elif len(idx) == 1 and d == 'building, range':
-            best_data = data_details_list[idx]
-            break
-        elif len(idx) > 1 and d == 'building, range':
-            pass
-
-
-
-    best_data = 0
+        else:
+            for j in data_fidelity_index['damage precision']:
+                if best_data is not None:
+                    break
+                else:
+                    for k in data_fidelity_index['accuracy']:
+                        if k is None:
+                            pass
+                        else:
+                            idx = df_data.loc[(df_data['damage precision'] == j) & (df_data['location precision'] == i) & (df_data['accuracy'] == k)].index.to_list()
+                            if len(idx) == 0:
+                                pass
+                            elif len(idx) == 1:
+                                best_data = data_details_list[idx]
+                                break
+                            else:
+                                # Choose the data source closest to either the disaster date or today's date
+                                print('Multiple data sources with the same fidelity for this bldg/component')
+                                best_data = data_details_list[idx]
     return best_data
 
 # Create a Site Class holding all of the data models for the parcels:
@@ -138,4 +136,4 @@ file_paths = ['C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.csv
 bldg = Parcel('21084-010-000', 6, 'PROFESSION (001900)', 1987, '801 6TH ST E PANAMA CITY 32401', '70788', -85.647660, 30.159210)
 bldg.hasElement['Roof'][0].hasCover = rcover
 bldg.hasPermitData['disaster']['number'].append('DIS18-0003')
-create_fragility(bldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM')
+create_fragility(bldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021')
