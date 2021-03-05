@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import scipy.optimize as opt
 import get_sim_bldgs
 import post_disaster_damage_data_source
 from OBDM.zone import Site, Building
@@ -65,7 +66,7 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
                 pass
                 # Map the data source's damage states to the specified damage scale
                 # bldg.hasDamageData[component_type]['fidelity'].map_damage_scale(damage_scale_name)
-            if bldg.hasDamageData[component_type]['hazard damage rating'][hazard_type] == key:
+            if bldg.hasDamageData[component_type]['hazard damage rating'][hazard_type] >= key:
                 bldg_list.append(bldg)
             else:
                 pass
@@ -73,6 +74,52 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
         dstate_dict[key] = bldg_list
     # Conduct the maximum likelihood estimation:
     total_num_bldgs = len(sim_bldgs)
+    mu_list = []
+    beta_list = []
+    for key in dstate_dict:
+        num_damaged_bldgs = len(dstate_dict[key])
+        mu, beta = get_parameters_mle(total_num_bldgs, num_damaged_bldgs)
+
+
+def get_parameters_mle(im_i, N_i, n_i):
+    mu_init = 400  # mu_2
+    beta_init = 70  # sig_2
+    params_init = np.array([mu_init, beta_init])
+    mle_args = (im_i, N_i, n_i)
+    results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args)
+    mu_MLE, beta_MLE = results_uncstr.x
+    print('mu_MLE=', mu_MLE, 'beta_MLE=', beta_MLE)
+
+
+def mle_objective_func(params, *args):
+    """
+    This function computes the negative of the log likelihood function
+    given parameters and data. This is the minimization problem version
+    of the maximum likelihood optimization problem
+
+    INPUTS:
+    params = (2,) vector, ([mu, beta])
+    mu     = scalar, logarithmic mean of lognormal distribution
+    beta  = scalar, standard deviation of lognormal distribution
+    args   = length 2 tuple, (xvals, cutoff)
+    im_i  = (N,) vector, values of the intensity measure
+    N_i = (N,) vector, number of total buildings at the intensity measure for the damage state
+    n_i = (N,) vector, number of damaged buildings at the intensity measure for the damage state
+
+    OBJECTS CREATED WITHIN FUNCTION:
+    log_lik_val = scalar, value of the log likelihood function
+    neg_log_lik_val = scalar, negative of log_lik_val
+
+    RETURNS: neg_log_lik_val
+    """
+    mu, beta = params
+    im_i, N_i, n_i = args
+    lognorm_cdf = (np.log(im_i)-mu)/beta
+    log_lik_val = sum(n_i*np.log(lognorm_cdf) + (N_i-n_i)*np.log(1-lognorm_cdf))
+    neg_log_lik_val = -log_lik_val
+
+    return neg_log_lik_val
+
 
 def get_best_data(data_details_list, analysis_date):
     data_dict = {'damage precision': [], 'location precision': [], 'accuracy': [], 'currentness': []}
