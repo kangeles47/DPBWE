@@ -7,14 +7,14 @@ from OBDM.element import Roof
 from parcel import Parcel
 
 
-def create_fragility(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, analysis_date):
+def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, analysis_date, i_measure, hazard_file_path):
     # Step 1: Find similar buildings based on similarity in features, load path for the given hazard
     sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type)
     sim_bldgs.append(bldg)  # Add reference building to extract its data as well
     # Step 2: Find damage descriptions for each building
     for sim_bldg in sim_bldgs:
         data_details_list = []
-        for i in range(0, len(data_types)):
+        for i in range(0, len(data_types)):  # Collect data from each data source
             if isinstance(data_types[i], post_disaster_damage_data_source.STEER):
                 data_details = data_types[i].add_steer_data(sim_bldg, component_type, hazard_type, file_paths[i])
             elif isinstance(data_types[i], post_disaster_damage_data_source.BayCountyPermits):
@@ -23,29 +23,59 @@ def create_fragility(bldg, site, component_type, hazard_type, event_year, event_
                                  file_paths[i], length_unit, damage_scale_name)
             #elif isinstance(data_types[i], post_disaster_damage_data_source.FEMA_Claims):
              #   fema_claims_details = data_types[i].add_fema_claims_data(sim_bldg, component_type, hazard_type, file_paths[i])
-            # Ignore any data sources that do not contain information:
-            if not data_details['available']:
+            data_details_list.append(data_details)
+        # Step 3a: Choose the best data for each bldg/component and add to data model:
+        best_data = get_best_data(data_details_list, analysis_date)  # Data Fidelity Index
+        sim_bldg.hasDamageData['roof cover'] = best_data
+        sim_bldg.hasElement['Roof'][0].hasDamageData = best_data
+        # Step 3b: Buildings with no other damage descriptions, use regional info:
+        #if fema_claims_details['available'] == False:
+            #   pass
+        #else:
+            #   sim_bldg.hasDamageData = fema_claims_details
+            #  sim_bldg.hasElement['Roof'][0].hasDamageData = fema_claims_details
+        # Step 4: Get the intensity measure or engineering demand parameter for this building:
+        if i_measure == 'wind speed':
+            if component_type == 'roof cover':
+                z = bldg.hasGeometry['Height']
+                bldg.hasElement['Roof'][0].hasDemand['wind speed'] = get_local_wind_speed(sim_bldg, z, hazard_file_path,
+                                                                                          exposure='C', unit='english')
+            else:
+                pass
+    # Step 5: Get the prior:
+    if hazard_type == 'wind' and damage_scale_name == 'HAZUS-HM':
+        pass
+    else:
+        pass
+    # Step 6: Create the empirical fragilities for each damage state:
+
+
+def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type):
+    # Create a generic instance of PostDisasterDamageDataSource to get damage scale info:
+    ddata_source = post_disaster_damage_data_source.PostDisasterDamageDataSource()
+    ddata_source.get_damage_scale(damage_scale_name, component_type)
+    # Divide sample buildings according to the damage states in the damage scale:
+    dstate_dict = {}
+    for key in ddata_source.hasDamageScale:
+        bldg_list = []
+        for bldg in sim_bldgs:
+            if bldg.hasDamageData[component_type]['fidelity'].hasDamageScale['type'] == damage_scale_name:
                 pass
             else:
-                data_details_list.append(data_details)
-        if len(data_details_list) > 0:
-            # Step 3a: Choose the best data for each bldg/component and add to data model:
-            best_data = get_best_data(data_details_list, analysis_date)  # Data Fidelity Index
-            sim_bldg.hasDamageData = best_data
-            sim_bldg.hasElement['Roof'][0].hasDamageData = best_data
-        else:
-            pass
-            # Step 3b: Buildings with no other damage descriptions, use regional info:
-            #if fema_claims_details['available'] == False:
-             #   pass
-            #else:
-             #   sim_bldg.hasDamageData = fema_claims_details
-              #  sim_bldg.hasElement['Roof'][0].hasDamageData = fema_claims_details
-        # Step 4: Get the intensity measure or engineering demand parameter for this building:
-
+                pass
+                # Map the data source's damage states to the specified damage scale
+                # bldg.hasDamageData[component_type]['fidelity'].map_damage_scale(damage_scale_name)
+            if bldg.hasDamageData[component_type]['hazard damage rating'][hazard_type] == key:
+                bldg_list.append(bldg)
+            else:
+                pass
+        # Add the damage state number and corresponding list of buildings:
+        dstate_dict[key] = bldg_list
+    # Conduct the maximum likelihood estimation:
+    total_num_bldgs = len(sim_bldgs)
 
 def get_best_data(data_details_list, analysis_date):
-    data_dict = {'damage precision':[], 'location precision': [], 'accuracy': [], 'currentness': []}
+    data_dict = {'damage precision': [], 'location precision': [], 'accuracy': [], 'currentness': []}
     for data in data_details_list:
         # Extract component/building damage descriptions:
         # Prioritize any descriptions that are at the component-level:
@@ -132,11 +162,13 @@ def get_local_wind_speed(bldg, z, wind_speed_file_path, exposure, unit):
     else:
         ref_height = 33
         zg_c = 900
-    # Populate the paramters for exposure C:
+    # Populate the remaining parameters for exposure C:
     alpha_c = 9.5
+    # Calculate the local wind speed at height z given the exposure category:
     if exposure == 'C':
+        bldg.hasDemand['wind speed'] = v_basic
         # An adjustment for height is all that is needed:
-        v_site = v_basic*(z/ref_height)**(1/alpha_c)
+        v_local = v_basic*(z/ref_height)**(1/alpha_c)
     else:
         # Power law - calculate the wind speed at gradient height for exposure C:
         v_gradient = v_basic / ((ref_height / zg_c) ** (1 / alpha_c))
@@ -153,13 +185,14 @@ def get_local_wind_speed(bldg, z, wind_speed_file_path, exposure, unit):
             else:
                 zg = 900
         # Calculate the wind speed for the specified exposure, at its reference height:
-        v_new = v_gradient*((z/zg)**(1/alpha))
+        v_new = v_gradient*((ref_height/zg)**(1/alpha))
+        bldg.hasDemand['wind speed'] = v_new
         if bldg.hasGeometry['Height'] != ref_height:
-            # Adjust for roof height:
-            v_site = v_new*((z/ref_height)**(1/alpha))
+            # Adjust for z:
+            v_local = v_new*((z/ref_height)**(1/alpha))
         else:
-            v_site = v_new
-    return v_site
+            v_local = v_new
+    return v_local
 
 # Create a Site Class holding all of the data models for the parcels:
 inventory = 'C:/Users/Karen/PycharmProjects/DPBWE/BayCountyCommercialParcels.csv'
@@ -214,4 +247,4 @@ file_paths = ['C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.csv
 bldg = Parcel('21084-010-000', 6, 'PROFESSION (001900)', 1987, '801 6TH ST E PANAMA CITY 32401', '70788', -85.647660, 30.159210)
 bldg.hasElement['Roof'][0].hasCover = rcover
 bldg.hasPermitData['disaster']['number'].append('DIS18-0003')
-create_fragility(bldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021')
+execute_fragility_workflow(bldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021')
