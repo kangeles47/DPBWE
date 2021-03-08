@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 import scipy.optimize as opt
 from scipy.stats import lognorm, norm
 import get_sim_bldgs
@@ -56,10 +57,18 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
     # Create a generic instance of PostDisasterDamageDataSource to get damage scale info:
     ddata_source = post_disaster_damage_data_source.PostDisasterDamageDataSource()
     ddata_source.get_damage_scale(damage_scale_name, component_type)
+    # Define a vector of demand parameters to bin the damage occurrences:
+    if hazard_type == 'wind':
+        im_i = np.arange(70, 180, 5)  # wind speeds in mph
+    else:
+        pass
+    # Define a vector containing the total number of buildings:
+    N_i = np.ones(len(im_i))*len(sim_bldgs)
+    # Create a dichotomous matrix with columns = im_is and rows bldg DS >= DS
     # Divide sample buildings according to the damage states in the damage scale:
     dstate_dict = {}
     for key in ddata_source.hasDamageScale:
-        bldg_list = []
+        dstate_arr = []
         for bldg in sim_bldgs:
             if bldg.hasDamageData[component_type]['fidelity'].hasDamageScale['type'] == damage_scale_name:
                 pass
@@ -67,19 +76,37 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
                 pass
                 # Map the data source's damage states to the specified damage scale
                 # bldg.hasDamageData[component_type]['fidelity'].map_damage_scale(damage_scale_name)
-            if bldg.hasDamageData[component_type]['hazard damage rating'][hazard_type] >= key:
-                bldg_list.append(bldg)
-            else:
-                pass
-        # Add the damage state number and corresponding list of buildings:
-        dstate_dict[key] = bldg_list
+            new_row = []
+            for k in range(0, len(im_i)):
+                if im_i[k] <= bldg.hasDemand['wind speed'] < im_i[k+1]:
+                    if bldg.hasDamageData[component_type]['hazard damage rating'][hazard_type] >= key:
+                        new_row.append(1)
+                    else:
+                        new_row.append(0)
+                else:
+                    new_row.append(0)
+            # Add this building's dichotomous classification to the wider array:
+            dstate_arr.append(new_row)
+        # Add the dichotomous matrix to its corresponding damage state key:
+        dstate_dict[key] = dstate_arr
     # Conduct the maximum likelihood estimation:
-    total_num_bldgs = len(sim_bldgs)
-    mu_list = []
-    beta_list = []
+    param_dict = {}
+    fig = plt.figure()
+    ax = plt.axes()
+    legend_list = []
     for key in dstate_dict:
-        num_damaged_bldgs = len(dstate_dict[key])
+        # Determine the number of damaged buildings per combo of IM and DS:
+        n_i = np.sum(dstate_dict[key], axis=0)
         mu, beta = get_parameters_mle(im_i, N_i, n_i)
+        param_dict[key] = {'mu': mu, 'beta': beta}
+        # Plot the fragility function for each damage state:
+        new_cdf = lognorm.cdf(im_i, shape=beta, loc=0, scale=np.exp(mu))
+        ax.plot(im_i, new_cdf)
+        legend_list.append(key)
+    ax.legend(legend_list)
+    ax.set_xlabel('Wind Speed [mph]')
+    ax.set_ylabel('Probability of Failure')
+    plt.show()
 
 
 def get_parameters_mle(im_i, N_i, n_i):
@@ -90,6 +117,7 @@ def get_parameters_mle(im_i, N_i, n_i):
     results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args)
     mu_MLE, beta_MLE = results_uncstr.x
     print('mu_MLE=', mu_MLE, 'beta_MLE=', beta_MLE)
+    return mu_MLE, beta_MLE
 
 
 def mle_objective_func(params, *args):
