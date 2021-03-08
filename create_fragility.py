@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import scipy.optimize as opt
+from scipy.stats import lognorm, norm
 import get_sim_bldgs
 import post_disaster_damage_data_source
 from OBDM.zone import Site, Building
@@ -78,12 +79,12 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
     beta_list = []
     for key in dstate_dict:
         num_damaged_bldgs = len(dstate_dict[key])
-        mu, beta = get_parameters_mle(total_num_bldgs, num_damaged_bldgs)
+        mu, beta = get_parameters_mle(im_i, N_i, n_i)
 
 
 def get_parameters_mle(im_i, N_i, n_i):
-    mu_init = 400  # mu_2
-    beta_init = 70  # sig_2
+    mu_init = 0  # initial guess for mu
+    beta_init = 0.1  # initial guess for beta
     params_init = np.array([mu_init, beta_init])
     mle_args = (im_i, N_i, n_i)
     results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args)
@@ -101,7 +102,7 @@ def mle_objective_func(params, *args):
     params = (2,) vector, ([mu, beta])
     mu     = scalar, logarithmic mean of lognormal distribution
     beta  = scalar, standard deviation of lognormal distribution
-    args   = length 2 tuple, (xvals, cutoff)
+    args   = length 3 tuple, (im_i, N_i, n_i)
     im_i  = (N,) vector, values of the intensity measure
     N_i = (N,) vector, number of total buildings at the intensity measure for the damage state
     n_i = (N,) vector, number of damaged buildings at the intensity measure for the damage state
@@ -114,8 +115,8 @@ def mle_objective_func(params, *args):
     """
     mu, beta = params
     im_i, N_i, n_i = args
-    lognorm_cdf = (np.log(im_i)-mu)/beta
-    log_lik_val = sum(n_i*np.log(lognorm_cdf) + (N_i-n_i)*np.log(1-lognorm_cdf))
+    input_cdf = (np.log(im_i)-mu)/beta
+    log_lik_val = sum(n_i*np.log(norm.cdf(input_cdf)) + (N_i-n_i)*np.log(1-norm.cdf(input_cdf)))
     neg_log_lik_val = -log_lik_val
 
     return neg_log_lik_val
