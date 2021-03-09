@@ -24,19 +24,13 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                 length_unit = 'ft'
                 data_details = data_types[i].add_disaster_permit_data(sim_bldg, component_type, hazard_type, site,
                                  file_paths[i], length_unit, damage_scale_name)
-            #elif isinstance(data_types[i], post_disaster_damage_data_source.FEMA_Claims):
-             #   fema_claims_details = data_types[i].add_fema_claims_data(sim_bldg, component_type, hazard_type, file_paths[i])
+            #elif isinstance(data_types[i], post_disaster_damage_data_source.FemaIhaLd):
+            #    data_details = data_types[i].add_fema_IHA_LD_data(sim_bldg, component_type, hazard_type, event_name)
             data_details_list.append(data_details)
-        # Step 3a: Choose the best data for each bldg/component and add to data model:
+        # Step 3: Choose the best data for each bldg/component and add to data model:
         best_data = get_best_data(data_details_list, analysis_date)  # Data Fidelity Index
         sim_bldg.hasDamageData['roof cover'] = best_data
         sim_bldg.hasElement['Roof'][0].hasDamageData = best_data
-        # Step 3b: Buildings with no other damage descriptions, use regional info:
-        #if fema_claims_details['available'] == False:
-            #   pass
-        #else:
-            #   sim_bldg.hasDamageData = fema_claims_details
-            #  sim_bldg.hasElement['Roof'][0].hasDamageData = fema_claims_details
         # Step 4: Get the intensity measure or engineering demand parameter for this building:
         if hazard_type == 'wind':
             if component_type == 'roof cover':

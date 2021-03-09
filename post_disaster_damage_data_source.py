@@ -1,5 +1,5 @@
 import pandas as pd
-import ast
+import requests
 
 
 class PostDisasterDamageDataSource:
@@ -311,5 +311,29 @@ class BayCountyPermits(PostDisasterDamageDataSource):
                         bldg.hasElement['Roof'].hasYearBuilt = new_year
                     else:
                         pass
+        else:
+            pass
+
+
+class FemaIhaLd(PostDisasterDamageDataSource):
+    def __init__(self):
+        PostDisasterDamageDataSource.__init__(self)
+        self.hasDamagePrecision['component, discrete'] = True
+        self.hasDamagePrecision['component, range'] = True
+        self.hasLocationPrecision['zipcode/censusblock level'] = True
+        self.hasAccuracy = True
+        self.hasType['fema claims data'] = True
+
+    def add_fema_iha_ld_data(self, sim_bldg, component_type, hazard_type, event_name):
+        api_endpoint = 'https://www.fema.gov/api/open/v1/IndividualAssistanceHousingRegistrantsLargeDisasters'
+        if hazard_type == 'wind':
+            if event_name == 'Hurricane Michael':
+                disasterNumber = '4399'
+            else:
+                pass
+        query = api_endpoint + '?$filter=disasterNumber ge ' + disasterNumber
+        response = requests.get(query)
+        if response.status_code != '200' or response.status_code != '300':
+            print('API request failed')
         else:
             pass
