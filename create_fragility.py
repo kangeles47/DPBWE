@@ -10,7 +10,7 @@ from OBDM.element import Roof
 from parcel import Parcel
 
 
-def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, analysis_date, i_measure, hazard_file_path):
+def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, analysis_date, hazard_file_path):
     # Step 1: Find similar buildings based on similarity in features, load path for the given hazard
     sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type)
     sim_bldgs.append(bldg)  # Add reference building to extract its data as well
@@ -38,7 +38,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             #   sim_bldg.hasDamageData = fema_claims_details
             #  sim_bldg.hasElement['Roof'][0].hasDamageData = fema_claims_details
         # Step 4: Get the intensity measure or engineering demand parameter for this building:
-        if i_measure == 'wind speed':
+        if hazard_type == 'wind':
             if component_type == 'roof cover':
                 z = bldg.hasGeometry['Height']
                 bldg.hasElement['Roof'][0].hasDemand['wind speed'] = get_local_wind_speed(sim_bldg, z, hazard_file_path,
@@ -51,6 +51,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
     else:
         pass
     # Step 6: Create the empirical fragilities for each damage state:
+    create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type)
 
 
 def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type):
@@ -67,7 +68,7 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
     # Create a dichotomous matrix with columns = im_is and rows bldg DS >= DS
     # Divide sample buildings according to the damage states in the damage scale:
     dstate_dict = {}
-    for key in ddata_source.hasDamageScale:
+    for key in ddata_source.hasDamageScale['damage states']:
         dstate_arr = []
         for bldg in sim_bldgs:
             if bldg.hasDamageData[component_type]['fidelity'].hasDamageScale['type'] == damage_scale_name:
@@ -100,7 +101,9 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
         mu, beta = get_parameters_mle(im_i, N_i, n_i)
         param_dict[key] = {'mu': mu, 'beta': beta}
         # Plot the fragility function for each damage state:
-        new_cdf = lognorm.cdf(im_i, shape=beta, loc=0, scale=np.exp(mu))
+        #input_cdf = (np.log(im_i) - mu) / beta
+        #new_cdf = norm.cdf(input_cdf)
+        new_cdf = norm.cdf(np.log(im_i), np.log(mu), beta)
         ax.plot(im_i, new_cdf)
         legend_list.append(key)
     ax.legend(legend_list)
@@ -110,8 +113,8 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
 
 
 def get_parameters_mle(im_i, N_i, n_i):
-    mu_init = 0  # initial guess for mu
-    beta_init = 0.1  # initial guess for beta
+    mu_init = 4  # initial guess for mu
+    beta_init = 0.2  # initial guess for beta
     params_init = np.array([mu_init, beta_init])
     mle_args = (im_i, N_i, n_i)
     results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args)
@@ -128,8 +131,8 @@ def mle_objective_func(params, *args):
 
     INPUTS:
     params = (2,) vector, ([mu, beta])
-    mu     = scalar, logarithmic mean of lognormal distribution
-    beta  = scalar, standard deviation of lognormal distribution
+    mu     = scalar, median of the fragility function
+    beta  = scalar, standard deviation of the fragility function
     args   = length 3 tuple, (im_i, N_i, n_i)
     im_i  = (N,) vector, values of the intensity measure
     N_i = (N,) vector, number of total buildings at the intensity measure for the damage state
@@ -143,8 +146,7 @@ def mle_objective_func(params, *args):
     """
     mu, beta = params
     im_i, N_i, n_i = args
-    input_cdf = (np.log(im_i)-mu)/beta
-    log_lik_val = sum(n_i*np.log(norm.cdf(input_cdf)) + (N_i-n_i)*np.log(1-norm.cdf(input_cdf)))
+    log_lik_val = sum(n_i*np.log(norm.cdf(np.log(im_i), np.log(mu), beta)) + (N_i-n_i)*np.log(1-norm.cdf(np.log(im_i), np.log(mu), beta)))
     neg_log_lik_val = -log_lik_val
 
     return neg_log_lik_val
@@ -195,7 +197,7 @@ def get_best_data(data_details_list, analysis_date):
                             if len(idx) == 0:
                                 pass
                             elif len(idx) == 1:
-                                best_data = data_details_list[idx]
+                                best_data = data_details_list[idx[0]]
                                 break
                             else:
                                 # Choose the data source closest to either the disaster date or today's date
@@ -205,6 +207,7 @@ def get_best_data(data_details_list, analysis_date):
 
 
 def get_local_wind_speed(bldg, z, wind_speed_file_path, exposure, unit):
+    z=13*4
     df_wind_speeds = pd.read_csv(wind_speed_file_path)
     # Round the lat and lon values to two decimal places:
     df_wind_speeds['Lon'] = round(df_wind_speeds['Lon'], 2)
@@ -320,7 +323,8 @@ site.update_elements()
 rcover = 'POLY TPO'
 data_types = [post_disaster_damage_data_source.BayCountyPermits()]
 file_paths = ['C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.csv']
+hazard_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/2018-Michael_windgrid_ver36.csv'
 bldg = Parcel('21084-010-000', 6, 'PROFESSION (001900)', 1987, '801 6TH ST E PANAMA CITY 32401', '70788', -85.647660, 30.159210)
 bldg.hasElement['Roof'][0].hasCover = rcover
 bldg.hasPermitData['disaster']['number'].append('DIS18-0003')
-execute_fragility_workflow(bldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021')
+execute_fragility_workflow(bldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021', hazard_file_path=hazard_file_path)
