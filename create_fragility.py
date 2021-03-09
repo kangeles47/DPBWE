@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
-from scipy.stats import lognorm, norm
+from scipy.stats import norm
 import get_sim_bldgs
 import post_disaster_damage_data_source
 from OBDM.zone import Site, Building
@@ -17,6 +17,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
     # Step 2: Find damage descriptions for each building
     for sim_bldg in sim_bldgs:
         data_details_list = []
+        avail_flag = False
         for i in range(0, len(data_types)):  # Collect data from each data source
             if isinstance(data_types[i], post_disaster_damage_data_source.STEER):
                 data_details = data_types[i].add_steer_data(sim_bldg, component_type, hazard_type, file_paths[i])
@@ -26,9 +27,18 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                                  file_paths[i], length_unit, damage_scale_name)
             #elif isinstance(data_types[i], post_disaster_damage_data_source.FemaIhaLd):
             #    data_details = data_types[i].add_fema_IHA_LD_data(sim_bldg, component_type, hazard_type, event_name)
+            if data_details['availability']:
+                avail_flag = True
+            else:
+                pass
             data_details_list.append(data_details)
-        # Step 3: Choose the best data for each bldg/component and add to data model:
-        best_data = get_best_data(data_details_list, analysis_date)  # Data Fidelity Index
+        # Step 3: Choose the best data for each bldg/component:
+        if avail_flag:
+            best_data = get_best_data(data_details_list, analysis_date)  # Data Fidelity Index
+        else:
+            best_data = data_details.copy()
+            best_data['fidelity'] = None
+        # Add data to building data model:
         sim_bldg.hasDamageData['roof cover'] = best_data
         sim_bldg.hasElement['Roof'][0].hasDamageData = best_data
         # Step 4: Get the intensity measure or engineering demand parameter for this building:
@@ -111,7 +121,8 @@ def get_parameters_mle(im_i, N_i, n_i):
     beta_init = 0.2  # initial guess for beta
     params_init = np.array([mu_init, beta_init])
     mle_args = (im_i, N_i, n_i)
-    results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args)
+    bnds = ((0, None), (0, None))  # values for mu and beta must be positive
+    results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args, bounds=bnds)
     mu_MLE, beta_MLE = results_uncstr.x
     print('mu_MLE=', mu_MLE, 'beta_MLE=', beta_MLE)
     return mu_MLE, beta_MLE
