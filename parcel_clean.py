@@ -175,8 +175,6 @@ print('Stories:')
 print(df_damage['Stories'].value_counts())
 print('Frame Type:')
 print(df_damage['Frame Type'].value_counts())
-# Export the Damage DataFrame to a .csv:
-df_damage.to_csv('Bay_Parcels_Permits.csv', index=False)
 # Drop any parcels that are both vacant and do not have a damage permit:
 vac_dam_indices = df.loc[(df['Use Code'] == 'VACANT COM (001000)') & (df['Disaster Permit'] == False)].index
 vac_dam_indices2 = df.loc[(df['Use Code'] == 'VACANT/XFO (000070)') & (df['Disaster Permit'] == False)].index
