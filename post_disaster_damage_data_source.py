@@ -2,17 +2,22 @@ import pandas as pd
 import requests
 
 
-class PostDisasterDamageDataSource:
+class PostDisasterDamageDataset:
 
     def __init__(self):
         self.hasDamagePrecision = {'component, discrete': False, 'component, range': False, 'building, discrete': False, 'building, range': False}
         self.hasLocationPrecision = {'exact location': False, 'street level': False, 'city/town level': False, 'zipcode/censusblock level': False}
         self.hasAccuracy = False
-        self.hasDamageScale = {'type': '', 'damage states': {}}
+        self.hasCurrentness = False
+        self.hasReliability = False
         self.hasDate = str()
+        self.hasDamageScale = {'type': '', 'damage states': {}}
         self.hasHazard = {'wind': False, 'tree': False, 'rain': False, 'wind-borne debris': False, 'flood': False, 'surge': False}
         self.hasType = {'field observations': False, 'permit data': False, 'crowdsourced': False,
-                        'remote-sensing/imagery': False, 'fema modeled assessment': False, 'fema claims data': False}
+                        'remote sensing/imagery': False, 'fema modeled assessment': False, 'fema claims data': False}
+        self.hasEventName = ''
+        self.hasEventYear = ''
+        self.hasEventLocation = ''
 
     def get_damage_scale(self, damage_scale_name, component_type, damage_states=None, values=None):
         if damage_scale_name == 'HAZUS-HM':
@@ -32,9 +37,9 @@ class PostDisasterDamageDataSource:
                 self.hasDamageScale['damage states'][damage_states[i]] = values[i]
 
 
-class STEER(PostDisasterDamageDataSource):
+class STEER(PostDisasterDamageDataset):
     def __init__(self):
-        PostDisasterDamageDataSource.__init__(self)
+        PostDisasterDamageDataset.__init__(self)
         self.hasDamagePrecision['component, discrete'] = True
         self.hasDamagePrecision['building, range'] = True
         self.hasLocationPrecision['exact location'] = True
@@ -95,9 +100,9 @@ class STEER(PostDisasterDamageDataSource):
         return data_details
 
 
-class BayCountyPermits(PostDisasterDamageDataSource):
+class BayCountyPermits(PostDisasterDamageDataset):
     def __init__(self):
-        PostDisasterDamageDataSource.__init__(self)
+        PostDisasterDamageDataset.__init__(self)
         self.hasDamagePrecision['component, discrete'] = True
         self.hasDamagePrecision['component, range'] = True
         self.hasLocationPrecision['exact location'] = True
@@ -315,9 +320,9 @@ class BayCountyPermits(PostDisasterDamageDataSource):
             pass
 
 
-class FemaIhaLd(PostDisasterDamageDataSource):
+class FemaIhaLd(PostDisasterDamageDataset):
     def __init__(self):
-        PostDisasterDamageDataSource.__init__(self)
+        PostDisasterDamageDataset.__init__(self)
         self.hasDamagePrecision['component, discrete'] = True
         self.hasDamagePrecision['component, range'] = True
         self.hasLocationPrecision['zipcode/censusblock level'] = True
