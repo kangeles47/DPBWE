@@ -39,7 +39,8 @@ class BldgCode:
                     elif parcel.hasYearBuilt > 2017 & parcel.hasYearBuilt <= 2020:
                         edition = '2017 FBC - Building'
                     else:
-                        print('Building code and edition currently not supported', parcel.hasYearBuilt)
+                        edition = '1988 SFBC'
+                        print('Building created before modern codes: use oldest available code', edition)
                 else:
                     if parcel.hasYearBuilt > 1983 & parcel.hasYearBuilt <= 1986:
                         edition = '1983 CABO'
@@ -64,7 +65,8 @@ class BldgCode:
                     elif parcel.hasYearBuilt > 2017 & parcel.hasYearBuilt <= 2020:
                         edition = '2017 FBC - Residential'
                     else:
-                        print('Building code and edition currently not supported', parcel.hasYearBuilt)
+                        edition = '1983 CABO'
+                        print('Building created before modern codes: use oldest available code', edition)
         else:
             # For loading descriptions or component capacities using ASCE 7:
             if parcel.hasYearBuilt <= 1988:
