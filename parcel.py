@@ -152,6 +152,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         if survey_data.isSurvey == 'CBECS':
             # Populate code-informed component-level information
             code_informed = bldg_code.FBC(self, loading_flag=False)
+            code_informed.bldg_attributes(self)
             code_informed.roof_attributes(code_informed.hasEdition, self, survey_data.isSurvey)
         else:
             pass

@@ -92,7 +92,6 @@ class FBC(BldgCode):
 
     def __init__(self, parcel, loading_flag):
         BldgCode.__init__(self, parcel, loading_flag)  # Bring in building code attributes (edition)
-        self.bldg_attributes(parcel)
 
     def bldg_attributes(self, parcel):
         # Knowing the code edition, populate this building-level code-informed attributes for the parcel:
