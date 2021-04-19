@@ -336,7 +336,7 @@ class FemaIhaLd(PostDisasterDamageDataset):
                 disasterNumber = '4399'
             else:
                 pass
-        query = api_endpoint + '?$filter=disasterNumber ge ' + disasterNumber
+        query = api_endpoint + '?$filter=disasterNumber eq ' + disasterNumber
         response = requests.get(query)
         if response.status_code != '200' or response.status_code != '300':
             print('API request failed')
