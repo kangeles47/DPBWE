@@ -312,7 +312,7 @@ class Building(Zone):
         self.hasLocation = {'Address': None, 'Street Number': None, 'City': None, 'Zip Code': None, 'State': None, 'County': None, 'Geodesic': None}
         self.hasGeometry = {'Total Floor Area': None, 'Footprint': {'type': None, 'geodesic': None, 'local': None},
                             'Height': None, '3D Geometry': {'geodesic': [], 'local': []},
-                            'Facade': {'geodesic': [], 'local': []}}
+                            'Facade': {'geodesic': [], 'local': []}, 'Length Unit': None}
         self.hasOrientation = None
         self.hasOutputVariable = {'repair cost': None, 'downtime': None, 'fatalities': None}
         self.hasFundamentalPeriod = {'x': None, 'y': None}
@@ -336,7 +336,7 @@ class Building(Zone):
         self.hasPermitData = {'disaster': {'number': [], 'description': [], 'permit type': []}, 'other': {'number': [], 'description': [], 'permit type': []}}
         self.hasDamageData = {'roof cover': None, 'roof structure': None, 'cladding': None, 'glazing': None}
 
-    def add_parcel_data(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
+    def add_parcel_data(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit):
         """
         A simple function to update Building attributes with parcel data and instantiate Story objects
 
@@ -348,11 +348,12 @@ class Building(Zone):
         :param area: A number providing the building's total floor area
         :param lon: A number providing the building's longitude location
         :param lat: A number providing the building's latitude location
+        :param length_unit: A string denoting the input base unit for geometry: 'ft', 'm'
         """
         self.hasID = pid
-        # Exception for single family homes:
-        if num_stories == 0:
-            num_stories = int(num_stories) + 1
+        # Exception for single family homes and condos:
+        if num_stories == 0 or 'COND' in occupancy:
+            num_stories = 1
         else:
             num_stories = int(num_stories)
         # Create Story instances:
@@ -364,6 +365,7 @@ class Building(Zone):
             self.hasInterface.append(Interface([self.hasStory[stry], self.hasStory[stry + 1]]))
         self.update_zones()  # Add the stories as zones for this building:
         self.hasGeometry['Total Floor Area'] = float(area)
+        self.hasGeometry['Length Unit'] = length_unit
         self.hasOccupancy = occupancy.upper()
         self.hasYearBuilt = int(yr_built)
         self.hasLocation['Address'] = address.upper()
@@ -389,7 +391,7 @@ class Building(Zone):
         zipcode = int(self.hasLocation['Address'].split()[-1])
         self.hasLocation['Zip Code'] = str(zipcode).strip()
         BayCountyZipCodes = np.arange(32401, 32418)
-        BayCountyZipCodes = np.append(BayCountyZipCodes, [32438, 32444, 32466])
+        BayCountyZipCodes = np.append(BayCountyZipCodes, [32438, 32444, 32456, 32466])
 
         if zipcode in BayCountyZipCodes:
             self.hasLocation['State'] = 'FL'

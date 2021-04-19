@@ -15,10 +15,10 @@ from survey_data import SurveyData
 
 class Parcel(Building):  # Note here: Consider how story/floor assignments may need to change for elevated structures
 
-    def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat):
+    def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit):
         Building.__init__(self)  # Bring in all of the attributes that are defined in the BIM class for the parcel model
         # Add parcel data:
-        self.add_parcel_data(pid, num_stories, occupancy, yr_built, address, area, lon, lat)
+        self.add_parcel_data(pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit)
         # Define building-level attributes that are specific to parcel models
         # Building footprint:
         self.assign_footprint(self, num_stories)

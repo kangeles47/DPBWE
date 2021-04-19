@@ -289,7 +289,7 @@ for row in range(0, len(df.index)):
     if not parcel_model:
         new_bldg = Building()
         new_bldg.add_parcel_data(df['Parcel Id'][row], df['Stories'][row], df['Use Code'][row], df['Year Built'][row],
-                                 df['Address'][row], df['Square Footage'][row], df['Longitude'][row], df['Latitude'][row])
+                                 df['Address'][row], df['Square Footage'][row], df['Longitude'][row], df['Latitude'][row], 'ft')
         # Add roof element and data:
         new_bldg.hasElement['Roof'] = [Roof()]
         new_bldg.hasElement['Roof'][0].hasCover = df['Roof Cover'][row]
@@ -301,7 +301,7 @@ for row in range(0, len(df.index)):
         new_bldg.hasGeometry['Height'] = df['Stories'][row]*4.0*3.28084  # ft
     else:
         new_bldg = Parcel(df['Parcel Id'][row], df['Stories'][row], df['Use Code'][row], df['Year Built'][row],
-                          df['Address'][row], df['Square Footage'][row], df['Longitude'][row], df['Latitude'][row])
+                          df['Address'][row], df['Square Footage'][row], df['Longitude'][row], df['Latitude'][row], 'ft')
     # Add permit data:
     permit_data = df['Permit Number'][row]
     if isinstance(permit_data,str):
