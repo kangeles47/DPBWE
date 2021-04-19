@@ -16,8 +16,8 @@ class PostDisasterDamageDataset:
         self.hasType = {'field observations': False, 'permit data': False, 'crowdsourced': False,
                         'remote sensing/imagery': False, 'fema modeled assessment': False, 'fema claims data': False}
         self.hasEventName = ''
-        self.hasEventYear = ''
-        self.hasEventLocation = ''
+        self.hasEventYear = '00/00/0000'
+        self.hasEventLocation = {'city': '', 'county': '', 'state': '', 'country': ''}
 
     def get_damage_scale(self, damage_scale_name, component_type, damage_states=None, values=None):
         if damage_scale_name == 'HAZUS-HM':
@@ -120,7 +120,7 @@ class BayCountyPermits(PostDisasterDamageDataset):
         # Load the disaster permit data:
         df = pd.read_csv(permit_file_path, encoding='unicode_escape')
         # Find disaster permit descriptions for the parcel:
-        if len(bldg.hasPermitData['disaster']) > 0:
+        if len(bldg.hasPermitData['disaster']['number']) > 0:
             for p in bldg.hasPermitData['disaster']['number']:
                 idx = df.loc[df['PERMITNUMBER'] == p].index[0]
                 bldg.hasPermitData['disaster']['description'].append(df['DESCRIPTION'][idx].upper())
@@ -173,9 +173,9 @@ class BayCountyPermits(PostDisasterDamageDataset):
                                 area_factor = bldg.hasGeometry['Total Floor Area'] / area
                                 # Calculate the number of roof squares and percent roof cover damage:
                                 num_roof_squares = float(desc[i]) * area_factor
-                                rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Area'], len(bldg.hasStory),
+                                rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Floor Area'], len(bldg.hasStory),
                                                                                       num_roof_squares, length_unit)
-                                rcover_damage_cat = self.rcover_damage_cat(data_details['value'])
+                                rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
                                 break
                             else:
                                 if 'SQ' in desc[i]:  # Case when there is no space between quantity and roof SQ
@@ -183,7 +183,7 @@ class BayCountyPermits(PostDisasterDamageDataset):
                                     rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Area'],
                                                                                        len(bldg.hasStory),
                                                                                          num_roof_squares, length_unit)
-                                    rcover_damage_cat = self.rcover_damage_cat(data_details['value'])
+                                    rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
                                     break
                                 else:
                                     pass
