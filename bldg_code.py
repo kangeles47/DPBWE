@@ -117,19 +117,19 @@ class FBC(BldgCode):
         roof_element = parcel.hasElement['Roof'][0]
         if edition == '2001 FBC' and survey == 'CBECS' and parcel.hasYearBuilt < 2003:
             # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
-            if 'built' in roof_element.hasCover or 'concrete' in roof_element.hasCover or 'synthetic' in roof_element.hasCover or 'metal surfacing' in roof_element.hasCover:
+            if 'BUILT' in roof_element.hasCover or 'CONCRETE' in roof_element.hasCover or 'SYNTHETIC' in roof_element.hasCover or 'METAL SURFACING' in roof_element.hasCover:
                 roof_element.hasPitch = 'flat'  # roof slopes under 2:12
                 roof_element.hasShape = 'flat'
-            elif 'asphalt' in roof_element.hasCover or 'shingles' in roof_element.hasCover or 'wood' in roof_element.hasCover or 'tile' in roof_element.hasCover or 'slate' in roof_element.hasCover or 'shakes' in roof_element.hasCover:
+            elif 'ASPHALT' in roof_element.hasCover or 'SHINGLES' in roof_element.hasCover or 'SHNGL' in roof_element.hasCover or 'WOOD' in roof_element.hasCover or 'TILE' in roof_element.hasCover or 'SLATE' in roof_element.hasCover or 'SHAKES' in roof_element.hasCover:
                 roof_element.hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
             else:
                 roof_element.hasPitch = 'unknown'
         elif edition == '1988 SBC' and survey == 'CBECS' and parcel.hasYearBuilt < 1990:
             # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
-            if 'built' in roof_element.hasCover or 'metal surfacing' in roof_element.hasCover or 'ply' in roof_element.hasCover or 'concrete' in roof_element.hasCover or 'rubber' in roof_element.hasCover:
+            if 'BUILT' in roof_element.hasCover or 'METAL SURFACING' in roof_element.hasCover or 'PLY' in roof_element.hasCover or 'CONCRETE' in roof_element.hasCover or 'RUBBER' in roof_element.hasCover:
                 roof_element.hasPitch = 'flat'  # roof slopes under 2:12
                 roof_element.hasShape = 'flat'
-            elif 'wood' in roof_element.hasCover or 'tile' in roof_element.hasCover or 'shingles' in roof_element.hasCover:
+            elif 'WOOD' in roof_element.hasCover or 'TILE' in roof_element.hasCover or 'SHINGLES' in roof_element.hasCover or 'SHNGL' in roof_element.hasCover:
                 roof_element.hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
             else:
                 roof_element.hasPitch = 'unknown'
@@ -137,15 +137,15 @@ class FBC(BldgCode):
             # Assign qualitative descriptions of roof cover type given roof pitch from survey data:
             if roof_element.hasCover is None:
                 if roof_element.hasPitch == 'flat':
-                    roof_matls = ['builtup', 'concrete', 'metal surfacing', 'synthetic or rubber']
+                    roof_matls = ['BUILTUP', 'CONCRETE', 'METAL SURFACING', 'SYNTHETIC OR RUBBER']
                     roof_weights = [211, 0, 244, 78]
                     roof_element.hasType = random.choices(roof_matls, roof_weights)
                 elif roof_element.hasPitch == 'shallow':
-                    roof_matls = ['shingles (not wood)','metal surfacing', 'wooden materials']
+                    roof_matls = ['SHINGLES (NOT WOOD)','METAL SURFACING', 'WOODEN MATERIALS']
                     roof_weights = [234, 244, 0]
                     roof_element.hasType = random.choices(roof_matls, roof_weights)
                 elif roof_element.hasPitch == 'steeper':
-                    roof_matls = ['shingles (not wood)', 'slate or tile', 'wooden materials']
+                    roof_matls = ['SHINGLES (NOT WOOD)', 'SLATE OR TILE', 'WOODEN MATERIALS']
                     roof_weights = [234, 66, 0]
                     roof_element.hasType = random.choices(roof_matls, roof_weights)
                 else:
