@@ -404,7 +404,7 @@ class SurveyData:
             # Identify the vintage of reference buildings needed:
             if 1980 < parcel.hasYearBuilt < 2016:
                 # Use the building occupancy to identify the appropriate subset of reference buildings:
-                if parcel.hasOccupancy == 'Office' or parcel.hasOccupancy == 'Financial':
+                if 'office' in parcel.hasOccupancy or 'financial' in parcel.hasOccupancy:
                     # All reference buildings have the same floor-to-floor height:
                     for i in range(0, len(parcel.hasStory)):
                         parcel.hasStory[i].hasGeometry['Height'] = 4.0*3.28084  # [ft]
