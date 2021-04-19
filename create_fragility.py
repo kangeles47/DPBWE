@@ -5,6 +5,7 @@ import scipy.optimize as opt
 from scipy.stats import norm
 import get_sim_bldgs
 import post_disaster_damage_data_source
+import bldg_code
 from OBDM.zone import Site, Building
 from OBDM.element import Roof
 from parcel import Parcel
@@ -279,57 +280,49 @@ def get_local_wind_speed(bldg, z, wind_speed_file_path, exposure, unit):
     return v_local
 
 # Create a Site Class holding all of the data models for the parcels:
-inventory = 'C:/Users/Karen/PycharmProjects/DPBWE/BayCountyCommercialParcels.csv'
+inventory = 'D:/Users/Karen/Documents/Github/DPBWE/BC_CParcels.csv'
 df = pd.read_csv(inventory)
 site = Site()
-for row in range(0, len(df.index[0:5])):
-    pid = df['Parcel Id'][row]
-    num_stories = df['Stories'][row]
-    use_code = df['Use Code'][row]
-    year_built = df['Year Built'][row]
-    address = df['Address'][row]
-    area = df['Square Footage'][row].replace(',','')
-    lon = -85.647660  # df['Longitude'][row]
-    lat = 30.159210  # df['Latitude'][row]
-    new_bldg = Building()
-    new_bldg.add_parcel_data(pid, num_stories, use_code, year_built, address, area, lon, lat)
-    #new_bldg = Parcel(pid, num_stories, use_code, year_built, address, area, lon, lat)
-    new_bldg.hasElement['Roof'] = [Roof()]
-    # Add additional attributes:
-    new_bldg.hasElement['Roof'][0].hasCover = df['Roof Cover'][row]
-    new_bldg.hasElement['Roof'][0].hasShape = 'flat'
-    new_bldg.hasElement['Roof'][0].hasPitch = 0
-    new_bldg.hasGeometry['Height'] = 40
+parcel_model = False
+for row in range(0, len(df.index)):
+    # Create a new data model for parcel:
+    if not parcel_model:
+        new_bldg = Building()
+        new_bldg.add_parcel_data(df['Parcel Id'][row], df['Stories'][row], df['Use Code'][row], df['Year Built'][row],
+                                 df['Address'][row], df['Square Footage'][row], df['Longitude'][row], df['Latitude'][row])
+        # Add roof element and data:
+        new_bldg.hasElement['Roof'] = [Roof()]
+        new_bldg.hasElement['Roof'][0].hasCover = df['Roof Cover'][row]
+        new_bldg.hasElement['Roof'][0].hasType = df['Roof Cover'][row]
+        # Populate code-informed component-level information
+        code_informed = bldg_code.FBC(new_bldg, loading_flag=False)
+        code_informed.roof_attributes(code_informed.hasEdition, new_bldg, 'CBECS')
+        # Add height information (if available):
+        new_bldg.hasGeometry['Height'] = df['Stories'][row]*4.0*3.28084  # ft
+    else:
+        new_bldg = Parcel(df['Parcel Id'][row], df['Stories'][row], df['Use Code'][row], df['Year Built'][row],
+                          df['Address'][row], df['Square Footage'][row], df['Longitude'][row], df['Latitude'][row])
     # Add permit data:
     permit_data = df['Permit Number'][row]
     if isinstance(permit_data,str):
-        permit_data = permit_data.split("'")
+        permit_data = permit_data.strip('/').strip('][').split(', ')
         for idx in permit_data:
-            if '-' in idx:
-                if 'DIS' in idx:
-                    new_bldg.hasPermitData['disaster']['number'].append(idx)
-                else:
-                    new_bldg.hasPermitData['other']['number'].append(idx)
+            if 'DIS' in idx:
+                new_bldg.hasPermitData['disaster']['number'].append(idx)
             else:
-                try:
-                    d = int(row)
-                    if 'DIS' in idx:
-                        new_bldg.hasPermitData['disaster']['number'].append(idx)
-                    else:
-                        new_bldg.hasPermitData['other']['number'].append(idx)
-                except ValueError:
-                    pass
+                new_bldg.hasPermitData['other']['number'].append(idx)
     else:
         pass
     site.hasBuilding.append(new_bldg)
 site.update_zones()
 site.update_elements()
-# Test out data extraction with one parcel:
-rcover = 'POLY TPO'
+# Select parcel from the site:
+for bldg in site.hasBuilding:
+    if bldg.hasID == '30569-100-000':
+        pbldg = bldg
+    else:
+        pass
 data_types = [post_disaster_damage_data_source.BayCountyPermits()]
-file_paths = ['C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.csv']
-hazard_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/2018-Michael_windgrid_ver36.csv'
-bldg = Parcel('21084-010-000', 6, 'PROFESSION (001900)', 1987, '801 6TH ST E PANAMA CITY 32401', '70788', -85.647660, 30.159210)
-bldg.hasElement['Roof'][0].hasCover = rcover
-bldg.hasPermitData['disaster']['number'].append('DIS18-0003')
-execute_fragility_workflow(bldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021', hazard_file_path=hazard_file_path)
+file_paths = ['D:/Users/Karen/Documents/Github/DPBWE/BayCountyMichael_Permits.csv']
+hazard_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/2018-Michael_windgrid_ver36.csv'
+execute_fragility_workflow(pbldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021', hazard_file_path=hazard_file_path)
