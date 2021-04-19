@@ -1,3 +1,4 @@
+import ast
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -28,7 +29,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                                  file_paths[i], length_unit, damage_scale_name)
             #elif isinstance(data_types[i], post_disaster_damage_data_source.FemaIhaLd):
             #    data_details = data_types[i].add_fema_IHA_LD_data(sim_bldg, component_type, hazard_type, event_name)
-            if data_details['availability']:
+            if data_details['available']:
                 avail_flag = True
             else:
                 pass
@@ -305,12 +306,12 @@ for row in range(0, len(df.index)):
     # Add permit data:
     permit_data = df['Permit Number'][row]
     if isinstance(permit_data,str):
-        permit_data = permit_data.strip('/').strip('][').split(', ')
-        for idx in permit_data:
-            if 'DIS' in idx:
-                new_bldg.hasPermitData['disaster']['number'].append(idx)
+        permit_data = ast.literal_eval(permit_data)
+        for item in permit_data:
+            if 'DIS' in item:
+                new_bldg.hasPermitData['disaster']['number'].append(item)
             else:
-                new_bldg.hasPermitData['other']['number'].append(idx)
+                new_bldg.hasPermitData['other']['number'].append(item)
     else:
         pass
     site.hasBuilding.append(new_bldg)
