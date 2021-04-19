@@ -364,15 +364,15 @@ class Building(Zone):
             self.hasInterface.append(Interface([self.hasStory[stry], self.hasStory[stry + 1]]))
         self.update_zones()  # Add the stories as zones for this building:
         self.hasGeometry['Total Floor Area'] = float(area)
-        self.hasOccupancy = occupancy
+        self.hasOccupancy = occupancy.upper()
         self.hasYearBuilt = int(yr_built)
-        self.hasLocation['Address'] = address
+        self.hasLocation['Address'] = address.upper()
         self.hasLocation['Geodesic'] = Point(lon, lat)
         self.get_location_data()
         # Tag the building as "commercial" or "not commercial"
-        comm_occupancies = ['profession', 'hotel', 'motel', 'financial', 'commercial', 'hospital', 'mixed use',
-                            'municipal', 'office', 'condo', 'county', 'federal', 'store', 'restaurant', 'common',
-                            'private', 'public sch', 'supermark', 'camps', 'community']  # example occupancies
+        comm_occupancies = ['PROFESS', 'HOTEL', 'MOTEL', 'FINANCIAL', 'COMMERCIAL', 'HOSP', 'MIXED',
+                            'MUNICIPAL', 'OFFICE', 'CONDO', 'COUNTY', 'FEDERAL', 'STORE', 'REST', 'COMMON',
+                            'PRIVATE', 'SCH', 'SUPERMAR', 'CAMPS', 'COMMUNITY']  # example occupancies
         if self.hasOccupancy.lower() in comm_occupancies:
             self.isComm = True
         else:
