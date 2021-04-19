@@ -113,40 +113,39 @@ class FBC(BldgCode):
             print('Building level attributes currently not supported')
 
     def roof_attributes(self, edition, parcel, survey):
-
-        #Populate roof attributes for this instance (parcel)
-        roof_element = parcel.hasStory[-1].hasElement['Roof'][0]
+        # Populate roof attributes for this instance (parcel)
+        roof_element = parcel.hasElement['Roof'][0]
         if edition == '2001 FBC' and survey == 'CBECS' and parcel.hasYearBuilt < 2003:
             # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
-            if roof_element.hasCover == 'Built-up' or roof_element.hasCover == 'Concrete' or roof_element.hasCover == 'Plastic/rubber/synthetic sheeting' or roof_element.hasCover == 'Metal surfacing':
+            if 'built' in roof_element.hasCover or 'concrete' in roof_element.hasCover or 'synthetic' in roof_element.hasCover or 'metal surfacing' in roof_element.hasCover:
                 roof_element.hasPitch = 'flat'  # roof slopes under 2:12
                 roof_element.hasShape = 'flat'
-            elif roof_element.hasCover == 'Asphalt/fiberglass/other shingles' or roof_element.hasCover == 'Wood shingles/shakes/other wood' or roof_element.hasCover == 'Slate or tile shingles':
+            elif 'asphalt' in roof_element.hasCover or 'shingles' in roof_element.hasCover or 'wood' in roof_element.hasCover or 'tile' in roof_element.hasCover or 'slate' in roof_element.hasCover or 'shakes' in roof_element.hasCover:
                 roof_element.hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
             else:
                 roof_element.hasPitch = 'unknown'
         elif edition == '1988 SBC' and survey == 'CBECS' and parcel.hasYearBuilt < 1990:
             # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
-            if roof_element.hasCover == 'Built-up' or roof_element.hasCover == 'Metal surfacing' or roof_element.hasCover == 'Single/multiple ply' or roof_element.hasCover == 'Concrete roof' or roof_element.hasCover == 'Metal & rubber' or roof_element.hasCover == 'Slate & built-up' or roof_element.hasCover == 'Built-up & metal' or roof_element.hasCover == 'Built-up & s/m ply':
+            if 'built' in roof_element.hasCover or 'metal surfacing' in roof_element.hasCover or 'ply' in roof_element.hasCover or 'concrete' in roof_element.hasCover or 'rubber' in roof_element.hasCover:
                 roof_element.hasPitch = 'flat'  # roof slopes under 2:12
                 roof_element.hasShape = 'flat'
-            elif roof_element.hasCover == 'Wooden materials' or roof_element.hasCover == 'Slate or tile' or roof_element.hasCover == 'Shingles (not wood)' or roof_element.hasCover == 'Shingles & metal':
+            elif 'wood' in roof_element.hasCover or 'tile' in roof_element.hasCover or 'shingles' in roof_element.hasCover:
                 roof_element.hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
             else:
                 roof_element.hasPitch = 'unknown'
         else:
             # Assign qualitative descriptions of roof cover type given roof pitch from survey data:
-            if roof_element.hasCover == None:
+            if roof_element.hasCover is None:
                 if roof_element.hasPitch == 'flat':
-                    roof_matls = ['Builtup', 'Concrete', 'Metal Surfacing', 'Synthetic or Rubber']
+                    roof_matls = ['builtup', 'concrete', 'metal surfacing', 'synthetic or rubber']
                     roof_weights = [211, 0, 244, 78]
                     roof_element.hasType = random.choices(roof_matls, roof_weights)
                 elif roof_element.hasPitch == 'shallow':
-                    roof_matls = ['Shingles (Not Wood)','Metal Surfacing', 'Wooden Materials']
+                    roof_matls = ['shingles (not wood)','metal surfacing', 'wooden materials']
                     roof_weights = [234, 244, 0]
                     roof_element.hasType = random.choices(roof_matls, roof_weights)
                 elif roof_element.hasPitch == 'steeper':
-                    roof_matls = ['Shingles (Not Wood)', 'Slate or Tile', 'Wooden Materials']
+                    roof_matls = ['shingles (not wood)', 'slate or tile', 'wooden materials']
                     roof_weights = [234, 66, 0]
                     roof_element.hasType = random.choices(roof_matls, roof_weights)
                 else:
