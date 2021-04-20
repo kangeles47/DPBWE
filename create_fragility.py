@@ -13,10 +13,11 @@ from parcel import Parcel
 
 
 def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, analysis_date, hazard_file_path):
-    # Step 1: Find similar buildings based on similarity in features, load path for the given hazard
+    # Step 1: Find similar buildings: features, load path for the given hazard (may include your building as well)
     sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type)
-    sim_bldgs.append(bldg)  # Add reference building to extract its data as well
-    # Step 2: Find damage descriptions for each building
+    # Step 2: Find damage descriptions for each building:
+    # Create dictionary to track pertinent sample building info (data visualization):
+    sample_dict = {'Parcel Id': [], component_type: [], 'Stories': [], 'Disaster Permit': [], 'Permit Description': [], 'Demand Value': [], 'Value': []}
     for sim_bldg in sim_bldgs:
         data_details_list = []
         avail_flag = False
@@ -51,6 +52,20 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                                                                                           exposure='C', unit='english')
             else:
                 pass
+        # Step 5: Export attributes for all sample buildings:
+        sample_dict['Parcel Id'].append(sim_bldg.hasID)
+        sample_dict['Stories'].append(len(sim_bldg.hasStory))
+        sample_dict['Value'].append(sim_bldg.hasElement['Roof'][0].hasDamageData['value'])
+        sample_dict['Demand Value'].append(sim_bldg.hasDemand['wind speed'])
+        if len(sim_bldg.hasPermitData['disaster']['number']) > 0:
+            sample_dict['Disaster Permit'].append(True)
+            sample_dict['Permit Description'].append(sim_bldg.hasPermitData['disaster']['description'])
+        else:
+            sample_dict['Disaster Permit'].append(False)
+            sample_dict['Permit Description'].append('None')
+        if component_type == 'roof cover':
+            sample_dict[component_type].append(sim_bldg.hasElement['Roof'][0].hasCover)
+    pd.DataFrame(sample_dict).to_csv('SampleBuildings.csv')
     # Step 5: Get the prior:
     if hazard_type == 'wind' and damage_scale_name == 'HAZUS-HM':
         pass
