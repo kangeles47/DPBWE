@@ -115,40 +115,44 @@ class FBC(BldgCode):
 
     def roof_attributes(self, edition, parcel, survey):
         # Populate roof attributes for this instance (parcel)
-        roof_element = parcel.hasElement['Roof'][0]
-        if edition == '2001 FBC' and survey == 'CBECS' and parcel.hasYearBuilt < 2003:
-            # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
-            if 'BUILT' in roof_element.hasCover or 'CONCRETE' in roof_element.hasCover or 'SYNTHETIC' in roof_element.hasCover or 'METAL SURFACING' in roof_element.hasCover:
-                roof_element.hasPitch = 'flat'  # roof slopes under 2:12
-                roof_element.hasShape = 'flat'
-            elif 'ASPHALT' in roof_element.hasCover or 'SHINGLES' in roof_element.hasCover or 'SHNGL' in roof_element.hasCover or 'WOOD' in roof_element.hasCover or 'TILE' in roof_element.hasCover or 'SLATE' in roof_element.hasCover or 'SHAKES' in roof_element.hasCover:
-                roof_element.hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
-            else:
-                roof_element.hasPitch = 'unknown'
-        elif edition == '1988 SBC' and survey == 'CBECS' and parcel.hasYearBuilt < 1990:
-            # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
-            if 'BUILT' in roof_element.hasCover or 'METAL SURFACING' in roof_element.hasCover or 'PLY' in roof_element.hasCover or 'CONCRETE' in roof_element.hasCover or 'RUBBER' in roof_element.hasCover:
-                roof_element.hasPitch = 'flat'  # roof slopes under 2:12
-                roof_element.hasShape = 'flat'
-            elif 'WOOD' in roof_element.hasCover or 'TILE' in roof_element.hasCover or 'SHINGLES' in roof_element.hasCover or 'SHNGL' in roof_element.hasCover:
-                roof_element.hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
-            else:
-                roof_element.hasPitch = 'unknown'
+        roof_cover = parcel.hasElement['Roof'][0].hasCover
+        if isinstance(roof_cover, str):
+            if 'BUILT' in roof_cover or 'CONCRETE' in roof_cover:
+                parcel.hasElement['Roof'][0].hasPitch = 0  #'flat'  # roof slopes under 2:12
+                parcel.hasElement['Roof'][0].hasShape['flat'] = True
+            if edition == '2001 FBC' and survey == 'CBECS' and parcel.hasYearBuilt < 2003:
+                # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
+                if 'BUILT' in roof_cover or 'CONCRETE' in roof_cover or 'SYNTHETIC' in roof_cover or 'METAL SURFACING' in roof_cover:
+                    parcel.hasElement['Roof'][0].hasPitch = 'flat'  # roof slopes under 2:12
+                    parcel.hasElement['Roof'][0].hasShape['flat'] = True
+                elif 'ASPHALT' in roof_cover or 'SHINGLES' in roof_cover or 'SHNGL' in roof_cover or 'WOOD' in roof_cover or 'TILE' in roof_cover or 'SLATE' in roof_cover or 'SHAKES' in roof_cover:
+                    parcel.hasElement['Roof'][0].hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
+                else:
+                    parcel.hasElement['Roof'][0].hasPitch = 'unknown'
+            elif edition == '1988 SBC' and survey == 'CBECS' and parcel.hasYearBuilt < 1990:
+                # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
+                if 'BUILT' in roof_cover or 'METAL SURFACING' in roof_cover or 'PLY' in roof_cover or 'CONCRETE' in roof_cover or 'RUBBER' in roof_cover:
+                    parcel.hasElement['Roof'][0].hasPitch = 'flat'  # roof slopes under 2:12
+                    parcel.hasElement['Roof'][0].hasShape = 'flat'
+                elif 'WOOD' in roof_cover or 'TILE' in roof_cover or 'SHINGLES' in roof_cover or 'SHNGL' in roof_cover:
+                    parcel.hasElement['Roof'][0].hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
+                else:
+                    parcel.hasElement['Roof'][0].hasPitch = 'unknown'
         else:
             # Assign qualitative descriptions of roof cover type given roof pitch from survey data:
-            if roof_element.hasCover is None:
-                if roof_element.hasPitch == 'flat':
+            if (roof_cover is None or isinstance(roof_cover, float)) and 'COND' not in parcel.hasOccupancy:
+                if parcel.hasElement['Roof'][0].hasPitch == 'flat':
                     roof_matls = ['BUILTUP', 'CONCRETE', 'METAL SURFACING', 'SYNTHETIC OR RUBBER']
                     roof_weights = [211, 0, 244, 78]
-                    roof_element.hasType = random.choices(roof_matls, roof_weights)
-                elif roof_element.hasPitch == 'shallow':
+                    parcel.hasElement['Roof'][0].hasType = random.choices(roof_matls, roof_weights)
+                elif parcel.hasElement['Roof'][0].hasPitch == 'shallow':
                     roof_matls = ['SHINGLES (NOT WOOD)','METAL SURFACING', 'WOODEN MATERIALS']
                     roof_weights = [234, 244, 0]
-                    roof_element.hasType = random.choices(roof_matls, roof_weights)
-                elif roof_element.hasPitch == 'steeper':
+                    parcel.hasElement['Roof'][0].hasType = random.choices(roof_matls, roof_weights)
+                elif parcel.hasElement['Roof'][0].hasPitch == 'steeper':
                     roof_matls = ['SHINGLES (NOT WOOD)', 'SLATE OR TILE', 'WOODEN MATERIALS']
                     roof_weights = [234, 66, 0]
-                    roof_element.hasType = random.choices(roof_matls, roof_weights)
+                    parcel.hasElement['Roof'][0].hasType = random.choices(roof_matls, roof_weights)
                 else:
                     print('Roof pitch not supported')
             else:
@@ -901,42 +905,38 @@ class ASCE7(BldgCode):
         return zone_pts, int_poly, zone2_polys
 
     def get_rcover_case(self, bldg):
-        # Skip any cases without the necessary information:
-        if bldg.hasElement['Roof'][0].hasPitch == None:
-            rcover_case = 0
-        else:
-            # Roof C&C cases vary based on the roof pitch:
-            if self.hasEdition != 'ASCE 7-16':
-                if (bldg.hasGeometry['Length Unit'] == 'ft' and bldg.hasGeometry['Height'] <= 60) or (
-                        bldg.hasGeometry['Length Unit'] == 'm' and bldg.hasGeometry['Height'] <= 18.29):
-                    if self.hasEdition != 'ASCE 7-95' or self.hasEdition != 'ASCE 7-93' or self.hasEdition != 'ASCE 7-88':
-                        if bldg.hasElement['Roof'][0].hasPitch <= 7 or bldg.hasElement['Roof'][0].hasShape['flat']:
-                            rcover_case = 1  # Case 1 : gable roofs with theta <= 7 degrees
-                        elif 7 < bldg.hasElement['Roof'][0].hasPitch <= 27 or ('shallow' in bldg.hasElement['Roof'][0].hasPitch) or bldg.hasElement['Roof'][0].hasShape == 'hip':
-                            rcover_case = 2  # Case 2: gable/hip roofs with 7 < theta < 27
-                        elif 27 < bldg.hasElement['Roof'][0].hasPitch <= 45 or ('steep' in bldg.hasElement['Roof'][0].hasPitch):
-                            rcover_case = 3  # Case 3: gable roofs with 27< theta <= 45
-                    else:
-                        if bldg.hasElement['Roof'][0].hasPitch <= 10 or bldg.hasElement['Roof'][0].hasShape['flat']:
-                            rcover_case = 1  # Case 1 : gable roofs with theta <= 10 degrees
-                        elif (bldg.hasElement['Roof'][0].hasShape['gable'] or bldg.hasElement['Roof'][0].hasShape['gable/hip combo']) and 10 < bldg.hasElement['Roof'][0].hasPitch <= 45:
-                            rcover_case = 2  # Case 2: gable roofs with 10 < theta < 45
-                        elif ((bldg.hasElement['Roof'][0].hasShape['hip'] or bldg.hasElement['Roof'][0].hasShape['gable/hip combo']) and 10 < bldg.hasElement['Roof'][0].hasPitch <= 30) or ('steep' in bldg.hasElement['Roof'][0].hasPitch):
-                            rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
+        # Roof C&C cases vary based on the roof pitch:
+        if self.hasEdition != 'ASCE 7-16':
+            if (bldg.hasGeometry['Length Unit'] == 'ft' and bldg.hasGeometry['Height'] <= 60) or (
+                    bldg.hasGeometry['Length Unit'] == 'm' and bldg.hasGeometry['Height'] <= 18.29):
+                if self.hasEdition != 'ASCE 7-95' or self.hasEdition != 'ASCE 7-93' or self.hasEdition != 'ASCE 7-88':
+                    if bldg.hasElement['Roof'][0].hasPitch <= 7 or bldg.hasElement['Roof'][0].hasShape['flat']:
+                        rcover_case = 1  # Case 1 : gable roofs with theta <= 7 degrees
+                    elif 7 < bldg.hasElement['Roof'][0].hasPitch <= 27 or ('shallow' in bldg.hasElement['Roof'][0].hasPitch) or bldg.hasElement['Roof'][0].hasShape == 'hip':
+                        rcover_case = 2  # Case 2: gable/hip roofs with 7 < theta < 27
+                    elif 27 < bldg.hasElement['Roof'][0].hasPitch <= 45 or ('steep' in bldg.hasElement['Roof'][0].hasPitch):
+                        rcover_case = 3  # Case 3: gable roofs with 27< theta <= 45
                 else:
-                    rcover_case = 8
+                    if bldg.hasElement['Roof'][0].hasPitch <= 10 or bldg.hasElement['Roof'][0].hasShape['flat']:
+                        rcover_case = 1  # Case 1 : gable roofs with theta <= 10 degrees
+                    elif (bldg.hasElement['Roof'][0].hasShape['gable'] or bldg.hasElement['Roof'][0].hasShape['gable/hip combo']) and 10 < bldg.hasElement['Roof'][0].hasPitch <= 45:
+                        rcover_case = 2  # Case 2: gable roofs with 10 < theta < 45
+                    elif ((bldg.hasElement['Roof'][0].hasShape['hip'] or bldg.hasElement['Roof'][0].hasShape['gable/hip combo']) and 10 < bldg.hasElement['Roof'][0].hasPitch <= 30) or ('steep' in bldg.hasElement['Roof'][0].hasPitch):
+                        rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
             else:
-                # Calculate the least horizontal dimension:
-                coord_list = list(bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle.exterior.coords)
-                line1 = LineString([coord_list[0], coord_list[1]])
-                line2 = LineString([coord_list[1], coord_list[2]])
-                h_dim = [line1.length, line2.length]
-                if min(h_dim) >= 2.4*bldg.hasGeometry['Height']:
-                    rcover_case = 4
-                elif 1.2*bldg.hasGeometry['Height'] <= min(h_dim) < 2.4*bldg.hasGeometry['Height']:
-                    rcover_case = 5
-                elif (1.2*bldg.hasGeometry['Height'] > min(h_dim)) and (1.2*bldg.hasGeometry['Height'] < max(h_dim)):
-                    rcover_case = 6
-                elif 1.2*bldg.hasGeometry['Height'] > max(h_dim):
-                    rcover_case = 7
+                rcover_case = 8
+        else:
+            # Calculate the least horizontal dimension:
+            coord_list = list(bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle.exterior.coords)
+            line1 = LineString([coord_list[0], coord_list[1]])
+            line2 = LineString([coord_list[1], coord_list[2]])
+            h_dim = [line1.length, line2.length]
+            if min(h_dim) >= 2.4*bldg.hasGeometry['Height']:
+                rcover_case = 4
+            elif 1.2*bldg.hasGeometry['Height'] <= min(h_dim) < 2.4*bldg.hasGeometry['Height']:
+                rcover_case = 5
+            elif (1.2*bldg.hasGeometry['Height'] > min(h_dim)) and (1.2*bldg.hasGeometry['Height'] < max(h_dim)):
+                rcover_case = 6
+            elif 1.2*bldg.hasGeometry['Height'] > max(h_dim):
+                rcover_case = 7
         return rcover_case
