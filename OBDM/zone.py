@@ -398,15 +398,15 @@ class Building(Zone):
             self.hasLocation['County'] = 'Bay'
             if 'PANAMA CITY BEACH' in self.hasLocation['Address']:
                 address_split = self.hasLocation['Address'].split(' PANAMA CITY BEACH')
-                self.hasLocation['Street Number'] = address_split[0]
+                self.hasLocation['Street Number'] = address_split[0].strip()
                 self.hasLocation['City'] = 'PANAMA CITY BEACH'
             elif 'PANAMA CITY' in self.hasLocation['Address']:
                 address_split = self.hasLocation['Address'].split(' PANAMA CITY')
-                self.hasLocation['Street Number'] = address_split[0]
+                self.hasLocation['Street Number'] = address_split[0].strip()
                 self.hasLocation['City'] = 'PANAMA CITY'
             elif 'MEXICO BEACH' in self.hasLocation['Address']:
                 address_split = self.hasLocation['Address'].split(' MEXICO BEACH')
-                self.hasLocation['Street Number'] = address_split[0]
+                self.hasLocation['Street Number'] = address_split[0].strip()
                 self.hasLocation['City'] = 'MEXICO BEACH'
         else:
             print('County and State Information not currently supported')
