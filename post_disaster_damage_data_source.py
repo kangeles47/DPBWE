@@ -10,7 +10,7 @@ class PostDisasterDamageDataset:
         self.hasAccuracy = False
         self.hasCurrentness = False
         self.hasReliability = False
-        self.hasDate = str()
+        self.hasDate = '00/00/0000'
         self.hasDamageScale = {'type': '', 'damage states': {}}
         self.hasHazard = {'wind': False, 'tree': False, 'rain': False, 'wind-borne debris': False, 'flood': False, 'surge': False}
         self.hasType = {'field observations': False, 'permit data': False, 'crowdsourced': False,
@@ -125,6 +125,15 @@ class BayCountyPermits(PostDisasterDamageDataset):
                 idx = df.loc[df['PERMITNUMBER'] == p].index[0]
                 bldg.hasPermitData['disaster']['description'].append(df['DESCRIPTION'][idx].upper())
                 bldg.hasPermitData['disaster']['permit type'].append(df['PERMITSUBTYPE'][idx].upper())
+                if '/' not in df['ISSUED'][idx]:
+                    if 'DIS18' in df['PERMITNUMBER'][idx].upper():
+                        self.hasDate = '10/16/2018'
+                    elif 'DIS19' in df['PERMITNUMBER'][idx].upper():
+                        self.hasDate = '00/00/2019'
+                    elif 'DIS20' in df['PERMITNUMBER'][idx].upper():
+                        self.hasDate = '00/00/2020'
+                else:
+                    self.hasDate = df['ISSUED'][idx]
         else:
             # Find the disaster permit descriptions using the parcel identifier
             parcel_identifier = bldg.hasLocation['Street Number'].upper()
@@ -134,13 +143,24 @@ class BayCountyPermits(PostDisasterDamageDataset):
                     bldg.hasPermitData['disaster']['number'].append(df['PERMITNUMBER'][i].upper())
                     bldg.hasPermitData['disaster']['description'].append(df['DESCRIPTION'][i].upper())
                     bldg.hasPermitData['disaster']['permit type'].append(df['PERMITSUBTYPE'][i].upper())
+                    if '/' not in df['ISSUED'][i]:  # DataFrame ordered chronologically: recent permit -> hasDate
+                        if 'DIS18' in df['PERMITNUMBER'][i].upper():
+                            self.hasDate = '10/16/2018'
+                        elif 'DIS19' in df['PERMITNUMBER'][i].upper():
+                            self.hasDate = '00/00/2019'
+                        elif 'DIS20' in df['PERMITNUMBER'][i].upper():
+                            self.hasDate = '00/00/2020'
+                    else:
+                        self.hasDate = df['ISSUED'][i]
             except IndexError:
                 pass  # No disaster permits available for this parcel
         # Find the component damage using the permit description:
-        if len(bldg.hasPermitData['disaster']) > 0:
+        if len(bldg.hasPermitData['disaster']['number']) > 0:
             data_details = self.get_dis_permit_damage(bldg, component_type, hazard_type, site, length_unit)
         else:
-            pass
+            data_details = {'available': False, 'fidelity': self, 'component type': component_type,
+                            'hazard type': hazard_type,
+                            'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
         return data_details
 
     def get_dis_permit_damage(self, bldg, component_type, hazard_type, site, length_unit):
@@ -157,20 +177,21 @@ class BayCountyPermits(PostDisasterDamageDataset):
                     if 'GAZ' in bldg.hasPermitData['disaster']['description'][p] or 'CANOPY' in bldg.hasPermitData['disaster']['description'][p]:
                         pass
                     else:
+                        # Note that there is a roof permit (at least one):
                         count += 1
-                        rcover_damage_cat = None
+                        rcover_damage_cat = None  # reset damage category for each new permit
+                        # Check if parcel shares a parcel number ( > 1 buildings in lot):
+                        area = bldg.hasGeometry['Total Floor Area']
+                        for b in site.hasBuilding:
+                            if b.hasID == bldg.hasID:
+                                area += b.hasGeometry['Total Floor Area']
+                            else:
+                                pass
+                        area_factor = bldg.hasGeometry['Total Floor Area'] / area  # Used for quantitative desc
                         # Now check if this is a quantitative roof permit description: i.e., tells us # of roof squares
                         desc = bldg.hasPermitData['disaster']['description'][p].split()
                         for i in range(0, len(desc)):
                             if desc[i].isdigit():
-                                # Check if parcel shares a parcel number ( > 1 buildings in lot):
-                                area = bldg.hasGeometry['Total Floor Area']
-                                for b in site.hasBuilding:
-                                    if b.hasID == bldg.hasID:
-                                        area += b.hasGeometry['Total Floor Area']
-                                    else:
-                                        pass
-                                area_factor = bldg.hasGeometry['Total Floor Area'] / area
                                 # Calculate the number of roof squares and percent roof cover damage:
                                 num_roof_squares = float(desc[i]) * area_factor
                                 rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Floor Area'], len(bldg.hasStory),
@@ -180,7 +201,7 @@ class BayCountyPermits(PostDisasterDamageDataset):
                             else:
                                 if 'SQ' in desc[i]:  # Case when there is no space between quantity and roof SQ
                                     num_roof_squares = float(desc[i][0:-2]) * area_factor
-                                    rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Area'],
+                                    rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Floor Area'],
                                                                                        len(bldg.hasStory),
                                                                                          num_roof_squares, length_unit)
                                     rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
@@ -194,19 +215,23 @@ class BayCountyPermits(PostDisasterDamageDataset):
                                 data_details['value'] = rcover_damage_percent
                                 data_details['hazard damage rating']['wind'] = rcover_damage_cat
                                 self.hasDamagePrecision['component, range'] = False
+                                self.hasDamagePrecision['component, discrete'] = True
                                 data_details['available'] = True
                             elif count > 1:
                                 if isinstance(data_details['value'], list):
                                     data_details['value'] = rcover_damage_percent
                                     data_details['hazard damage rating']['wind'] = rcover_damage_cat
                                     self.hasDamagePrecision['component, range'] = False
+                                    self.hasDamagePrecision['component, discrete'] = True
                                 else:
                                     if rcover_damage_percent > data_details['value']:
                                         data_details['value'] = rcover_damage_percent
                                         data_details['hazard damage rating']['wind'] = rcover_damage_cat
+                                        self.hasDamagePrecision['component, range'] = False
+                                        self.hasDamagePrecision['component, discrete'] = True
                             else:
                                 pass
-                                # If no quantiative descriptions are available, then convert the qualitative description:
+                                # If no quantiative descriptions available, then convert the qualitative description:
                         if data_details['value'] is None:
                             desc = bldg.hasPermitData['disaster']['description'][p]
                             rcover_damage_cat, rcover_damage_percent = self.rcover_percent_damage_qual(desc)
@@ -214,6 +239,7 @@ class BayCountyPermits(PostDisasterDamageDataset):
                             data_details['hazard damage rating']['wind'] = rcover_damage_cat
                             data_details['available'] = True
                             self.hasDamagePrecision['component, discrete'] = False
+                            self.hasDamagePrecision['component, range'] = True
                         else:
                             if count > 1 and self.hasDamagePrecision['component, discrete'] == False:
                                 desc = bldg.hasPermitData['disaster']['description'][p]
@@ -221,6 +247,8 @@ class BayCountyPermits(PostDisasterDamageDataset):
                                 if rcover_damage_cat > data_details['hazard damage rating']['wind']:
                                     data_details['hazard damage rating']['wind'] = rcover_damage_cat
                                     data_details['value'] = rcover_damage_percent
+                                    self.hasDamagePrecision['component, discrete'] = False
+                                    self.hasDamagePrecision['component, range'] = True
                             else:
                                 pass
                 else:
