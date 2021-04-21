@@ -20,7 +20,7 @@ class PostDisasterDamageDataset:
         self.hasEventYear = '00/00/0000'
         self.hasEventLocation = {'city': '', 'county': '', 'state': '', 'country': ''}
 
-    def get_damage_scale(self, damage_scale_name, component_type, global_flag, component_flag, damage_states=None, values=None):
+    def get_damage_scale(self, damage_scale_name, component_type, global_flag, component_flag):
         if damage_scale_name == 'HAZUS-HM':
             self.hasDamageScale['type'] = 'HAZUS-HM'
             if global_flag:
@@ -73,12 +73,7 @@ class PostDisasterDamageDataset:
                 else:
                     print('Component damage values not supported for ' + damage_scale_name + 'and ' + component_type)
         else:
-            if len(damage_states > 0):
-                self.hasDamageScale['type'] = damage_scale_name
-                for i in range(0, len(damage_states)):
-                    self.hasDamageScale['damage states'][damage_states[i]] = values[i]
-            else:
-                print('Please specify a damage scale for this dataset')
+            print('Please select a damage scale for this dataset')
         # Add damage state and damage values to dataset for specified damage scale + component_type:
         if global_flag:
             self.hasDamageScale['global damage states']['number'] = global_ds_nums
