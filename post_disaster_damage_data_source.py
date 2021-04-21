@@ -77,11 +77,11 @@ class PostDisasterDamageDataset:
         # Add damage state and damage values to dataset for specified damage scale + component_type:
         if global_flag:
             self.hasDamageScale['global damage states']['number'] = global_ds_nums
-            self.hasDamageScale['global damage states']['desc'] = global_ds_desc
+            self.hasDamageScale['global damage states']['description'] = global_ds_desc
             self.hasDamageScale['global damage states']['value'] = global_ds_vals
         if component_flag:
             self.hasDamageScale['component damage states']['number'] = comp_ds_nums
-            self.hasDamageScale['component damage states']['desc'] = comp_ds_desc
+            self.hasDamageScale['component damage states']['description'] = comp_ds_desc
             self.hasDamageScale['component damage states']['value'] = comp_ds_vals
 
 
@@ -140,7 +140,7 @@ class STEER(PostDisasterDamageDataset):
                         data_details['available'] = True
                         data_details['value'] = df_steer['roof_cover_damage_'][idx]
                         # Update the damage data details:
-                        self.get_damage_scale('HAZUS-HM', 'roof cover', global_flag=True, component_flag=True, damage_states=None, values=None)
+                        self.get_damage_scale('HAZUS-HM', 'roof cover', global_flag=True, component_flag=True)
             else:
                 pass
         except IndexError:  # No StEER entry exists for this exact location: Check General Area or does not exist
@@ -160,7 +160,7 @@ class BayCountyPermits(PostDisasterDamageDataset):
     def add_disaster_permit_data(self, bldg, component_type, hazard_type, site,
                                  permit_file_path, length_unit, damage_scale_name):
         # First activate the damage scale that will be used:
-        self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True, damage_states=None, values=None)
+        self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
         # Permit data can be leveraged to inform the presence of disaster-related damage
         # To bring in permit data, there needs to be a way to map permit number to parcel
         # E.g., the permit may be listed in the parcel's property listing or
@@ -377,7 +377,6 @@ class BayCountyPermits(PostDisasterDamageDataset):
             else:
                 pass
         return rcover_damage_cat
-
 
     def update_yr_of_construction(self, bldg, component_type, permit_data, event_year):
         # Update the year of construction for components or building:
