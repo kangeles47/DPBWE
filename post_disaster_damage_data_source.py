@@ -11,7 +11,8 @@ class PostDisasterDamageDataset:
         self.hasCurrentness = False
         self.hasReliability = False
         self.hasDate = '00/00/0000'
-        self.hasDamageScale = {'type': '', 'damage states': {}}
+        self.hasDamageScale = {'type': '', 'global damage states': {'number': [], 'description': [], 'value': []},
+                               'component damage states': {'number': [], 'description': [], 'value': []}}
         self.hasHazard = {'wind': False, 'tree': False, 'rain': False, 'wind-borne debris': False, 'flood': False, 'surge': False}
         self.hasType = {'field observations': False, 'permit data': False, 'crowdsourced': False,
                         'remote sensing/imagery': False, 'fema modeled assessment': False, 'fema claims data': False}
@@ -19,22 +20,74 @@ class PostDisasterDamageDataset:
         self.hasEventYear = '00/00/0000'
         self.hasEventLocation = {'city': '', 'county': '', 'state': '', 'country': ''}
 
-    def get_damage_scale(self, damage_scale_name, component_type, damage_states=None, values=None):
+    def get_damage_scale(self, damage_scale_name, component_type, global_flag, component_flag, damage_states=None, values=None):
         if damage_scale_name == 'HAZUS-HM':
             self.hasDamageScale['type'] = 'HAZUS-HM'
-            dstate_list = [1, 2, 3, 4, 5]
-            for state in dstate_list:
-                self.hasDamageScale['damage states'][state] = None
-            if component_type == 'roof cover':
-                dstate_values = [[0, 2], [2, 15], [15, 50], [50, 100], [50, 100]]
-                for key in dstate_list:
-                    self.hasDamageScale['damage states'][key] = dstate_values[key-1]
-            else:
-                pass
+            if global_flag:
+                global_ds_nums = [0, 1, 2, 3, 4]
+                global_ds_desc = ['No Damage', 'Minor Damage', 'Moderate Damage', 'Severe Damage', 'Destruction']
+                global_ds_vals = None
+            if component_flag:
+                comp_ds_nums = [0, 1, 2, 3, 4]
+                comp_ds_desc = ['No Damage', 'Minor Damage', 'Moderate Damage', 'Severe Damage', 'Destruction']
+                if component_type == 'roof cover':
+                    comp_ds_vals = [[0, 2], [2, 15], [15, 50], [50, 100], [50, 100]]
+                else:
+                    print('Component damage values not supported for ' + damage_scale_name + 'and ' + component_type)
+        elif damage_scale_name == 'WF':
+            self.hasDamageScale['type'] = 'WF'
+            if global_flag:
+                global_ds_nums = [0, 1, 2, 3, 4, 5, 6]
+                global_ds_desc = ['No Damage', 'Minor Damage', 'Moderate Damage', 'Severe Damage', 'Very Severe Damage',
+                                  'Partial Collapse', 'Collapse']
+                global_ds_vals = []
+            if component_flag:
+                comp_ds_nums = [0, 1, 2, 3, 4, 5, 6]
+                comp_ds_desc = ['No Damage', 'Minor Damage', 'Moderate Damage', 'Severe Damage', 'Very Severe Damage',
+                                'Partial Collapse', 'Collapse']
+                if component_type == 'roof cover':
+                    comp_ds_vals = [[0, 2], [2, 15], [15, 50], [50, 100], [50, 100], [50, 100], [50, 100]]
+                else:
+                    print('Component damage values not supported for ' + damage_scale_name + 'and ' + component_type)
+        elif damage_scale_name == 'FEMA Geospatial':
+            self.hasDamageScale['type'] = 'FEMA Geospatial'
+            if global_flag:
+                global_ds_nums = [0, 1, 2, 3, 4]
+                global_ds_desc = ['Affected', 'Minor Damage', 'Major/Severe Damage', 'Destroyed']
+                global_ds_vals = []
+            if component_flag:
+                comp_ds_nums = []
+                comp_ds_desc = []
+                comp_ds_vals = []
+                print('Component damage scale info not available for ' + damage_scale_name)
+        elif damage_scale_name == 'FEMA Claims':
+            self.hasDamageScale['type'] = 'FEMA Claims'
+            global_ds_nums = [0, 1]
+            global_ds_desc = ['Minor Damage', 'Severe Damage']
+            global_ds_vals = []
+            if component_flag:
+                if 'roof' in component_type:
+                    comp_ds_nums = [0, 1]
+                    comp_ds_desc = ['Less than 50% Damage', 'More than 50% Damage']
+                    comp_ds_values = [[0, 50], [50, 100]]
+                else:
+                    print('Component damage values not supported for ' + damage_scale_name + 'and ' + component_type)
         else:
-            self.hasDamageScale['type'] = damage_scale_name
-            for i in range(0, len(damage_states)):
-                self.hasDamageScale['damage states'][damage_states[i]] = values[i]
+            if len(damage_states > 0):
+                self.hasDamageScale['type'] = damage_scale_name
+                for i in range(0, len(damage_states)):
+                    self.hasDamageScale['damage states'][damage_states[i]] = values[i]
+            else:
+                print('Please specify a damage scale for this dataset')
+        # Add damage state and damage values to dataset for specified damage scale + component_type:
+        if global_flag:
+            self.hasDamageScale['global damage states']['number'] = global_ds_nums
+            self.hasDamageScale['global damage states']['desc'] = global_ds_desc
+            self.hasDamageScale['global damage states']['value'] = global_ds_vals
+        if component_flag:
+            self.hasDamageScale['component damage states']['number'] = comp_ds_nums
+            self.hasDamageScale['component damage states']['desc'] = comp_ds_desc
+            self.hasDamageScale['component damage states']['value'] = comp_ds_vals
 
 
 class STEER(PostDisasterDamageDataset):
@@ -92,7 +145,7 @@ class STEER(PostDisasterDamageDataset):
                         data_details['available'] = True
                         data_details['value'] = df_steer['roof_cover_damage_'][idx]
                         # Update the damage data details:
-                        self.get_damage_scale('HAZUS-HM', 'roof cover', damage_states=None, values=None)
+                        self.get_damage_scale('HAZUS-HM', 'roof cover', global_flag=True, component_flag=True, damage_states=None, values=None)
             else:
                 pass
         except IndexError:  # No StEER entry exists for this exact location: Check General Area or does not exist
@@ -112,7 +165,7 @@ class BayCountyPermits(PostDisasterDamageDataset):
     def add_disaster_permit_data(self, bldg, component_type, hazard_type, site,
                                  permit_file_path, length_unit, damage_scale_name):
         # First activate the damage scale that will be used:
-        self.get_damage_scale(damage_scale_name, component_type, damage_states=None, values=None)
+        self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True, damage_states=None, values=None)
         # Permit data can be leveraged to inform the presence of disaster-related damage
         # To bring in permit data, there needs to be a way to map permit number to parcel
         # E.g., the permit may be listed in the parcel's property listing or
