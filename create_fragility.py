@@ -12,7 +12,7 @@ from OBDM.element import Roof
 from parcel import Parcel
 
 
-def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, global_flag, component_flag, analysis_date, hazard_file_path):
+def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, analysis_date, hazard_file_path):
     # Step 1: Find similar buildings: features, load path for the given hazard (may include your building as well)
     sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type)
     # Step 2: Find damage descriptions for each building:
@@ -65,30 +65,29 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             sample_dict['Permit Description'].append('None')
         if component_type == 'roof cover':
             sample_dict[component_type].append(sim_bldg.hasElement['Roof'][0].hasCover)
-    pd.DataFrame(sample_dict).to_csv('SampleBuildings.csv')
+    pd.DataFrame(sample_dict).to_csv('SampleBuildings.csv', index=False)
     # Step 5: Get the prior:
     if hazard_type == 'wind' and damage_scale_name == 'HAZUS-HM':
         pass
     else:
         pass
     # Step 6: Create the empirical fragilities for each damage state:
-    create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type, global_flag, component_flag)
+    create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type)
 
 
-def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type, global_flag, component_flag):
-    # Step 1: Create failure datasets for the specified damage scale:
-    # Instantiate generic dataset to gather damage scale info:
-    gen_dataset = post_disaster_damage_data_source.PostDisasterDamageDataset().get_damage_scale(damage_scale_name, component_type, global_flag, component_flag)
-    # Data pairs in failure datasets provide the following information:
-    # (1) Damage state of the bldg/component
-    # (2) Demand parameter value
-    # This information is already in each parcel's data model, simply need to tag failure according to:
-    # (1) Damage state
-    # (2) Demand parameter values
-    # Specify the range of demand parameter values:
+def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type):
+    # Step 1: Extract data pairs (degree of damage, demand value):
+    # Specify demand parameter for the hazard and array of values:
     if hazard_type == 'wind':
-        demand_arr = np.arange(70, 180, 5)  # wind speeds in mph
         demand_param = 'wind speed'
+        demand_arr = np.arange(70, 180, 5)  # wind speeds in mph
+    # Instantiate generic dataset to gather damage scale info:
+    gen_dataset = post_disaster_damage_data_source.PostDisasterDamageDataset()
+    gen_dataset.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
+    # Data pairs in failure datasets provide the following information:
+    # (1) Degree of damage of the bldg/component
+    # (2) Demand value
+    # This information is already in each parcel's data model, need to make damage descriptions compatible.
     # Try to compile data pairs using component-level damage scale:
     if len(gen_dataset.hasDamageScale['component damage states']['number']) > 0:
         global_flag = False
@@ -97,16 +96,17 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
         # Now check if sample buildings have component-level damage states:
         for bldg in sim_bldgs:
             if component_type == 'roof cover':
-                bldg_dscale = bldg.hasElement['Roof'][0].hasDamageData['fidelity'].hasDamageScale
-                if bldg.hasElement['Roof'][0].hasDamageData['available'] and bldg_dscale['type'] != damage_scale_name:
-                    if len(bldg_dscale['component damage states']['number']) > 0:
-                        pass
-                    else:
-                        global_flag = True
-                        break  # Cannot create fragilities based solely on component-level damage states
-                elif bldg.hasElement['Roof'][0].hasDamageData['available'] and bldg.dscale['type'] == damage_scale_name:  # Buildings with matching damage scale
-                    new_tuple = (bldg.hasElement['Roof'][0].hasDamageData['hazard damage rating'][hazard_type],
-                                 bldg.hasDemand[demand_param])
+                if bldg.hasElement['Roof'][0].hasDamageData['available']:
+                    bldg_dscale = bldg.hasElement['Roof'][0].hasDamageData['fidelity'].hasDamageScale
+                    if bldg_dscale['type'] != damage_scale_name:
+                        if len(bldg_dscale['component damage states']['number']) > 0:
+                            pass
+                        else:
+                            global_flag = True
+                            break  # Cannot create fragilities based solely on component-level damage states
+                    else:  # Buildings with matching damage scale
+                        new_tuple = (bldg.hasElement['Roof'][0].hasDamageData['hazard damage rating'][hazard_type],
+                                    bldg.hasDemand[demand_param])
                 else:  # Buildings w/o damage observations
                     new_tuple = (0, bldg.hasDemand[demand_param])
             else:
@@ -132,7 +132,32 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
             else:
                 pass
             data_pairs.append(new_tuple)
-    # Create failure datasets for each damage measure:
+    # Step 2: Create dichotomous failure datasets for each damage measure:
+    if global_flag:
+        key = 'global damage states'
+    else:
+        key = 'component damage states'
+    dichot_dict = {}
+    for ds in gen_dataset.hasDamageScale[key]['number']:
+        bldg_fail = []
+        for pair in data_pairs:
+            if isinstance(pair[0], list):
+                pass
+            else:
+                if ds <= pair[0]:
+                    bldg_fail.append((1, pair[1]))
+                else:
+                    bldg_fail.append((0, pair[1]))
+        dichot_dict[ds] = bldg_fail
+    # Plotting:
+    for k in dichot_dict:
+        fig = plt.figure()
+        for j in dichot_dict[k]:
+            plt.scatter(j[1], j[0])
+        plt.xlabel(demand_param)
+        plt.ylabel('P(f)')
+        plt.title('Damage State ' + str(k))
+        plt.show()
     # Define a vector of demand parameters to bin the damage occurrences:
     if hazard_type == 'wind':
         im_i = np.arange(70, 180, 5)  # wind speeds in mph
@@ -395,4 +420,4 @@ for bldg in site.hasBuilding:
 data_types = [post_disaster_damage_data_source.BayCountyPermits()]
 file_paths = ['D:/Users/Karen/Documents/Github/DPBWE/BayCountyMichael_Permits.csv']
 hazard_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/2018-Michael_windgrid_ver36.csv'
-execute_fragility_workflow(pbldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', global_flag=True, component_flag=True, analysis_date='03/04/2021', hazard_file_path=hazard_file_path)
+execute_fragility_workflow(pbldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021', hazard_file_path=hazard_file_path)
