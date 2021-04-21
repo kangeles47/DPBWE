@@ -12,7 +12,7 @@ from OBDM.element import Roof
 from parcel import Parcel
 
 
-def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, analysis_date, hazard_file_path):
+def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, global_flag, component_flag, analysis_date, hazard_file_path):
     # Step 1: Find similar buildings: features, load path for the given hazard (may include your building as well)
     sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type)
     # Step 2: Find damage descriptions for each building:
@@ -72,13 +72,33 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
     else:
         pass
     # Step 6: Create the empirical fragilities for each damage state:
-    create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type)
+    create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type, global_flag, component_flag)
 
 
-def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type):
-    # Create a generic instance of PostDisasterDamageDataSource to get damage scale info:
-    ddata_source = post_disaster_damage_data_source.PostDisasterDamageDataSource()
-    ddata_source.get_damage_scale(damage_scale_name, component_type)
+def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type, global_flag, component_flag):
+    # Step 1: Create failure datasets for the specified damage scale:
+    # Instantiate generic dataset to gather damage scale info:
+    gen_dataset = post_disaster_damage_data_source.PostDisasterDamageDataset().get_damage_scale(damage_scale_name, component_type, global_flag, component_flag)
+    # Data pairs in failure datasets provide the following information:
+    # (1) Damage state of the bldg/component
+    # (2) Demand parameter value
+    # This information is already in each parcel's data model, simply need to tag failure according to:
+    # (1) Damage state
+    # (2) Demand parameter values
+    # Specify the range of demand parameter values:
+    if hazard_type == 'wind':
+        demand_arr = np.arange(70, 180, 5)  # wind speeds in mph
+    if component_flag:  # Try to create failure datasets using component-level descriptions
+        if len(gen_dataset.hasDamageScale['component damage states']) > 0:
+            for ds in gen_dataset.hasDamageScale['component damage states']:
+                for bldg in sim_bldgs:
+                    if component_type == 'roof cover':
+                        if bldg.hasElement['Roof'][0].hasDamageData['fidelity'].hasDamageScale['type'] == damage_scale_name:
+                            pass
+                        else:
+                            # Activate the damage scale transformation function:
+                            pass
+
     # Define a vector of demand parameters to bin the damage occurrences:
     if hazard_type == 'wind':
         im_i = np.arange(70, 180, 5)  # wind speeds in mph
@@ -341,4 +361,4 @@ for bldg in site.hasBuilding:
 data_types = [post_disaster_damage_data_source.BayCountyPermits()]
 file_paths = ['D:/Users/Karen/Documents/Github/DPBWE/BayCountyMichael_Permits.csv']
 hazard_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/2018-Michael_windgrid_ver36.csv'
-execute_fragility_workflow(pbldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021', hazard_file_path=hazard_file_path)
+execute_fragility_workflow(pbldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', global_flag=True, component_flag=True, analysis_date='03/04/2021', hazard_file_path=hazard_file_path)
