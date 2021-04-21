@@ -88,17 +88,51 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
     # Specify the range of demand parameter values:
     if hazard_type == 'wind':
         demand_arr = np.arange(70, 180, 5)  # wind speeds in mph
-    if component_flag:  # Try to create failure datasets using component-level descriptions
-        if len(gen_dataset.hasDamageScale['component damage states']) > 0:
-            for ds in gen_dataset.hasDamageScale['component damage states']:
-                for bldg in sim_bldgs:
-                    if component_type == 'roof cover':
-                        if bldg.hasElement['Roof'][0].hasDamageData['fidelity'].hasDamageScale['type'] == damage_scale_name:
-                            pass
-                        else:
-                            # Activate the damage scale transformation function:
-                            pass
-
+        demand_param = 'wind speed'
+    # Try to compile data pairs using component-level damage scale:
+    if len(gen_dataset.hasDamageScale['component damage states']['number']) > 0:
+        global_flag = False
+        # Create empty list to hold all data pairs:
+        data_pairs = []
+        # Now check if sample buildings have component-level damage states:
+        for bldg in sim_bldgs:
+            if component_type == 'roof cover':
+                bldg_dscale = bldg.hasElement['Roof'][0].hasDamageData['fidelity'].hasDamageScale
+                if bldg.hasElement['Roof'][0].hasDamageData['available'] and bldg_dscale['type'] != damage_scale_name:
+                    if len(bldg_dscale['component damage states']['number']) > 0:
+                        pass
+                    else:
+                        global_flag = True
+                        break  # Cannot create fragilities based solely on component-level damage states
+                elif bldg.hasElement['Roof'][0].hasDamageData['available'] and bldg.dscale['type'] == damage_scale_name:  # Buildings with matching damage scale
+                    new_tuple = (bldg.hasElement['Roof'][0].hasDamageData['hazard damage rating'][hazard_type],
+                                 bldg.hasDemand[demand_param])
+                else:  # Buildings w/o damage observations
+                    new_tuple = (0, bldg.hasDemand[demand_param])
+            else:
+                pass
+            data_pairs.append(new_tuple)
+    else:  # use global damage scale instead
+        global_flag = True
+    # Compile data pairs using a global damage scale:
+    if global_flag:
+        # Create empty list to hold all data pairs:
+        data_pairs = []
+        # Now check if sample buildings have component-level damage states:
+        for bldg in sim_bldgs:
+            if component_type == 'roof cover':
+                bldg_dscale = bldg.hasElement['Roof'][0].hasDamageData['fidelity'].hasDamageScale
+                if bldg.hasElement['Roof'][0].hasDamageData['available'] and bldg_dscale['type'] != damage_scale_name:
+                    pass
+                elif bldg.hasElement['Roof'][0].hasDamageData['available'] and bldg.dscale['type'] == damage_scale_name:  # Buildings with matching damage scale
+                    new_tuple = (bldg.hasElement['Roof'][0].hasDamageData['hazard damage rating'][hazard_type],
+                                 bldg.hasDemand[demand_param])
+                else:  # Buildings w/o damage observations
+                    new_tuple = (0, bldg.hasDemand[demand_param])
+            else:
+                pass
+            data_pairs.append(new_tuple)
+    # Create failure datasets for each damage measure:
     # Define a vector of demand parameters to bin the damage occurrences:
     if hazard_type == 'wind':
         im_i = np.arange(70, 180, 5)  # wind speeds in mph
