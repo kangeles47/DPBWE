@@ -48,15 +48,15 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
         if hazard_type == 'wind':
             if component_type == 'roof cover':
                 z = bldg.hasGeometry['Height']
-                bldg.hasElement['Roof'][0].hasDemand['wind speed'] = get_local_wind_speed(sim_bldg, z, hazard_file_path,
-                                                                                          exposure='C', unit='english')
+                sim_bldg.hasElement['Roof'][0].hasDemand['wind speed'] = get_local_wind_speed(sim_bldg, z, hazard_file_path,
+                                                                                              exposure='C', unit='english')
             else:
                 pass
         # Step 5: Export attributes for all sample buildings:
         sample_dict['Parcel Id'].append(sim_bldg.hasID)
         sample_dict['Stories'].append(len(sim_bldg.hasStory))
         sample_dict['Value'].append(sim_bldg.hasElement['Roof'][0].hasDamageData['value'])
-        sample_dict['Demand Value'].append(sim_bldg.hasDemand['wind speed'])
+        sample_dict['Demand Value'].append(sim_bldg.hasElement['Roof'][0].hasDemand['wind speed'])
         if len(sim_bldg.hasPermitData['disaster']['number']) > 0:
             sample_dict['Disaster Permit'].append(True)
             sample_dict['Permit Description'].append(sim_bldg.hasPermitData['disaster']['description'])
@@ -77,10 +77,9 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
 
 def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type):
     # Step 1: Extract data pairs (degree of damage, demand value):
-    # Specify demand parameter for the hazard and array of values:
+    # Specify demand parameter for the hazard:
     if hazard_type == 'wind':
         demand_param = 'wind speed'
-        demand_arr = np.arange(70, 180, 5)  # wind speeds in mph
     # Instantiate generic dataset to gather damage scale info:
     gen_dataset = post_disaster_damage_data_source.PostDisasterDamageDataset()
     gen_dataset.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
@@ -106,9 +105,9 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
                             break  # Cannot create fragilities based solely on component-level damage states
                     else:  # Buildings with matching damage scale
                         new_tuple = (bldg.hasElement['Roof'][0].hasDamageData['hazard damage rating'][hazard_type],
-                                    bldg.hasDemand[demand_param])
+                                    bldg.hasElement['Roof'][0].hasDemand['wind speed'])
                 else:  # Buildings w/o damage observations
-                    new_tuple = (0, bldg.hasDemand[demand_param])
+                    new_tuple = (0, bldg.hasElement['Roof'][0].hasDemand['wind speed'])
             else:
                 pass
             data_pairs.append(new_tuple)
@@ -126,9 +125,9 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
                     pass
                 elif bldg.hasElement['Roof'][0].hasDamageData['available'] and bldg.dscale['type'] == damage_scale_name:  # Buildings with matching damage scale
                     new_tuple = (bldg.hasElement['Roof'][0].hasDamageData['hazard damage rating'][hazard_type],
-                                 bldg.hasDemand[demand_param])
+                                 bldg.hasElement['Roof'][0].hasDemand['wind speed'])
                 else:  # Buildings w/o damage observations
-                    new_tuple = (0, bldg.hasDemand[demand_param])
+                    new_tuple = (0, bldg.hasElement['Roof'][0].hasDemand['wind speed'])
             else:
                 pass
             data_pairs.append(new_tuple)
@@ -158,6 +157,8 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
         plt.ylabel('P(f)')
         plt.title('Damage State ' + str(k))
         plt.show()
+    # Step 3: Run the MLE point estimate
+    get_mle_params(dichot_dict)
     # Define a vector of demand parameters to bin the damage occurrences:
     if hazard_type == 'wind':
         im_i = np.arange(70, 180, 5)  # wind speeds in mph
@@ -212,16 +213,47 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
     plt.show()
 
 
-def get_parameters_mle(im_i, N_i, n_i):
-    mu_init = 4  # initial guess for mu
-    beta_init = 0.2  # initial guess for beta
-    params_init = np.array([mu_init, beta_init])
-    mle_args = (im_i, N_i, n_i)
-    bnds = ((0, None), (0, None))  # values for mu and beta must be positive
-    results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args, bounds=bnds)
-    mu_MLE, beta_MLE = results_uncstr.x
-    print('mu_MLE=', mu_MLE, 'beta_MLE=', beta_MLE)
-    return mu_MLE, beta_MLE
+def get_mle_params(dichot_dict):
+    fail_bldgs, total_bldgs = [], []
+    # Construct an array of observed hazard intensity levels:
+    demand_lst = []
+    for p in dichot_dict[0]:
+        demand_lst.append(p[1])
+    demand_lst.sort()
+    demand_arr = np.unique(np.array(demand_lst))
+    for key in dichot_dict:
+        if key == 0:
+            pass
+        else:
+            data_pairs = dichot_dict[key]
+            for d in demand_arr:
+                # For every level of demand, we are interested in n/N failed buildings:
+                count_total = 0
+                count_failed = 0
+                for pair in data_pairs:
+                    if isinstance(pair[0], list):
+                        pass
+                    else:
+                        if pair[1] == d:
+                            count_total +=1
+                            if pair[0] >= key:
+                                count_failed +=1
+                        else:
+                            pass
+                total_bldgs.append(count_total)
+                fail_bldgs.append(count_failed)
+            # Convert to numpy arrays:
+            total_bldgs = np.array(total_bldgs)
+            fail_bldgs = np.array(fail_bldgs)
+            # Initialization parameters for MLE:
+            mu_init = 4  # initial guess for mu
+            beta_init = 0.2  # initial guess for beta
+            params_init = np.array([mu_init, beta_init])
+            mle_args = (demand_arr, total_bldgs, fail_bldgs)
+            bnds = ((0, None), (0, None))  # values for mu and beta must be positive
+            results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args, bounds=bnds)
+            mu_MLE, beta_MLE = results_uncstr.x
+            print('mu_MLE=', mu_MLE, 'beta_MLE=', beta_MLE)
 
 
 def mle_objective_func(params, *args):
@@ -308,7 +340,6 @@ def get_best_data(data_details_list, analysis_date):
 
 
 def get_local_wind_speed(bldg, z, wind_speed_file_path, exposure, unit):
-    z=13*4
     df_wind_speeds = pd.read_csv(wind_speed_file_path)
     # Round the lat and lon values to two decimal places:
     df_wind_speeds['Lon'] = round(df_wind_speeds['Lon'], 2)
@@ -367,12 +398,12 @@ def get_local_wind_speed(bldg, z, wind_speed_file_path, exposure, unit):
         # Calculate the wind speed for the specified exposure, at its reference height:
         v_new = v_gradient*((ref_height/zg)**(1/alpha))
         bldg.hasDemand['wind speed'] = v_new
-        if bldg.hasGeometry['Height'] != ref_height:
-            # Adjust for z:
+        if z != ref_height:
+            # Adjust for roof height:
             v_local = v_new*((z/ref_height)**(1/alpha))
         else:
             v_local = v_new
-    return v_local
+    return round(v_local)
 
 # Create a Site Class holding all of the data models for the parcels:
 inventory = 'D:/Users/Karen/Documents/Github/DPBWE/BC_CParcels.csv'
