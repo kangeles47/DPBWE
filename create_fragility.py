@@ -150,7 +150,8 @@ def get_fragility_input(sim_bldgs, damage_scale_name, component_type, hazard_typ
     # Step 3: Get input parameters for each damage state fragility:
     lparams = get_likelihood_params(dichot_dict)
     # Step 4: Conduct the Bayesian parameter estimation:
-    a=0
+    for k in lparams:
+        pass
 
 
 def get_likelihood_params(dichot_dict):

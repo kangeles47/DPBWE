@@ -52,7 +52,8 @@ class LogLike(tt.Op):
 
 def log_likelihood(theta, fail, total, demand):
     mu, beta = theta
-    return sum(comb(total, fail) + fail*np.log(norm.cdf(np.log(demand), mu, beta)) + (total-fail)*np.log(1-norm.cdf(np.log(demand), mu, beta)))
+    return sum(comb(total, fail) +
+               fail*np.log(norm.cdf(np.log(demand), mu, beta)) + (total-fail)*np.log(1-norm.cdf(np.log(demand), mu, beta)))
 
 
 demand_arr = np.array([114, 126, 128, 130, 135, 138, 139, 140])
@@ -70,7 +71,7 @@ with pm.Model() as model:
     # Set up log-likelihood function:
     log_like = pm.DensityDist('log_like', lambda v: logl(v), observed={'v': theta})
     # Determine the posterior
-    trace = pm.sample()  # might want to include a burn-in perior here
+    trace = pm.sample(1000, cores=1)  # might want to include a burn-in period here
     # Plot the posterior distributions of each RV
     pm.traceplot(trace, ['mu', 'beta'])
     pm.summary(trace)
