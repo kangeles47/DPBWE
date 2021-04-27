@@ -1,49 +1,78 @@
-import pymc3 as pm
 import numpy as np
 import pandas as pd
+import pymc3 as pm
+import theano.tensor as tt
 import matplotlib.pyplot as plt
 from scipy.stats import norm
+from scipy.special import comb
 
 
 # Damage observations per building and IM are either 0 or 1 (failure)
-def custom_logp(mu, beta, n_i, N_i, im_i):
-    return  sum(n_i*np.log(norm.cdf(np.log(im_i), np.log(mu), beta)) + (N_i-n_i)*np.log(1-norm.cdf(np.log(im_i), np.log(mu), beta)))
+class LogLike(tt.Op):
+    """
+    Pass in vector of values (the parameters that define our model) and return a single "scalar" value (the log-likelihood)
+    """
+    itypes = [tt.dvector]  # expects a vector of parameter values when called
+    otypes = [tt.dscalar]  # outputs a single scalar value (log-likelihood)
+
+    def __init__(self, loglike, fail, total, demand):
+        """
+        Initialise the Op with various things that our log-likelihood function
+        requires.
+
+        Parameters
+        ----------
+        loglike:
+            The log-likelihood function
+        fail:
+            The number of failure occurrences
+        total:
+            The number of total buildings or components available
+        demand:
+            The demand value for each observation of failed/total
+        """
+
+        # add inputs as class attributes
+        self.log_like = loglike
+        self.fail = fail
+        self.total = total
+        self.demand = demand
+        #self.mu = mu
+        #self.beta = beta
+
+    def perform(self, node, inputs, outputs):
+        # the method that is used when calling the Op
+        (theta,) = inputs  # this will contain my variables
+
+        # call the log-likelihood function
+        logl = self.log_like(theta, self.fail, self.total, self.demand)
+
+        outputs[0][0] = np.array(logl)  # output the log-likelihood
 
 
-# Generate the dataset (observed values):
-# Note: no DataFrames, no Booleans
+def log_likelihood(theta, fail, total, demand):
+    mu, beta = theta
+    return sum(comb(total, fail) + fail*np.log(norm.cdf(np.log(demand), mu, beta)) + (total-fail)*np.log(1-norm.cdf(np.log(demand), mu, beta)))
 
+
+demand_arr = np.array([114, 126, 128, 130, 135, 138, 139, 140])
+fail_bldgs = np.array([0, 0, 0, 0, 4, 1, 0, 3])
+total_bldgs = np.array([1, 2, 3, 5, 7, 3, 1, 4])
+# create our Op
+logl = LogLike(log_likelihood, fail_bldgs, total_bldgs, demand_arr)
 # Create Bayesian model:
 with pm.Model() as model:
     # Set up your prior:
-    mu = pm.Normal('mu', 0, 0.001, value=0)  # check these
-    beta = pm.Normal('beta', 0, 0.001, value=0)
+    mu = pm.Normal('mu', 4, 15)
+    beta = pm.Normal('beta', 0.3, 0.03)
+    # convert mu and beta to a tensor vector
+    theta = tt.as_tensor_variable([mu, beta])
     # Set up log-likelihood function:
-    param_obs = pm.DensityDist('param_obs', custom_logp(mu, beta, n_i, N_i, im_i), observed=0)
+    log_like = pm.DensityDist('log_like', lambda v: logl(v), observed={'v': theta})
     # Determine the posterior
-    trace = pm.sample(1000)  # might want to include a burn-in perior here
+    trace = pm.sample()  # might want to include a burn-in perior here
     # Plot the posterior distributions of each RV
     pm.traceplot(trace, ['mu', 'beta'])
     pm.summary(trace)
     plt.show()
 
-def bayesian_updating(name, priors_beta_mu1, priors_beta_sd1, priors_beta_mu0, priors_beta_sd0):
-    data = pd.read_csv('file_path')  # 'file_path' contains observation data
-    data_x = data.iloc[:,0]  # x-values of the dataframe
-    n = len(data.index)  # number of rows in the dataframe
-    norm_factor = max(data.iloc[:, 0])  # maximum value in the data
-    data_xnorm = data_x/norm_factor
-    x = data_xnorm
-    y = data.iloc[:,1]  # second column in dataframe
-    # Set up some plotting:
-    x_plot = np.arange(1,500,1)
-    x_plot_norm = x_plot/norm_factor
-    b1.prior_mu = priors_beta_mu1/norm_factor
-    b1.prior_sd = priors_beta_sd1/norm_factor
-    calc_x = get_x(x)
-    updating = 0
-    return updating
-
-def get_x(x):
-    input_value =
-    calc_x = np.exp(input_val)

@@ -71,23 +71,22 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
         pass
     else:
         pass
-    # Step 6: Create the empirical fragilities for each damage state:
-    create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type)
+    # Step 6: Get input parameters necessary to conduct point and Bayesian estimates of fragility parameters:
+    get_fragility_input(sim_bldgs, damage_scale_name, component_type, hazard_type)
 
 
-def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, hazard_type):
+def get_fragility_input(sim_bldgs, damage_scale_name, component_type, hazard_type):
     # Step 1: Extract data pairs (degree of damage, demand value):
     # Specify demand parameter for the hazard:
     if hazard_type == 'wind':
         demand_param = 'wind speed'
-    # Instantiate generic dataset to gather damage scale info:
+    # Instantiate generic dataset object to gather damage scale info:
     gen_dataset = post_disaster_damage_data_source.PostDisasterDamageDataset()
     gen_dataset.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
     # Data pairs in failure datasets provide the following information:
     # (1) Degree of damage of the bldg/component
     # (2) Demand value
-    # This information is already in each parcel's data model, need to make damage descriptions compatible.
-    # Try to compile data pairs using component-level damage scale:
+    # Use component-level damage descriptions to partition damage for specified scale:
     if len(gen_dataset.hasDamageScale['component damage states']['number']) > 0:
         global_flag = False
         # Create empty list to hold all data pairs:
@@ -148,38 +147,32 @@ def create_empirical_fragility(sim_bldgs, damage_scale_name, component_type, haz
                 else:
                     bldg_fail.append((0, pair[1]))
         dichot_dict[ds] = bldg_fail
-    # Plotting:
-    #for k in dichot_dict:
-     #   fig = plt.figure()
-      #  for j in dichot_dict[k]:
-       #     plt.scatter(j[1], j[0])
-        #plt.xlabel(demand_param)
-        #plt.ylabel('P(f)')
-        #plt.title('Damage State ' + str(k))
-        #plt.show()
-    # Step 3: Run the MLE point estimate
-    get_mle_params(dichot_dict)
-    a = 0
+    # Step 3: Get input parameters for each damage state fragility:
+    lparams = get_likelihood_params(dichot_dict)
+    # Step 4: Conduct the Bayesian parameter estimation:
+    a=0
 
 
-def get_mle_params(dichot_dict):
-    # Construct an array of observed hazard intensity levels:
-    demand_lst = []
-    for p in dichot_dict[0]:
-        demand_lst.append(p[1])
-    demand_lst.sort()
-    demand_arr = np.unique(np.array(demand_lst))
+def get_likelihood_params(dichot_dict):
+    lparams = {}
     for key in dichot_dict:
         if key == 0:
             pass
         else:
+            # Set up new dictionary key:
+            lparams[key] = {'demand': None, 'fail': None, 'total': None}
+            # Construct an array of observed hazard intensity levels for the damage state:
+            demand_lst = []
+            for p in dichot_dict[key]:
+                demand_lst.append(p[1])
+            demand_lst.sort()
+            demand_arr = np.unique(np.array(demand_lst))
+            lparams[key]['demand'] = demand_arr
+            # Now translate the dichotomous failure dataset into discrete values of failed and total buildings:
             fail_bldgs, total_bldgs = [], []
-            data_pairs = dichot_dict[key]
             for d in demand_arr:
-                # For every level of demand, we are interested in n/N failed buildings:
-                count_total = 0
-                count_failed = 0
-                for pair in data_pairs:
+                count_total, count_failed = 0, 0
+                for pair in dichot_dict[key]:
                     if isinstance(pair[0], list):
                         pass
                     else:
@@ -191,37 +184,47 @@ def get_mle_params(dichot_dict):
                             pass
                 total_bldgs.append(count_total)
                 fail_bldgs.append(count_failed)
-            # Convert to numpy arrays:
-            total_bldgs = np.array(total_bldgs)
-            fail_bldgs = np.array(fail_bldgs)
+            # Convert to numpy arrays and add to dictionary:
+            lparams[key]['total'] = np.array(total_bldgs, dtype=float)
+            lparams[key]['fail'] = np.array(fail_bldgs, dtype=float)
             print('Total and fail for DS '+ str(key))
             print(demand_arr)
             print(total_bldgs)
             print(fail_bldgs)
-            # Before doing the observation, check that each damage state has failure observations:
-            if 1 not in fail_bldgs:
-                print('No failures observed for Damage State: ' + str(key))
-            else:
-                # Initialization parameters for MLE:
-                mu_init = 5  # initial guess for mu
-                beta_init = 0.1  # initial guess for beta
-                params_init = np.array([mu_init, beta_init])
-                mle_args = (demand_arr, total_bldgs, fail_bldgs)
-                bnds = ((0, None), (0, None))  # values for mu and beta must be positive
-                results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args, bounds=bnds)
-                mu_MLE, beta_MLE = results_uncstr.x
-                print('Damage state number: ' + str(key))
-                print('mu_MLE=', mu_MLE, 'beta_MLE=', beta_MLE)
-                # Plotting:
-                fig = plt.figure()
-                plt.scatter(demand_arr, fail_bldgs/total_bldgs)
-                im = np.arange(70,180,1)
-                plt.plot(im, norm.cdf(np.log(im), mu_MLE, beta_MLE), 'r')
-                plt.xlabel('Wind Speed')
-                plt.ylabel('P(f)')
-                plt.title('Damage State ' + str(key))
-                plt.show()
-            # Step 3: Run the
+    return lparams
+
+
+def get_point_estimate(lparams):
+    """
+    A function to obtain point estimates of unknown fragility parameters, mu and beta
+    :param lparams:
+    :return:
+    """
+    # Initialization parameters for MLE:
+    mu_init = 5  # initial guess for mu
+    beta_init = 0.1  # initial guess for beta
+    params_init = np.array([mu_init, beta_init])
+    mle_args = (demand_arr, total_bldgs, fail_bldgs)
+    bnds = ((0, None), (0, None))  # values for mu and beta must be positive
+    results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args, bounds=bnds)
+    mu_MLE, beta_MLE = results_uncstr.x
+    print('Damage state number: ' + str(key))
+    print('mu_MLE=', mu_MLE, 'beta_MLE=', beta_MLE)
+    # Plotting:
+    fig = plt.figure()
+    plt.scatter(demand_arr, fail_bldgs / total_bldgs)
+    im = np.arange(70, 180, 1)
+    plt.plot(im, norm.cdf(np.log(im), mu_MLE, beta_MLE), 'r')
+    plt.xlabel('Wind Speed')
+    plt.ylabel('P(f)')
+    plt.title('Damage State ' + str(key))
+    plt.show()
+
+
+def p_f(im, mu, beta):
+    return norm.cdf(np.log(im), mu, beta)
+
+
 
 
 def mle_objective_func(params, *args):
