@@ -59,6 +59,25 @@ def log_likelihood(theta, fail, total, demand):
 demand_arr = np.array([114, 126, 128, 130, 135, 138, 139, 140])
 fail_bldgs = np.array([0, 0, 0, 0, 4, 1, 0, 3])
 total_bldgs = np.array([1, 2, 3, 5, 7, 3, 1, 4])
+
+xj = np.array([114, 126, 128, 130, 135, 138, 139, 140])
+zj = np.array([0, 0, 0, 0, 4, 1, 0, 3])
+nj = np.array([1, 2, 3, 5, 7, 3, 1, 4])
+
+with pm.Model() as model:
+    # Set up the prior:
+    theta = pm.Normal('theta', 4, 15)
+    beta = pm.Normal('beta', 0.3, 0.03)
+
+    # Define fragility function equation:
+    def my_func(theta, beta, xj):
+        custom_p = pm.Normal('f', 0, 1)
+        return custom_p.distribution.logcdf((np.log(xj)-theta)/beta)
+    # Define likelihood:
+    like = pm.Binomial('like', p=my_func(theta, beta, xj), observed=zj, n=nj)
+    # Determine the posterior
+    trace = pm.sample(1000, cores=1)
+
 # create our Op
 logl = LogLike(log_likelihood, fail_bldgs, total_bldgs, demand_arr)
 # Create Bayesian model:
