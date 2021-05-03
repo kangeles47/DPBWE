@@ -67,18 +67,22 @@ xj = xj/m
 
 with pm.Model() as model:
     # Set up the prior:
-    theta = pm.Normal('theta', 4, 15)
-    #BoundedNormal = pm.Bound(pm.Normal, lower=0.0)
-    beta = pm.Normal('beta', 0.3, 0.03)
+    #BoundedNormal = pm.Bound(pm.Normal, lower=0.01)
+    theta = pm.Normal('theta', 4.5, 15)
+    beta = pm.Normal('beta', 0.1, 0.03)
 
     # Define fragility function equation:
     #def my_func(theta, beta, xj):
-     #   custom_p = pm.Normal('f', 0, 1)
+     #   p = pm.Normal.dist(0, 1).logcdf((np.log(xj)-theta)/beta)
+      #  return p
       #  return custom_p.distribution.logcdf((np.log(xj)-theta)/beta)
+    #def normal_cdf(theta, beta, xj):
+     #   """Compute the log of the cumulative density function of the normal."""
+      #  return 0.5 * (1 + tt.erf((xj - theta) / (beta * tt.sqrt(2))))
     p = pm.invlogit(beta+theta*np.log(xj))
     # Define likelihood:
-    #like = pm.Binomial('like', p=my_func(theta, beta, xj), observed=zj, n=nj)
     like = pm.Binomial('like', p=p, observed=zj, n=nj)
+    #like = pm.Binomial('like', p=my_func(theta, beta, xj), observed=zj, n=nj)
     # Determine the posterior
     trace = pm.sample(1000, cores=1)
     # Plot the posterior distributions of each RV
