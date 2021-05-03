@@ -59,40 +59,47 @@ def log_likelihood(theta, fail, total, demand):
 demand_arr = np.array([114, 126, 128, 130, 135, 138, 139, 140])
 fail_bldgs = np.array([0, 0, 0, 0, 4, 1, 0, 3])
 total_bldgs = np.array([1, 2, 3, 5, 7, 3, 1, 4])
-
 xj = np.array([114, 126, 128, 130, 135, 138, 139, 140])
 zj = np.array([0, 0, 0, 0, 4, 1, 0, 3])
 nj = np.array([1, 2, 3, 5, 7, 3, 1, 4])
+m = sum(xj)/len(xj)
+xj = xj/m
 
 with pm.Model() as model:
     # Set up the prior:
     theta = pm.Normal('theta', 4, 15)
+    #BoundedNormal = pm.Bound(pm.Normal, lower=0.0)
     beta = pm.Normal('beta', 0.3, 0.03)
 
     # Define fragility function equation:
-    def my_func(theta, beta, xj):
-        custom_p = pm.Normal('f', 0, 1)
-        return custom_p.distribution.logcdf((np.log(xj)-theta)/beta)
+    #def my_func(theta, beta, xj):
+     #   custom_p = pm.Normal('f', 0, 1)
+      #  return custom_p.distribution.logcdf((np.log(xj)-theta)/beta)
+    p = pm.invlogit(beta+theta*np.log(xj))
     # Define likelihood:
-    like = pm.Binomial('like', p=my_func(theta, beta, xj), observed=zj, n=nj)
+    #like = pm.Binomial('like', p=my_func(theta, beta, xj), observed=zj, n=nj)
+    like = pm.Binomial('like', p=p, observed=zj, n=nj)
     # Determine the posterior
     trace = pm.sample(1000, cores=1)
-
-# create our Op
-logl = LogLike(log_likelihood, fail_bldgs, total_bldgs, demand_arr)
-# Create Bayesian model:
-with pm.Model() as model:
-    # Set up your prior:
-    mu = pm.Normal('mu', 4, 15)
-    beta = pm.Normal('beta', 0.3, 0.03)
-    # convert mu and beta to a tensor vector
-    theta = tt.as_tensor_variable([mu, beta])
-    # Set up log-likelihood function:
-    log_like = pm.DensityDist('log_like', lambda v: logl(v), observed={'v': theta})
-    # Determine the posterior
-    trace = pm.sample(1000, cores=1)  # might want to include a burn-in period here
     # Plot the posterior distributions of each RV
-    pm.traceplot(trace, ['mu', 'beta'])
-    pm.summary(trace)
+    pm.traceplot(trace, ['theta', 'beta'])
+    print(pm.summary(trace))
     plt.show()
+# create our Op
+#logl = LogLike(log_likelihood, fail_bldgs, total_bldgs, demand_arr)
+# Create Bayesian model:
+#with pm.Model() as model:
+    # Set up your prior:
+#    mu = pm.Normal('mu', 4, 15)
+#    beta = pm.Normal('beta', 0.3, 0.03)
+    # convert mu and beta to a tensor vector
+#    theta = tt.as_tensor_variable([mu, beta])
+    # Set up log-likelihood function:
+#    log_like = pm.DensityDist('log_like', lambda v: logl(v), observed={'v': theta})
+    # Determine the posterior
+#    trace = pm.sample(1000, cores=1)  # might want to include a burn-in period here
+#    # Plot the posterior distributions of each RV
+#    pm.traceplot(trace, ['mu', 'beta'])
+#    pm.summary(trace)
+#    plt.show()
 
