@@ -129,6 +129,8 @@ def get_fragility_input(sim_bldgs, damage_scale_name, component_type, hazard_typ
     # Step 4: Conduct the Bayesian parameter estimation:
     for k in lparams:
         pass
+    # Step 5: Conduct the MLE:
+    #mle_params = get_point_estimate(lparams)
 
 
 def get_likelihood_params(dichot_dict):
@@ -175,28 +177,56 @@ def get_likelihood_params(dichot_dict):
 def get_point_estimate(lparams):
     """
     A function to obtain point estimates of unknown fragility parameters, mu and beta
-    :param lparams:
-    :return:
+    :param lparams: a dictionary with first set of keys = damage state number. Each damage state number is dictionary
+                    with keys that contain arrays corresponding to:
+                    (1) ['demand'] value of demand parameter
+                    (2) ['fail'] # of buildings experiencing failure
+                    (3) ['total'] total # of buildings at the demand parameter value
+    :return: mle_params: a dictionary with keys corresponding to damage state number.
+                        Each damage state number then contains dictionary with:
+                        ['mu'] = MLE value for logarithmic mean
+                        ['beta'] = MLE value for logarithmic dispersion
     """
-    # Initialization parameters for MLE:
-    mu_init = 5  # initial guess for mu
-    beta_init = 0.1  # initial guess for beta
-    params_init = np.array([mu_init, beta_init])
-    mle_args = (demand_arr, total_bldgs, fail_bldgs)
-    bnds = ((0, None), (0, None))  # values for mu and beta must be positive
-    results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args, bounds=bnds)
-    mu_MLE, beta_MLE = results_uncstr.x
-    print('Damage state number: ' + str(key))
-    print('mu_MLE=', mu_MLE, 'beta_MLE=', beta_MLE)
-    # Plotting:
-    fig = plt.figure()
-    plt.scatter(demand_arr, fail_bldgs / total_bldgs)
-    im = np.arange(70, 180, 1)
-    plt.plot(im, norm.cdf(np.log(im), mu_MLE, beta_MLE), 'r')
-    plt.xlabel('Wind Speed')
-    plt.ylabel('P(f)')
-    plt.title('Damage State ' + str(key))
-    plt.show()
+    # Run the MLE optimization for each damage state:
+    mle_params = {}
+    for key in lparams:
+        # Set up input parameters for objective function:
+        mle_args = (lparams[key]['demand'], lparams[key]['total'], lparams[key]['fail'])
+        # Initialization parameters for MLE:
+        # Try out a range of values:
+        mu_values = np.arange(4, 6, 0.5)
+        beta_values = np.arange(0.1, 0.5, 0.1)
+        mu_est, beta_est, loglike_est = [], [], []
+        for mu in mu_values:
+            for beta in beta_values:
+                params_init = np.array([mu, beta])
+                bnds = ((0, None), (0, None))  # values for mu and beta must be positive
+                results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args, bounds=bnds)
+                mu_MLE, beta_MLE = results_uncstr.x
+                # Save the parameter estimates:
+                mu_est.append(mu_MLE)
+                beta_est.append(beta_MLE)
+                # Calculate the log-likelihood and save:
+                loglike_est.append(sum(lparams[key]['fail']*np.log(norm.cdf(np.log(lparams[key]['demand']), mu_MLE, beta_MLE)) + (lparams[key]['total']-lparams[key]['fail'])*np.log(1-norm.cdf(np.log(lparams[key]['demand']), mu_MLE, beta_MLE))))
+        # Find the pair of mu, beta initial conditions that maximize the log-likelihood:
+        max_index = loglike_est.index(max(loglike_est))
+        mle_params[key] = {}
+        mle_params[key]['mu'] = mu_est[max_index]
+        mle_params[key]['beta'] = beta_est[max_index]
+        # Plotting:
+        print('Damage state number: ' + str(key))
+        print('mu_MLE=', mle_params[key]['mu'], 'beta_MLE=', mle_params[key]['beta'])
+        # Plotting:
+        fig = plt.figure()
+        plt.scatter(lparams[key]['demand'], lparams[key]['fail'] / lparams[key]['total'])
+        im = np.arange(70, 180, 1)
+        plt.plot(im, norm.cdf(np.log(im), mle_params[key]['mu'], mle_params[key]['beta']), 'r')
+        plt.plot(im, norm.cdf((np.log(im)-mle_params[key]['mu'])/mle_params[key]['beta']), 'm')
+        plt.xlabel('Wind Speed')
+        plt.ylabel('P(f)')
+        plt.title('Damage State ' + str(key))
+        plt.show()
+    return mle_params
 
 
 def p_f(im, mu, beta):
