@@ -67,45 +67,46 @@ m = sum(xj)/len(xj)
 
 with pm.Model() as model:
     # Set up the prior:
-    BoundedNormal = pm.Bound(pm.Normal, lower=0.0)
+    #BoundedNormal = pm.Bound(pm.Normal, lower=0.0)
     theta = pm.Normal('theta', 4.69, 2.71)
     beta = pm.Normal('beta', 0.1645, 0.03)
 
     # Define fragility function equation:
-    def my_func(theta, beta, xj):
-        p = pm.Normal.dist(0, 1).logcdf((np.log(xj)-theta)/beta)
-        return p
+    #def my_func(theta, beta, xj):
+     #   p = pm.Normal.dist(0, 1).logcdf((tt.log(xj)-theta)/beta)
+      #  return p
       #  return custom_p.distribution.logcdf((np.log(xj)-theta)/beta)
-    #def normal_cdf(theta, beta, xj):
-     #   """Compute the log of the cumulative density function of the normal."""
-      #  return 0.5 * (1 + tt.erf((xj - theta) / (beta * tt.sqrt(2))))
+    def normal_cdf(theta, beta, xj):
+        """Compute the log of the cumulative density function of the normal."""
+        return 0.5 * (1 + tt.erf((tt.log(xj) - theta) / (beta * tt.sqrt(2))))
     #p = pm.invlogit(beta+theta*np.log(xj))
     # Define likelihood:
     #like = pm.Binomial('like', p=p, observed=zj, n=nj)
-    like = pm.Binomial('like', p=my_func(theta, beta, xj), observed=zj, n=nj)
+    like = pm.Binomial('like', p=normal_cdf(theta, beta, xj), observed=zj, n=nj)
     for RV in model.basic_RVs:
         print(RV.name, RV.logp(model.test_point))
     # Determine the posterior
     trace = pm.sample(1000, cores=1)
     # Plot the posterior distributions of each RV
     pm.traceplot(trace, ['theta', 'beta'])
-    #print(pm.summary(trace))
+    print(pm.summary(trace))
     plt.show()
 # create our Op
 #logl = LogLike(log_likelihood, fail_bldgs, total_bldgs, demand_arr)
 # Create Bayesian model:
 #with pm.Model() as model:
     # Set up your prior:
-#    mu = pm.Normal('mu', 4, 15)
-#    beta = pm.Normal('beta', 0.3, 0.03)
+ #   BoundedNormal = pm.Bound(pm.Normal, lower=0.0)
+  #  theta = BoundedNormal('theta', 4.69, 2.71)
+   # beta = BoundedNormal('beta', 0.1645, 0.03)
     # convert mu and beta to a tensor vector
-#    theta = tt.as_tensor_variable([mu, beta])
+    #theta = tt.as_tensor_variable([theta, beta])
     # Set up log-likelihood function:
-#    log_like = pm.DensityDist('log_like', lambda v: logl(v), observed={'v': theta})
+    #log_like = pm.DensityDist('log_like', lambda v: logl(v), observed={'v': theta})
     # Determine the posterior
-#    trace = pm.sample(1000, cores=1)  # might want to include a burn-in period here
+    #trace = pm.sample(1000, cores=1)  # might want to include a burn-in period here
 #    # Plot the posterior distributions of each RV
-#    pm.traceplot(trace, ['mu', 'beta'])
-#    pm.summary(trace)
-#    plt.show()
+    #pm.traceplot(trace, ['mu', 'beta'])
+    #pm.summary(trace)
+    #plt.show()
 
