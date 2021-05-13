@@ -1,5 +1,6 @@
 import pandas as pd
 import requests
+import json
 
 
 class PostDisasterDamageDataset:
@@ -395,25 +396,45 @@ class BayCountyPermits(PostDisasterDamageDataset):
             pass
 
 
-class FemaIhaLd(PostDisasterDamageDataset):
+class FEMA_IAHRLD(PostDisasterDamageDataset):
     def __init__(self):
         PostDisasterDamageDataset.__init__(self)
-        self.hasDamagePrecision['component, discrete'] = True
+        self.hasDamagePrecision['component, discrete'] = False
         self.hasDamagePrecision['component, range'] = True
         self.hasLocationPrecision['zipcode/censusblock level'] = True
         self.hasAccuracy = True
         self.hasType['fema claims data'] = True
 
-    def add_fema_iha_ld_data(self, sim_bldg, component_type, hazard_type, event_name):
+    def pull_fema_iahrld_data(self, event_name):
+        """
+        Function to query Individual Assistance Housing Registrants Large Disaster dataset from OpenFEMA
+        :param event_name:
+        :return:
+        """
+        self.hasEventName = event_name
         api_endpoint = 'https://www.fema.gov/api/open/v1/IndividualAssistanceHousingRegistrantsLargeDisasters'
-        if hazard_type == 'wind':
-            if event_name == 'Hurricane Michael':
-                disasterNumber = '4399'
-            else:
-                pass
-        query = api_endpoint + '?$filter=disasterNumber eq ' + disasterNumber
-        response = requests.get(query)
-        if response.status_code != '200' or response.status_code != '300':
-            print('API request failed')
+        if event_name == 'Hurricane Michael':
+            disasterNumber = '4399'
+        elif event_name == 'Hurricane Irma':
+            disasterNumber = '4337'
         else:
             pass
+        query = api_endpoint + '?$filter=disasterNumber eq ' + disasterNumber
+        # Query data from API and convert to JSON to then convert to pandas DataFrame:
+        JSONContent = requests.get(query).json()
+        # Set up headers for pandas columns (i.e., key values in new_dict)
+        new_dict = {}
+        for key in JSONContent['IndividualAssistanceHousingRegistrantsLargeDisasters'][0]:
+            new_dict[key] = []
+        # Populate the data for each key:
+        for row in JSONContent['IndividualAssistanceHousingRegistrantsLargeDisasters']:
+            for key in row:
+                new_dict[key].append(row[key])
+        # Convert to DataFrame:
+        df_fema = pd.DataFrame(new_dict)
+        return df_fema
+
+    def add_fema_iahrld_data(self, bldg, component_type, hazard_type, site,
+                                 permit_file_path, length_unit, damage_scale_name):
+        # First activate the damage scale that will be used:
+        self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
