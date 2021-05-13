@@ -567,9 +567,7 @@ class FemaHma(PostDisasterDamageDataset):
         else:
             if bldg.hasLocation['County'].upper() == 'BAY':
                 if 'SINGLE' in bldg.hasOccupancy.upper():
-                    res_type = 'House/Duplex'
-                elif 'MOBILE' in bldg.hasOccupancy.upper():
-                    res_type = 'Mobile Home'
+                    res_type = 'Single Family'
             elif bldg.hasLocation['County'].upper() == 'COLLIER':
                 pass
             elif bldg.hasLocation['County'].upper() == 'MONROE':
@@ -578,12 +576,12 @@ class FemaHma(PostDisasterDamageDataset):
                 print('County currently not supported')
         # Find subset of dataset with damage observations for the given occupancy, zip code, hazard, and component:
         if len(res_type) > 0:
-            if hazard_type == 'wind' and ('roof' in component_type):
-                df_sub = df_fema.loc[(df_fema['damagedZipCode'] == int(bldg.hasLocation['Zip Code'])) &
-                                     (df_fema['roofDamage'] == True) & (df_fema['residenceType'] == res_type) &
-                                     (df_fema['damagedCity'] == bldg.hasLocation['City'].upper())]
-                if len(df_sub) > 0:
+            df_sub = df_fema.loc[(df_fema['zip'] == int(bldg.hasLocation['Zip Code'])) & (df_fema['structureType'] == res_type) & (df_fema['city'] == bldg.hasLocation['City'].upper())]
+            if len(df_sub) > 0:
+                if hazard_type == 'wind':
                     # Find buildings in the same city, zip code that also have same occupancy as this building:
+                    df_wind = df_sub[df_sub['propertyAction'].str.contains('Wind')]
+                    df_wind = df_wind[df_wind['propertyAction'].str.contains('Retrofit')]
                     bldg_lst = []
                     for b in site.hasBuilding:
                         if b.hasOccupancy == bldg.hasOccupancy and (b.hasLocation['City'] == bldg.hasLocation['City']) and (b.hasLocation['Zip Code'] == bldg.hasLocation['Zip Code']):
