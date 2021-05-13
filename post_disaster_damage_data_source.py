@@ -61,16 +61,28 @@ class PostDisasterDamageDataset:
                 comp_ds_desc = []
                 comp_ds_vals = []
                 print('Component damage scale info not available for ' + damage_scale_name)
-        elif damage_scale_name == 'FEMA Claims':
-            self.hasDamageScale['type'] = 'FEMA Claims'
+        elif damage_scale_name == 'FEMA HMA':
+            self.hasDamageScale['type'] = 'FEMA HMA'
             global_ds_nums = [0, 1]
             global_ds_desc = ['Minor Damage', 'Severe Damage']
             global_ds_vals = []
             if component_flag:
                 if 'roof' in component_type:
                     comp_ds_nums = [0, 1]
-                    comp_ds_desc = ['Less than 50% Damage', 'More than 50% Damage']
-                    comp_ds_values = [[0, 50], [50, 100]]
+                    comp_ds_desc = ['Damage <= 49%', 'Damage >=50%']
+                    comp_ds_values = [[0, 49], [50, 99]]
+                else:
+                    print('Component damage values not supported for ' + damage_scale_name + 'and ' + component_type)
+        elif damage_scale_name == 'FEMA IHARLD':
+            self.hasDamageScale['type'] = 'FEMA IHARLD'
+            global_ds_nums = [0, 1]
+            global_ds_desc = ['No Damage', 'Damage']
+            global_ds_vals = []
+            if component_flag:
+                if 'roof' in component_type:
+                    comp_ds_nums = [0, 1]
+                    comp_ds_desc = ['No Damage', 'Damage']
+                    comp_ds_values = [0, [0, 100]]
                 else:
                     print('Component damage values not supported for ' + damage_scale_name + 'and ' + component_type)
         else:
@@ -422,19 +434,27 @@ class FEMA_IAHRLD(PostDisasterDamageDataset):
         query = api_endpoint + '?$filter=disasterNumber eq ' + disasterNumber
         # Query data from API and convert to JSON to then convert to pandas DataFrame:
         JSONContent = requests.get(query).json()
-        # Set up headers for pandas columns (i.e., key values in new_dict)
-        new_dict = {}
-        for key in JSONContent['IndividualAssistanceHousingRegistrantsLargeDisasters'][0]:
-            new_dict[key] = []
-        # Populate the data for each key:
-        for row in JSONContent['IndividualAssistanceHousingRegistrantsLargeDisasters']:
-            for key in row:
-                new_dict[key].append(row[key])
-        # Convert to DataFrame:
-        df_fema = pd.DataFrame(new_dict)
+        if len(JSONContent['IndividualAssistanceHousingRegistrantsLargeDisasters']) > 0:
+            # Set up headers for pandas columns (i.e., key values in new_dict)
+            new_dict = {}
+            for key in JSONContent['IndividualAssistanceHousingRegistrantsLargeDisasters'][0]:
+                new_dict[key] = []
+            # Populate the data for each key:
+            for row in JSONContent['IndividualAssistanceHousingRegistrantsLargeDisasters']:
+                for key in row:
+                    new_dict[key].append(row[key])
+            # Convert to DataFrame:
+            df_fema = pd.DataFrame(new_dict)
+        else:
+            df_fema = pd.DataFrame()
         return df_fema
 
     def add_fema_iahrld_data(self, bldg, component_type, hazard_type, site,
-                                 permit_file_path, length_unit, damage_scale_name):
-        # First activate the damage scale that will be used:
-        self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
+                                 permit_file_path, length_unit, damage_scale_name, df_fema):
+        # Find subset of dataset with damage observations for the given occupancy, zip code, hazard, and component:
+        res_types = ['Apartment', 'House/Duplex', 'Townhouse', 'Mobile Home', 'Condo', 'Other', 'Military Housing',
+                     'Boat', 'Assisted Living Facility']
+        if hazard_type == 'wind' and ('roof' in component_type):
+            df_sub = df_fema.loc[df_fema['damagedZipCode'] == bldg.hasLocation['Zip Code'] & df_fema['roofDamage']]
+        else:
+            print('Specified hazard and component not supported')
