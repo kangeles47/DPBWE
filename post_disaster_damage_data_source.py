@@ -69,8 +69,8 @@ class PostDisasterDamageDataset:
             if component_flag:
                 if 'roof' in component_type:
                     comp_ds_nums = [0, 1]
-                    comp_ds_desc = ['Damage <= 49%', 'Damage >=50%']
-                    comp_ds_values = [[0, 49], [50, 99]]
+                    comp_ds_desc = ['Damage <= 49%', 'Damage >=50%', 'Total Loss']
+                    comp_ds_values = [[0, 49], [50, 99], 100]
                 else:
                     print('Component damage values not supported for ' + damage_scale_name + 'and ' + component_type)
         elif damage_scale_name == 'FEMA IHARLD':
@@ -548,7 +548,7 @@ class FemaHma(PostDisasterDamageDataset):
         """
         Function to query Hazard Mitigation Assistance Mitigated Properties dataset from OpenFEMA and convert to pandas DataFrame
         :param event_name: the name of the disaster event
-        :return: df_fema: a pandas DataFrame with the data for the specified event
+        :return: df_fema: a pandas DataFrame with the damage observations for the specified event
         """
         self.hasEventName = event_name
         api_endpoint = 'https://www.fema.gov/api/open/v2/HazardMitigationAssistanceMitigatedProperties'
@@ -577,11 +577,14 @@ class FemaHma(PostDisasterDamageDataset):
                     new_dict[key].append(new_data)
             # Convert to DataFrame:
             df_fema = pd.DataFrame(new_dict)
+            # Remove any rows that do not pertain to damage observations:
+            df_fema = df_fema.drop(df_fema[df_fema['damageCategory'] == 'N/A'].index, inplace=True)
+            df_fema.reset_index()
         else:
             df_fema = pd.DataFrame()
         return df_fema
 
-    def add_fema_hma_data(self, bldg, component_type, hazard_type, site, length_unit, damage_scale_name, df_fema):
+    def add_fema_hma_data(self, bldg, component_type, hazard_type, site, length_unit, damage_scale_name, df_fema, city_flag, zipcode_flag):
         data_details = {'available': False, 'fidelity': self, 'component type': component_type,
                         'hazard type': hazard_type,
                         'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
@@ -634,43 +637,51 @@ class FemaHma(PostDisasterDamageDataset):
         if len(res_type) > 0:
             residence_types = ['SINGLE FAMILY', 'NON-RESIDENTIAL - PUBLIC', '2-4 FAMILY', 'MANUFACTURED HOME',
                                'NON-RESIDENTIAL - PRIVATE', 'MULTI-FAMILY DWELLING - 5 OR MORE UNITS']
-            # Check if this is an easy query:
+            # Check if there are damage observations for the parcel's occupancy type:
             if any([substring in res_type for substring in residence_types]):
-                df_sub = df_fema.loc[(df_fema['zip'] == int(bldg.hasLocation['Zip Code'])) & (df_fema['residenceType'] == res_type) & (df_fema['city'] == bldg.hasLocation['City'].upper())]
-            else:  # Special query cases
-                df_sub = df_fema.loc[(df_fema['zip'] == int(bldg.hasLocation['Zip Code'])) & (df_fema['city'] == bldg.hasLocation['City'].upper())]
-                df_sub = df_sub[df_sub['title'].str.contains(res_type)]
-                # Drop any entries that are not non-residential private or public:
+                df_sub = df_fema.loc[(df_fema['residenceType'] == res_type)]
+            else:
+                df_sub = df_fema[df_fema['title'].str.contains(res_type)]
+                # Keep only the entries that are non-residential private or public:
                 df_sub = df_sub.loc[(df_sub['residenceType']=='NON-RESIDENTIAL - PRIVATE') | (df_sub['residenceType']=='NON-RESIDENTIAL - PUBLIC')]
+            # Refine the observations for specific zip codes and/or cities if needed:
+            if zipcode_flag and len(df_sub) > 0:
+                df_sub = df_sub.loc[df_fema['zip'] == int(bldg.hasLocation['Zip Code'])]
+            if city_flag and len(df_sub) > 0:
+                df_sub = df_sub.loc[df_fema['city'] == bldg.hasLocation['City'].upper()]
             if len(df_sub) > 0:
+                # Check for hazard-specific, component-specific damage:
                 if hazard_type == 'wind':
-                    # Find buildings in the same city, zip code that also have same occupancy as this building:
-                    df_wind = df_sub[df_sub['propertyAction'].str.contains('Wind')]
-                    df_wind = df_wind[df_wind['propertyAction'].str.contains('Retrofit')]
-                    bldg_lst = []
-                    for b in site.hasBuilding:
-                        if b.hasOccupancy == bldg.hasOccupancy and (b.hasLocation['City'] == bldg.hasLocation['City']) and (b.hasLocation['Zip Code'] == bldg.hasLocation['Zip Code']):
-                            bldg_lst.append(b)
+                    # Find buildings with wind retrofit actions listed:
+                    df_sub = df_sub[df_sub['propertyAction'].str.contains('WIND RETROFIT')]
+                    # Designating component-level damage:
+                    if 'roof' in component_type:
+                        # Drop any observations specific to storm shutters:
+                        df_sub.drop(df_sub[df_sub['title'].str.contains('SHUTTER')].index, inplace=True)
+                        df_sub.reset_index()
+                        if component_type == 'roof cover':
+                            if damage_scale_name == 'HAZUS-HM':
+                                for row in range(0, len(df_sub['damageCategory'])):
+                                    if '49' in df_sub['damageCategory'][row]:
+                                        pass
+                                    elif '99' in df_sub['damageCategory'][row]:
+                                        pass
+                                    else:  # Total loss
+                                        pass
+                            else:
+                                # Populate default damage scale information in order to force development of mapping function:
+                                self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
                         else:
                             pass
-                    # The probability of this building being one of the damaged buildings listed is a ratio:
-                    ratio = len(df_sub)/len(bldg_lst)
-                    # Sample a Bernoulli RV to see if this building is damaged:
-                    brv = bernoulli.rvs(size=1, p=ratio)[0]
-                    if brv == 1:  # Building is damaged
+                    elif component_type == 'window':
+                        df_sub = df_sub[df_sub['title'].str.contains('SHUTTER')]
+                    else:
+                        df_sub = pd.DataFrame()
+                    # Modify data details information:
+                    if len(df_sub) > 0:
                         data_details['available'] = True
-                        # Designating component-level damage:
-                        if component_type == 'roof cover':
-                            pass
-                        elif component_type == 'roof structure':
-                            pass
-                        # We want to be able to distinguish those cases which require habitability repairs
-                        # because then we know roof was severely damaged if there is no report of flood damage
-                        # Take average market value and average $ of damage reported:
-                    else:  # Building is undamaged
-                        pass
                 else:
                     pass
         else:
-            pass
-        return data_details
+            df_sub = pd.DataFrame()
+        return data_details, df_sub
