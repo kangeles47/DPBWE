@@ -558,22 +558,54 @@ class FemaHma(PostDisasterDamageDataset):
                         'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
         res_types = ['Single Family', 'Non-residential - Public', '2-4 Family', 'Manufactured Home', 'Non-residential - Private', 'Multi-Family Dwelling - 5 or More Units']
         # First find the appropriate residence type for the query:
+        # Note: HMA Buildings are typically govt. bldgs, schools, critical facilities, churches, residential bldgs.
+        # Rule-sets listed here are meant to identify building with one of the above subsets.
+        # All other occupancy types are not valid for use of this data.
         res_type = ''
         if bldg.isComm:
+            # Global commercial occupancy codes (substrings):
             if 'COND' in bldg.hasOccupancy.upper():
                 res_type = 'Condo'
-            elif 'COMMON' in bldg.hasOccupancy.upper() and bldg.hasLocation['County'].upper() == 'BAY':
-                res_type = 'Condo'
-        else:
-            if bldg.hasLocation['County'].upper() == 'BAY':
-                if 'SINGLE' in bldg.hasOccupancy.upper():
-                    res_type = 'Single Family'
-            elif bldg.hasLocation['County'].upper() == 'COLLIER':
+            elif 'CHURCH' in bldg.hasOccupancy.upper():
+                res_type = 'Church'
+            elif 'HOSPITAL' in bldg.hasOccupancy.upper() or 'MEDICAL' in bldg.hasOccupancy.upper():
+                res_type = 'Hospital'
+            elif 'SCHOOL' in bldg.hasOccupancy.upper():
+                res_type = 'School'
+            else:
                 pass
-            elif bldg.hasLocation['County'].upper() == 'MONROE':
+            # Check if we need county-specific occupancy codes:
+            if len(res_type) > 0:
                 pass
             else:
-                print('County currently not supported')
+                if bldg.hasLocation['County'].upper() == 'BAY':
+                    if 'COMMON' in bldg.hasOccupancy.upper():
+                        res_type = 'Condo'
+                    elif 'MUNICIPAL' in bldg.hasOccupancy.upper() or 'COUNTY' in bldg.hasOccupancy.upper():
+                        res_type = 'None-residential - Public'
+                else:
+                    pass
+        else: # Residential occupancy codes
+            # Global occupancy codes:
+            if 'SINGLE' in bldg.hasOccupancy.upper():
+                res_type = 'Single Family'
+            else:
+                pass
+            # Check if we need county-specific occupancy codes:
+            if len(res_type) > 0:
+                pass
+            else:
+                if bldg.hasLocation['County'].upper() == 'BAY':
+                    if 'MOBILE' in bldg.hasOccupancy.upper():
+                        res_type = 'Manufactured Home'
+                    elif 'MULTI-FAM' in bldg.hasOccupancy.upper():
+                        res_type = 'Multi-Family Dwelling - 5 or More Units'
+                elif bldg.hasLocation['County'].upper() == 'COLLIER':
+                    pass
+                elif bldg.hasLocation['County'].upper() == 'MONROE':
+                    pass
+                else:
+                    pass
         # Find subset of dataset with damage observations for the given occupancy, zip code, hazard, and component:
         if len(res_type) > 0:
             df_sub = df_fema.loc[(df_fema['zip'] == int(bldg.hasLocation['Zip Code'])) & (df_fema['structureType'] == res_type) & (df_fema['city'] == bldg.hasLocation['City'].upper())]
