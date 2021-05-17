@@ -499,36 +499,62 @@ class FemaIahrld(PostDisasterDamageDataset):
                     pass
                 else:
                     pass
-        # Find subset of dataset with damage observations for the given occupancy, zip code, hazard, and component:
+        # Find subset of dataset with damage observations for the given occupancy, hazard, and component:
         if len(res_type) > 0:
             if hazard_type == 'wind' and ('roof' in component_type):
-                df_sub = df_fema.loc[(df_fema['damagedZipCode'] == int(bldg.hasLocation['Zip Code'])) &
-                                     (df_fema['roofDamage'] == True) & (df_fema['residenceType'] == res_type) &
-                                     (df_fema['damagedCity'] == bldg.hasLocation['City'].upper())]
+                df_sub = df_fema.loc[(df_fema['roofDamage'] == True) & (df_fema['residenceType'] == res_type)]
                 if len(df_sub) > 0:
-                    # Find buildings in the same city, zip code that also have same occupancy as this building:
-                    bldg_lst = []
-                    for b in site.hasBuilding:
-                        if b.hasOccupancy == bldg.hasOccupancy and (b.hasLocation['City'] == bldg.hasLocation['City']) and (b.hasLocation['Zip Code'] == bldg.hasLocation['Zip Code']):
-                            bldg_lst.append(b)
-                        else:
-                            pass
-                    # The probability of this building being one of the damaged buildings listed is a ratio:
-                    ratio = len(df_sub)/len(bldg_lst)
-                    # Sample a Bernoulli RV to see if this building is damaged:
-                    brv = bernoulli.rvs(size=1, p=ratio)[0]
-                    if brv == 1:  # Building is damaged
-                        data_details['available'] = True
+                    # Each available data entry is a damage observation:
+                    for row in range(0, len(df_sub['damagedZipCode'])):
+                        # Create generic parcel and populate information:
+                        new_parcel = Building()
+                        # Find buildings in same city, zip code, and occupancy as generic building:
+                        # Use site information to find average building features:
+                        bldg_features = {'stories': [], 'yr_built': [], 'area': [], 'lon': [], 'lat': []}
+                        for b in site.hasBuilding:
+                            # Find buildings with similar occupancy in the generic bldg's city/zip-code:
+                            if b.hasOccupancy == bldg.hasOccupancy.upper():
+                                if b.hasLocation['City'].upper() == df_sub['damagedCity'][row] and b.hasLocation['Zip Code'].upper() == df_sub['damagedZipCode'][row]:
+                                    bldg_features['stories'].append(len(b.hasStory))
+                                    bldg_features['yr_built'].append(b.hasYearBuilt)
+                                    bldg_features['area'].append(b.hasGeometry['Total Floor Area'])
+                                else:
+                                    pass
+                            else:
+                                pass
+                        # Create a generic address with city and zip code information:
+                        gen_address = '1234 Generic Rd ' + df_sub['damagedCity'][row] + df_sub['damagedZipCode'][row]
+                        new_parcel.add_parcel_data('None',
+                                                   sum(bldg_features['stories']) / len(bldg_features['stories']),
+                                                   df_sub['structureType'][row],
+                                                   sum(bldg_features['yr_built']) / len(bldg_features['yr_built']),
+                                                   address=gen_address, area=0,
+                                                   lon=sum(bldg_features['lon']) / len(bldg_features['lon']),
+                                                   lat=sum(bldg_features['lat']) / len(bldg_features['lat']),
+                                                   length_unit=length_unit)
+                        # The probability of this building being one of the damaged buildings listed as a ratio:
+                        #ratio = len(df_sub)/len(bldg_lst)
+                        # Sample a Bernoulli RV to see if this building is damaged:
+                        #brv = bernoulli.rvs(size=1, p=ratio)[0]
+                        #if brv == 1:  # Building is damaged
+                        #    data_details['available'] = True
+                        #else:  # Building is undamaged
+                        #    pass
                         # Designating component-level damage:
-                        if component_type == 'roof cover':
-                            pass
-                        elif component_type == 'roof structure':
-                            pass
-                        # We want to be able to distinguish those cases which require habitability repairs
-                        # because then we know roof was severely damaged if there is no report of flood damage
-                        # Take average market value and average $ of damage reported:
-                    else:  # Building is undamaged
-                        pass
+                        for row in range(0, len(df_sub)):
+                            if df_sub['destroyed']:
+                                damage = 4
+                            else:
+                                if not df_sub['floodDamage'][row]:
+                                    if 'roof' in component_type:
+                                        if not df_sub['habitabilityRepairsRequired'][row] and df_sub['ppfvl'][row] == 0:
+                                            damage = 1
+                                        elif not df_sub['habitabilityRepairsRequired'][row] and df_sub['ppfvl'][row] > 0:
+                                            damage = 2
+                                        elif df_sub['habitabilityRepairsRequired'][row] and df_sub['ppfvl'][row] > 0:
+                                            damage = 3
+                                else:
+                                    pass
                 else:
                     pass
         else:
