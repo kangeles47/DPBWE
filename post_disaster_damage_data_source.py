@@ -1,6 +1,7 @@
 import pandas as pd
 import requests
 from scipy.stats import bernoulli
+from OBDM.zone import Building
 
 
 class PostDisasterDamageDataset:
@@ -63,12 +64,12 @@ class PostDisasterDamageDataset:
                 print('Component damage scale info not available for ' + damage_scale_name)
         elif damage_scale_name == 'FEMA HMA':
             self.hasDamageScale['type'] = 'FEMA HMA'
-            global_ds_nums = [0, 1]
-            global_ds_desc = ['Minor Damage', 'Severe Damage']
+            global_ds_nums = [0, 1, 2]
+            global_ds_desc = ['Damage <= 49%', 'Damage >=50%', 'Total Loss']
             global_ds_vals = []
             if component_flag:
                 if 'roof' in component_type:
-                    comp_ds_nums = [0, 1]
+                    comp_ds_nums = [0, 1, 2]
                     comp_ds_desc = ['Damage <= 49%', 'Damage >=50%', 'Total Loss']
                     comp_ds_values = [[0, 49], [50, 99], 100]
                 else:
@@ -661,27 +662,62 @@ class FemaHma(PostDisasterDamageDataset):
                         df_sub.reset_index()
                         if component_type == 'roof cover':
                             if damage_scale_name == 'HAZUS-HM':
-                                for row in range(0, len(df_sub['damageCategory'])):
-                                    if '49' in df_sub['damageCategory'][row]:
-                                        pass
-                                    elif '99' in df_sub['damageCategory'][row]:
-                                        pass
-                                    else:  # Total loss
-                                        pass
-                            else:
-                                # Populate default damage scale information in order to force development of mapping function:
                                 self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
+                            else:
+                                # Populate default damage scale information to force development of mapping function:
+                                self.get_damage_scale('FEMA HMA', component_type, global_flag=True, component_flag=True)
+                            for row in range(0, len(df_sub['damageCategory'])):
+                                for prop in range(0, df_sub['numberOfProperties'][row]):  # Multiple properties may be reported
+                                    # Create a new generic parcel data model:
+                                    new_parcel = Building()
+                                    # Use site information to find average building features:
+                                    bldg_features = {'stories': [], 'yr_built': [], 'area': [], 'lon': [], 'lat': []}
+                                    for b in site.hasBuilding:
+                                        # Find buildings with similar occupancy in the generic bldg's city/zip-code:
+                                        if b.hasOccupancy == bldg.hasOccupancy.upper():
+                                            if b.hasLocation['City'].upper() == df_sub['city'][row] and b.hasLocation['Zip Code'].upper() == df_sub['zip'][row]:
+                                                bldg_features['stories'].append(len(b.hasStory))
+                                                bldg_features['yr_built'].append(b.hasYearBuilt)
+                                                bldg_features['area'].append(b.hasGeometry['Total Floor Area'])
+                                            else:
+                                                pass
+                                        else:
+                                            pass
+                                    # Create a generic address with city and zip code information:
+                                    gen_address = '1234 Generic Rd ' + df_sub['city'][row] + df_sub['zip'][row]
+                                    new_parcel.add_parcel_data('None', sum(bldg_features['stories']) / len(bldg_features['stories']), df_sub['structureType'][row], sum(bldg_features['yr_built']) / len(bldg_features['yr_built']), address=gen_address, area=0, lon=sum(bldg_features['lon']) / len(bldg_features['lon']), lat=sum(bldg_features['lat']) / len(bldg_features['lat']), length_unit=length_unit)
+                                    hazard_rating = []
+                                    damage_value = []
+                                    if damage_scale_name == 'HAZUS-HM':
+                                        if '49' in df_sub['damageCategory'][row]:
+                                            hazard_rating.append(self.hasDamageScale['component damage states']['number'][1])
+                                            damage_value.append(self.hasDamageScale['component damage states']['value'][1])
+                                        elif '99' in df_sub['damageCategory'][row]:
+                                            hazard_rating.append(
+                                                self.hasDamageScale['component damage states']['number'][2])
+                                            damage_value.append(
+                                                self.hasDamageScale['component damage states']['value'][2])
+                                        else:  # Total loss
+                                            hazard_rating.append(
+                                                self.hasDamageScale['component damage states']['number'][3])
+                                            damage_value.append(
+                                                self.hasDamageScale['component damage states']['value'][3])
+                                    else:
+                                        pass
                         else:
                             pass
                     elif component_type == 'window':
                         df_sub = df_sub[df_sub['title'].str.contains('SHUTTER')]
                     else:
-                        df_sub = pd.DataFrame()
+                        df_damage = pd.DataFrame()
                     # Modify data details information:
                     if len(df_sub) > 0:
                         data_details['available'] = True
+                        df_damage = pd.DataFrame()
+                        data_details['value'] = df_damage['damage value']
+                        data_details['hazard damage rating'][hazard_type] = df_damage['hazard rating']
                 else:
                     pass
         else:
             df_sub = pd.DataFrame()
-        return data_details, df_sub
+        return data_details, df_damage
