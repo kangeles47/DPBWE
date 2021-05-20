@@ -27,9 +27,9 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             #    data_details = data_types[i].add_fema_IHA_LD_data(sim_bldg, component_type, hazard_type, event_name)
             if data_details['available']:
                 avail_flag = True
+                data_details_list.append(data_details)
             else:
                 pass
-            data_details_list.append(data_details)
         # Step 3: Choose the best data for each bldg/component:
         if avail_flag:
             best_data = get_best_data(data_details_list, analysis_date)  # Data Fidelity Index
