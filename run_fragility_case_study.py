@@ -13,7 +13,6 @@ import pandas as pd
 import ast
 from OBDM.zone import Site, Building
 from OBDM.element import Roof
-from parcel import Parcel
 from bldg_code import FBC
 from create_fragility import execute_fragility_workflow
 
@@ -60,16 +59,22 @@ def run_hm_study(inventory='D:/Users/Karen/Documents/Github/DPBWE/BC_CParcels.cs
     # Step 4: Update the site's zone and element information (relational attributes):
     site.update_zones()
     site.update_elements()
-    # Step 5: Populate variables with list of post-disaster damage dataset types and file paths:
+    # Step 5: Extract the case study parcel's data model:
+    for b in site.hasBuilding:
+        if b.hasID == parcel_id:
+            bldg = b
+        else:
+            pass
+    # Step 6: Populate variables with list of post-disaster damage dataset types and file paths:
     from post_disaster_damage_dataset import STEER, BayCountyPermits
     data_types = [STEER(), BayCountyPermits()]
-    file_paths = ['D:/Users/Karen/Documents/Github/DPBWE/HM_D2D_Building.csv', 'D:/Users/Karen/Documents/Github/DPBWE/BayCountyMichael_Permits.csv']
-    # Step 6: Run the workflow:
-    execute_fragility_workflow(parcel_id, site, component_type=component_type, hazard_type=hazard_type, event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021', hazard_file_path=hazard_file_path)
+    file_paths = ['D:/Users/Karen/Documents/Github/DPBWE/Datasets/StEER/HM_D2D_Building.csv', 'D:/Users/Karen/Documents/Github/DPBWE/BayCountyMichael_Permits.csv']
+    # Step 7: Run the workflow:
+    execute_fragility_workflow(bldg, site, component_type=component_type, hazard_type=hazard_type, event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021', hazard_file_path=hazard_file_path)
 
 
 def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_type='wind',
-                 hazard_file_path='D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/ARA_Hurricane_Irma_Windspeed.csv', component_type='roof cover', parcel_id='30569-100-000'):
+                 hazard_file_path='D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/ARA_Hurricane_Irma_Windspeed.csv', component_type='roof cover', parcel_id='57360360006'):
     # Irma case study:
     # Step 1: Create a Site Class that will hold all parcel-specific data models:
     site = Site()
@@ -99,12 +104,20 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
     # Step 4: Update the site's zone and element information (relational attributes):
     site.update_zones()
     site.update_elements()
-    # Step 5: Populate variables with list of post-disaster damage dataset types and file paths:
+    # Step 5: Extract the case study parcel's data model:
+    for b in site.hasBuilding:
+        if b.hasID == parcel_id:
+            bldg = b
+        else:
+            pass
+    # Step 6: Populate variables with list of post-disaster damage dataset types and file paths:
     from post_disaster_damage_dataset import FemaHma, FemaIahrld
     data_types = [FemaHma(), FemaIahrld()]
     file_paths = ['API', 'API']
-    # Step 6: Run the workflow:
+    # Step 7: Run the workflow:
     execute_fragility_workflow(parcel_id, site, component_type=component_type, hazard_type=hazard_type,
                                event_year=2017, event_name='Hurricane Irma', data_types=data_types,
                                file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='05/20/2021',
                                hazard_file_path=hazard_file_path)
+
+run_hi_study()
