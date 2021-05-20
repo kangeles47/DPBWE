@@ -392,24 +392,34 @@ class Building(Zone):
         self.hasLocation['Zip Code'] = str(zipcode).strip()
         BayCountyZipCodes = np.arange(32401, 32418)
         BayCountyZipCodes = np.append(BayCountyZipCodes, [32438, 32444, 32456, 32466])
-
-        if zipcode in BayCountyZipCodes:
+        MonroeCountyZipCodes = np.array([33040, 33037, 33050, 33042, 33070, 33043, 33036, 33041, 33045, 33051, 33001, 33052, 33044])
+        CollierCountyZipCodes = np.array([34138, 34137, 34139, 34116, 34140, 34142, 34145, 34114, 34117, 34119, 34120, 34101, 34102, 34103, 34104, 34105, 34109, 34110, 34112, 34113, 34141, 34108])
+        FloridaZipCodes = np.concatenate((BayCountyZipCodes, MonroeCountyZipCodes, CollierCountyZipCodes))
+        if zipcode in FloridaZipCodes:
             self.hasLocation['State'] = 'FL'
-            self.hasLocation['County'] = 'Bay'
-            if 'PANAMA CITY BEACH' in self.hasLocation['Address']:
-                address_split = self.hasLocation['Address'].split(' PANAMA CITY BEACH')
-                self.hasLocation['Street Number'] = address_split[0].strip()
-                self.hasLocation['City'] = 'PANAMA CITY BEACH'
-            elif 'PANAMA CITY' in self.hasLocation['Address']:
-                address_split = self.hasLocation['Address'].split(' PANAMA CITY')
-                self.hasLocation['Street Number'] = address_split[0].strip()
-                self.hasLocation['City'] = 'PANAMA CITY'
-            elif 'MEXICO BEACH' in self.hasLocation['Address']:
-                address_split = self.hasLocation['Address'].split(' MEXICO BEACH')
-                self.hasLocation['Street Number'] = address_split[0].strip()
-                self.hasLocation['City'] = 'MEXICO BEACH'
+            if zipcode in BayCountyZipCodes:
+                self.hasLocation['County'] = 'Bay'
+                if 'PANAMA CITY BEACH' in self.hasLocation['Address']:
+                    city = 'PANAMA CITY BEACH'
+                elif 'PANAMA CITY' in self.hasLocation['Address']:
+                    city = 'PANAMA CITY'
+                elif 'MEXICO BEACH' in self.hasLocation['Address']:
+                    city = 'MEXICO BEACH'
+            elif zipcode in MonroeCountyZipCodes:
+                self.hasLocation['County'] = 'Monroe'
+                if 'KEY WEST' in self.hasLocation['Address']:
+                    city = 'KEY WEST'
+            elif zipcode in CollierCountyZipCodes:
+                self.hasLocation['County'] = 'Collier'
+                if 'MARCO' in self.hasLocation['Address']:
+                    city = 'MARCO ISLAND'
         else:
-            print('County and State Information not currently supported')
+            print('County/City/State Information not currently supported')
+            city = ''
+        if len(city) > 0:
+            address_split = self.hasLocation['Address'].split(' ' + city)
+            self.hasLocation['Street Number'] = address_split[0].strip()
+            self.hasLocation['City'] = city
 
 
 class Story(Zone):
