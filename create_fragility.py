@@ -1,15 +1,10 @@
-import ast
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 from scipy.stats import norm
 import get_sim_bldgs
-import post_disaster_damage_data_source
-import bldg_code
-from OBDM.zone import Site, Building
-from OBDM.element import Roof
-from parcel import Parcel
+import post_disaster_damage_dataset
 
 
 def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, analysis_date, hazard_file_path):
@@ -22,9 +17,9 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
         data_details_list = []
         avail_flag = False
         for i in range(0, len(data_types)):  # Collect data from each data source
-            if isinstance(data_types[i], post_disaster_damage_data_source.STEER):
+            if isinstance(data_types[i], post_disaster_damage_dataset.STEER):
                 data_details = data_types[i].add_steer_data(sim_bldg, component_type, hazard_type, file_paths[i])
-            elif isinstance(data_types[i], post_disaster_damage_data_source.BayCountyPermits):
+            elif isinstance(data_types[i], post_disaster_damage_dataset.BayCountyPermits):
                 length_unit = 'ft'
                 data_details = data_types[i].add_disaster_permit_data(sim_bldg, component_type, hazard_type, site,
                                  file_paths[i], length_unit, damage_scale_name)
@@ -81,7 +76,7 @@ def get_fragility_input(sim_bldgs, damage_scale_name, component_type, hazard_typ
     if hazard_type == 'wind':
         demand_param = 'wind speed'
     # Instantiate generic dataset object to gather damage scale info:
-    gen_dataset = post_disaster_damage_data_source.PostDisasterDamageDataset()
+    gen_dataset = post_disaster_damage_dataset.PostDisasterDamageDataset()
     gen_dataset.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
     # Data pairs in failure datasets provide the following information:
     # (1) Degree of damage of the bldg/component
@@ -383,51 +378,3 @@ def get_local_wind_speed(bldg, z, wind_speed_file_path, exposure, unit):
         else:
             v_local = v_new
     return round(v_local)
-
-# Create a Site Class holding all of the data models for the parcels:
-inventory = 'D:/Users/Karen/Documents/Github/DPBWE/BC_CParcels.csv'
-df = pd.read_csv(inventory)
-site = Site()
-parcel_model = False
-for row in range(0, len(df.index)):
-    # Create a new data model for parcel:
-    if not parcel_model:
-        new_bldg = Building()
-        new_bldg.add_parcel_data(df['Parcel Id'][row], df['Stories'][row], df['Use Code'][row], df['Year Built'][row],
-                                 df['Address'][row], df['Square Footage'][row], df['Longitude'][row], df['Latitude'][row], 'ft')
-        # Add roof element and data:
-        new_bldg.hasElement['Roof'] = [Roof()]
-        new_bldg.hasElement['Roof'][0].hasCover = df['Roof Cover'][row]
-        new_bldg.hasElement['Roof'][0].hasType = df['Roof Cover'][row]
-        # Populate code-informed component-level information
-        code_informed = bldg_code.FBC(new_bldg, loading_flag=False)
-        code_informed.roof_attributes(code_informed.hasEdition, new_bldg, 'CBECS')
-        # Add height information (if available):
-        new_bldg.hasGeometry['Height'] = df['Stories'][row]*4.0*3.28084  # ft
-    else:
-        new_bldg = Parcel(df['Parcel Id'][row], df['Stories'][row], df['Use Code'][row], df['Year Built'][row],
-                          df['Address'][row], df['Square Footage'][row], df['Longitude'][row], df['Latitude'][row], 'ft')
-    # Add permit data:
-    permit_data = df['Permit Number'][row]
-    if isinstance(permit_data,str):
-        permit_data = ast.literal_eval(permit_data)
-        for item in permit_data:
-            if 'DIS' in item:
-                new_bldg.hasPermitData['disaster']['number'].append(item)
-            else:
-                new_bldg.hasPermitData['other']['number'].append(item)
-    else:
-        pass
-    site.hasBuilding.append(new_bldg)
-site.update_zones()
-site.update_elements()
-# Select parcel from the site:
-for bldg in site.hasBuilding:
-    if bldg.hasID == '30569-100-000':
-        pbldg = bldg
-    else:
-        pass
-data_types = [post_disaster_damage_data_source.BayCountyPermits()]
-file_paths = ['D:/Users/Karen/Documents/Github/DPBWE/BayCountyMichael_Permits.csv']
-hazard_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/2018-Michael_windgrid_ver36.csv'
-execute_fragility_workflow(pbldg, site, component_type='roof cover', hazard_type='wind', event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021', hazard_file_path=hazard_file_path)
