@@ -9,22 +9,34 @@ import post_disaster_damage_dataset
 
 def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, analysis_date, hazard_file_path):
     # Step 1: Find similar buildings: features, load path for the given hazard (may include your building as well)
-    sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type)
+    sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type, event_year)
     # Step 2: Find damage descriptions for each building:
     # Create dictionary to track pertinent sample building info (data visualization):
     sample_dict = {'Parcel Id': [], component_type: [], 'Stories': [], 'Disaster Permit': [], 'Permit Description': [], 'Demand Value': [], 'Value': []}
-    for sim_bldg in sim_bldgs:
+    for sbldg in sim_bldgs:
         data_details_list = []
         avail_flag = False
         for i in range(0, len(data_types)):  # Collect data from each data source
             if isinstance(data_types[i], post_disaster_damage_dataset.STEER):
-                data_details = data_types[i].add_steer_data(sim_bldg, component_type, hazard_type, file_paths[i])
+                data_details = data_types[i].add_steer_data(sbldg, component_type, hazard_type, file_paths[i])
             elif isinstance(data_types[i], post_disaster_damage_dataset.BayCountyPermits):
                 length_unit = 'ft'
-                data_details = data_types[i].add_disaster_permit_data(sim_bldg, component_type, hazard_type, site,
+                data_details = data_types[i].add_disaster_permit_data(sbldg, component_type, hazard_type, site,
                                  file_paths[i], length_unit, damage_scale_name)
-            #elif isinstance(data_types[i], post_disaster_damage_data_source.FemaIhaLd):
-            #    data_details = data_types[i].add_fema_IHA_LD_data(sim_bldg, component_type, hazard_type, event_name)
+            elif isinstance(data_types[i], post_disaster_damage_dataset.FemaIahrld):
+                length_unit = 'ft'
+                if file_paths[i] == 'API':
+                    df_fema = data_types[i].pull_fema_iahrld_data(event_name)
+                else:
+                    df_fema = pd.read_csv(file_paths[i])
+                data_details, df_sub = data_types[i].add_fema_iahrld_data(sbldg, component_type, hazard_type, site, length_unit, damage_scale_name, df_fema)
+            elif isinstance(data_types[i], post_disaster_damage_dataset.FemaHma):
+                length_unit = 'ft'
+                if file_paths[i] == 'API':
+                    df_fema = data_types[i].pull_fema_hma_data(event_name)
+                else:
+                    df_fema = pd.read_csv(file_paths[i])
+                data_details, df_sub = data_types[i].add_fema_hma_data(sbldg, component_type, hazard_type, site, length_unit, damage_scale_name, df_fema, city_flag=False, zipcode_flag=False)
             if data_details['available']:
                 avail_flag = True
                 data_details_list.append(data_details)
@@ -37,29 +49,29 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             best_data = data_details.copy()
             best_data['fidelity'] = None
         # Add data to building data model:
-        sim_bldg.hasDamageData['roof cover'] = best_data
-        sim_bldg.hasElement['Roof'][0].hasDamageData = best_data
+        sbldg.hasDamageData['roof cover'] = best_data
+        sbldg.hasElement['Roof'][0].hasDamageData = best_data
         # Step 4: Get the intensity measure or engineering demand parameter for this building:
         if hazard_type == 'wind':
             if component_type == 'roof cover':
                 z = bldg.hasGeometry['Height']
-                sim_bldg.hasElement['Roof'][0].hasDemand['wind speed'] = get_local_wind_speed(sim_bldg, z, hazard_file_path,
+                sbldg.hasElement['Roof'][0].hasDemand['wind speed'] = get_local_wind_speed(sbldg, z, hazard_file_path,
                                                                                               exposure='C', unit='english')
             else:
                 pass
         # Step 5: Export attributes for all sample buildings:
-        sample_dict['Parcel Id'].append(sim_bldg.hasID)
-        sample_dict['Stories'].append(len(sim_bldg.hasStory))
-        sample_dict['Value'].append(sim_bldg.hasElement['Roof'][0].hasDamageData['value'])
-        sample_dict['Demand Value'].append(sim_bldg.hasElement['Roof'][0].hasDemand['wind speed'])
-        if len(sim_bldg.hasPermitData['disaster']['number']) > 0:
+        sample_dict['Parcel Id'].append(sbldg.hasID)
+        sample_dict['Stories'].append(len(sbldg.hasStory))
+        sample_dict['Value'].append(sbldg.hasElement['Roof'][0].hasDamageData['value'])
+        sample_dict['Demand Value'].append(sbldg.hasElement['Roof'][0].hasDemand['wind speed'])
+        if len(sbldg.hasPermitData['disaster']['number']) > 0:
             sample_dict['Disaster Permit'].append(True)
-            sample_dict['Permit Description'].append(sim_bldg.hasPermitData['disaster']['description'])
+            sample_dict['Permit Description'].append(sbldg.hasPermitData['disaster']['description'])
         else:
             sample_dict['Disaster Permit'].append(False)
             sample_dict['Permit Description'].append('None')
         if component_type == 'roof cover':
-            sample_dict[component_type].append(sim_bldg.hasElement['Roof'][0].hasCover)
+            sample_dict[component_type].append(sbldg.hasElement['Roof'][0].hasCover)
     pd.DataFrame(sample_dict).to_csv('SampleBuildings.csv', index=False)
     # Step 5: Get the prior:
     if hazard_type == 'wind' and damage_scale_name == 'HAZUS-HM':
