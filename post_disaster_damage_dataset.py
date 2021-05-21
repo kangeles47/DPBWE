@@ -605,10 +605,11 @@ class FemaHma(PostDisasterDamageDataset):
             # Convert to DataFrame:
             df_fema = pd.DataFrame(new_dict)
             # Remove any rows that do not pertain to damage observations:
-            df_fema = df_fema.drop(df_fema[df_fema['damageCategory'] == 'N/A'].index, inplace=True)
+            df_fema.drop(df_fema[df_fema['damageCategory'] == 'N/A'].index, axis=0, inplace=True)
             df_fema.reset_index()
         else:
             df_fema = pd.DataFrame()
+            print('No data currently available for this event via API')
         return df_fema
 
     def add_fema_hma_data(self, bldg, component_type, hazard_type, site, length_unit, damage_scale_name, df_fema, city_flag, zipcode_flag):
@@ -636,6 +637,9 @@ class FemaHma(PostDisasterDamageDataset):
             else:
                 if bldg.hasLocation['County'].upper() == 'BAY':
                     if 'MUNICIPAL' in bldg.hasOccupancy.upper() or 'COUNTY' in bldg.hasOccupancy.upper():
+                        res_type = 'NON-RESIDENTIAL - PUBLIC'
+                elif bldg.hasLocation['County'].upper() == 'COLLIER' or bldg.hasLocation['County'].upper() == 'MONROE':
+                    if 'COUNT' in bldg.hasOccupancy.upper():
                         res_type = 'NON-RESIDENTIAL - PUBLIC'
                 else:
                     pass
@@ -746,4 +750,4 @@ class FemaHma(PostDisasterDamageDataset):
                     pass
         else:
             df_sub = pd.DataFrame()
-        return data_details, df_damage
+        return data_details, df_sub
