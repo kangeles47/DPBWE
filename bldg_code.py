@@ -133,7 +133,7 @@ class FBC(BldgCode):
                 # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
                 if 'BUILT' in roof_cover or 'METAL SURFACING' in roof_cover or 'PLY' in roof_cover or 'CONCRETE' in roof_cover or 'RUBBER' in roof_cover:
                     parcel.hasElement['Roof'][0].hasPitch = 'flat'  # roof slopes under 2:12
-                    parcel.hasElement['Roof'][0].hasShape = 'flat'
+                    parcel.hasElement['Roof'][0].hasShape['flat'] = True
                 elif 'WOOD' in roof_cover or 'TILE' in roof_cover or 'SHINGLES' in roof_cover or 'SHNGL' in roof_cover:
                     parcel.hasElement['Roof'][0].hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
                 else:
@@ -906,23 +906,55 @@ class ASCE7(BldgCode):
 
     def get_rcover_case(self, bldg):
         # Roof C&C cases vary based on the roof pitch:
+        rcover_case = 0
         if self.hasEdition != 'ASCE 7-16':
             if (bldg.hasGeometry['Length Unit'] == 'ft' and bldg.hasGeometry['Height'] <= 60) or (
                     bldg.hasGeometry['Length Unit'] == 'm' and bldg.hasGeometry['Height'] <= 18.29):
                 if self.hasEdition != 'ASCE 7-95' or self.hasEdition != 'ASCE 7-93' or self.hasEdition != 'ASCE 7-88':
-                    if bldg.hasElement['Roof'][0].hasPitch <= 7 or bldg.hasElement['Roof'][0].hasShape['flat']:
-                        rcover_case = 1  # Case 1 : gable roofs with theta <= 7 degrees
-                    elif 7 < bldg.hasElement['Roof'][0].hasPitch <= 27 or ('shallow' in bldg.hasElement['Roof'][0].hasPitch) or bldg.hasElement['Roof'][0].hasShape == 'hip':
-                        rcover_case = 2  # Case 2: gable/hip roofs with 7 < theta < 27
-                    elif 27 < bldg.hasElement['Roof'][0].hasPitch <= 45 or ('steep' in bldg.hasElement['Roof'][0].hasPitch):
-                        rcover_case = 3  # Case 3: gable roofs with 27< theta <= 45
+                    if bldg.hasElement['Roof'][0].hasPitch is not None:
+                        if isinstance(bldg.hasElement['Roof'][0].hasPitch, str):  # qualitative roof pitch:
+                            if 'shallow' in bldg.hasElement['Roof'][0].hasPitch:
+                                rcover_case = 2  # Case 2: gable/hip roofs with 7 < theta < 27
+                            elif 'steep' in bldg.hasElement['Roof'][0].hasPitch:
+                                rcover_case = 3  # Case 3: gable roofs with 27< theta <= 45
+                        else:  # quantitative roof pitch
+                            if bldg.hasElement['Roof'][0].hasPitch <= 7 or bldg.hasElement['Roof'][0].hasShape['flat']:
+                                rcover_case = 1  # Case 1 : gable roofs with theta <= 7 degrees
+                            elif 7 < bldg.hasElement['Roof'][0].hasPitch <= 27:
+                                rcover_case = 2  # Case 2: gable/hip roofs with 7 < theta < 27
+                            elif 27 < bldg.hasElement['Roof'][0].hasPitch <= 45:
+                                rcover_case = 3  # Case 3: gable roofs with 27< theta <= 45
+                    else:
+                        pass
+                    if rcover_case == 0:
+                        # Try using the roof's shape to find use case:
+                        if bldg.hasElement['Roof'][0].hasShape['flat']:
+                            rcover_case = 1  # Case 1 : gable roofs with theta <= 7 degrees
+                        elif bldg.hasElement['Roof'][0].hasShape['hip']:
+                            rcover_case = 2  # Case 2: gable/hip roofs with 7 < theta < 27
+                    else:
+                        pass
                 else:
-                    if bldg.hasElement['Roof'][0].hasPitch <= 10 or bldg.hasElement['Roof'][0].hasShape['flat']:
-                        rcover_case = 1  # Case 1 : gable roofs with theta <= 10 degrees
-                    elif (bldg.hasElement['Roof'][0].hasShape['gable'] or bldg.hasElement['Roof'][0].hasShape['gable/hip combo']) and 10 < bldg.hasElement['Roof'][0].hasPitch <= 45:
-                        rcover_case = 2  # Case 2: gable roofs with 10 < theta < 45
-                    elif ((bldg.hasElement['Roof'][0].hasShape['hip'] or bldg.hasElement['Roof'][0].hasShape['gable/hip combo']) and 10 < bldg.hasElement['Roof'][0].hasPitch <= 30) or ('steep' in bldg.hasElement['Roof'][0].hasPitch):
-                        rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
+                    if bldg.hasElement['Roof'][0].hasPitch is not None:
+                        if isinstance(bldg.hasElement['Roof'][0].hasPitch, str):
+                            pass   # Need to find a way to distinguish between shallow/steep --> hip/gable
+                        else:
+                            if bldg.hasElement['Roof'][0].hasPitch <= 10:
+                                rcover_case = 1  # Case 1 : gable roofs with theta <= 10 degrees
+                            elif 10 < bldg.hasElement['Roof'][0].hasPitch <= 45 and bldg.hasShape['gable']:
+                                rcover_case = 2  # Case 2: gable roofs with 10 < theta < 45
+                            elif 10 < bldg.hasElement['Roof'][0].hasPitch <= 30 and (bldg.hasShape['hip'] or bldg.hasShape['gable/hip combo']):
+                                rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
+                    else:
+                        pass
+                    if rcover_case == 0:
+                        # Try using the roof's shape to find use case:
+                        if bldg.hasElement['Roof'][0].hasShape['flat']:
+                            rcover_case = 1  # Case 1 : gable roofs with theta <= 10 degrees
+                        elif bldg.hasElement['Roof'][0].hasShape['gable']:
+                            rcover_case = 2  # Case 2: gable roofs with 10 < theta < 45
+                        elif bldg.hasElement['Roof'][0].hasShape['hip']:
+                            rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
             else:
                 rcover_case = 8
         else:
