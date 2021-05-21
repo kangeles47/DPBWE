@@ -113,9 +113,9 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
     # Step 6: Populate variables with list of post-disaster damage dataset types and file paths:
     from post_disaster_damage_dataset import FemaHma, FemaIahrld
     data_types = [FemaHma(), FemaIahrld()]
-    file_paths = ['API', 'API']
+    file_paths = ['C:/Users/Karen/Desktop/HazardMitigationAssistanceMitigatedProperties.csv', 'API']
     # Step 7: Run the workflow:
-    execute_fragility_workflow(parcel_id, site, component_type=component_type, hazard_type=hazard_type,
+    execute_fragility_workflow(bldg, site, component_type=component_type, hazard_type=hazard_type,
                                event_year=2017, event_name='Hurricane Irma', data_types=data_types,
                                file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='05/20/2021',
                                hazard_file_path=hazard_file_path)
