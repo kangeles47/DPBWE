@@ -373,9 +373,9 @@ class Building(Zone):
         self.get_location_data()
         # Tag the building as "commercial" or "not commercial"
         comm_occupancies = ['PROFESS', 'HOTEL', 'MOTEL', 'FINANCIAL', 'COMMERCIAL', 'HOSP', 'MIXED',
-                            'MUNICIPAL', 'OFFICE', 'CONDO', 'COUNTY', 'FEDERAL', 'STORE', 'REST', 'COMMON',
+                            'MUNICIPAL', 'OFFICE', 'CONDO', 'COUNT', 'FEDERAL', 'STORE', 'REST', 'COMMON',
                             'PRIVATE', 'SCH', 'SUPERMAR', 'CAMPS', 'COMMUNITY']  # example occupancies
-        if self.hasOccupancy.lower() in comm_occupancies:
+        if any([occ in self.hasOccupancy.upper().split() for occ in comm_occupancies]):
             self.isComm = True
         else:
             self.isComm = False
