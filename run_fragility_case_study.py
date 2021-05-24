@@ -74,7 +74,7 @@ def run_hm_study(inventory='D:/Users/Karen/Documents/Github/DPBWE/BC_CParcels.cs
 
 
 def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_type='wind',
-                 hazard_file_path='D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/ARA_Hurricane_Irma_Windspeed.csv', component_type='roof cover', parcel_id='57360360006'):
+                 hazard_file_path='D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/ARA_Hurricane_Irma_Windspeed_v12.csv', component_type='roof cover', parcel_id='57360360006'):
     # Irma case study:
     # Step 1: Create a Site Class that will hold all parcel-specific data models:
     site = Site()
