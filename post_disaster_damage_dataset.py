@@ -558,8 +558,8 @@ class FemaIahrld(PostDisasterDamageDataset):
                 else:
                     pass
         else:
-            pass
-        return data_details
+            df_sub = pd.DataFrame()
+        return data_details, df_sub
 
 
 class FemaHma(PostDisasterDamageDataset):
