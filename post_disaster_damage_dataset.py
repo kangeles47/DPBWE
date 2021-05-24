@@ -133,18 +133,9 @@ class STEER(PostDisasterDamageDataset):
             for key in self.hasHazard:
                 if key in df_steer['hazards_present'][idx].lower():
                     self.hasHazard[key] = True
-            data_details['hazard damage rating']['wind'] = df_steer['wind_damage_rating'][idx]
-            data_details['hazard damage rating']['surge'] = df_steer['surge_damage_rating'][idx]
-            data_details['hazard damage rating']['rain'] = df_steer['rainwater_ingress_damage_rating'][idx]
-            # Update building and component-level attributes:
-            bldg.hasStructuralSystem = df_steer['mwfrs'][idx]
-            #bldg.hasElement['Roof'].hasCover = df_steer['roof_cover'][idx]
-            bldg.hasElement['Roof'][0].hasShape[df_steer['roof_shape'][idx].lower()] = True
-            if bldg.hasElement['Roof'][0].hasPitch is None:
-                bldg.hasElement['Roof'][0].hasPitch = df_steer['roof_slope'][idx]
-            if bldg.hasElement['Roof'][0].hasYearBuilt is not None:
-                if int(df_steer['reroof_year'][idx]) > bldg.hasElement['Roof'][0].hasYearBuilt:
-                    bldg.hasElement['Roof'][0].hasYearBuilt = int(df_steer['reroof_year'][idx])
+            #data_details['hazard damage rating']['wind'] = df_steer['wind_damage_rating'][idx]
+            #data_details['hazard damage rating']['surge'] = df_steer['surge_damage_rating'][idx]
+            #data_details['hazard damage rating']['rain'] = df_steer['rainwater_ingress_damage_rating'][idx]
             # Extract component-level damage descriptions if the desired hazard is present:
             if self.hasHazard[hazard_type]:
                 # Extract component-level damage descriptions:
