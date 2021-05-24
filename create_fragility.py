@@ -12,7 +12,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
     sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type, event_year)
     # Step 2: Find damage descriptions for each building:
     # Create dictionary to track pertinent sample building info (data visualization):
-    sample_dict = {'Parcel Id': [], component_type: [], 'Stories': [], 'Disaster Permit': [], 'Permit Description': [], 'Demand Value': [], 'Value': []}
+    sample_dict = {'Parcel Id': [], 'Address': [], component_type: [], 'Stories': [], 'Disaster Permit': [], 'Permit Description': [], 'Demand Value': [], 'Value': []}
     for sbldg in sim_bldgs:
         data_details_list = []
         avail_flag = False
@@ -61,6 +61,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                 pass
         # Step 5: Export attributes for all sample buildings:
         sample_dict['Parcel Id'].append(sbldg.hasID)
+        sample_dict['Address'].append(sbldg.hasLocation['Address'])
         sample_dict['Stories'].append(len(sbldg.hasStory))
         sample_dict['Value'].append(sbldg.hasElement['Roof'][0].hasDamageData['value'])
         sample_dict['Demand Value'].append(sbldg.hasElement['Roof'][0].hasDemand['wind speed'])
@@ -83,42 +84,38 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
 
 
 def get_fragility_input(sim_bldgs, damage_scale_name, component_type, hazard_type):
-    # Step 1: Extract data pairs (degree of damage, demand value):
-    # Specify demand parameter for the hazard:
-    if hazard_type == 'wind':
-        demand_param = 'wind speed'
-    # Instantiate generic dataset object to gather damage scale info:
+    # Step 1: Instantiate generic dataset object to gather damage scale info:
     gen_dataset = post_disaster_damage_dataset.PostDisasterDamageDataset()
     gen_dataset.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
-    # Data pairs in failure datasets provide the following information:
-    # (1) Degree of damage of the bldg/component
-    # (2) Demand value
-    # Use component-level damage descriptions to partition damage for specified scale:
-    if len(gen_dataset.hasDamageScale['component damage states']['number']) > 0:
-        # Create empty list to hold all data pairs:
-        data_pairs = []
-        # Now check if sample buildings have component-level damage states:
-        for bldg in sim_bldgs:
-            if component_type == 'roof cover':
-                if bldg.hasElement['Roof'][0].hasDamageData['available']:
-                    bldg_dscale = bldg.hasElement['Roof'][0].hasDamageData['fidelity'].hasDamageScale
-                    if bldg_dscale['type'] != damage_scale_name:
-                        if len(bldg_dscale['component damage states']['number']) > 0:
-                            pass
+    # Step 2: Translate component-level damage into discrete damage measures
+    # and create (degree of damage, demand) data pairs:
+    data_pairs = []
+    for bldg in sim_bldgs:
+        if component_type == 'roof cover':
+            if bldg.hasElement['Roof'][0].hasDamageData['available']:
+                # Use component-level descriptions to find equivalent damage measure:
+                for dm in range(0, len(gen_dataset.hasDamageScale['component damage states']['number'])):
+                    if isinstance(gen_dataset.hasDamageScale['component damage states']['value'], list):
+                        if isinstance(bldg.hasElement['Roof'][0].hasDamageData['value'], list):
+                            if (bldg.hasElement['Roof'][0].hasDamageData['value'][0] <= gen_dataset.hasDamageScale['component damage states']['value'][dm][0]) and (bldg.hasElement['Roof'][0].hasDamageData['value'][1] <= gen_dataset.hasDamageScale['component damage states']['value'][dm][1]):
+                                new_tuple = (gen_dataset.hasDamageScale['component damage states']['number'][dm], bldg.hasElement['Roof'][0].hasDemand['wind speed'])
+                            else:
+                                pass
                         else:
-                            global_flag = True
-                            break  # Cannot create fragilities based solely on component-level damage states
-                    else:  # Buildings with matching damage scale
-                        new_tuple = (bldg.hasElement['Roof'][0].hasDamageData['hazard damage rating'][hazard_type],
-                                    bldg.hasElement['Roof'][0].hasDemand['wind speed'])
-                else:  # Buildings w/o damage observations
-                    new_tuple = (0, bldg.hasElement['Roof'][0].hasDemand['wind speed'])
-            else:
-                pass
-            data_pairs.append(new_tuple)
-    else:  # use global damage scale instead
-        print('No component-level damage states available for this damage scale')
-    # Step 2: Create dichotomous failure datasets for each damage measure:
+                            if gen_dataset.hasDamageScale['component damage states']['value'][dm][0] <= bldg.hasElement['Roof'][0].hasDamageData['value'] <= gen_dataset.hasDamageScale['component damage states']['value'][dm][1]:
+                                new_tuple = (gen_dataset.hasDamageScale['component damage states']['number'][dm],
+                                             bldg.hasElement['Roof'][0].hasDemand['wind speed'])
+                            else:
+                                pass
+                    else:
+                        print('discrete damage measures not currently supported')
+            else:  # Buildings w/o damage observations
+                new_tuple = (0, bldg.hasElement['Roof'][0].hasDemand['wind speed'])
+        else:
+            pass
+        data_pairs.append(new_tuple)
+    print(data_pairs)
+    # Step 3: Create dichotomous failure datasets for each damage measure:
     dichot_dict = {}
     for ds in gen_dataset.hasDamageScale['component damage states']['number']:
         bldg_fail = []
