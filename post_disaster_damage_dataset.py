@@ -33,7 +33,7 @@ class PostDisasterDamageDataset:
                 comp_ds_nums = [0, 1, 2, 3, 4]
                 comp_ds_desc = ['No Damage', 'Minor Damage', 'Moderate Damage', 'Severe Damage', 'Destruction']
                 if component_type == 'roof cover':
-                    comp_ds_vals = [[0, 2], [2, 15], [15, 50], [50, 100], [50, 100]]
+                    comp_ds_vals = [[0, 2], [2, 15], [15, 50], [50, 100], [100, 100]]
                 else:
                     print('Component damage values not supported for ' + damage_scale_name + 'and ' + component_type)
         elif damage_scale_name == 'WF':
