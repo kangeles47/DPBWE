@@ -55,7 +55,7 @@ class PostDisasterDamageDataset:
             self.hasDamageScale['type'] = 'FEMA Geospatial'
             if global_flag:
                 global_ds_nums = [0, 1, 2, 3, 4]
-                global_ds_desc = ['Affected', 'Minor Damage', 'Major/Severe Damage', 'Destroyed']
+                global_ds_desc = ['No Damage', 'Minor Damage', 'Major/Severe Damage', 'Destroyed']
                 global_ds_vals = []
             if component_flag:
                 comp_ds_nums = []
@@ -66,7 +66,7 @@ class PostDisasterDamageDataset:
             self.hasDamageScale['type'] = 'FEMA HMA'
             global_ds_nums = [0, 1, 2]
             global_ds_desc = ['Damage <= 49%', 'Damage >=50%', 'Total Loss']
-            global_ds_vals = []
+            global_ds_vals = [[0-49], [50, 99], 100]
             if component_flag:
                 if 'roof' in component_type:
                     comp_ds_nums = [0, 1, 2]
@@ -110,41 +110,47 @@ class STEER(PostDisasterDamageDataset):
         self.hasType['field observations'] = True
 
     def add_steer_data(self, bldg, component_type, hazard_type, steer_file_path):
-        # Load the StEER Dataset:
+        """
+        A function to search for StEER damage observations for the specified building.
+
+        :param bldg: Parcel or Building object with complete hasLocation attribute.
+        :param component_type: String specifying the component type.
+        :param hazard_type: String specifying the hazard type.
+        :param steer_file_path: File path to the event's StEER dataset.
+        :return: data_details: Dictionary with information about data availability, dataset fidelity,
+                               the component type, hazard type, and damage description.
+        """
+        # Step 1: Load the StEER Dataset:
         df_steer = pd.read_csv(steer_file_path)
-        df_steer['address_full'] = df_steer['address_full'].str.lower().replace(' ', '')  # Data clean-up
+        df_steer['address_full'] = df_steer['address_full'].str.upper().replace(' ', '')  # Data clean-up
         df_steer['address_full'] = df_steer['address_full'].str.replace(' ', '')
-        # Define the parcel identifier:
+        # Step 2: Define the parcel identifier:
         # Parcel identifier should be the parcel's address in the following format (not case-sensitive):
         # 1842 BRIDGE ST Panama City BAY FL 32409 USA (number, street, city, county, state, zip, country)
         parcel_identifier = bldg.hasLocation['Street Number'] + ' ' + bldg.hasLocation['City'] + ' ' + bldg.hasLocation['County'] + ' ' + bldg.hasLocation['State'] + ' ' + bldg.hasLocation['Zip Code'] + ' USA'
-        parcel_identifier = parcel_identifier.lower().replace(' ', '')  # Data clean-up
-        # Set up dictionary with details of data for this bldg, component, hazard:
+        parcel_identifier = parcel_identifier.upper().replace(' ', '')  # Data clean-up
+        # Step 3: # Set up data_details dictionary:
         data_details = {'available': False, 'fidelity': self, 'component type': component_type,
-                        'hazard type': hazard_type,
-                        'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
+                        'hazard type': hazard_type, 'value': None}
+        # Step 4: Look for damage observation for the given component and hazard type:
         try:
             # Check if the parcel has a StEER observation at its exact location:
             idx = df_steer.loc[df_steer['address_full'] == parcel_identifier].index[0]
             self.hasDate = df_steer['date'][idx]
             # Update the Location Precision attribute:
             self.hasLocationPrecision['street level'] = False
-            # Extract StEER damage data:
+            # Update damage dataset hazard info:
             for key in self.hasHazard:
                 if key in df_steer['hazards_present'][idx].lower():
                     self.hasHazard[key] = True
-            #data_details['hazard damage rating']['wind'] = df_steer['wind_damage_rating'][idx]
-            #data_details['hazard damage rating']['surge'] = df_steer['surge_damage_rating'][idx]
-            #data_details['hazard damage rating']['rain'] = df_steer['rainwater_ingress_damage_rating'][idx]
             # Extract component-level damage descriptions if the desired hazard is present:
             if self.hasHazard[hazard_type]:
-                # Extract component-level damage descriptions:
                 if component_type == 'roof cover':
                     # Check if there are roof-related damage descriptions:
                     if df_steer['roof_cover_damage_'][idx] > 0:
                         data_details['available'] = True
                         data_details['value'] = df_steer['roof_cover_damage_'][idx]
-                        # Update the damage data details:
+                        # Update dataset object damage scale:
                         self.get_damage_scale('HAZUS-HM', 'roof cover', global_flag=True, component_flag=True)
             else:
                 pass
