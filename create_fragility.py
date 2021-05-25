@@ -8,7 +8,27 @@ import post_disaster_damage_dataset
 
 
 def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, analysis_date, hazard_file_path):
-    # Step 1: Find similar buildings: features, load path for the given hazard (may include your building as well)
+    """
+    A function that runs the automated updating of component-level fragilities using heterogeneous post-disaster damage
+    datasets.
+    :param bldg: Parcel or Building object with case study structure's attributes
+    :param site: Site Object with hasBuilding attribute that contains data models for building inventory
+    :param component_type: String specifying the component under consideration (e.g., roof_cover)
+    :param hazard_type: String specifying the hazard under consideration (e.g., wind)
+    :param event_year: Number specifying the year of the event (e.g., 2016)
+    :param event_name: String specifying the name of the event (e.g., Hurricane Michael). Write 'N/A' if not applicable.
+    :param data_types: List containing generic instances of classes within the PostDisasterDamageDataset class
+    :param file_paths: List containing the file paths to each post-disaster damage dataset, in same order as data_types.
+                       Option to specify 'API' for FEMA Claims data types.
+    :param damage_scale_name: String specifying the name of the damage scale that will be used to produce fragilities
+                              (e.g., 'HAZUS-HM')
+    :param analysis_date: String specifying date for the analysis in month-day-year format: '00-00-0000'
+                          Useful for exploring time-varying nature of data.
+    :param hazard_file_path: String specifying the file path for the associated hazard dataset
+    :return: fragility_dict: A dictionary with keys = damage state number and values = fragility parameter samples from the posterior distribution.
+    """
+    # Step 1: Sample building selection
+    # For the given hazard, component type, find buildings with similar features, load path:
     sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type, event_year)
     # Step 2: Find damage descriptions for each building:
     # Create dictionary to track pertinent sample building info (data visualization):
@@ -37,21 +57,24 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                 else:
                     df_fema = pd.read_csv(file_paths[i])
                 data_details, df_sub = data_types[i].add_fema_hma_data(sbldg, component_type, hazard_type, site, length_unit, damage_scale_name, df_fema, city_flag=False, zipcode_flag=False)
+            # Check if damage data is available for this data source:
             if data_details['available']:
                 avail_flag = True
                 data_details_list.append(data_details)
             else:
                 pass
-        # Step 3: Choose the best data for each bldg/component:
+        # Step 3: Damage data selection
+        # Choose the best data for each bldg/component: Data Utility Index
         if avail_flag:
-            best_data = get_best_data(data_details_list, analysis_date)  # Data Fidelity Index
+            best_data = get_best_data(data_details_list, analysis_date)
         else:
+            # Dummy values for buildings with no observations:
             best_data = data_details.copy()
             best_data['fidelity'] = None
-        # Add data to building data model:
+        # Add best data to building data model:
         sbldg.hasDamageData['roof cover'] = best_data
         sbldg.hasElement['Roof'][0].hasDamageData = best_data
-        # Step 4: Get the intensity measure or engineering demand parameter for this building:
+        # Step 4: Get demand data and add to building data model:
         if hazard_type == 'wind':
             if component_type == 'roof cover':
                 z = bldg.hasGeometry['Height']
@@ -59,27 +82,30 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                                                                                               exposure='C', unit='english')
             else:
                 pass
-        # Step 5: Export attributes for all sample buildings:
+        # Step 5: Export attributes for all sample buildings (for sanity checking):
         sample_dict['Parcel Id'].append(sbldg.hasID)
         sample_dict['Address'].append(sbldg.hasLocation['Address'])
         sample_dict['Stories'].append(len(sbldg.hasStory))
         sample_dict['Value'].append(sbldg.hasElement['Roof'][0].hasDamageData['value'])
         sample_dict['Demand Value'].append(sbldg.hasElement['Roof'][0].hasDemand['wind speed'])
+        # Export permit descriptions when available as well:
         if len(sbldg.hasPermitData['disaster']['number']) > 0:
             sample_dict['Disaster Permit'].append(True)
             sample_dict['Permit Description'].append(sbldg.hasPermitData['disaster']['description'])
         else:
             sample_dict['Disaster Permit'].append(False)
             sample_dict['Permit Description'].append('None')
+        # Export component type for verification:
         if component_type == 'roof cover':
             sample_dict[component_type].append(sbldg.hasElement['Roof'][0].hasCover)
     pd.DataFrame(sample_dict).to_csv('SampleBuildings.csv', index=False)
-    # Step 5: Get the prior:
+    # Step 6: Bayesian Parameter Estimation
+    # Step 6a: Populate the prior:
     if hazard_type == 'wind' and damage_scale_name == 'HAZUS-HM':
         pass
     else:
         pass
-    # Step 6: Get input parameters necessary to conduct point and Bayesian estimates of fragility parameters:
+    # Step 6b: Get input parameters for the likelihood function:
     get_fragility_input(sim_bldgs, damage_scale_name, component_type, hazard_type)
 
 
