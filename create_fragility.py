@@ -106,10 +106,23 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
     else:
         pass
     # Step 6b: Get input parameters for the likelihood function:
-    get_fragility_input(sim_bldgs, damage_scale_name, component_type, hazard_type)
+    lparams = get_likelihood_params(sim_bldgs, damage_scale_name, component_type, hazard_type)
 
 
-def get_fragility_input(sim_bldgs, damage_scale_name, component_type, hazard_type):
+def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type):
+    """
+    Translates component-level damage descriptions (discrete or continuous) into discrete damage measures
+    for the specified damage_scale_name.
+    Creates data pairs of (degree of damage, demand) for each building in sim_bldgs.
+    Populates dichotomous failure dataset for each damage measure for the specified damage_scale_name.
+
+    :param sim_bldgs: List with data models of all identified sample buildings
+    :param damage_scale_name: String specifying the damage scale that will be used for generation of fragilities
+    :param component_type: String specifying the component type
+    :param hazard_type: String specifying the hazard type
+    :return: dichot_dict: A dictionary with keys = damage measure number and values = list with failure data pairs
+                         for each building: (1 or 0, demand)
+    """
     # Step 1: Instantiate generic dataset object to gather damage scale info:
     gen_dataset = post_disaster_damage_dataset.PostDisasterDamageDataset()
     gen_dataset.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
@@ -124,19 +137,23 @@ def get_fragility_input(sim_bldgs, damage_scale_name, component_type, hazard_typ
                     if isinstance(gen_dataset.hasDamageScale['component damage states']['value'], list):
                         if isinstance(bldg.hasElement['Roof'][0].hasDamageData['value'], list):
                             if (bldg.hasElement['Roof'][0].hasDamageData['value'][0] <= gen_dataset.hasDamageScale['component damage states']['value'][dm][0]) and (bldg.hasElement['Roof'][0].hasDamageData['value'][1] <= gen_dataset.hasDamageScale['component damage states']['value'][dm][1]):
-                                new_tuple = (gen_dataset.hasDamageScale['component damage states']['number'][dm], bldg.hasElement['Roof'][0].hasDemand['wind speed'])
+                                new_dm = gen_dataset.hasDamageScale['component damage states']['number'][dm]
+                                break
                             else:
                                 pass
                         else:
                             if gen_dataset.hasDamageScale['component damage states']['value'][dm][0] <= bldg.hasElement['Roof'][0].hasDamageData['value'] <= gen_dataset.hasDamageScale['component damage states']['value'][dm][1]:
-                                new_tuple = (gen_dataset.hasDamageScale['component damage states']['number'][dm],
-                                             bldg.hasElement['Roof'][0].hasDemand['wind speed'])
+                                new_dm = gen_dataset.hasDamageScale['component damage states']['number'][dm]
+                                break
                             else:
                                 pass
                     else:
                         print('discrete damage measures not currently supported')
             else:  # Buildings w/o damage observations
-                new_tuple = (0, bldg.hasElement['Roof'][0].hasDemand['wind speed'])
+                new_dm = 0
+            # Create new (degree of damage, demand) data pair:
+            if hazard_type == 'wind':
+                new_tuple = (new_dm, bldg.hasElement['Roof'][0].hasDemand['wind speed'])
         else:
             pass
         data_pairs.append(new_tuple)
@@ -154,16 +171,22 @@ def get_fragility_input(sim_bldgs, damage_scale_name, component_type, hazard_typ
                 else:
                     bldg_fail.append((0, pair[1]))
         dichot_dict[ds] = bldg_fail
-    # Step 3: Get input parameters for each damage state fragility:
-    lparams = get_likelihood_params(dichot_dict)
-    # Step 4: Conduct the Bayesian parameter estimation:
-    for k in lparams:
-        pass
-    # Step 5: Conduct the MLE:
-    #mle_params = get_point_estimate(lparams)
+    return dichot_dict
 
 
-def get_likelihood_params(dichot_dict):
+def get_likelihood_params(sim_bldgs, damage_scale_name, component_type, hazard_type):
+    """
+    A function that generates the input parameters for the likelihood function.
+
+    :param sim_bldgs: (input for get_dichot_dict) List with data models of all identified sample buildings
+    :param damage_scale_name: (input for get_dichot_dict) String specifying the damage scale that will be used for generation of fragilities
+    :param component_type: (input for get_dichot_dict) String specifying the component type
+    :param hazard_type: (input for get_dichot_dict) String specifying the hazard type
+    :return: lparams: Dictionary. 'demand' key-value: list of demand values where building damage/no damage observed.
+                      'total' key-value: the total number of buildings observed at the demand value.
+                      'fail' key-value: the number of buildings with failures observed at the demand value.
+    """
+    dichot_dict = get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type)
     lparams = {}
     for key in dichot_dict:
         if key == 0:
