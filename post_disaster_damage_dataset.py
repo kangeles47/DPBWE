@@ -170,16 +170,26 @@ class BayCountyPermits(PostDisasterDamageDataset):
 
     def add_disaster_permit_data(self, bldg, component_type, hazard_type, site,
                                  permit_file_path, length_unit, damage_scale_name):
-        # First activate the damage scale that will be used:
+        """
+        A function to find damage descriptions from disaster building permits for buildings in Florida's Bay County.
+
+        :param bldg: Parcel or Building object with ['Street Number'] key filled in hasLocation attribute.
+        :param component_type: String specifying the component type.
+        :param hazard_type: String specifying the hazard type.
+        :param site: Site object with hasBuilding attribute = list of parcel data models for the inventory.
+        :param permit_file_path: String specifying the file path to the disaster permits.
+        :param length_unit: String specifying the length unit of measurement for the analysis (e.g., 'ft', 'm').
+        :param damage_scale_name: String specifying the name of the damage scale that will be used to conduct
+                                  semantic translation of damage descriptions.
+        :return: data_details: Dictionary with information about data availability, dataset fidelity,
+                               the component type, hazard type, and damage description.
+        """
+        # Step 1: Activate the damage scale information that will be used:
         self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
-        # Permit data can be leveraged to inform the presence of disaster-related damage
-        # To bring in permit data, there needs to be a way to map permit number to parcel
-        # E.g., the permit may be listed in the parcel's property listing or
-        # the permit database may have the parcel's address
-        # Load the disaster permit data:
+        # Step 2: Load the disaster permit data:
         df = pd.read_csv(permit_file_path, encoding='unicode_escape')
-        # Find disaster permit descriptions for the parcel:
-        if len(bldg.hasPermitData['disaster']['number']) > 0:
+        # Step 3: Find disaster permit descriptions for the parcel:
+        if len(bldg.hasPermitData['disaster']['number']) > 0:  # case when permit number was included in parcel data
             for p in bldg.hasPermitData['disaster']['number']:
                 idx = df.loc[df['PERMITNUMBER'] == p].index[0]
                 bldg.hasPermitData['disaster']['description'].append(df['DESCRIPTION'][idx].upper())
@@ -193,7 +203,7 @@ class BayCountyPermits(PostDisasterDamageDataset):
                         self.hasDate = '00/00/2020'
                 else:
                     self.hasDate = df['ISSUED'][idx]
-        else:
+        else:  # case when we need to search for the permit in the dataset
             # Find the disaster permit descriptions using the parcel identifier
             parcel_identifier = bldg.hasLocation['Street Number'].upper()
             try:
@@ -213,19 +223,31 @@ class BayCountyPermits(PostDisasterDamageDataset):
                         self.hasDate = df['ISSUED'][i]
             except IndexError:
                 pass  # No disaster permits available for this parcel
-        # Find the component damage using the permit description:
+        # Step 4: Conduct semantic translations of permit descriptions for the component and hazard types:
         if len(bldg.hasPermitData['disaster']['number']) > 0:
             data_details = self.get_dis_permit_damage(bldg, component_type, hazard_type, site, length_unit)
         else:
             data_details = {'available': False, 'fidelity': self, 'component type': component_type,
-                            'hazard type': hazard_type,
-                            'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
+                            'hazard type': hazard_type, 'value': None}
         return data_details
 
     def get_dis_permit_damage(self, bldg, component_type, hazard_type, site, length_unit):
+        """
+        A function to conduct the semantic translation of permit descriptions.
+
+        :param bldg: Parcel or Building object with total floor area information.
+        :param component_type: String specifying the component type.
+        :param hazard_type: String specifying the hazard type.
+        :param site: Site object with hasBuilding attribute = list of parcel data models for the inventory.
+        :param length_unit: String specifying the length unit of measurement for the analysis (e.g., 'ft', 'm').
+        :return: data_details: Dictionary with information about data availability, dataset fidelity,
+                               the component type, hazard type, and damage description.
+        """
+        # Step 1: Populate data_details dictionary:
         data_details = {'available': False, 'fidelity': self, 'component type': component_type,
                         'hazard type': hazard_type,
                         'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
+        # Step 2: Loop through permit descriptions and conduct semantic translations:
         # Allocate empty lists to gather damage information:
         if component_type == 'roof cover' and hazard_type == 'wind':
             # Loop through the bldg's disaster permits:
@@ -242,7 +264,7 @@ class BayCountyPermits(PostDisasterDamageDataset):
                         # Check if parcel shares a parcel number ( > 1 buildings in lot):
                         area = bldg.hasGeometry['Total Floor Area']
                         for b in site.hasBuilding:
-                            if b.hasID == bldg.hasID:
+                            if b.hasID == bldg.hasID or (b.hasLocation['Address'] == bldg.hasLocation['Address']):
                                 area += b.hasGeometry['Total Floor Area']
                             else:
                                 pass
@@ -290,7 +312,7 @@ class BayCountyPermits(PostDisasterDamageDataset):
                                         self.hasDamagePrecision['component, discrete'] = True
                             else:
                                 pass
-                                # If no quantiative descriptions available, then convert the qualitative description:
+                                # If no quantitative descriptions available, then translate the qualitative description:
                         if data_details['value'] is None:
                             desc = bldg.hasPermitData['disaster']['description'][p]
                             rcover_damage_cat, rcover_damage_percent = self.rcover_percent_damage_qual(desc)
@@ -316,7 +338,16 @@ class BayCountyPermits(PostDisasterDamageDataset):
             pass
         return data_details
 
-    def rcover_damage_percent(self, total_area, stories, num_roof_squares, unit):
+    def rcover_damage_percent(self, total_area, stories, num_roof_squares, length_unit):
+        """
+        A function to translate roof square quantities into percentages of roof cover damage.
+
+        :param total_area: The total floor area of the building.
+        :param stories: The number of stories in the building.
+        :param num_roof_squares: The number of roof squares specified in the permit description.
+        :param length_unit: The length unit of measurement.
+        :return: rcover_damage_percent: The percent of roof cover damage: roof square area/footprint area * 100
+        """
         try:
             total_area = float(total_area)
         except:
@@ -326,9 +357,9 @@ class BayCountyPermits(PostDisasterDamageDataset):
         else:
             stories = float(stories)
         floor_area = total_area / stories
-        if unit == 'ft':
+        if length_unit == 'ft':
             roof_square = 100  # sq_ft
-        elif unit == 'm':
+        elif length_unit == 'm':
             roof_square = 100 / 10.764  # sq m
         rcover_damage_percent = 100 * (roof_square * num_roof_squares / floor_area)
         if rcover_damage_percent > 100:
@@ -338,6 +369,14 @@ class BayCountyPermits(PostDisasterDamageDataset):
         return rcover_damage_percent
 
     def rcover_percent_damage_qual(self, desc):
+        """
+        A function to translate qualitative roof damage descriptions into a range of roof cover damage percentages
+        using the specified damage scale.
+
+        :param desc: The qualitative damage description.
+        :return: rcover_damage_cat: The damage category (or measure) the roof cover damage description was translated to.
+                 rcover_damage_percent: A list with two values: lower and upper percentages of roof cover damage.
+        """
         substrings = ['RE-ROO', 'REROOF', 'ROOF REPAIR', 'COMMERCIAL HURRICANE REPAIRS',
                       'ROOF OVER']
         if self.hasDamageScale['type'] == 'HAZUS-HM':
