@@ -456,9 +456,11 @@ class FemaIahrld(PostDisasterDamageDataset):
 
     def pull_fema_iahrld_data(self, event_name):
         """
-        Function to query Individual Assistance Housing Registrants Large Disaster dataset from OpenFEMA and convert to pandas DataFrame
-        :param event_name: the name of the disaster event
-        :return: df_fema: a pandas DataFrame with the data for the specified event
+        Function to query Individual Assistance Housing Registrants Large Disaster dataset from OpenFEMA and convert to
+        DataFrame.
+
+        :param event_name: String specifying the name of the disaster event
+        :return: df_fema: A pandas DataFrame with the data for event_name
         """
         self.hasEventName = event_name
         api_endpoint = 'https://www.fema.gov/api/open/v1/IndividualAssistanceHousingRegistrantsLargeDisasters'
@@ -492,12 +494,25 @@ class FemaIahrld(PostDisasterDamageDataset):
         return df_fema
 
     def add_fema_iahrld_data(self, bldg, component_type, hazard_type, site, length_unit, damage_scale_name, df_fema):
+        """
+
+        :param bldg: Parcel or Building object with hasOccupancy attribute filled.
+        :param component_type: String specifying the component type.
+        :param hazard_type: String specifying the hazard type.
+        :param site: Site object with hasBuildings attribute = list of parcel data models.
+        :param length_unit: String specifying the length unit for the analysis (e.g. 'ft', 'm').
+        :param damage_scale_name: String specifying the name of the damage scale that will be used for the semantic
+                                  translation of data fields to component damage observations.
+        :param df_fema: DataFrame with data from the Individual Assistance Housing Registrants Large Disaster
+                        dataset for a given event.
+        :return: data_details: Dictionary with information about data availability, dataset fidelity,
+                               the component type, hazard type, and damage description.
+                 df_sub: DataFrame with all available observations and their component-level damage
+        """
+        # Step 1: Populate data_details dictionary:
         data_details = {'available': False, 'fidelity': self, 'component type': component_type,
-                        'hazard type': hazard_type,
-                        'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
-        res_types = ['APARTMENT', 'HOUSE/DUPLEX', 'TOWNHOUSE', 'MOBILE HOME', 'CONDO', 'OTHER', 'MILITARY HOUSING',
-                     'BOAT', 'ASSISTED LIVING FACILITY']
-        # First find the appropriate residence type for the query:
+                        'hazard type': hazard_type, 'value': None}
+        # Step 2: Find the appropriate occupancy tag for this building:
         res_type = ''
         if bldg.isComm:
             # Global occupancy codes:
@@ -510,16 +525,16 @@ class FemaIahrld(PostDisasterDamageDataset):
                 if bldg.hasLocation['County'].upper() == 'BAY':
                     if 'COMMON' in bldg.hasOccupancy.upper():
                         res_type = 'CONDO'
-                    elif 'AGED' in bldg.hasOccumpancy.upper():
-                        res_type = 'ASSISTED LIVING FACILITY'
         else:  # Residential occupancy codes
             # Global occupancy codes:
             if 'SINGLE' in bldg.hasOccupancy.upper():
                 res_type = 'HOUSE/DUPLEX'
             elif 'MOBILE' in bldg.hasOccupancy.upper():
                 res_type = 'MOBILE HOME'
-            elif 'APART' in bldg.hasOccupancy.upper():
+            elif 'APART' in bldg.hasOccupancy.upper() or 'MULTI' in bldg.hasOccupancy.upper():
                 res_type = 'APARTMENT'
+            elif 'AGED' in bldg.hasOccumpancy.upper() or 'CONVEL' in bldg.hasOccupancy.upper():
+                res_type = 'ASSISTED LIVING FACILITY'
             else:
                 pass
             # Check if we need county-specific occupancy codes:
@@ -527,14 +542,16 @@ class FemaIahrld(PostDisasterDamageDataset):
                 pass
             else:
                 if bldg.hasLocation['County'].upper() == 'BAY':
-                    if 'MULTI' in bldg.hasOccupancy.upper():
-                        res_type = 'APARTMENT'
+                    pass
                 elif bldg.hasLocation['County'].upper() == 'COLLIER':
                     pass
                 elif bldg.hasLocation['County'].upper() == 'MONROE':
                     pass
                 else:
                     pass
+        # Step 3: Search the DataFrame for similar buildings:
+        res_types = ['APARTMENT', 'HOUSE/DUPLEX', 'TOWNHOUSE', 'MOBILE HOME', 'CONDO', 'OTHER', 'MILITARY HOUSING',
+                     'BOAT', 'ASSISTED LIVING FACILITY']
         # Find subset of dataset with damage observations for the given occupancy, hazard, and component:
         if len(res_type) > 0:
             if hazard_type == 'wind' and ('roof' in component_type):
@@ -578,7 +595,7 @@ class FemaIahrld(PostDisasterDamageDataset):
                         #    pass
                         # Designating component-level damage:
                         for row in range(0, len(df_sub)):
-                            if df_sub['destroyed']:
+                            if df_sub['destroyed'][row]:
                                 damage = 4
                             else:
                                 if not df_sub['floodDamage'][row]:
@@ -609,9 +626,11 @@ class FemaHma(PostDisasterDamageDataset):
 
     def pull_fema_hma_data(self, event_name):
         """
-        Function to query Hazard Mitigation Assistance Mitigated Properties dataset from OpenFEMA and convert to pandas DataFrame
-        :param event_name: the name of the disaster event
-        :return: df_fema: a pandas DataFrame with the damage observations for the specified event
+        Function to query Hazard Mitigation Assistance Mitigated Properties dataset from OpenFEMA and convert to
+        DataFrame. Reports damage observations (i.e., damageCategory data field != 'N/A').
+
+        :param event_name: String specifying the name of the disaster event.
+        :return: df_fema: DataFrame with damage observations for the event_name.
         """
         self.hasEventName = event_name
         api_endpoint = 'https://www.fema.gov/api/open/v2/HazardMitigationAssistanceMitigatedProperties'
@@ -649,9 +668,26 @@ class FemaHma(PostDisasterDamageDataset):
         return df_fema
 
     def add_fema_hma_data(self, bldg, component_type, hazard_type, site, length_unit, damage_scale_name, df_fema, city_flag, zipcode_flag):
+        """
+        A function to find damage observations within the Hazard Mitigation Assistance Mitigated Properties dataset.
+
+        :param bldg: Parcel or Building object with hasOccupancy attribute filled.
+        :param component_type: String specifying the component type.
+        :param hazard_type: String specifying the hazard type.
+        :param site: Site object with hasBuilding attribute = list of parcel data models
+        :param length_unit: String specifying the length measurement unit (e.g., 'ft', 'm')
+        :param damage_scale_name: String specifying the name of the damage scale that will be used for the semantic
+                                  translation of data fields to component damage observations.
+        :param df_fema: DataFrame with data from the Individual Assistance Housing Registrants Large Disaster
+                        dataset for a given event.
+        :param city_flag:
+        :param zipcode_flag:
+        :return: data_details: Dictionary with information about data availability, dataset fidelity,
+                               the component type, hazard type, and damage description.
+                 df_sub: DataFrame with all available observations and their component-level damage
+        """
         data_details = {'available': False, 'fidelity': self, 'component type': component_type,
-                        'hazard type': hazard_type,
-                        'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
+                        'hazard type': hazard_type, 'value': None}
         # First find the appropriate residence type for the query:
         # Note: HMA Buildings are typically govt. bldgs, schools, critical facilities, churches, residential bldgs.
         # Rule-sets listed here are meant to identify building with one of the above subsets.
