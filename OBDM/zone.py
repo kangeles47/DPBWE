@@ -398,6 +398,7 @@ class Building(Zone):
         if zipcode in FloridaZipCodes:
             self.hasLocation['State'] = 'FL'
             if zipcode in BayCountyZipCodes:
+                cities = ['PANAMA CITY BEACH, PANAMA CITY, MEXICO BEACH, LYNN HAVEN, FOUNTAIN, YOUNGSTOWN']
                 self.hasLocation['County'] = 'Bay'
                 if 'PANAMA CITY BEACH' in self.hasLocation['Address']:
                     city = 'PANAMA CITY BEACH'
@@ -405,14 +406,20 @@ class Building(Zone):
                     city = 'PANAMA CITY'
                 elif 'MEXICO BEACH' in self.hasLocation['Address']:
                     city = 'MEXICO BEACH'
+                else:
+                    city = ''
             elif zipcode in MonroeCountyZipCodes:
                 self.hasLocation['County'] = 'Monroe'
                 if 'KEY WEST' in self.hasLocation['Address']:
                     city = 'KEY WEST'
+                else:
+                    city = ''
             elif zipcode in CollierCountyZipCodes:
                 self.hasLocation['County'] = 'Collier'
                 if 'MARCO' in self.hasLocation['Address']:
                     city = 'MARCO ISLAND'
+                else:
+                    city = ''
         else:
             print('County/City/State Information not currently supported')
             city = ''
