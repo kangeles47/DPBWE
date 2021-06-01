@@ -30,9 +30,8 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
     # Step 1: Sample building selection
     # For the given hazard, component type, find buildings with similar features, load path:
     sim_bldgs = get_sim_bldgs.get_sim_bldgs(bldg, site, hazard_type, component_type, event_year)
-    # Step 2: Find damage descriptions for each building:
-    # Create dictionary to track pertinent sample building info (data visualization):
-    sample_dict = {'Parcel Id': [], 'Address': [], component_type: [], 'Stories': [], 'Disaster Permit': [], 'Permit Description': [], 'Demand Value': [], 'Value': []}
+    # Step 2: Find damage descriptions:
+    # Step 2a: Find parcel-specific damage descriptions:
     for sbldg in sim_bldgs:
         data_details_list = []
         avail_flag = False
@@ -43,27 +42,12 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                 length_unit = 'ft'
                 data_details = data_types[i].add_disaster_permit_data(sbldg, component_type, hazard_type, site,
                                  file_paths[i], length_unit, damage_scale_name)
-            elif isinstance(data_types[i], post_disaster_damage_dataset.FemaIahrld):
-                length_unit = 'ft'
-                if file_paths[i] == 'API':
-                    df_fema = data_types[i].pull_fema_iahrld_data(event_name)
-                else:
-                    df_fema = pd.read_csv(file_paths[i])
-                data_details, df_sub = data_types[i].add_fema_iahrld_data(sbldg, component_type, hazard_type, site, length_unit, damage_scale_name, df_fema)
-            elif isinstance(data_types[i], post_disaster_damage_dataset.FemaHma):
-                length_unit = 'ft'
-                if file_paths[i] == 'API':
-                    df_fema = data_types[i].pull_fema_hma_data(event_name)
-                else:
-                    df_fema = pd.read_csv(file_paths[i])
-                data_details, df_sub = data_types[i].add_fema_hma_data(sbldg, component_type, hazard_type, site, length_unit, damage_scale_name, df_fema, city_flag=False, zipcode_flag=False)
             # Check if damage data is available for this data source:
             if data_details['available']:
                 avail_flag = True
                 data_details_list.append(data_details)
             else:
                 pass
-        # Step 3: Damage data selection
         # Choose the best data for each bldg/component: Data Utility Index
         if avail_flag:
             best_data = get_best_data(data_details_list, analysis_date)
@@ -74,31 +58,62 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
         # Add best data to building data model:
         sbldg.hasDamageData['roof cover'] = best_data
         sbldg.hasElement['Roof'][0].hasDamageData = best_data
-        # Step 4: Get demand data and add to building data model:
+    # Step 2b: Find regional damage descriptions:
+    for i in range(0, len(data_types)):  # Collect data from each data source
+        if isinstance(data_types[i], post_disaster_damage_dataset.FemaIahrld):
+            length_unit = 'ft'
+            if file_paths[i] == 'API':
+                df_fema = data_types[i].pull_fema_iahrld_data(event_name)
+            else:
+                df_fema = pd.read_csv(file_paths[i])
+            dbldgs = data_types[i].add_fema_iahrld_data(bldg, component_type, hazard_type, site,
+                                                                      length_unit, damage_scale_name, df_fema)
+        elif isinstance(data_types[i], post_disaster_damage_dataset.FemaHma):
+            length_unit = 'ft'
+            if file_paths[i] == 'API':
+                df_fema = data_types[i].pull_fema_hma_data(event_name)
+            else:
+                df_fema = pd.read_csv(file_paths[i])
+            dbldgs = data_types[i].add_fema_hma_data(bldg, component_type, hazard_type, site,
+                                                                   length_unit, damage_scale_name, df_fema,
+                                                                   city_flag=False, zipcode_flag=False)
+        # Add dummy building models to list of similar buildings:
+        for d in dbldgs:
+            sim_bldgs.append(d)
+    # Step 3: Get demand data and add to each building's data model:
+    for sim in sim_bldgs:
         if hazard_type == 'wind':
             if component_type == 'roof cover':
-                z = bldg.hasGeometry['Height']
-                sbldg.hasElement['Roof'][0].hasDemand['wind speed'] = get_local_wind_speed(sbldg, z, hazard_file_path,
+                z = sim.hasGeometry['Height']
+                sim.hasElement['Roof'][0].hasDemand['wind speed'] = get_local_wind_speed(sim, z, hazard_file_path,
                                                                                               exposure='C', unit='english')
             else:
                 pass
-        # Step 5: Export attributes for all sample buildings (for sanity checking):
-        sample_dict['Parcel Id'].append(sbldg.hasID)
-        sample_dict['Address'].append(sbldg.hasLocation['Address'])
-        sample_dict['Stories'].append(len(sbldg.hasStory))
-        sample_dict['Value'].append(sbldg.hasElement['Roof'][0].hasDamageData['value'])
-        sample_dict['Demand Value'].append(sbldg.hasElement['Roof'][0].hasDemand['wind speed'])
-        # Export permit descriptions when available as well:
-        if len(sbldg.hasPermitData['disaster']['number']) > 0:
-            sample_dict['Disaster Permit'].append(True)
-            sample_dict['Permit Description'].append(sbldg.hasPermitData['disaster']['description'])
-        else:
-            sample_dict['Disaster Permit'].append(False)
-            sample_dict['Permit Description'].append('None')
-        # Export component type for verification:
-        if component_type == 'roof cover':
-            sample_dict[component_type].append(sbldg.hasElement['Roof'][0].hasCover)
-    pd.DataFrame(sample_dict).to_csv('SampleBuildings.csv', index=False)
+    export_sample_flag = True
+    # Optional step: Export sample building characteristics:
+    if export_sample_flag:
+        # Create dictionary to track pertinent sample building info (data visualization):
+        sample_dict = {'Parcel Id': [], 'Address': [], component_type: [], 'Stories': [], 'Disaster Permit': [],
+                       'Permit Description': [], 'Demand Value': [], 'Value': []}
+        for s in sim_bldgs:
+            # Step 4: Export attributes for all sample buildings (for sanity checking):
+            sample_dict['Parcel Id'].append(s.hasID)
+            sample_dict['Address'].append(s.hasLocation['Address'])
+            sample_dict['Stories'].append(len(s.hasStory))
+            sample_dict['Value'].append(s.hasElement['Roof'][0].hasDamageData['value'])
+            sample_dict['Demand Value'].append(s.hasElement['Roof'][0].hasDemand['wind speed'])
+            # Export permit descriptions when available as well:
+            if len(s.hasPermitData['disaster']['number']) > 0:
+                sample_dict['Disaster Permit'].append(True)
+                sample_dict['Permit Description'].append(s.hasPermitData['disaster']['description'])
+            else:
+                sample_dict['Disaster Permit'].append(False)
+                sample_dict['Permit Description'].append('None')
+            # Export component type for verification:
+            if component_type == 'roof cover':
+                sample_dict[component_type].append(s.hasElement['Roof'][0].hasCover)
+        # Export as csv file:
+        pd.DataFrame(sample_dict).to_csv('SampleBuildings.csv', index=False)
     # Step 6: Bayesian Parameter Estimation
     # Step 6a: Populate the prior:
     if hazard_type == 'wind' and damage_scale_name == 'HAZUS-HM':
