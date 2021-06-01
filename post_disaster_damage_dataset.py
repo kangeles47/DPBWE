@@ -1,7 +1,5 @@
 import pandas as pd
 import requests
-from scipy.stats import bernoulli
-from OBDM.zone import Building
 
 
 class PostDisasterDamageDataset:
@@ -667,27 +665,19 @@ class FemaHma(PostDisasterDamageDataset):
             print('No data currently available for this event via API')
         return df_fema
 
-    def add_fema_hma_data(self, bldg, component_type, hazard_type, site, length_unit, damage_scale_name, df_fema, city_flag, zipcode_flag):
+    def add_fema_hma_data(self, bldg, component_type, hazard_type, damage_scale_name, df_fema):
         """
         A function to find damage observations within the Hazard Mitigation Assistance Mitigated Properties dataset.
 
         :param bldg: Parcel or Building object with hasOccupancy attribute filled.
         :param component_type: String specifying the component type.
         :param hazard_type: String specifying the hazard type.
-        :param site: Site object with hasBuilding attribute = list of parcel data models
-        :param length_unit: String specifying the length measurement unit (e.g., 'ft', 'm')
         :param damage_scale_name: String specifying the name of the damage scale that will be used for the semantic
                                   translation of data fields to component damage observations.
         :param df_fema: DataFrame with data from the Individual Assistance Housing Registrants Large Disaster
                         dataset for a given event.
-        :param city_flag:
-        :param zipcode_flag:
-        :return: data_details: Dictionary with information about data availability, dataset fidelity,
-                               the component type, hazard type, and damage description.
-                 df_sub: DataFrame with all available observations and their component-level damage
+        :return: dbldg_lst: List with "dummy" building data models with location and damage data information
         """
-        data_details = {'available': False, 'fidelity': self, 'component type': component_type,
-                        'hazard type': hazard_type, 'value': None}
         # First find the appropriate residence type for the query:
         # Note: HMA Buildings are typically govt. bldgs, schools, critical facilities, churches, residential bldgs.
         # Rule-sets listed here are meant to identify building with one of the above subsets.
@@ -695,12 +685,9 @@ class FemaHma(PostDisasterDamageDataset):
         res_type = ''
         if bldg.isComm:
             # Global commercial occupancy codes (substrings):
-            if 'CHURCH' in bldg.hasOccupancy.upper():
-                res_type = 'CHURCH'
-            elif 'HOSPITAL' in bldg.hasOccupancy.upper() or 'MEDICAL' in bldg.hasOccupancy.upper():
-                res_type = 'HOSPITAL'
-            elif 'SCHOOL' in bldg.hasOccupancy.upper():
-                res_type = 'SCHOOL'
+            comm_types = ['CHURCH', 'HOSPITAL', 'MEDICAL', 'SCHOOL', 'CAMPUS']
+            if any([substring in bldg.hasOccupancy.upper() for substring in comm_types]):
+                res_type = 'NON-RESIDENTIAL'
             else:
                 pass
             # Check if we need county-specific occupancy codes:
@@ -736,7 +723,8 @@ class FemaHma(PostDisasterDamageDataset):
                     pass
                 else:
                     pass
-        # Find subset of dataset with damage observations for the given occupancy, zip code, hazard, and component:
+        # Find subset of dataset with damage observations for the given occupancy:
+        dbldg_lst = []  # Create a placeholder to hold dummy building models
         if len(res_type) > 0:
             residence_types = ['SINGLE FAMILY', 'NON-RESIDENTIAL - PUBLIC', '2-4 FAMILY', 'MANUFACTURED HOME',
                                'NON-RESIDENTIAL - PRIVATE', 'MULTI-FAMILY DWELLING - 5 OR MORE UNITS']
@@ -744,16 +732,10 @@ class FemaHma(PostDisasterDamageDataset):
             if any([substring in res_type for substring in residence_types]):
                 df_sub = df_fema.loc[(df_fema['residenceType'] == res_type)]
             else:
-                df_sub = df_fema[df_fema['title'].str.contains(res_type)]
-                # Keep only the entries that are non-residential private or public:
-                df_sub = df_sub.loc[(df_sub['residenceType']=='NON-RESIDENTIAL - PRIVATE') | (df_sub['residenceType']=='NON-RESIDENTIAL - PUBLIC')]
-            # Refine the observations for specific zip codes and/or cities if needed:
-            if zipcode_flag and len(df_sub) > 0:
-                df_sub = df_sub.loc[df_fema['zip'] == int(bldg.hasLocation['Zip Code'])]
-            if city_flag and len(df_sub) > 0:
-                df_sub = df_sub.loc[df_fema['city'] == bldg.hasLocation['City'].upper()]
+                # Get all entries that are either non-residential private or public:
+                df_sub = df_fema.loc[(df_fema['residenceType']=='NON-RESIDENTIAL - PRIVATE') | (df_fema['residenceType']=='NON-RESIDENTIAL - PUBLIC')]
             if len(df_sub) > 0:
-                # Check for hazard-specific, component-specific damage:
+                # Find subset of dataset specific to the given hazard, component:
                 if hazard_type == 'wind':
                     # Find buildings with wind retrofit actions listed:
                     df_sub = df_sub[df_sub['propertyAction'].str.contains('WIND RETROFIT')]
@@ -768,58 +750,61 @@ class FemaHma(PostDisasterDamageDataset):
                             else:
                                 # Populate default damage scale information to force development of mapping function:
                                 self.get_damage_scale('FEMA HMA', component_type, global_flag=True, component_flag=True)
+                            # Import necessary modules:
+                            from shapely.geometry import Point
+                            from OBDM.zone import Building, Story
+                            from OBDM.element import Roof
+                            # Create "dummy" building models and add data:
                             for row in range(0, len(df_sub['damageCategory'])):
-                                for prop in range(0, df_sub['numberOfProperties'][row]):  # Multiple properties may be reported
-                                    # Create a new generic parcel data model:
+                                for prop in range(0, df_sub['numberOfProperties'][row]):
+                                    data_details = {'available': True, 'fidelity': self,
+                                                    'component type': component_type,
+                                                    'hazard type': hazard_type, 'value': None}
+                                    # Create a new parcel data model and add location data:
                                     new_parcel = Building()
-                                    # Use site information to find average building features:
-                                    bldg_features = {'stories': [], 'yr_built': [], 'area': [], 'lon': [], 'lat': []}
-                                    for b in site.hasBuilding:
-                                        # Find buildings with similar occupancy in the generic bldg's city/zip-code:
-                                        if b.hasOccupancy == bldg.hasOccupancy.upper():
-                                            if b.hasLocation['City'].upper() == df_sub['city'][row] and b.hasLocation['Zip Code'].upper() == df_sub['zip'][row]:
-                                                bldg_features['stories'].append(len(b.hasStory))
-                                                bldg_features['yr_built'].append(b.hasYearBuilt)
-                                                bldg_features['area'].append(b.hasGeometry['Total Floor Area'])
-                                            else:
-                                                pass
-                                        else:
-                                            pass
-                                    # Create a generic address with city and zip code information:
-                                    gen_address = '1234 Generic Rd ' + df_sub['city'][row] + df_sub['zip'][row]
-                                    new_parcel.add_parcel_data('None', sum(bldg_features['stories']) / len(bldg_features['stories']), df_sub['structureType'][row], sum(bldg_features['yr_built']) / len(bldg_features['yr_built']), address=gen_address, area=0, lon=sum(bldg_features['lon']) / len(bldg_features['lon']), lat=sum(bldg_features['lat']) / len(bldg_features['lat']), length_unit=length_unit)
-                                    hazard_rating = []
-                                    damage_value = []
+                                    new_parcel.hasLocation['Zip Code'] = df_sub['zip'][row]
+                                    new_parcel.hasLocation['City'] = df_sub['city'][row].upper()
+                                    new_parcel.hasLocation['County'] = df_sub['county'][row].upper()
+                                    new_parcel.hasLocation['State'] = df_sub['state'][row].upper()
+                                    new_parcel.hasOccupancy = df_sub['structureType'][row].upper()
+                                    # Find latitude/longitude information:
+                                    df_geo = pd.read_csv('C:/Users/Karen/Desktop/HMA_locs.csv')
+                                    idx = df_geo.loc[df_geo['CITY']==new_parcel.hasLocation['City'] & df_geo['ZIP']==new_parcel.hasLocation['Zip Code']].index.to_list()
+                                    new_parcel.hasLocation['Geodesic'] = Point(df_geo['LONGITUDE'][idx], df_geo['LATITUDE'][idx])
+                                    # Add story and height information:
+                                    new_parcel.hasStory.append(Story())
+                                    new_parcel.hasGeometry['Height'] = bldg.hasGeometry['Height']/len(bldg.hasStory)
+                                    # Create Roof element and add information:
+                                    new_roof = Roof()
+                                    new_roof.hasCover = bldg.hasElement['Roof'].hasCover
+                                    new_roof.hasType = bldg.hasElement['Roof'].hasCover
+                                    new_parcel.hasStory[-1].adjacentElement['Roof'] = [new_roof]
+                                    new_parcel.hasStory[-1].update_elements()
+                                    new_parcel.update_zones()
+                                    new_parcel.update_elements()
+                                    # Add damage data:
                                     if damage_scale_name == 'HAZUS-HM':
                                         if '49' in df_sub['damageCategory'][row]:
-                                            hazard_rating.append(self.hasDamageScale['component damage states']['number'][1])
-                                            damage_value.append(self.hasDamageScale['component damage states']['value'][1])
+                                            data_details['value'] = self.hasDamageScale['component damage states']['value'][1]
                                         elif '99' in df_sub['damageCategory'][row]:
-                                            hazard_rating.append(
-                                                self.hasDamageScale['component damage states']['number'][2])
-                                            damage_value.append(
-                                                self.hasDamageScale['component damage states']['value'][2])
+                                            data_details['value'] = self.hasDamageScale['component damage states']['value'][2]
                                         else:  # Total loss
-                                            hazard_rating.append(
-                                                self.hasDamageScale['component damage states']['number'][3])
-                                            damage_value.append(
-                                                self.hasDamageScale['component damage states']['value'][3])
+                                            data_details['value'] = self.hasDamageScale['component damage states']['value'][3]
                                     else:
-                                        pass
+                                        print('Semantic translation for specified damage scale + component currently not supported')
+                                    new_parcel.hasElement['Roof'][0].hasDamageData = data_details
+                                    new_parcel.hasDamageData['roof cover'] = new_parcel.hasElement['Roof'][0].hasDamageData
+                                    dbldg_lst.append(new_parcel)
                         else:
                             pass
                     elif component_type == 'window':
                         df_sub = df_sub[df_sub['title'].str.contains('SHUTTER')]
+                        print('Window/shutter rulesets not currently supported')
                     else:
-                        df_damage = pd.DataFrame()
-                    # Modify data details information:
-                    if len(df_sub) > 0:
-                        data_details['available'] = True
-                        df_damage = pd.DataFrame()
-                        data_details['value'] = df_damage['damage value']
-                        data_details['hazard damage rating'][hazard_type] = df_damage['hazard rating']
+                        print('Component type not supported')
                 else:
-                    pass
+                    print('Hazards other than wind not currently supported')
         else:
-            df_sub = pd.DataFrame()
-        return data_details, df_sub
+            pass
+        return dbldg_lst
+    
