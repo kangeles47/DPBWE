@@ -17,7 +17,7 @@ from bldg_code import FBC
 from create_fragility import execute_fragility_workflow
 
 
-def run_hm_study(inventory='D:/Users/Karen/Documents/Github/DPBWE/BC_CParcels.csv', hazard_type='wind',
+def run_hm_study(inventory='C:/Users/Karen/Desktop/MichaelBuildings.csv', hazard_type='wind',
                  hazard_file_path='D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv', component_type='roof cover', parcel_id='30569-100-000'):
     # Hurricane Michael case study:
     # Component type: Roof cover (built-up)
@@ -34,9 +34,13 @@ def run_hm_study(inventory='D:/Users/Karen/Documents/Github/DPBWE/BC_CParcels.cs
         new_bldg.add_parcel_data(df['Parcel Id'][row], df['Stories'][row], df['Use Code'][row], df['Year Built'][row],
                                  df['Address'][row], df['Square Footage'][row], df['Longitude'][row], df['Latitude'][row], 'ft')
         # Add roof element and data:
-        new_bldg.hasElement['Roof'] = [Roof()]
-        new_bldg.hasElement['Roof'][0].hasCover = df['Roof Cover'][row]
-        new_bldg.hasElement['Roof'][0].hasType = df['Roof Cover'][row]
+        new_roof = Roof()
+        new_roof.hasCover = df['Roof Cover'][row]
+        new_roof.hasType = df['Roof Cover'][row]
+        new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
+        new_bldg.hasStory[-1].update_elements()
+        new_bldg.update_zones()
+        new_bldg.update_elements()
         # Populate code-informed component-level information
         code_informed = FBC(new_bldg, loading_flag=False)
         code_informed.roof_attributes(code_informed.hasEdition, new_bldg, 'CBECS')
@@ -88,9 +92,13 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
                                  df['Address'][row], df['Square Footage'][row], df['Longitude'][row],
                                  df['Latitude'][row], 'ft')
         # Add roof element and data:
-        new_bldg.hasElement['Roof'] = [Roof()]
-        new_bldg.hasElement['Roof'][0].hasCover = df['Roof Cover'][row]
-        new_bldg.hasElement['Roof'][0].hasType = df['Roof Cover'][row]
+        new_roof = Roof()
+        new_roof.hasCover = df['Roof Cover'][row]
+        new_roof.hasType = df['Roof Cover'][row]
+        new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
+        new_bldg.hasStory[-1].update_elements()
+        new_bldg.update_zones()
+        new_bldg.update_elements()
         # Populate code-informed component-level information
         code_informed = FBC(new_bldg, loading_flag=False)
         code_informed.roof_attributes(code_informed.hasEdition, new_bldg, 'CBECS')
@@ -120,4 +128,4 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
                                file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='05/20/2021',
                                hazard_file_path=hazard_file_path)
 
-run_hi_study()
+run_hm_study()
