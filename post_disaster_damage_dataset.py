@@ -491,7 +491,7 @@ class FemaIahrld(PostDisasterDamageDataset):
             df_fema = pd.DataFrame()
         return df_fema
 
-    def add_fema_iahrld_data(self, bldg, component_type, hazard_type, site, length_unit, damage_scale_name, df_fema):
+    def add_fema_iahrld_data(self, bldg, component_type, hazard_type, damage_scale_name, df_fema):
         """
 
         :param bldg: Parcel or Building object with hasOccupancy attribute filled.
