@@ -603,14 +603,19 @@ class FemaIahrld(PostDisasterDamageDataset):
                                             data_details['value'] = self.hasDamageScale['component damage states']['value'][2]
                                         elif df_sub['habitabilityRepairsRequired'][row] and df_sub['ppfvl'][row] > 0:
                                             data_details['value'] = self.hasDamageScale['component damage states']['value'][3]
+                                    else:
+                                        print('Only roof components supported at this time')
                                 else:
-                                    pass
+                                    print('Flood damage descriptions currently not supported')
+                            new_parcel.hasElement['Roof'][0].hasDamageData = data_details
+                            new_parcel.hasDamageData['roof cover'] = new_parcel.hasElement['Roof'][0].hasDamageData
+                            dbldg_lst.append(new_parcel)
                 else:
-                    pass
+                    print('No IA Dataset observations for the case study parcel')
             else:
                 print('Hazard and component type not currently supported')
         else:
-            pass
+            print('No IA Dataset observations for the case study parcel')
         return dbldg_lst
 
 
