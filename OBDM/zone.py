@@ -375,10 +375,12 @@ class Building(Zone):
         comm_occupancies = ['PROFESS', 'HOTEL', 'MOTEL', 'FINANCIAL', 'COMMERCIAL', 'HOSP', 'MIXED',
                             'MUNICIPAL', 'OFFICE', 'CONDO', 'COUNT', 'FEDERAL', 'STORE', 'REST', 'COMMON',
                             'PRIVATE', 'SCH', 'SUPERMAR', 'CAMPS', 'COMMUNITY']  # example occupancies
-        if any([occ in self.hasOccupancy.upper().split() for occ in comm_occupancies]):
-            self.isComm = True
-        else:
-            self.isComm = False
+        for substring in self.hasOccupancy.upper().split():
+            if any([occ in substring for occ in comm_occupancies]):
+                self.isComm = True
+                break
+            else:
+                self.isComm = False
 
     def get_location_data(self):
         """
