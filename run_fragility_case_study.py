@@ -78,11 +78,10 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/MichaelBuildings.csv', hazard
 
 
 def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_type='wind',
-                 hazard_file_path='D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/ARA_Hurricane_Irma_Windspeed_v12.csv', component_type='roof cover', parcel_id='31080160007'):
+                 hazard_file_path='D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/ARA_Hurricane_Irma_Windspeed_v12.csv', component_type='roof cover', parcel_id='57360360006'):
     # Irma case study:
     # Step 1: Create a Site Class that will hold all parcel-specific data models:
     site = Site()
-    parcel_model = False
     # Step 2: Populate building inventory data and create parcel-specific data models:
     df = pd.read_csv(inventory)
     for row in range(0, len(df.index)):
@@ -121,7 +120,7 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
     # Step 6: Populate variables with list of post-disaster damage dataset types and file paths:
     from post_disaster_damage_dataset import STEER, FemaHma, FemaIahrld
     data_types = [STEER(), FemaHma(), FemaIahrld()]
-    file_paths = ['D:/Users/Karen/Documents/Github/DPBWE/Datasets/StEER/HI-DA.csv', 'C:/Users/Karen/Desktop/HazardMitigationAssistanceMitigatedProperties.csv', 'API']
+    file_paths = ['D:/Users/Karen/Documents/Github/DPBWE/Datasets/StEER/HI-DA.csv', 'C:/Users/Karen/Desktop/HMA_Irma.csv', 'API']
     # Step 7: Run the workflow:
     execute_fragility_workflow(bldg, site, component_type=component_type, hazard_type=hazard_type,
                                event_year=2017, event_name='Hurricane Irma', data_types=data_types,
