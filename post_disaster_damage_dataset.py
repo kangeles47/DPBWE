@@ -564,7 +564,7 @@ class FemaIahrld(PostDisasterDamageDataset):
                             self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
                         else:
                             # Populate default damage scale information to force development of mapping function:
-                            self.get_damage_scale('FEMA HMA', component_type, global_flag=True, component_flag=True)
+                            self.get_damage_scale('FEMA IHARLD', component_type, global_flag=True, component_flag=True)
                         # Import necessary modules:
                         from shapely.geometry import Point
                         from OBDM.zone import Building, Story
@@ -580,12 +580,17 @@ class FemaIahrld(PostDisasterDamageDataset):
                         idx = df_geo.loc[df_geo['CITY'] == new_parcel.hasLocation['City'] & df_geo['ZIP'] ==new_parcel.hasLocation['Zip Code']].index.to_list()
                         new_parcel.hasLocation['Geodesic'] = Point(df_geo['LONGITUDE'][idx], df_geo['LATITUDE'][idx])
                         # Add story and height information:
-                        new_parcel.hasStory.append(Story())
-                        new_parcel.hasGeometry['Height'] = bldg.hasGeometry['Height'] / len(bldg.hasStory)
+                        if res_type != 'CONDO':
+                            new_parcel.hasStory.append(Story())
+                            new_parcel.hasGeometry['Height'] = bldg.hasGeometry['Height'] / len(bldg.hasStory)
+                        else:
+                            # Assume a three story structure for condominium buildings:
+                            new_parcel.hasStory = [Story(), Story(), Story()]
+                            new_parcel.hasGeometry['Height'] = len(new_parcel.hasStory)*(bldg.hasGeometry['Height'] / len(bldg.hasStory))
                         # Create Roof element and add information:
                         new_roof = Roof()
-                        new_roof.hasCover = bldg.hasElement['Roof'].hasCover
-                        new_roof.hasType = bldg.hasElement['Roof'].hasCover
+                        new_roof.hasCover = bldg.hasElement['Roof'][0].hasCover
+                        new_roof.hasType = bldg.hasElement['Roof'][0].hasCover
                         new_parcel.hasStory[-1].adjacentElement['Roof'] = [new_roof]
                         new_parcel.hasStory[-1].update_elements()
                         new_parcel.update_zones()
@@ -688,41 +693,41 @@ class FemaHma(PostDisasterDamageDataset):
         # Note: HMA Buildings are typically govt. bldgs, schools, critical facilities, churches, residential bldgs.
         # Rule-sets listed here are meant to identify building with one of the above subsets.
         # All other occupancy types are not valid for use of this data.
-        res_type = ''
+        struc_type = ''
         if bldg.isComm:
             # Global commercial occupancy codes (substrings):
             comm_types = ['CHURCH', 'HOSPITAL', 'MEDICAL', 'SCHOOL', 'CAMPUS']
             if any([substring in bldg.hasOccupancy.upper() for substring in comm_types]):
-                res_type = 'NON-RESIDENTIAL'
+                struc_type = 'NON-RESIDENTIAL'
             else:
                 pass
             # Check if we need county-specific occupancy codes:
-            if len(res_type) > 0:
+            if len(struc_type) > 0:
                 pass
             else:
                 if bldg.hasLocation['County'].upper() == 'BAY':
                     if 'MUNICIPAL' in bldg.hasOccupancy.upper() or 'COUNTY' in bldg.hasOccupancy.upper():
-                        res_type = 'NON-RESIDENTIAL - PUBLIC'
+                        struc_type = 'NON-RESIDENTIAL - PUBLIC'
                 elif bldg.hasLocation['County'].upper() == 'COLLIER' or bldg.hasLocation['County'].upper() == 'MONROE':
                     if 'COUNT' in bldg.hasOccupancy.upper():
-                        res_type = 'NON-RESIDENTIAL - PUBLIC'
+                        struc_type = 'NON-RESIDENTIAL - PUBLIC'
                 else:
                     pass
         else:  # Residential occupancy codes
             # Global occupancy codes:
             if 'SINGLE' in bldg.hasOccupancy.upper():
-                res_type = 'SINGLE FAMILY'
+                struc_type = 'SINGLE FAMILY'
             else:
                 pass
             # Check if we need county-specific occupancy codes:
-            if len(res_type) > 0:
+            if len(struc_type) > 0:
                 pass
             else:
                 if bldg.hasLocation['County'].upper() == 'BAY':
                     if 'MOBILE' in bldg.hasOccupancy.upper():
-                        res_type = 'MANUFACTURED HOME'
+                        struc_type = 'MANUFACTURED HOME'
                     elif 'MULTI-FAM' in bldg.hasOccupancy.upper():
-                        res_type = 'MULTI-FAMILY DWELLING - 5 OR MORE UNITS'
+                        struc_type = 'MULTI-FAMILY DWELLING - 5 OR MORE UNITS'
                 elif bldg.hasLocation['County'].upper() == 'COLLIER':
                     pass
                 elif bldg.hasLocation['County'].upper() == 'MONROE':
@@ -731,15 +736,15 @@ class FemaHma(PostDisasterDamageDataset):
                     pass
         # Find subset of dataset with damage observations for the given occupancy:
         dbldg_lst = []  # Create a placeholder to hold dummy building models
-        if len(res_type) > 0:
-            residence_types = ['SINGLE FAMILY', 'NON-RESIDENTIAL - PUBLIC', '2-4 FAMILY', 'MANUFACTURED HOME',
+        if len(struc_type) > 0:
+            structure_types = ['SINGLE FAMILY', 'NON-RESIDENTIAL - PUBLIC', '2-4 FAMILY', 'MANUFACTURED HOME',
                                'NON-RESIDENTIAL - PRIVATE', 'MULTI-FAMILY DWELLING - 5 OR MORE UNITS']
             # Check if there are damage observations for the parcel's occupancy type:
-            if any([substring in res_type for substring in residence_types]):
-                df_sub = df_fema.loc[(df_fema['residenceType'] == res_type)]
+            if any([substring in struc_type for substring in structure_types]):
+                df_sub = df_fema.loc[(df_fema['structureType'] == struc_type)]
             else:
                 # Get all entries that are either non-residential private or public:
-                df_sub = df_fema.loc[(df_fema['residenceType']=='NON-RESIDENTIAL - PRIVATE') | (df_fema['residenceType']=='NON-RESIDENTIAL - PUBLIC')]
+                df_sub = df_fema.loc[(df_fema['structureType']=='NON-RESIDENTIAL - PRIVATE') | (df_fema['structureType']=='NON-RESIDENTIAL - PUBLIC')]
             if len(df_sub) > 0:
                 # Find subset of dataset specific to the given hazard, component:
                 if hazard_type == 'wind':
@@ -749,7 +754,7 @@ class FemaHma(PostDisasterDamageDataset):
                     if 'roof' in component_type:
                         # Drop any observations specific to storm shutters:
                         df_sub.drop(df_sub[df_sub['title'].str.contains('SHUTTER')].index, inplace=True)
-                        df_sub.reset_index()
+                        df_sub = df_sub.reset_index(drop=True)
                         if component_type == 'roof cover':
                             if damage_scale_name == 'HAZUS-HM':
                                 self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
@@ -774,16 +779,16 @@ class FemaHma(PostDisasterDamageDataset):
                                     new_parcel.hasLocation['State'] = df_sub['state'][row].upper()
                                     new_parcel.hasOccupancy = df_sub['structureType'][row].upper()
                                     # Find latitude/longitude information:
-                                    df_geo = pd.read_csv('C:/Users/Karen/Desktop/FClaims_locs.csv')
-                                    idx = df_geo.loc[df_geo['CITY']==new_parcel.hasLocation['City'] & df_geo['ZIP']==new_parcel.hasLocation['Zip Code']].index.to_list()
+                                    df_geo = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Geodesic/FClaims_locs.csv')
+                                    idx = df_geo.loc[(df_geo['CITY']==new_parcel.hasLocation['City']) & (df_geo['ZIP']==new_parcel.hasLocation['Zip Code'])].index.to_list()
                                     new_parcel.hasLocation['Geodesic'] = Point(df_geo['LONGITUDE'][idx], df_geo['LATITUDE'][idx])
                                     # Add story and height information:
                                     new_parcel.hasStory.append(Story())
                                     new_parcel.hasGeometry['Height'] = bldg.hasGeometry['Height']/len(bldg.hasStory)
                                     # Create Roof element and add information:
                                     new_roof = Roof()
-                                    new_roof.hasCover = bldg.hasElement['Roof'].hasCover
-                                    new_roof.hasType = bldg.hasElement['Roof'].hasCover
+                                    new_roof.hasCover = bldg.hasElement['Roof'][0].hasCover
+                                    new_roof.hasType = bldg.hasElement['Roof'][0].hasCover
                                     new_parcel.hasStory[-1].adjacentElement['Roof'] = [new_roof]
                                     new_parcel.hasStory[-1].update_elements()
                                     new_parcel.update_zones()
