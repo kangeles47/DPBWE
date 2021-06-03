@@ -36,6 +36,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
         data_details_list = []
         avail_flag = False
         for i in range(0, len(data_types)):  # Collect data from each data source
+            data_details = {'available': False}  # Placeholder dictionary for each new iteration
             if isinstance(data_types[i], post_disaster_damage_dataset.STEER):
                 data_details = data_types[i].add_steer_data(sbldg, component_type, hazard_type, file_paths[i])
             elif isinstance(data_types[i], post_disaster_damage_dataset.BayCountyPermits):
@@ -60,26 +61,25 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
         sbldg.hasElement['Roof'][0].hasDamageData = best_data
     # Step 2b: Find regional damage descriptions:
     for i in range(0, len(data_types)):  # Collect data from each data source
+        new_bldgs = []
         if isinstance(data_types[i], post_disaster_damage_dataset.FemaIahrld):
             length_unit = 'ft'
             if file_paths[i] == 'API':
                 df_fema = data_types[i].pull_fema_iahrld_data(event_name)
             else:
                 df_fema = pd.read_csv(file_paths[i])
-            dbldgs = data_types[i].add_fema_iahrld_data(bldg, component_type, hazard_type, site,
-                                                                      length_unit, damage_scale_name, df_fema)
+            new_bldgs = data_types[i].add_fema_iahrld_data(bldg, component_type, hazard_type, damage_scale_name, df_fema)
         elif isinstance(data_types[i], post_disaster_damage_dataset.FemaHma):
             length_unit = 'ft'
             if file_paths[i] == 'API':
                 df_fema = data_types[i].pull_fema_hma_data(event_name)
             else:
                 df_fema = pd.read_csv(file_paths[i])
-            dbldgs = data_types[i].add_fema_hma_data(bldg, component_type, hazard_type, site,
-                                                                   length_unit, damage_scale_name, df_fema,
-                                                                   city_flag=False, zipcode_flag=False)
-        # Add dummy building models to list of similar buildings:
-        for d in dbldgs:
-            sim_bldgs.append(d)
+            new_bldgs = data_types[i].add_fema_hma_data(bldg, component_type, hazard_type, damage_scale_name, df_fema)
+        # Add new building models to list of similar buildings:
+        if len(new_bldgs) > 0:
+            for nbldg in new_bldgs:
+                sim_bldgs.append(nbldg)
     # Step 3: Get demand data and add to each building's data model:
     for sim in sim_bldgs:
         if hazard_type == 'wind':

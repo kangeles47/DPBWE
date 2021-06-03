@@ -529,7 +529,7 @@ class FemaIahrld(PostDisasterDamageDataset):
                 res_type = 'MOBILE HOME'
             elif 'APART' in bldg.hasOccupancy.upper() or 'MULTI' in bldg.hasOccupancy.upper():
                 res_type = 'APARTMENT'
-            elif 'AGED' in bldg.hasOccumpancy.upper() or 'CONVEL' in bldg.hasOccupancy.upper():
+            elif 'AGED' in bldg.hasOccupancy.upper() or 'CONVEL' in bldg.hasOccupancy.upper():
                 res_type = 'ASSISTED LIVING FACILITY'
             else:
                 pass
