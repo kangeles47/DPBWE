@@ -1,5 +1,6 @@
 # Create decision trees to characterize missile environment and consequent debris trajectories
     # Might want to include here consideration of roof assembly condition (age)
+    # Typical debris types: roof covers, roof sheathing, frame/joist elements (e.g., timber)
 # Develop rulesets for site-specific debris classification for range of common typologies
 # Map debris classes to appropriate trajectory models
 # Develop decision trees to extract relevant component data from manufacturer's specifications to refine site-specific debris models
