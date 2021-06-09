@@ -75,6 +75,8 @@ class Roof(Element):
         self.hasEaveLength = None
         self.hasShape = {'flat': False, 'gable': False, 'hip': False, 'complex': False, 'gable/hip combo': False,
                          'gambrel': False, 'mansard': False, 'monoslope': False, 'user-defined': False}
+        self.hasSheathing = None
+        self.hasStructureType = None
 
 
 class Floor(Element):  # Consider how we might bring in something like piles
