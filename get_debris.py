@@ -60,34 +60,23 @@ def get_trajectory(bldg):
             else:
                 # Find the debris mass:
                 debris_mass = get_debris_mass(bldg, debris_class)
-
-    tachikawa_num = air_density*(bldg.adjacentElement['Roof'][0].hasDemand['wind speed']**2)/(2*debris_mass*gravity)
-    # Find flight time and coefficients for the debris class:
-    if debris_class == 'sheet':
-        from scipy.stats import uniform
-        flight_time = uniform(1, 2.5)  # This will be a uniform distribution
-        c = 0.91
-        c1 = -0.148
-        c2 = 0.024
-        c3 = -0.0014
-    elif debris_class == 'rod':
-        c = 0.801
-        mean_flight = 2
-        sigma_flight = 0.4
-        # Define a truncated Gaussian or lognormal variable to sample from
-    elif debris_class == 'compact':
-        pass
-    alongwind_dist = (2*debris_mass/air_density)*((0.5*c*(tachikawa_num*flight_time)**2) + (c1*(tachikawa_num*flight_time)**3) + (c2*(tachikawa_num*flight_time)**4) + (c3*(tachikawa_num*flight_time)**5))
-    acrosswind_dist = 0
-    sigma_along = 0.35*alongwind_dist
-    sigma_across = 0.35*alongwind_dist
+                # Get additional trajectory parameters:
+                param_dict = get_traj_params(debris_class)
+                # Calculate Tachikawa number:
+                tachikawa_num = air_density*(bldg.adjacentElement['Roof'][0].hasDemand['wind speed']**2)/(2*debris_mass*gravity)
+                # Calculate mean of alongwind distance:
+                alongwind_dist = (2*debris_mass/air_density)*((0.5*c*(tachikawa_num*flight_time)**2) + (c1*(tachikawa_num*flight_time)**3) + (c2*(tachikawa_num*flight_time)**4) + (c3*(tachikawa_num*flight_time)**5))
+                # Initialize remaining distribution parameters:
+                acrosswind_dist = 0
+                sigma_along = 0.35*alongwind_dist
+                sigma_across = 0.35*alongwind_dist
     return alongwind_dist, acrosswind_dist, sigma_along, sigma_across, tachikawa_num, c, gravity
 
 
 def get_debris_class(debris_type, bldg):
     # Three debris classes to choose from: sheet/plate, compact, and rod-like:
     # Define global types:
-    sheet_type = ['TILE', 'SHINGLE', 'SLATE', 'BUR', 'BUILT-UP', 'SHAKE', 'PLY', 'SPM', 'POLY']
+    sheet_type = ['TILE', 'SHINGLE', 'SLATE', 'BUR', 'BUILT-UP', 'SHAKE', 'PLY', 'SPM', 'POLY', 'METAL']
     rod_type = ['WOOD', 'JOIST', 'OWSJ', 'TRUSS']  # global list of structural types with frame members
     if debris_type == 'roof cover':
         if 'GRAVEL' in bldg.adjacentElement['Roof'][0].hasCover.upper():
@@ -105,16 +94,47 @@ def get_debris_class(debris_type, bldg):
 
 
 def get_debris_mass(bldg, debris_class):
-    # Load debris mass data:
+    # Load debris mass data (in the future, extend to regional manufacturers):
     df = read_csv('D:/Users/Karen/Documents/Github/DPWBE/Datasets/Debris/Typical_Debris_Masses.csv')
-    if debris_class == 'roof cover' or debris_class == 'roof sheathing':
-        if 'ASPHALT' in bldg.adjacentElement['Roof'][0].hasCover:
-            area = 3  # [ft]^2 typical shingle is 12" w x 36" l
-            mass_per_area = 1.95
+    if debris_class == 'roof cover':
+        if 'ASPHALT' in bldg.adjacentElement['Roof'][0].hasCover.upper():
+            df_sub = df['DEBRIS NAME'].str.contains('ASPHALT')
+            # Search for any special cases:
+            scase = ['ARCH', 'LAM', 'DIM']
+            if any([case in bldg.adjacentElement['Roof'][0].hasCover.upper() for case in scase]):
+                if bldg.hasGeometry['Length Unit'] == 'ft':
+                    debris_area = df_sub['DEBRIS NAME'].str.contains('ARCH')['TYPICAL AREA FT2']
+                    debris_mass = df_sub['DEBRIS NAME'].str.contains('ARCH')['MASS PER AREA LB/FT2']
+                else:
+                    debris_area = df_sub['DEBRIS NAME'].str.contains('ARCH')['TYPICAL AREA M2']
+                    debris_mass = df_sub['DEBRIS NAME'].str.contains('ARCH')['MASS PER AREA KG/M2']
+            else:
+                if bldg.hasGeometry['Length Unit'] == 'ft':
+                    debris_area = df_sub['DEBRIS NAME'].str.contains('TAB')['TYPICAL AREA FT2']
+                    debris_mass = df_sub['DEBRIS NAME'].str.contains('TAB')['MASS PER AREA LB/FT2']
+                else:
+                    debris_area = df_sub['DEBRIS NAME'].str.contains('TAB')['TYPICAL AREA M2']
+                    debris_mass = df_sub['DEBRIS NAME'].str.contains('TAB')['MASS PER AREA KG/M2']
     else:
         pass
-    # Installed weights: https://roofonline.com/weight-of-roofing-materials
+    return debris_area, debris_mass
 
+
+def get_traj_params(debris_class):
+    param_dict = {'C': None, 'c1': None, 'c2': None, 'c3': None}
+    # Find flight time and coefficients for the debris class:
+    if debris_class == 'sheet':
+        from scipy.stats import uniform
+        flight_time = uniform(1, 2.5)  # This will be a uniform distribution
+        param_dict['C'] = 0.91
+        param_dict['c1'] = -0.148
+        param_dict['c2'] = 0.024
+        param_dict['c3'] = -0.0014
+    elif debris_class == 'rod':
+        c = 0.801
+    elif debris_class == 'compact':
+        pass
+    return param_dict
 
 def calc_impact_momentum(debris_mass, debris_area, horiz_impact_vel):
     return debris_mass* debris_area* horiz_impact_vel
@@ -125,19 +145,3 @@ def get_horiz_impact_vel(wind_speed, c, tachikawa_num, gravity, horiz_fdist):
     x = gravity*horiz_fdist/(wind_speed**2)
     horiz_impact_vel = wind_speed*(1-exp(-1*sqrt(2*c*tachikawa_num*x)))
     return horiz_impact_vel
-
-def get_debris_class(debris_type, debris_desc):
-    # To determine debris class, roof material composition will need to be known:
-    compact_types = ['gravel']
-    sheet_types = ['metal']
-    rod_types = ['frame', 'joist']
-    if debris_type == 'roof cover':
-        debris_class = None
-    return debris_class
-
-
-def get_mass_unit_area(bldg):
-    # Derive mass per unit area values for each debris type from regional manufacturers
-    if bldg.hasLocation['State'] == 'FL':
-        if bldg.hasLocation['County'] == 'Bay':
-            pass
