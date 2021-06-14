@@ -1,5 +1,10 @@
 from pandas import read_csv
 from scipy.stats import norm, uniform
+from geopy import distance
+from shapely.geometry import Polygon
+from OBDM.zone import Building
+from OBDM.element import Roof
+import numpy as np
 # Create decision trees to characterize missile environment and consequent debris trajectories
     # Might want to include here consideration of roof assembly condition (age)
     # Typical debris types: roof covers, roof sheathing, frame/joist elements (e.g., timber)
@@ -16,35 +21,44 @@ def get_source_bldgs(bldg, site, wind_direction):
     :param site: A Site object with Building objects as described above (Site.hasBuilding)
     :return:
     """
-    # Given the wind direction, exclude all buildings downwind from the target building:
-    if wind_direction == 0:
-        pass
-    elif wind_direction == 90:
-        pass
-    elif wind_direction == 180:
-        pass
-    elif wind_direction == 270:
-        pass
+    # Step 1: Define a maximum debris source region using the wind direction:
+    wdirs = np.arange(wind_direction-45, wind_direction+45, 5)
+    pt_list = []
+    for dir in wdirs:
+        if bldg.hasGeometry['Length Unit'] == 'ft':
+            pt_list.append(distance.distance(miles=1).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir))
+        elif bldg.hasGeometry['Length Unit'] == 'm':
+            pt_list.append(distance.distance(kilometers=1.61).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir))
+    # Create a Polygon object for the debris source region:
+    debris_region = Polygon(pt_list)
+    # Step 2: Create lists of unique debris types:
     debris_type = {'roof cover': [], 'roof sheathing': [], 'roof member': []}  # 3 most common debris types
-    struct_type = ['WOOD', 'JOIST', 'OWSJ', 'TRUSS']  # global list of structural types with frame members
+    potential_source_bldgs = []
     for i in site.hasBuilding:
-        # Extract roof information for each building in the Site description:
-        # Roof Cover
-        if i.adjacentElement['Roof'][0].hasCover not in debris_type['roof cover'] and (i.adjacentElement['Roof'][0].hasCover is not None):
-            debris_type['roof cover'].append(i.adjacentElement['Roof'][0].hasCover)
-        # Roof Sheathing
-        if i.adjacentElement['Roof'][0].hasSheathing not in debris_type['roof sheathing'] and (i.adjacentElement['Roof'][0].hasSheathing is not None):
-            debris_type['roof sheathing'].append(i.adjacentElement['Roof'][0].hasSheathing)
-        # Roof Structure
-        if any([stype in i.adjacentElement['Roof'][0].hasStructureType.upper() for stype in struct_type]) and (i.adjacentElement['Roof'][0].hasStructureType is not None):
-            debris_type['roof member'].append(i.adjacentElement['Roof'][0].hasStructureType)
+        if debris_region.contains(i.hasLocation['Geodesic']):
+            potential_source_bldgs.append(i)
+            # Extract roof information for each building in the Site description:
+            # Roof Cover
+            if i.adjacentElement['Roof'][0].hasCover not in debris_type['roof cover'] and (
+                    i.adjacentElement['Roof'][0].hasCover is not None):
+                debris_type['roof cover'].append(i.adjacentElement['Roof'][0].hasCover)
+            # Roof Sheathing
+            if i.adjacentElement['Roof'][0].hasSheathing not in debris_type['roof sheathing'] and (
+                    i.adjacentElement['Roof'][0].hasSheathing is not None):
+                debris_type['roof sheathing'].append(i.adjacentElement['Roof'][0].hasSheathing)
+            # Roof Structure
+            if i.adjacentElement['Roof'][0].hasStructureType not in debris_type['roof member'] and (
+                    i.adjacentElement['Roof'][0].hasStructureType is not None):
+                debris_type['roof member'].append(i.adjacentElement['Roof'][0].hasStructureType)
         else:
             pass
-    # Calculate the maximum trajectory for the available debris types:
-
-    # Get the trajectory for each debris type:
+    # Calculate the trajectory for each debris type:
+    traj_dict = {'roof cover': [], 'roof sheathing': [], 'roof member': []}
     for key in debris_type:
-        bldg.adjacentElement['Roof'][0].hasDebrisTrajectory = get_trajectory(bldg)
+        for name in debris_type[key]:
+            traj_dict[key].append(get_trajectory(key, name))
+
+
 
 
 def get_trajectory(bldg):
