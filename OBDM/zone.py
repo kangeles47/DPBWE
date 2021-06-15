@@ -299,6 +299,7 @@ class Site(Zone):
         # Add Site-specific attributes:
         self.hasZeroPoint = None
         self.hasRoughness = None
+        self.hasDebris = {'roof cover': None, 'roof sheathing': None, 'roof member': None}
 
 
 class Building(Zone):
