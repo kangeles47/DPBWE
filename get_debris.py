@@ -14,6 +14,41 @@ import numpy as np
 # Implement similitude parameters to project source building damage
 
 
+def get_site_debris(site, length_unit):
+    debris_type = {'roof cover': [], 'roof sheathing': [], 'roof member': []}  # 3 most common debris types
+    for bldg in site.hasBuilding:
+        # Extract roof information for each building in the Site description:
+        # Roof Cover
+        if bldg.adjacentElement['Roof'][0].hasCover not in debris_type['roof cover'] and (
+                bldg.adjacentElement['Roof'][0].hasCover is not None):
+            debris_type['roof cover'].append(bldg.adjacentElement['Roof'][0].hasCover)
+        # Roof Sheathing
+        if bldg.adjacentElement['Roof'][0].hasSheathing not in debris_type['roof sheathing'] and (
+                bldg.adjacentElement['Roof'][0].hasSheathing is not None):
+            debris_type['roof sheathing'].append(bldg.adjacentElement['Roof'][0].hasSheathing)
+        # Roof Structure
+        if bldg.adjacentElement['Roof'][0].hasStructureType not in debris_type['roof member'] and (
+                bldg.adjacentElement['Roof'][0].hasStructureType is not None):
+            debris_type['roof member'].append(bldg.adjacentElement['Roof'][0].hasStructureType)
+    # Get debris characteristics:
+    for key in debris_type:
+        dtype_dict = {'debris name': debris_type[key]}
+        dclass_list = []
+        dmass_list = []
+        for name in debris_type[key]:
+            # Find the debris class:
+            debris_class = get_debris_class(key, name)
+            dclass_list.append(debris_class)
+            # Find the debris mass:
+            debris_area, debris_mass = get_debris_mass(debris_class, name, length_unit)
+            dmass_list.append(debris_mass)
+            param_dict = get_traj_params(debris_class)
+        dtype_dict['debris class'] = dclass_list
+        dtype_dict['debris mass'] = dmass_list
+        dtype_dict.update(param_dict)
+        site.hasDebris[key] = dtype_dict
+
+
 def get_source_bldgs(bldg, site, wind_direction):
     """
 
@@ -111,43 +146,43 @@ def get_trajectory(bldg):
     return tachikawa_num, c, gravity
 
 
-def get_debris_class(debris_type, bldg):
+def get_debris_class(debris_type, debris_name):
     # Three debris classes to choose from: sheet/plate, compact, and rod-like:
     # Define global types:
     sheet_type = ['TILE', 'SHINGLE', 'SLATE', 'BUR', 'BUILT-UP', 'SHAKE', 'PLY', 'SPM', 'POLY', 'METAL']
     rod_type = ['WOOD', 'JOIST', 'OWSJ', 'TRUSS']  # global list of structural types with frame members
     if debris_type == 'roof cover':
-        if 'GRAVEL' in bldg.adjacentElement['Roof'][0].hasCover.upper():
+        if 'GRAVEL' in debris_name.upper():
             debris_class = 'compact'
-        elif any([stype in bldg.adjacentElement['Roof'][0].hasStructureType.upper() for stype in sheet_type]):
+        elif any([stype in debris_name.upper() for stype in sheet_type]):
             debris_class = 'sheet'
     elif debris_type == 'roof sheathing':
         debris_class = 'sheet'
     elif debris_type == 'roof member':
-        if any([rtype in bldg.adjacentElement['Roof'][0].hasStructureType.upper() for rtype in rod_type]):
+        if any([rtype in debris_name.upper() for rtype in rod_type]):
             debris_class = 'rod'
         else:
             debris_class = None
     return debris_class
 
 
-def get_debris_mass(bldg, debris_class):
+def get_debris_mass(debris_class, debris_name, length_unit):
     # Load debris mass data (in the future, extend to regional manufacturers):
     df = read_csv('D:/Users/Karen/Documents/Github/DPWBE/Datasets/Debris/Typical_Debris_Masses.csv')
     if debris_class == 'roof cover':
-        if 'ASPHALT' in bldg.adjacentElement['Roof'][0].hasCover.upper():
+        if 'ASPHALT' in debris_name.upper():
             df_sub = df['DEBRIS NAME'].str.contains('ASPHALT')
             # Search for any special cases:
             scase = ['ARCH', 'LAM', 'DIM']
-            if any([case in bldg.adjacentElement['Roof'][0].hasCover.upper() for case in scase]):
-                if bldg.hasGeometry['Length Unit'] == 'ft':
+            if any([case in debris_name.upper() for case in scase]):
+                if length_unit == 'ft':
                     debris_area = df_sub['DEBRIS NAME'].str.contains('ARCH')['TYPICAL AREA FT2']
                     debris_mass = df_sub['DEBRIS NAME'].str.contains('ARCH')['MASS PER AREA LB/FT2']
                 else:
                     debris_area = df_sub['DEBRIS NAME'].str.contains('ARCH')['TYPICAL AREA M2']
                     debris_mass = df_sub['DEBRIS NAME'].str.contains('ARCH')['MASS PER AREA KG/M2']
             else:
-                if bldg.hasGeometry['Length Unit'] == 'ft':
+                if length_unit == 'ft':
                     debris_area = df_sub['DEBRIS NAME'].str.contains('TAB')['TYPICAL AREA FT2']
                     debris_mass = df_sub['DEBRIS NAME'].str.contains('TAB')['MASS PER AREA LB/FT2']
                 else:
