@@ -1,4 +1,4 @@
-from pandas import read_csv
+from pandas import read_csv, DataFrame
 from scipy.stats import norm, uniform
 from geopy import distance
 from shapely.geometry import Polygon
@@ -46,7 +46,7 @@ def get_site_debris(site, length_unit):
         dtype_dict['debris class'] = dclass_list
         dtype_dict['debris mass'] = dmass_list
         dtype_dict.update(param_dict)
-        site.hasDebris[key] = dtype_dict
+        site.hasDebris[key] = DataFrame(dtype_dict)
 
 
 def get_source_bldgs(bldg, site, wind_direction):
@@ -58,7 +58,7 @@ def get_source_bldgs(bldg, site, wind_direction):
     """
     # Step 1: Define a maximum debris source region using the wind direction:
     wdirs = np.arange(wind_direction-45, wind_direction+45, 5)
-    pt_list = []
+    pt_list = [bldg.hasLocation['Geodesic']]
     for dir in wdirs:
         if bldg.hasGeometry['Length Unit'] == 'ft':
             pt_list.append(distance.distance(miles=1).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir))
@@ -66,84 +66,58 @@ def get_source_bldgs(bldg, site, wind_direction):
             pt_list.append(distance.distance(kilometers=1.61).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir))
     # Create a Polygon object for the debris source region:
     debris_region = Polygon(pt_list)
-    # Step 2: Create lists of unique debris types:
-    debris_type = {'roof cover': [], 'roof sheathing': [], 'roof member': []}  # 3 most common debris types
-    potential_source_bldgs = []
+    # Step 2: Find source buildings and calculate debris trajectories:
+    source_bldgs = []
     for i in site.hasBuilding:
         if debris_region.contains(i.hasLocation['Geodesic']):
-            potential_source_bldgs.append(i)
-            # Extract roof information for each building in the Site description:
-            # Roof Cover
-            if i.adjacentElement['Roof'][0].hasCover not in debris_type['roof cover'] and (
-                    i.adjacentElement['Roof'][0].hasCover is not None):
-                debris_type['roof cover'].append(i.adjacentElement['Roof'][0].hasCover)
-            # Roof Sheathing
-            if i.adjacentElement['Roof'][0].hasSheathing not in debris_type['roof sheathing'] and (
-                    i.adjacentElement['Roof'][0].hasSheathing is not None):
-                debris_type['roof sheathing'].append(i.adjacentElement['Roof'][0].hasSheathing)
-            # Roof Structure
-            if i.adjacentElement['Roof'][0].hasStructureType not in debris_type['roof member'] and (
-                    i.adjacentElement['Roof'][0].hasStructureType is not None):
-                debris_type['roof member'].append(i.adjacentElement['Roof'][0].hasStructureType)
+            # Calculate the distance between this potential source bldg and target bldg:
+            bldg_dist = 0
+            # Calculate the trajectory for each of the source bldg's debris types:
+            for key in site.hasDebris:
+                # Find trajectory model input parameters for this component:
+                if key == 'roof cover':
+                    debris_name = i.adjacentElement['Roof'][0].hasCover.upper()
+                elif key == 'roof sheathing':
+                    debris_name = i.adjacentElement['Roof'][0].hasSheathing.upper()
+                elif key == 'roof member':
+                    debris_name = i.adjacentElement['Roof'][0].hasStructureType.upper()
+                model_input = site.hasDebris[key].loc[site.hasDebris[key]['debris name'] == debris_name]
+                alongwind_dist, acrosswind_dist = get_trajectory(model_input, bldg.adjacentElement['Roof'][0].hasDemand['wind speed'], bldg.hasGeometry['Length Unit'])
+                # Figure out if the debris will hit the building:
+                if alongwind_dist > bldg_dist:
+                    source_bldgs.append(i)
         else:
             pass
-    # Calculate the trajectory for each debris type:
-    traj_dict = {'roof cover': [], 'roof sheathing': [], 'roof member': []}
-    for key in debris_type:
-        for name in debris_type[key]:
-            traj_dict[key].append(get_trajectory(key, name))
 
 
-
-
-def get_trajectory(bldg):
-    traj_dict = {'roof cover': [], 'roof sheathing': [], 'roof member': []}  # Dict w/ 3 most common debris types
+def get_trajectory(model_input, wind_speed, length_unit):
     # Set up global parameter values:
-    if bldg.hasGeometry['Length Unit'] == 'm':
+    if length_unit == 'm':
         air_density = 1.225  # kg/m^3
         gravity = 9.81  # m/s^2
-    elif bldg.hasGeometry['Length Unit'] == 'ft':
+    elif length_unit == 'ft':
         air_density = 0.0765  # lb/ft^3
         gravity = 32.2  # ft/s^2
-    # Figure out what debris types are available for this building:
-    if bldg.adjacentElement['Roof'][0].hasCover is None:
-        traj_dict['roof cover'].append(None)
-    if bldg.adjacentElement['Roof'][0].hasSheathing is None:
-        traj_dict['roof sheathing'].append(None)
-    if bldg.adjacentElement['Roof'][0].hasStructureType is None:
-        traj_dict['roof member'].append(None)
+        wind_speed = wind_speed*1.467  # ft/s
     # Populate parameters for stochastic flight trajectory model:
-    for key in traj_dict:
-        if len(traj_dict[key]) > 0:
-            pass
-        else:
-            # Find the debris class each debris type belongs to:
-            debris_class = get_debris_class(key, bldg)
-            if debris_class is None:
-                traj_dict[key].append(None)  # Exception case for structural typ. flat roofs
-            else:
-                # Find the debris mass:
-                debris_mass = get_debris_mass(bldg, debris_class)
-                # Get additional trajectory parameters:
-                param_dict = get_traj_params(debris_class)
-                # Calculate Tachikawa number:
-                tachikawa_num = air_density*(bldg.adjacentElement['Roof'][0].hasDemand['wind speed']**2)/(2*debris_mass*gravity)
-                # Populate coefficients and flight time RV:
-                c, c1, c2, c3, flight_time = param_dict['c'], param_dict['c1'], param_dict['c2'], param_dict['c3'], param_dict['flight_time']
-                norm_time = flight_time.rvs(size=(1, 1))*gravity/bldg.adjacentElement['Roof'][0].hasDemand['wind speed']  # or use basic wind speed at site
-                # Calculate mu_x (mean of alongwind distance):
-                alongwind_mean = (2*debris_mass/air_density)*((0.5*c*(tachikawa_num*norm_time)**2) + (c1*(tachikawa_num*norm_time)**3) + (c2*(tachikawa_num*norm_time)**4) + (c3*(tachikawa_num*norm_time)**5))
-                # Initialize remaining distribution parameters:
-                sigma_along = 0.35*alongwind_mean
-                sigma_across = 0.35*alongwind_mean
-                # Current data availability --> alongwind and across wind displacements are independent:
-                alongwind_dist = norm.rvs(loc=alongwind_mean, scale=sigma_along, size=(20, 1))
-                acrosswind_dist = norm.rvs(loc=0, scale=sigma_across, size=(20, 1))
-                # Add to building data model:
-                bldg.hasDebrisTrajectory[key]['alongwind'], bldg.adjacentElement['Roof'][0].hasDebrisTrajectory[key]['alongwind'] = alongwind_dist, alongwind_dist
-                bldg.hasDebrisTrajectory[key]['acrosswind'], bldg.adjacentElement['Roof'][0].hasDebrisTrajectory[key]['acrosswind'] = acrosswind_dist, acrosswind_dist
+    # Calculate Tachikawa number:
+    tachikawa_num = air_density*(wind_speed**2)/(2*debris_mass*gravity)
+    # Populate coefficients and flight time RV:
+    c, c1, c2, c3, flight_time = param_dict['c'], param_dict['c1'], param_dict['c2'], param_dict['c3'], param_dict['flight_time']
+    norm_time = flight_time.rvs(size=(1, 1))*gravity/wind_speed  # roof-level or use basic wind speed at site
+    # Calculate mu_x (mean of alongwind distance):
+    alongwind_mean = (2*debris_mass/air_density)*((0.5*c*(tachikawa_num*norm_time)**2) + (c1*(tachikawa_num*norm_time)**3) + (c2*(tachikawa_num*norm_time)**4) + (c3*(tachikawa_num*norm_time)**5))
+    # Initialize remaining distribution parameters:
+    sigma_along = 0.35*alongwind_mean
+    sigma_across = 0.35*alongwind_mean
+    # Current data availability --> alongwind and across wind displacements are independent:
+    alongwind_dist = norm.rvs(loc=alongwind_mean, scale=sigma_along, size=(20, 1))
+    acrosswind_dist = norm.rvs(loc=0, scale=sigma_across, size=(20, 1))
+    # Add to building data model:
+    #bldg.hasDebrisTrajectory[key]['alongwind'], bldg.adjacentElement['Roof'][0].hasDebrisTrajectory[key]['alongwind'] = alongwind_dist, alongwind_dist
+    #bldg.hasDebrisTrajectory[key]['acrosswind'], bldg.adjacentElement['Roof'][0].hasDebrisTrajectory[key]['acrosswind'] = acrosswind_dist, acrosswind_dist
 
-    return tachikawa_num, c, gravity
+    return alongwind_dist, acrosswind_dist
 
 
 def get_debris_class(debris_type, debris_name):
