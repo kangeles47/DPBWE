@@ -122,6 +122,18 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
         pass
     # Step 6b: Get input parameters for the likelihood function:
     lparams = get_likelihood_params(sim_bldgs, damage_scale_name, component_type, hazard_type)
+    # Calculate MLE estimate for comparison:
+    mle_params = get_point_estimate(lparams)
+    # Step 6c: Run Bayesian Parameter Estimation:
+    # Step 7: Plotting:
+    if hazard_type == 'wind':
+        if length_unit == 'ft':
+            demand_values = np.arange(70, 200, 10)  # mph
+        elif length_unit == 'm':
+            demand_values = np.arange(30, 90, 5)  # m/s
+    for key in mle_params:
+        pass
+
 
 
 def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type):
@@ -277,6 +289,8 @@ def get_point_estimate(lparams):
                 # Calculate the log-likelihood and save:
                 loglike_est.append(sum(lparams[key]['fail']*np.log(norm.cdf(np.log(lparams[key]['demand']), mu_MLE, beta_MLE)) + (lparams[key]['total']-lparams[key]['fail'])*np.log(1-norm.cdf(np.log(lparams[key]['demand']), mu_MLE, beta_MLE))))
         # Find the pair of mu, beta initial conditions that maximize the log-likelihood:
+        print('loglike values MLE:')
+        print(loglike_est)
         max_index = loglike_est.index(max(loglike_est))
         mle_params[key] = {}
         mle_params[key]['mu'] = mu_est[max_index]
@@ -299,8 +313,6 @@ def get_point_estimate(lparams):
 
 def p_f(im, mu, beta):
     return norm.cdf(np.log(im), mu, beta)
-
-
 
 
 def mle_objective_func(params, *args):
