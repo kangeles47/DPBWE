@@ -252,6 +252,8 @@ class BayCountyPermits(PostDisasterDamageDataset):
             count = 0  # dummy variable to flag multiple roof permits in a parcel
             for p in range(0, len(bldg.hasPermitData['disaster']['number'])):
                 if 'ROOF' in bldg.hasPermitData['disaster']['permit type'][p]:
+                    # Reset area and area_factor:
+                    area_factor, bldg_count = 0, 0
                     # First check to make sure this is a building-related roof permit:
                     if 'GAZ' in bldg.hasPermitData['disaster']['description'][p] or 'CANOPY' in bldg.hasPermitData['disaster']['description'][p]:
                         pass
@@ -260,13 +262,15 @@ class BayCountyPermits(PostDisasterDamageDataset):
                         count += 1
                         rcover_damage_cat = None  # reset damage category for each new permit
                         # Check if parcel shares a parcel number ( > 1 buildings in lot):
-                        area = bldg.hasGeometry['Total Floor Area']
                         for b in site.hasBuilding:
-                            if b.hasID == bldg.hasID or (b.hasLocation['Address'] == bldg.hasLocation['Address']):
-                                area += b.hasGeometry['Total Floor Area']
+                            if (b.hasID == bldg.hasID or (b.hasLocation['Address'] == bldg.hasLocation['Address'])) and ('COND' not in b.hasOccupancy):
+                                bldg_count += 1
                             else:
                                 pass
-                        area_factor = bldg.hasGeometry['Total Floor Area'] / area  # Used for quantitative desc
+                        if bldg_count > 1:
+                            area_factor = bldg.hasGeometry['Total Floor Area'] / (bldg_count-1)  # Used for quantitative desc
+                        else:
+                            area_factor = 1
                         # Now check if this is a quantitative roof permit description: i.e., tells us # of roof squares
                         desc = bldg.hasPermitData['disaster']['description'][p].split()
                         for i in range(0, len(desc)):
