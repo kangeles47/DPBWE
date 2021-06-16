@@ -75,17 +75,22 @@ def get_source_bldgs(bldg, site, wind_direction):
             # Calculate the trajectory for each of the source bldg's debris types:
             for key in site.hasDebris:
                 # Find trajectory model input parameters for this component:
-                if key == 'roof cover':
+                if key == 'roof cover' and i.adjacentElement['Roof'][0].hasCover is not None:
                     debris_name = i.adjacentElement['Roof'][0].hasCover.upper()
-                elif key == 'roof sheathing':
+                elif key == 'roof sheathing' and i.adjacentElement['Roof'][0].hasSheathing is not None:
                     debris_name = i.adjacentElement['Roof'][0].hasSheathing.upper()
-                elif key == 'roof member':
+                elif key == 'roof member' and i.adjacentElement['Roof'][0].hasStructureType is not None:
                     debris_name = i.adjacentElement['Roof'][0].hasStructureType.upper()
-                model_input = site.hasDebris[key].loc[site.hasDebris[key]['debris name'] == debris_name]
-                alongwind_dist, acrosswind_dist = get_trajectory(model_input, bldg.adjacentElement['Roof'][0].hasDemand['wind speed'], bldg.hasGeometry['Length Unit'])
-                # Figure out if the debris will hit the building:
-                if alongwind_dist > bldg_dist:
-                    source_bldgs.append(i)
+                else:
+                    debris_name = ''
+                if len(debris_name) == 0:
+                    pass
+                else:
+                    model_input = site.hasDebris[key].loc[site.hasDebris[key]['debris name'] == debris_name]
+                    alongwind_dist, acrosswind_dist = get_trajectory(model_input, bldg.adjacentElement['Roof'][0].hasDemand['wind speed'], bldg.hasGeometry['Length Unit'])
+                    # Figure out if the debris will hit the building:
+                    if alongwind_dist > bldg_dist:
+                        source_bldgs.append(i)
         else:
             pass
 
