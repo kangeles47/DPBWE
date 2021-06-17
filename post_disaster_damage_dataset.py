@@ -255,7 +255,7 @@ class BayCountyPermits(PostDisasterDamageDataset):
                     # Reset area and area_factor:
                     area_factor, bldg_count = 0, 0
                     # First check to make sure this is a building-related roof permit:
-                    if 'GAZ' in bldg.hasPermitData['disaster']['description'][p] or 'CANOPY' in bldg.hasPermitData['disaster']['description'][p]:
+                    if 'GAZ' in bldg.hasPermitData['disaster']['description'][p] or 'CANOP' in bldg.hasPermitData['disaster']['description'][p]:
                         pass
                     else:
                         # Note that there is a roof permit (at least one):
