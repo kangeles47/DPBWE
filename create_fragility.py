@@ -274,7 +274,7 @@ def get_point_estimate(lparams):
         mle_args = (lparams[key]['demand'], lparams[key]['total'], lparams[key]['fail'])
         # Initialization parameters for MLE:
         # Try out a range of values:
-        mu_values = np.arange(4, 6, 0.5)
+        mu_values = np.arange(4, 7, 0.5)
         beta_values = np.arange(0.1, 0.5, 0.1)
         mu_est, beta_est, loglike_est = [], [], []
         for mu in mu_values:
@@ -283,11 +283,15 @@ def get_point_estimate(lparams):
                 bnds = ((0, None), (0, None))  # values for mu and beta must be positive
                 results_uncstr = opt.minimize(mle_objective_func, params_init, args=mle_args, bounds=bnds)
                 mu_MLE, beta_MLE = results_uncstr.x
-                # Save the parameter estimates:
-                mu_est.append(mu_MLE)
-                beta_est.append(beta_MLE)
-                # Calculate the log-likelihood and save:
-                loglike_est.append(sum(lparams[key]['fail']*np.log(norm.cdf(np.log(lparams[key]['demand']), mu_MLE, beta_MLE)) + (lparams[key]['total']-lparams[key]['fail'])*np.log(1-norm.cdf(np.log(lparams[key]['demand']), mu_MLE, beta_MLE))))
+                # Calculate the log-likelihood:
+                loglike_calc = (sum(lparams[key]['fail']*np.log(norm.cdf(np.log(lparams[key]['demand']), mu_MLE, beta_MLE)) + (lparams[key]['total']-lparams[key]['fail'])*np.log(1-norm.cdf(np.log(lparams[key]['demand']), mu_MLE, beta_MLE))))
+                if np.isnan(loglike_calc):
+                    pass
+                else:
+                    # Save the parameter estimates:
+                    mu_est.append(mu_MLE)
+                    beta_est.append(beta_MLE)
+                    loglike_est.append(loglike_calc)
         # Find the pair of mu, beta initial conditions that maximize the log-likelihood:
         print('loglike values MLE:')
         print(loglike_est)
@@ -301,9 +305,9 @@ def get_point_estimate(lparams):
         # Plotting:
         fig = plt.figure()
         plt.scatter(lparams[key]['demand'], lparams[key]['fail'] / lparams[key]['total'])
-        im = np.arange(70, 180, 1)
+        im = np.arange(70, 200, 1)
         plt.plot(im, norm.cdf(np.log(im), mle_params[key]['mu'], mle_params[key]['beta']), 'r')
-        plt.plot(im, norm.cdf((np.log(im)-mle_params[key]['mu'])/mle_params[key]['beta']), 'm')
+        #plt.plot(im, norm.cdf((np.log(im)-mle_params[key]['mu'])/mle_params[key]['beta']), 'm')
         plt.xlabel('Wind Speed')
         plt.ylabel('P(f)')
         plt.title('Damage State ' + str(key))
