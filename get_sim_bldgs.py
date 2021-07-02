@@ -39,14 +39,15 @@ def check_sim_rcover(bldg, compare_bldg):
         if bldg.hasElement['Roof'][0].hasCover == compare_bldg.hasElement['Roof'][0].hasCover:
             rcover_flag = True
         else:
+            rcover_flag = False
             # Split the roof cover string and check for similarities:
-            rcover_type = bldg.hasElement['Roof'][0].hasCover.split()
-            for i in rcover_type:
-                if i in compare_bldg.hasElement['Roof'][0].hasCover:
-                    rcover_flag = True
-                    break
-                else:
-                    rcover_flag = False
+            #rcover_type = bldg.hasElement['Roof'][0].hasCover.split()
+            #for i in rcover_type:
+             #   if i in compare_bldg.hasElement['Roof'][0].hasCover:
+              #      rcover_flag = True
+               #     break
+                #else:
+                 #   rcover_flag = False
     else:
         rcover_flag = False
     return rcover_flag
