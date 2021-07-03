@@ -1,4 +1,5 @@
 import pandas as pd
+from numpy import isnan
 import requests
 
 
@@ -145,7 +146,7 @@ class STEER(PostDisasterDamageDataset):
             if self.hasHazard[hazard_type]:
                 if component_type == 'roof cover':
                     # Check if there are roof-related damage descriptions:
-                    if df_steer['roof_cover_damage_'][idx] > 0:
+                    if not isnan(df_steer['roof_cover_damage_'][idx]):
                         data_details['available'] = True
                         data_details['value'] = df_steer['roof_cover_damage_'][idx]
                         # Update dataset object damage scale:
