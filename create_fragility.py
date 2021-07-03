@@ -36,7 +36,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
         data_details_list = []
         avail_flag = False
         for i in range(0, len(data_types)):  # Collect data from each data source
-            data_details = {'available': False}  # Placeholder dictionary for each new iteration
+            data_details = {'available': False, 'fidelity': None, 'component type': component_type, 'hazard type': hazard_type, 'value': None}  # Placeholder dictionary for each new iteration
             if isinstance(data_types[i], post_disaster_damage_dataset.STEER):
                 data_details = data_types[i].add_steer_data(sbldg, component_type, hazard_type, file_paths[i])
             elif isinstance(data_types[i], post_disaster_damage_dataset.BayCountyPermits):
@@ -136,7 +136,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
 
 
 
-def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type):
+def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type, plot_flag):
     """
     Translates component-level damage descriptions (discrete or continuous) into discrete damage measures
     for the specified damage_scale_name.
@@ -156,8 +156,21 @@ def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type):
     # Step 2: Translate component-level damage into discrete damage measures
     # and create (degree of damage, demand) data pairs:
     data_pairs = []
+    markers = []
     for bldg in sim_bldgs:
         if component_type == 'roof cover':
+            if plot_flag:
+                if isinstance(bldg.hasDamageData['roof cover']['fidelity'], post_disaster_damage_dataset.STEER):
+                    markers.append('.')
+                elif isinstance(bldg.hasDamageData['roof cover']['fidelity'],
+                                post_disaster_damage_dataset.BayCountyPermits):
+                    markers.append('^')
+                elif isinstance(bldg.hasDamageData['roof cover']['fidelity'], post_disaster_damage_dataset.FemaHma):
+                    markers.append('1')
+                elif isinstance(bldg.hasDamageData['roof cover']['fidelity'], post_disaster_damage_dataset.FemaIahrld):
+                    markers.append('*')
+                else:
+                    markers.append('x')
             if bldg.hasElement['Roof'][0].hasDamageData['available']:
                 # Use component-level descriptions to find equivalent damage measure:
                 for dm in range(0, len(gen_dataset.hasDamageScale['component damage states']['number'])):
@@ -185,6 +198,37 @@ def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type):
             pass
         data_pairs.append(new_tuple)
     print(data_pairs)
+    if plot_flag:
+        from matplotlib import rcParams
+        rcParams['font.family'] = "Times New Roman"
+        fig, ax = plt.subplots()
+        xflag = 0
+        oflag = 0
+        one_flag = 0
+        for i in range(0, len(data_pairs)):
+            if markers[i] == 'x':
+                if xflag == 0:
+                    xflag = 1
+                    ax.plot(data_pairs[i][1], data_pairs[i][0], 'b'+markers[i], label='No damage dataset')
+                else:
+                    ax.plot(data_pairs[i][1], data_pairs[i][0], 'b' + markers[i])
+            elif markers[i] == 'o':
+                if oflag == 0:
+                    oflag = 1
+                    ax.plot(data_pairs[i][1], data_pairs[i][0], 'b'+markers[i], label='Field surveys')
+                else:
+                    ax.plot(data_pairs[i][1], data_pairs[i][0], 'b' + markers[i])
+            elif markers[i] == '1':
+                if one_flag == 0:
+                    one_flag = 1
+                    ax.plot(data_pairs[i][1], data_pairs[i][0], 'b'+markers[i], label='HMA observations')
+                else:
+                    ax.plot(data_pairs[i][1], data_pairs[i][0], 'b' + markers[i])
+        ax.set_yticks([0, 1, 2, 3, 4])
+        ax.set_ylabel('Damage Measure')
+        ax.set_xlabel('Wind Speed [mph]')
+        ax.legend()
+        plt.show()
     # Step 3: Create dichotomous failure datasets for each damage measure:
     dichot_dict = {}
     for ds in gen_dataset.hasDamageScale['component damage states']['number']:
@@ -213,7 +257,7 @@ def get_likelihood_params(sim_bldgs, damage_scale_name, component_type, hazard_t
                       'total' key-value: the total number of buildings observed at the demand value.
                       'fail' key-value: the number of buildings with failures observed at the demand value.
     """
-    dichot_dict = get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type)
+    dichot_dict = get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type, plot_flag=True)
     lparams = {}
     for key in dichot_dict:
         if key == 0:
