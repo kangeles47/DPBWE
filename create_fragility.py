@@ -84,8 +84,8 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
     for sim in sim_bldgs:
         if hazard_type == 'wind':
             if component_type == 'roof cover':
-                z = sim.hasGeometry['Height']
-                sim.hasElement['Roof'][0].hasDemand['wind speed'] = get_local_wind_speed(sim, z, hazard_file_path,
+                #z = sim.hasGeometry['Height']
+                sim.hasElement['Roof'][0].hasDemand['wind speed'] = get_wind_speed(sim, hazard_file_path,
                                                                                               exposure='C', unit='english')
             else:
                 pass
@@ -161,7 +161,7 @@ def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type, p
         if component_type == 'roof cover':
             if plot_flag:
                 if isinstance(bldg.hasDamageData['roof cover']['fidelity'], post_disaster_damage_dataset.STEER):
-                    markers.append('.')
+                    markers.append('o')
                 elif isinstance(bldg.hasDamageData['roof cover']['fidelity'],
                                 post_disaster_damage_dataset.BayCountyPermits):
                     markers.append('^')
@@ -201,33 +201,43 @@ def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type, p
     if plot_flag:
         from matplotlib import rcParams
         rcParams['font.family'] = "Times New Roman"
+        rcParams.update({'font.size': 14})
+        msize = 12
         fig, ax = plt.subplots()
         xflag = 0
         oflag = 0
         one_flag = 0
+        c_flag = 0
         for i in range(0, len(data_pairs)):
             if markers[i] == 'x':
                 if xflag == 0:
                     xflag = 1
-                    ax.plot(data_pairs[i][1], data_pairs[i][0], 'b'+markers[i], label='No damage dataset')
+                    ax.plot(data_pairs[i][1]/2.237, data_pairs[i][0], 'k'+markers[i], markersize=msize, label='No damage dataset')
                 else:
-                    ax.plot(data_pairs[i][1], data_pairs[i][0], 'b' + markers[i])
+                    ax.plot(data_pairs[i][1]/2.237, data_pairs[i][0], 'k' + markers[i], markersize=msize)
             elif markers[i] == 'o':
                 if oflag == 0:
                     oflag = 1
-                    ax.plot(data_pairs[i][1], data_pairs[i][0], 'b'+markers[i], label='Field surveys')
+                    ax.plot(data_pairs[i][1]/2.237, data_pairs[i][0], 'r'+markers[i], markerfacecolor='none', markersize=msize, label='Field surveys')
                 else:
-                    ax.plot(data_pairs[i][1], data_pairs[i][0], 'b' + markers[i])
+                    ax.plot(data_pairs[i][1]/2.237, data_pairs[i][0], 'r' + markers[i], markerfacecolor='none', markersize=msize)
             elif markers[i] == '1':
                 if one_flag == 0:
                     one_flag = 1
-                    ax.plot(data_pairs[i][1], data_pairs[i][0], 'b'+markers[i], label='HMA observations')
+                    ax.plot(data_pairs[i][1]/2.237, data_pairs[i][0], 'b'+markers[i], markersize=msize, label='HMA dataset')
                 else:
-                    ax.plot(data_pairs[i][1], data_pairs[i][0], 'b' + markers[i])
+                    ax.plot(data_pairs[i][1]/2.237, data_pairs[i][0], 'b' + markers[i], markersize=msize)
+            elif markers[i] == '^':
+                if c_flag == 0:
+                    c_flag = 1
+                    ax.plot(data_pairs[i][1]/2.237, data_pairs[i][0], 'b'+markers[i], markerfacecolor='none', markersize=msize, label='Disaster Building Permits')
+                else:
+                    ax.plot(data_pairs[i][1]/2.237, data_pairs[i][0], 'b' + markers[i], markerfacecolor='none', markersize=msize)
+        #ax.set_xlim(50, 80)
         ax.set_yticks([0, 1, 2, 3, 4])
         ax.set_ylabel('Damage Measure')
-        ax.set_xlabel('Wind Speed [mph]')
-        ax.legend()
+        ax.set_xlabel('Wind Speed [m/s]')
+        ax.legend(loc='best')
         plt.show()
     # Step 3: Create dichotomous failure datasets for each damage measure:
     dichot_dict = {}
@@ -446,7 +456,7 @@ def get_best_data(data_details_list, analysis_date):
     return best_data
 
 
-def get_local_wind_speed(bldg, z, wind_speed_file_path, exposure, unit):
+def get_wind_speed(bldg, wind_speed_file_path, exposure, unit):
     df_wind_speeds = pd.read_csv(wind_speed_file_path)
     # Round the lat and lon values to two decimal places:
     df_wind_speeds['Lon'] = round(df_wind_speeds['Lon'], 2)
@@ -485,8 +495,9 @@ def get_local_wind_speed(bldg, z, wind_speed_file_path, exposure, unit):
     # Calculate the local wind speed at height z given the exposure category:
     if exposure == 'C':
         bldg.hasDemand['wind speed'] = v_basic
+        v_local = v_basic
         # An adjustment for height is all that is needed:
-        v_local = v_basic*(z/ref_height)**(1/alpha_c)
+        #v_local = v_basic*(z/ref_height)**(1/alpha_c)
     else:
         # Power law - calculate the wind speed at gradient height for exposure C:
         v_gradient = v_basic / ((ref_height / zg_c) ** (1 / alpha_c))
@@ -505,9 +516,10 @@ def get_local_wind_speed(bldg, z, wind_speed_file_path, exposure, unit):
         # Calculate the wind speed for the specified exposure, at its reference height:
         v_new = v_gradient*((ref_height/zg)**(1/alpha))
         bldg.hasDemand['wind speed'] = v_new
-        if z != ref_height:
-            # Adjust for roof height:
-            v_local = v_new*((z/ref_height)**(1/alpha))
-        else:
-            v_local = v_new
+        v_local = v_new
+        #f z != ref_height:
+         #   # Adjust for roof height:
+          #  v_local = v_new*((z/ref_height)**(1/alpha))
+        #else:
+         #   v_local = v_new
     return round(v_local)
