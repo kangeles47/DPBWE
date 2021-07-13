@@ -784,7 +784,7 @@ class FemaHma(PostDisasterDamageDataset):
                                     new_parcel.hasLocation['State'] = df_sub['state'][row].upper()
                                     new_parcel.hasOccupancy = df_sub['structureType'][row].upper()
                                     # Find latitude/longitude information:
-                                    df_geo = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Geodesic/FClaims_locs.csv')
+                                    df_geo = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Geodesic/FClaims_locs.csv')
                                     idx = df_geo.loc[(df_geo['CITY']==new_parcel.hasLocation['City']) & (df_geo['ZIP']==new_parcel.hasLocation['Zip Code'])].index.to_list()
                                     new_parcel.hasLocation['Geodesic'] = Point(df_geo['LONGITUDE'][idx], df_geo['LATITUDE'][idx])
                                     # Add story and height information:
