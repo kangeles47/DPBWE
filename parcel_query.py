@@ -19,8 +19,8 @@ agreeButton.click()
 # Parcels numbered between 14805-101-000 to 14805-191-000 AND 14876-501-000 to 14876-614-000
 parcel_list = []
 
-for num in range(0, 130):
-    parcel_list.append('34511-500-00' + str(num))
+for num in range(163, 200):
+    parcel_list.append('31437-400-' + str(num))
 
 # for num2 in range(501,615):
     # parcel_list.append('14876-' + str(num2) + '-000')
@@ -74,7 +74,7 @@ for parcel in range(0, len(parcel_list)):
         ftype = 'N/A'
         fcover_type = 'N/A'
         # Save the parcel:
-        with open('CommParcels.csv', 'a', newline='') as csvfile:
+        with open('CS_CommParcels.csv', 'a', newline='') as csvfile:
             fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType',
                           'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -93,7 +93,7 @@ for parcel in range(0, len(parcel_list)):
                     elif count > 0:
                         permit_list.append(row.get_text().splitlines()[2])
                 # Save the address, parcel number, and permit numbers in a separate CSV:
-                with open('CommParcelsPermits.csv', 'a', newline='') as csvfile:
+                with open('CS_CommParcelsPermits.csv', 'a', newline='') as csvfile:
                     fieldnames = ['Parcel Id', 'Address', 'Permit Number']
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                     writer.writerow(
@@ -127,13 +127,13 @@ for parcel in range(0, len(parcel_list)):
                     elif count > 0:
                         permit_list.append(row.get_text().splitlines()[2])
                 # Save the address, parcel number, and permit numbers in a separate CSV:
-                with open('CondoParcelsPermits.csv', 'a', newline='') as csvfile:
+                with open('CS_CondoParcelsPermits.csv', 'a', newline='') as csvfile:
                     fieldnames = ['Parcel Id', 'Address', 'Permit Number']
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                     writer.writerow(
                         {'Parcel Id': parcel_id, 'Address': address, 'Permit Number': permit_list})
         # Save the condo feature information:
-        with open('CondoParcels.csv', 'a', newline='') as csvfile:
+        with open('CS_CondoParcels.csv', 'a', newline='') as csvfile:
             fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Unit No.', 'Floor', 'Living Area', 'Number of Bedrooms', 'Number of Bathrooms', 'Year Built']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writerow({'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Unit No.': unit_no, 'Floor': floor, 'Living Area': living_area, 'Number of Bedrooms': num_bed, 'Number of Bathrooms': num_bath, 'Year Built': yr_built})
@@ -178,7 +178,7 @@ for parcel in range(0, len(parcel_list)):
                         elif 'Floor Cover' in tag:
                             fcover_type = value.splitlines()[1]
                     # Save the building and parcel information:
-                with open('CommParcels.csv', 'a', newline='') as csvfile:
+                with open('CS_CommParcels.csv', 'a', newline='') as csvfile:
                     fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType', 'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type','Floor Cover']
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                     writer.writerow({'Parcel Id': parcel_id, 'Address': address, 'Use Code': use_code, 'Square Footage': sq_ft,
@@ -194,7 +194,7 @@ for parcel in range(0, len(parcel_list)):
                     elif count > 0:
                         permit_list.append(row.get_text().splitlines()[2])
                 # Save the address, parcel number, and permit numbers in a separate CSV:
-                with open('CommParcelsPermits.csv', 'a', newline='') as csvfile:
+                with open('CS_CommParcelsPermits.csv', 'a', newline='') as csvfile:
                     fieldnames = ['Parcel Id', 'Address', 'Permit Number']
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                     writer.writerow(
@@ -212,7 +212,7 @@ for parcel in range(0, len(parcel_list)):
             iwall_type = 'N/A'
             ftype = 'N/A'
             fcover_type = 'N/A'
-            with open('CommParcels.csv', 'a', newline='') as csvfile:
+            with open('CS_CommParcels.csv', 'a', newline='') as csvfile:
                 fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType',
                               'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover']
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
