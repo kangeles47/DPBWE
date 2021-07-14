@@ -1748,51 +1748,51 @@ class PressureCalc:
 
 
 # Plotting: % change in wind pressure vs. change in height
-pcalc = PressureCalc()
-area_eff = [10, 20, 50, 100]
-wind_speed = np.arange(60, 200, 5)
-h_bldg = 13.1234
-heights = np.arange(h_bldg, h_bldg*5, h_bldg)
-pitch = 0
-cat = 2
-hpr = True
-h_ocean = True
-encl_class = 'Enclosed'
-tpu_flag = False
-exposure = 'C'
-edition = 'ASCE 7-10'
-area_list = []
-for area in area_eff:
-    rcc_dict = {}
-    for h in heights:
-        rcc_list = []
-        for speed in wind_speed:
-            rccs = pcalc.rcc_pressure(speed, exposure, edition, h, pitch, area, cat, hpr, h_ocean, encl_class, tpu_flag)
-            rcc_list.append(rccs[-1])
-        rcc_dict[h] = rcc_list
-    area_list.append(rcc_dict)
+#pcalc = PressureCalc()
+#area_eff = [10, 20, 50, 100]
+#wind_speed = np.arange(60, 200, 5)
+#h_bldg = 13.1234
+#heights = np.arange(h_bldg, h_bldg*5, h_bldg)
+#pitch = 0
+#cat = 2
+#hpr = True
+#h_ocean = True
+#encl_class = 'Enclosed'
+#tpu_flag = False
+#exposure = 'C'
+#edition = 'ASCE 7-10'
+#area_list = []
+#for area in area_eff:
+#    rcc_dict = {}
+#    for h in heights:
+#        rcc_list = []
+#        for speed in wind_speed:
+#            rccs = pcalc.rcc_pressure(speed, exposure, edition, h, pitch, area, cat, hpr, h_ocean, encl_class, tpu_flag)
+#            rcc_list.append(rccs[-1])
+#        rcc_dict[h] = rcc_list
+#    area_list.append(rcc_dict)
 # Plot pressure vs. wind speed for various heights:
-fig, axs = plt.subplots(2, 2)
-for d in range(0, len(area_list)):
+#fig, axs = plt.subplots(2, 2)
+#for d in range(0, len(area_list)):
     # Plot the pressure vs. wind speed for all heights for one effective area
-    if d == 0:
-        count = 1
-        for key in area_list[d]:
-            h_label = 4*(count)  # [m]
-            axs[0, 0].plot(wind_speed, area_list[d][key], label=str(h_label)+' m')
-            count += 1
-        axs[0,0].legend()
-    elif d == 1:
-        for key in area_list[d]:
-            axs[0, 1].plot(wind_speed, area_list[d][key])
-    elif d == 2:
-        for key in area_list[d]:
-            axs[1, 0].plot(wind_speed, area_list[d][key])
-    elif d == 3:
-        for key in area_list[d]:
-            axs[1, 1].plot(wind_speed, area_list[d][key])
-plt.show()
-a = 0
+#    if d == 0:
+#        count = 1
+#        for key in area_list[d]:
+#            h_label = 4*(count)  # [m]
+#            axs[0, 0].plot(wind_speed, area_list[d][key], label=str(h_label)+' m')
+#            count += 1
+#        axs[0,0].legend()
+#    elif d == 1:
+#        for key in area_list[d]:
+#            axs[0, 1].plot(wind_speed, area_list[d][key])
+#    elif d == 2:
+#        for key in area_list[d]:
+#            axs[1, 0].plot(wind_speed, area_list[d][key])
+#    elif d == 3:
+#        for key in area_list[d]:
+#            axs[1, 1].plot(wind_speed, area_list[d][key])
+#plt.show()
+#a = 0
 
 #pcalc = PressureCalc()
 #p=pcalc.wcc_pressure(134, 'B', 'ASCE 7-16', 52.5, 0, 75, 2, True, True, 'Enclosed', False)
