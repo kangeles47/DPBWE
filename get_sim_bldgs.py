@@ -5,6 +5,9 @@ def get_sim_bldgs(bldg, site, hazard_type, component_type, event_year):
     sim_bldgs = []
     if hazard_type == 'wind':
         if component_type == 'roof cover':
+            # Calculate height range for the case study structure:
+            hlower = ((bldg.hasGeometry['Height']) - (bldg.hasGeometry['Height']/len(bldg.hasStory)))
+            hupper = ((bldg.hasGeometry['Height']) + (bldg.hasGeometry['Height']/len(bldg.hasStory)))
             # Find buildings in the regional inventory that have the same or similar roof cover type:
             for compare_bldg in site.hasBuilding:
                 # Skip buildings constructed after the year of the event:
@@ -13,11 +16,15 @@ def get_sim_bldgs(bldg, site, hazard_type, component_type, event_year):
                 else:
                     # Check if this building has a similar or same roof cover:
                     rcover_flag = check_sim_rcover(bldg, compare_bldg)
-                    # Check if this building has a similar load path:
                     if rcover_flag:
-                        lpath_flag = check_sim_lpath_rcover(bldg, compare_bldg)
-                        if lpath_flag:
-                            sim_bldgs.append(compare_bldg)
+                        # Check if this building is within one-story height of case study (similitude params):
+                        if hlower <= compare_bldg.hasGeometry['Height'] <= hupper:
+                            # Check if this building has a similar load path:
+                            lpath_flag = check_sim_lpath_rcover(bldg, compare_bldg)
+                            if lpath_flag:
+                                sim_bldgs.append(compare_bldg)
+                            else:
+                                pass
                         else:
                             pass
                     else:
