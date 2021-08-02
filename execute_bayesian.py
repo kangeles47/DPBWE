@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import arviz as az
 import pymc3 as pm
 import theano.tensor as tt
 import matplotlib.pyplot as plt
@@ -56,12 +57,16 @@ def log_likelihood(theta, fail, total, demand):
                fail*np.log(norm.cdf(np.log(demand), mu, beta)) + (total-fail)*np.log(1-norm.cdf(np.log(demand), mu, beta)))
 
 
-demand_arr = np.array([114, 126, 128, 130, 135, 138, 139, 140])
-fail_bldgs = np.array([0, 0, 0, 0, 4, 1, 0, 3])
-total_bldgs = np.array([1, 2, 3, 5, 7, 3, 1, 4])
-xj = np.array([114, 126, 128, 130, 135, 138, 139, 140])
-zj = np.array([0, 0, 0, 0, 4, 1, 0, 3])
-nj = np.array([1, 2, 3, 5, 7, 3, 1, 4])
+def pf(im, mu, beta):
+    return norm.cdf(np.log(im), mu, beta)
+
+
+demand_arr = np.array([117, 123, 128])
+fail_bldgs = np.array([0, 3, 2])
+total_bldgs = np.array([1, 4, 2])
+xj = np.array([117, 123, 128])
+zj = np.array([0, 3, 2])
+nj = np.array([1, 4, 2])
 m = sum(xj)/len(xj)
 #xj = xj/m
 
@@ -86,11 +91,20 @@ with pm.Model() as model:
     for RV in model.basic_RVs:
         print(RV.name, RV.logp(model.test_point))
     # Determine the posterior
-    trace = pm.sample(1000, cores=1)
+    trace = pm.sample(2000, cores=1)
     # Plot the posterior distributions of each RV
-    pm.traceplot(trace, ['theta', 'beta'])
-    print(pm.summary(trace))
+    #pm.traceplot(trace, ['theta', 'beta'])
+    az.plot_trace(trace[1000:])
+    az.plot_posterior(trace)
+    print(az.summary(trace))
     plt.show()
+
+# Additional plotting
+im = np.arange(70, 200, 1)
+df = az.trace_to_dataframe(trace)
+y_init = pf(im, 4.69, 0.1645)
+plt.plot(im, y_init)
+
 # create our Op
 #logl = LogLike(log_likelihood, fail_bldgs, total_bldgs, demand_arr)
 # Create Bayesian model:
