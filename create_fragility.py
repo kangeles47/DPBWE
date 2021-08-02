@@ -201,8 +201,8 @@ def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type, p
     if plot_flag:
         from matplotlib import rcParams
         rcParams['font.family'] = "Times New Roman"
-        rcParams.update({'font.size': 14})
-        msize = 12
+        rcParams.update({'font.size': 10})
+        msize = 8
         fig, ax = plt.subplots()
         xflag = 0
         oflag = 0
@@ -230,14 +230,14 @@ def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type, p
             elif markers[i] == '^':
                 if c_flag == 0:
                     c_flag = 1
-                    ax.plot(data_pairs[i][1]/2.237, data_pairs[i][0], 'b'+markers[i], markerfacecolor='none', markersize=msize, label='Disaster Building Permits')
+                    ax.plot(data_pairs[i][1]/2.237, data_pairs[i][0], 'b'+markers[i], markerfacecolor='none', markersize=msize, label='Disaster Building \nPermits')
                 else:
                     ax.plot(data_pairs[i][1]/2.237, data_pairs[i][0], 'b' + markers[i], markerfacecolor='none', markersize=msize)
         #ax.set_xlim(50, 80)
         ax.set_yticks([0, 1, 2, 3, 4])
         ax.set_ylabel('Damage Measure')
-        ax.set_xlabel('Wind Speed [m/s]')
-        ax.legend(loc='best')
+        ax.set_xlabel('Peak Gust Wind Speed [m/s]')
+        ax.legend(loc='upper left', fontsize=9, markerscale=0.8)
         plt.show()
     # Step 3: Create dichotomous failure datasets for each damage measure:
     dichot_dict = {}
