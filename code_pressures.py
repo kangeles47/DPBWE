@@ -86,8 +86,16 @@ class PressureCalc:
         # All components and cladding calculations require qh:
         qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag)
         # Get GCps and calculate the pressure for each zone:
-        rpos = [True, True, True, False, False, False]
-        rzone = [1, 2, 3, 1, 2, 3]
+        if h_bldg > 60:
+            if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
+                rpos = [False, False, False, False]
+                rzone = [1, 2, 3, 4]
+            else:
+                rpos = [False, False, False]
+                rzone = [1, 2, 3]
+        else:
+            rpos = [True, True, True, False, False, False]
+            rzone = [1, 2, 3, 1, 2, 3]
         rps = list()
         for ind in range(0, len(rpos)):
             # Find the GCp
@@ -1829,7 +1837,7 @@ h_ocean = True
 encl_class = 'Enclosed'
 tpu_flag = False
 exposure = 'C'
-edition = 'ASCE 7-93'
+edition = 'ASCE 7-05'
 area_list = []
 for area in area_eff:
     rcc_dict = {}
@@ -1871,15 +1879,15 @@ for d in range(0, len(area_list)):
         #axs[0,0].set_ylabel('Pressure [kN/$m^2$]')
         plt.legend()
         plt.show()
-    elif d == 1:
-        for key in area_list[d]:
-            axs[0, 1].plot(wind_speed, area_list[d][key])
-    elif d == 2:
-        for key in area_list[d]:
-            axs[1, 0].plot(wind_speed, area_list[d][key])
-    elif d == 3:
-        for key in area_list[d]:
-            axs[1, 1].plot(wind_speed, area_list[d][key])
+   # elif d == 1:
+    #    for key in area_list[d]:
+     #       axs[0, 1].plot(wind_speed, area_list[d][key])
+    #elif d == 2:
+     #   for key in area_list[d]:
+      #      axs[1, 0].plot(wind_speed, area_list[d][key])
+    #elif d == 3:
+     #   for key in area_list[d]:
+      #      axs[1, 1].plot(wind_speed, area_list[d][key])
 plt.show()
 a = 0
 
