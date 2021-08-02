@@ -5,6 +5,9 @@ import scipy.optimize as opt
 from scipy.stats import norm
 import get_sim_bldgs
 import post_disaster_damage_dataset
+import pymc3 as pm
+import arviz as az
+import theano.tensor as tt
 
 
 def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_year, event_name, data_types, file_paths, damage_scale_name, analysis_date, hazard_file_path):
@@ -122,6 +125,15 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
         pass
     # Step 6b: Get input parameters for the likelihood function:
     lparams = get_likelihood_params(sim_bldgs, damage_scale_name, component_type, hazard_type)
+    # Export into DataFrame:
+    df_params = pd.DataFrame(columns=['DS Number', 'demand', 'fail', 'total'])
+    for key in lparams:
+        ds_array = np.ones(len(lparams[key]['total'])) * key
+        new_dict = {'DS Number': ds_array, 'demand': lparams[key]['demand'], 'fail': lparams[key]['fail'],
+                    'total': lparams[key]['total']}
+        df_new = pd.DataFrame(new_dict)
+        df_params = pd.concat([df_params, df_new], ignore_index=True)
+    df_params.to_csv('Observations.csv')
     # Calculate MLE estimate for comparison:
     mle_params = get_point_estimate(lparams)
     # Step 6c: Run Bayesian Parameter Estimation:
@@ -131,8 +143,34 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             demand_values = np.arange(70, 200, 10)  # mph
         elif length_unit == 'm':
             demand_values = np.arange(30, 90, 5)  # m/s
-    for key in mle_params:
-        pass
+
+def conduct_bayesian(observations_file_path, mu_init, beta_init, hazard):
+    df = pd.DataFrame(observations_file_path)
+    for key in lparams:
+        xj = lparams[key]['demand']
+        zj = lparams[key]['fail']
+        nj = lparams[key]['total']
+        with pm.Model() as model:
+            # Set up the prior:
+            theta = pm.Normal('theta', 4.69, 2.71)
+            beta = pm.Normal('beta', 0.1645, 0.03)
+            # Define fragility function equation:
+            def normal_cdf(theta, beta, xj):
+                """Compute the log of the cumulative density function of the normal."""
+                return 0.5 * (1 + tt.erf((tt.log(xj) - theta) / (beta * tt.sqrt(2))))
+            # Define likelihood:
+            # like = pm.Binomial('like', p=p, observed=zj, n=nj)
+            like = pm.Binomial('like', p=normal_cdf(theta, beta, xj), observed=zj, n=nj)
+            for RV in model.basic_RVs:
+                print(RV.name, RV.logp(model.test_point))
+            # Determine the posterior
+            trace = pm.sample(2000, cores=1)
+            # Plot the posterior distributions of each RV
+            az.plot_trace(trace)
+            az.plot_posterior(trace)
+            az.plot_forest(trace, var_names=['theta', 'beta'])
+            print(az.summary(trace))
+            plt.show()
 
 
 
