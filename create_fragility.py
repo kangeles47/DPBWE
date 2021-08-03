@@ -144,31 +144,37 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
         elif length_unit == 'm':
             demand_values = np.arange(30, 90, 5)  # m/s
 
-def conduct_bayesian(observations_file_path, mu_init, beta_init, hazard):
-    df = pd.DataFrame(observations_file_path)
-    for key in lparams:
-        xj = lparams[key]['demand']
-        zj = lparams[key]['fail']
-        nj = lparams[key]['total']
+
+def conduct_bayesian(observations_file_path, mu_init, beta_init):
+    df = pd.read_csv(observations_file_path)
+    # Get list of unique damage state values:
+    ds_list = df['DS Number'].unique()
+    for ds in range(0, len(ds_list)):
+        df_sub = df.loc[df['DS Number'] == ds_list[ds]]
+        xj = df_sub['demand']
+        zj = df_sub['fail']
+        nj = df_sub['total']
+        mu_ds = mu_init[ds]
+        beta_ds = beta_init[ds]
         with pm.Model() as model:
             # Set up the prior:
-            theta = pm.Normal('theta', 4.69, 2.71)
-            beta = pm.Normal('beta', 0.1645, 0.03)
+            mu = pm.Normal('mu', mu_ds, 2.71)
+            beta = pm.Normal('beta', beta_ds, 0.03)
             # Define fragility function equation:
-            def normal_cdf(theta, beta, xj):
+            def normal_cdf(mu, beta, xj):
                 """Compute the log of the cumulative density function of the normal."""
-                return 0.5 * (1 + tt.erf((tt.log(xj) - theta) / (beta * tt.sqrt(2))))
+                return 0.5 * (1 + tt.erf((tt.log(xj) - mu) / (beta * tt.sqrt(2))))
             # Define likelihood:
             # like = pm.Binomial('like', p=p, observed=zj, n=nj)
-            like = pm.Binomial('like', p=normal_cdf(theta, beta, xj), observed=zj, n=nj)
+            like = pm.Binomial('like', p=normal_cdf(mu, beta, xj), observed=zj, n=nj)
             for RV in model.basic_RVs:
                 print(RV.name, RV.logp(model.test_point))
             # Determine the posterior
-            trace = pm.sample(2000, cores=1)
+            trace = pm.sample(3000, cores=1)
             # Plot the posterior distributions of each RV
             az.plot_trace(trace)
             az.plot_posterior(trace)
-            az.plot_forest(trace, var_names=['theta', 'beta'])
+            az.plot_forest(trace, var_names=['mu', 'beta'])
             print(az.summary(trace))
             plt.show()
 
@@ -561,3 +567,9 @@ def get_wind_speed(bldg, wind_speed_file_path, exposure, unit):
         #else:
          #   v_local = v_new
     return round(v_local)
+
+
+#observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations.csv'
+#mu_init = [4.69, 4.8]
+#beta_init = [0.16, 0.15]
+#conduct_bayesian(observations_file_path, mu_init, beta_init)
