@@ -101,7 +101,7 @@ with pm.Model() as model:
 
 # Additional plotting
 im = np.arange(70, 200, 1)
-df = az.trace_to_dataframe(trace)
+df = pm.trace_to_dataframe(trace)
 y_init = pf(im, 4.69, 0.1645)
 plt.plot(im, y_init)
 
