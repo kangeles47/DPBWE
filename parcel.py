@@ -6,6 +6,7 @@ from geopy import distance
 from math import sqrt, pi, sin, atan2, degrees
 from scipy import spatial
 from shapely.geometry import LineString, Point, Polygon
+from shapely import affinity
 import bldg_code
 from OBDM.zone import Building
 from OBDM.element import Roof, Wall, Floor, Ceiling
@@ -36,27 +37,27 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
                 else:
                     pass
-                #xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
-                #plt.plot(np.array(xfpt) / 3.281, np.array(yfpt) / 3.281, 'k')
-                #if key == 'local':
+                xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
+                plt.plot(np.array(xfpt) / 3.281, np.array(yfpt) / 3.281, 'k')
+                if key == 'local':
                     # Rotate the footprint to create a "rotated cartesian" axis:
-                 #   rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle
-                  #  spts = list(rect.exterior.coords)
-                   # theta = degrees(atan2((spts[1][0] - spts[2][0]), (spts[1][1] - spts[2][1])))
+                    rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle
+                    spts = list(rect.exterior.coords)
+                    theta = degrees(atan2((spts[1][0] - spts[2][0]), (spts[1][1] - spts[2][1])))
                     # Rotate the the building footprint to create the TPU axis:
-                    #rotated_b = affinity.rotate(Polygon(new_point_list), theta, origin='centroid')
-                    #rflag = True
-                    #rx, ry = rotated_b.exterior.xy
-                    #plt.plot(np.array(rx) / 3.281, np.array(ry) / 3.281, color='gray', linestyle='dashed')
-                    #plt.legend(['local Cartesian', 'rotated Cartesian'], prop={"size":14}, loc='upper right')
-                #else:
-                 #   rflag= False
+                    rotated_b = affinity.rotate(Polygon(new_point_list), theta, origin='centroid')
+                    rflag = True
+                    rx, ry = rotated_b.exterior.xy
+                    plt.plot(np.array(rx) / 3.281, np.array(ry) / 3.281, color='gray', linestyle='dashed')
+                    plt.legend(['local Cartesian', 'rotated Cartesian'], prop={"size":22}, loc='upper right')
+                else:
+                    rflag= False
                     # Uncomment to plot the footprint:
-                #plt.xlabel('x [m]', fontsize=14)
-                #plt.ylabel('y [m]', fontsize=14)
-                #plt.xticks(fontsize=14)
-                #plt.yticks(fontsize=14)
-                #plt.show()
+                plt.xlabel('x [m]', fontsize=22)
+                plt.ylabel('y [m]', fontsize=22)
+                plt.xticks(fontsize=22)
+                plt.yticks(fontsize=22)
+                plt.show()
         #if rflag:
             #self.hasGeometry['Footprint']['rotated'] = rotated_b
         # Pull building/story height information from DOE reference buildings:
@@ -90,8 +91,8 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 new_zpts.append(roof_zs)
                 # With new 3D coordinates for each horizontal plane, create surface geometry:
                 # Set up plotting:
-                #fig = plt.figure()
-                #ax = plt.axes(projection='3d')
+                fig = plt.figure()
+                ax = plt.axes(projection='3d')
                 for plane in range(0, len(new_zpts) - 1):
                     # Add the bottom and top planes for the Story:
                     plane_poly1 = Polygon(new_zpts[plane])
@@ -113,25 +114,29 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                             surf_ys.append(surf_points[1])
                             surf_zs.append(surf_points[2])
                         # Plot the surfaces for the entire building to verify:
-                        #ax.plot(np.array(surf_xs)/3.281, np.array(surf_ys)/3.281, np.array(surf_zs)/3.281, 'k')
+                        ax.plot(np.array(surf_xs)/3.281, np.array(surf_ys)/3.281, np.array(surf_zs)/3.281, 'k')
                         # Make the panes transparent:
-                        #ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-                        #ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-                        #ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+                        ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+                        ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+                        ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
                         # Make the grids transparent:
-                        #ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-                        #ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-                        #ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                        ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                        ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                        ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
                         # Plot labels
-                        #ax.set_xlabel('x [m]', fontsize=12)
-                        #ax.set_ylabel('y [m]', fontsize=12)
-                        #ax.set_zlabel('z [m]', fontsize=12)
+                        ax.set_xlabel('x [m]', fontsize=16, labelpad=10)
+                        ax.set_ylabel('y [m]', fontsize=16, labelpad=10)
+                        ax.set_zlabel('z [m]', fontsize=16, labelpad=10)
                         #ax.set_zlim(0, 16)
+                        ax.set_zlim3d(0, 16)
                 # Show the surfaces for each story:
-                #ax.xaxis.set_tick_params(labelsize=12)
-                #ax.yaxis.set_tick_params(labelsize=12)
-                #ax.zaxis.set_tick_params(labelsize=12)
-                #plt.show()
+                #ax.set_xticks(np.arange(-20,20,5))
+                #ax.set_yticks(np.arange(-20, 20, 5))
+                ax.set_zticks(np.arange(0, 20, 4))
+                ax.xaxis.set_tick_params(labelsize=16)
+                ax.yaxis.set_tick_params(labelsize=16)
+                ax.zaxis.set_tick_params(labelsize=16)
+                plt.show()
                 # Define full 3D surface renderings for the building using base plane and top plane:
                 base_poly = Polygon(new_zpts[0])
                 top_poly = Polygon(new_zpts[-1])
