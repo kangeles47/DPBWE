@@ -113,7 +113,7 @@ def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
         elif height_model == 160:
             htag = '08'
         # Depth to breadth use case:
-        if bldg.adjacentElement['Roof'].hasShape == 'flat' or bldg.adjacentElement['Roof'].hasShape == 'gable':
+        if bldg.adjacentElement['Roof'].hasShape['flat'] or bldg.adjacentElement['Roof'].hasShape['gable']:
             if db == 1:
                 depth_model = 160
                 db_ratio = 1
@@ -143,7 +143,7 @@ def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
             elif depth_model == 400:
                 dtag = '20'
             # Initialize roof tag, num_surf and, surf_dictionaries for each use case:
-            if bldg.hasStory[-1].adjacentElement['Roof'].hasShape == 'flat':
+            if bldg.adjacentElement['Roof'].hasShape['flat']:
                 num_surf = 5
                 surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
                 rtag = '00'
@@ -168,7 +168,7 @@ def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
                     rtag = '45'
             # Initialize string to access the correct model building file:
             model_file = 'Cp_ts_g' + dtag + htag + rtag + wdir_tag
-        elif bldg.adjacentElement['Roof'].hasShape == 'hip':  # Note: most common hip roof pitches 4:12-6:12
+        elif bldg.adjacentElement['Roof'].hasShape['hip']:  # Note: most common hip roof pitches 4:12-6:12
             num_surf = 8
             surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None, 8: None}
             db_ratio = 3 / 2  # One option for hip roof
@@ -271,7 +271,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
                         bsurf_ys.append(bsurf_points[1])
                         bsurf_zs.append(bsurf_points[2])
                     # Plot the surfaces for the entire building:
-                    #ax.plot(np.array(bsurf_xs) / 3.281, np.array(bsurf_ys) / 3.281, np.array(bsurf_zs) / 3.281, linestyle='dashed', color='gray')
+                    ax.plot(np.array(bsurf_xs) / 3.281, np.array(bsurf_ys) / 3.281, np.array(bsurf_zs) / 3.281, linestyle='dashed', color='gray')
         # Plot the building geometry:
         for poly in bldg.hasGeometry['3D Geometry'][key]:
             x_bpoly, y_bpoly, z_bpoly = [], [], []
@@ -279,9 +279,13 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
                 x_bpoly.append(bpt[0])
                 y_bpoly.append(bpt[1])
                 z_bpoly.append(bpt[2])
-            ax.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, color='k')
+            #ax.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, color='k')
         # Make the panes transparent:
         ax.set_zlim3d(bottom=0, top=16)
+        ax.set_zticks(np.arange(0, 20, 4))
+        ax.xaxis.set_tick_params(labelsize=16)
+        ax.yaxis.set_tick_params(labelsize=16)
+        ax.zaxis.set_tick_params(labelsize=16)
         ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
         ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
         ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
@@ -290,9 +294,9 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
         ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
         ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
         # Plot labels
-        ax.set_xlabel('x [m]')
-        ax.set_ylabel('y [m]')
-        ax.set_zlabel('z [m]')
+        ax.set_xlabel('x [m]', fontsize=16, labelpad=10)
+        ax.set_ylabel('y [m]', fontsize=16, labelpad=10)
+        ax.set_zlabel('z [m]', fontsize=16, labelpad=10)
         plt.show()
         # Add roof surfaces to the end of the list:
         if num_surf == 5:
@@ -309,21 +313,21 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
     fig_ex = plt.figure()
     ax_ex = plt.axes()
     rfx, rfy = roof_surf.exterior.xy
-    ax_ex.plot(np.array(rfx)/3.281, np.array(rfy)/3.281, linestyle='dashed', color='gray')
+    #ax_ex.plot(np.array(rfx)/3.281, np.array(rfy)/3.281, linestyle='dashed', color='gray')
     xrect, yrect = rect.exterior.xy
-    ax_ex.plot(np.array(xrect) / 3.281, np.array(yrect) / 3.281, linestyle='dashed', color='gray')
+    #ax_ex.plot(np.array(xrect) / 3.281, np.array(yrect) / 3.281, linestyle='dashed', color='gray')
     # Create general surface geometries:
     xs = [dfull/2, dfull/2, -dfull/2, -dfull/2, dfull/2]
     ys = [-bfull/2, bfull/2, bfull/2, -bfull/2, -bfull/2]
-    #ax_ex.plot(np.array(xs)/3.281, np.array(ys)/3.281, linestyle = 'dashed', color='gray')
-    # plt.plot(0, 0, 'o', color='gray')
+    ax_ex.plot(np.array(xs)/3.281, np.array(ys)/3.281, linestyle = 'dashed', color='gray')
+    ax_ex.plot(0, 0, 'o', color='gray')
     xbldg, ybldg = bldg.hasGeometry['Footprint']['local'].exterior.xy
     ax_ex.plot(np.array(xbldg) / 3.281, np.array(ybldg) / 3.281, 'k')
-    # plt.plot(bldg.hasGeometry['Footprint']['local'].centroid.x/3.281, bldg.hasGeometry['Footprint']['local'].centroid.y/3.281, 'ko')
-    ax_ex.xaxis.set_tick_params(labelsize=16)
-    ax_ex.yaxis.set_tick_params(labelsize=16)
-    ax_ex.set_xlabel('x [m]', fontsize=16)
-    ax_ex.set_ylabel('y [m]', fontsize=16)
+    ax_ex.plot(bldg.hasGeometry['Footprint']['local'].centroid.x/3.281, bldg.hasGeometry['Footprint']['local'].centroid.y/3.281, 'ko')
+    ax_ex.xaxis.set_tick_params(labelsize=20)
+    ax_ex.yaxis.set_tick_params(labelsize=20)
+    ax_ex.set_xlabel('x [m]', fontsize=20)
+    ax_ex.set_ylabel('y [m]', fontsize=20)
     plt.show()
     # Next step: Determine the surface numberings:
     # First need to establish which polygons correspond to specific TPU surface numbers:
@@ -694,7 +698,8 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
     pressure_calc = PressureCalc()
     pressures = []
     for k in df_tpu_pressures.index.to_list():
-        pressures.append(pressure_calc.get_tpu_pressure(wind_speed, df_tpu_pressures['Mean Cp'][k], 'B', df_tpu_pressures['Real Life Location'][k].z, 'mph'))
+        #pressures.append(pressure_calc.get_tpu_pressure(wind_speed, df_tpu_pressures['Mean Cp'][k], 'B', df_tpu_pressures['Real Life Location'][k].z, 'mph'))
+        pressures.append(pressure_calc.get_tpu_pressure(wind_speed, df_tpu_pressures['Mean Cp'][k], 'B', hfull, 'mph'))
     # Add a new column with the calculated pressures to the DataFrame:
     df_tpu_pressures['Pressure'] = pressures
     # Plot the real-life pressure tap locations:
@@ -714,7 +719,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         rl_ys.append(df_tpu_pressures['Real Life Location'][k].y)
         rl_zs.append(df_tpu_pressures['Real Life Location'][k].z)
     img = ax3.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281,
-                        c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 6))
+                        c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 5))
     fig3.colorbar(img)
     print('max and min Surface 1')
     print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 1, 'Pressure'])/0.020885)
@@ -866,7 +871,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             rl_xs.append(df_tpu_pressures['Real Life Location'][k].x)
             rl_ys.append(df_tpu_pressures['Real Life Location'][k].y)
             rl_zs.append(df_tpu_pressures['Real Life Location'][k].z)
-        img = ax4.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281, c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 6))
+        img = ax4.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281, c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 5))
         fig4.colorbar(img)
         # Make the panes transparent:
         ax4.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
@@ -877,9 +882,14 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         ax4.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
         ax4.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
         # Plot labels
-        ax4.set_xlabel('x [m]')
-        ax4.set_ylabel('y [m]')
-        ax4.set_zlabel('z [m]')
+        ax4.set_xlabel('x [m]', fontsize=16, labelpad=10)
+        ax4.set_ylabel('y [m]', fontsize=16, labelpad=10)
+        ax4.set_zlabel('z [m]', fontsize=16, labelpad=10)
+        # Set label styles:
+        ax4.set_zticks(np.arange(0, 20, 4))
+        ax4.xaxis.set_tick_params(labelsize=16)
+        ax4.yaxis.set_tick_params(labelsize=16)
+        ax4.zaxis.set_tick_params(labelsize=16)
         # Plot the surface geometries for verification
         for key in rect_surf_dict:
             xsurf, ysurf, zsurf = [], [], []
@@ -1074,7 +1084,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             yf.append(df_bldg_pressures['Real Life Location'][k].y)
             zf.append(df_bldg_pressures['Real Life Location'][k].z)
         img = ax5.scatter3D(np.array([xf]) / 3.281, np.array([yf]) / 3.281, np.array([zf]) / 3.281,
-                            c=df_bldg_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 6))
+                            c=df_bldg_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 5))
         fig5.colorbar(img)
         ax5.set_xlim(left=-20, right=20)
         ax5.set_ylim3d(bottom=-20, top=20)
@@ -1087,9 +1097,14 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         ax5.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
         ax5.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
         # Plot labels
-        ax5.set_xlabel('x [m]')
-        ax5.set_ylabel('y [m]')
-        ax5.set_zlabel('z [m]')
+        ax5.set_xlabel('x [m]', fontsize=14, labelpad=10)
+        ax5.set_ylabel('y [m]', fontsize=14, labelpad=10)
+        ax5.set_zlabel('z [m]', fontsize=14, labelpad=10)
+        # Set label styles:
+        ax5.set_zticks(np.arange(0, 20, 4))
+        ax5.xaxis.set_tick_params(labelsize=14)
+        ax5.yaxis.set_tick_params(labelsize=14)
+        ax5.zaxis.set_tick_params(labelsize=14)
         plt.show()
         print('a')
     return df_tpu_pressures
