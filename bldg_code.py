@@ -216,6 +216,9 @@ class ASCE7(BldgCode):
             exposure: A string providing the ASCE 7 Exposure Category
             wind_speed: The wind speed the building is subject to
         """
+        from matplotlib import rcParams
+        rcParams['font.family'] = "Times New Roman"
+        rcParams.update({'font.size': 14})
         # Create an instance of PressureCalc:
         pressures = PressureCalc()
         # Assign MWFRS pressures for the roof:
@@ -229,7 +232,7 @@ class ASCE7(BldgCode):
             else:
                 print('Roof (str) pitch currently not supported')
         else:
-            pass
+            pitch = roof_elem.hasPitch
         # (2) Direction and aspect ratios
         # Roof MWFRS pressure assignments require knowledge of the building aspect ratio for a given "wind direction"
         # (2a) Find the orientation of the building footprint using minimum rotated rectangle:
