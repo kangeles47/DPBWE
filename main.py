@@ -11,8 +11,9 @@ from tpu_pressures import find_tpu_use_case, get_TPU_surfaces, map_tap_data
 # Parcel Models
 lon = -85.676188
 lat = 30.190142
-test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
-
+test = Parcel('12345', 4, 'financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft')
+test.hasElement['Roof'][0].hasShape['flat'] = True
+test.hasElement['Roof'][0].hasPitch = 0
 # Hazard Characterization
 # Here is where we provide wind speed, location, etc. for data-driven roughness length
 # Will also need to add WDR (rain rate) characterizations
@@ -31,7 +32,7 @@ wind_direction = 0
 df_tpu_pressures = calc_tpu_pressures(test, key, tpu_wdir, wind_speed, exposure, edition, cat, hpr)
 # Populate component capacities:
 asce7 = ASCE7(test, loading_flag=True)
-asce7.assign_rmwfrs_pressures(test, edition, exposure, wind_speed)
+#asce7.assign_rmwfrs_pressures(test, edition, exposure, wind_speed)
 # Assign pressures to roof assembly:
 a = asce7.get_cc_zone_width(test)
 print('zone width in ft:', a)
@@ -68,6 +69,9 @@ for plane in range(0, len(surf_list)-1):
         wcc_surf = Polygon([surf_list[plane][pt], surf_list[plane + 1][pt], surf_list[plane + 1][pt + 1], surf_list[plane][pt + 1]])
         poly_list.append(wcc_surf)
 # Set up plotting:
+from matplotlib import rcParams
+rcParams['font.family'] = "Times New Roman"
+rcParams.update({'font.size': 18})
 fig = plt.figure()
 ax = plt.axes(projection='3d')
 for poly in poly_list:
@@ -90,9 +94,13 @@ ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
 ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
 ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
 # Plot labels
-ax.set_xlabel('x [m]')
-ax.set_ylabel('y [m]')
-ax.set_zlabel('z [m]')
+ax.set_xlabel('x [m]', labelpad=10)
+ax.set_ylabel('y [m]', labelpad=10)
+ax.set_zlabel('z [m]', labelpad=10)
+ax.set_zlim(0,16)
+ax.set_zticks(np.arange(0, 20, 4))
+ax.set_xticks(np.arange(-20,30,10))
+ax.set_yticks(np.arange(-20, 30, 10))
 plt.show()
 print(exposure)
 
