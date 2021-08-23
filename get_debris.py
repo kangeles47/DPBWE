@@ -1,10 +1,12 @@
 from pandas import read_csv, DataFrame
 from scipy.stats import norm, uniform
 from geopy import distance
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, Point
 from OBDM.zone import Site, Building
 from OBDM.element import Roof
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 # Create decision trees to characterize missile environment and consequent debris trajectories
     # Might want to include here consideration of roof assembly condition (age)
     # Typical debris types: roof covers, roof sheathing, frame/joist elements (e.g., timber)
@@ -12,6 +14,19 @@ import numpy as np
 # Map debris classes to appropriate trajectory models
 # Develop decision trees to extract relevant component data from manufacturer's specifications to refine site-specific debris models
 # Implement similitude parameters to project source building damage
+
+
+def run_debris(bldg, site, length_unit, wind_direction, wind_speed):
+    # Step 1: Identify potential source buildings given wind direction and target bldg:
+    site_source = get_source_bldgs(bldg, site, wind_direction)
+    # Step 2: Get debris characteristics and corresponding trajectory parameters for the site:
+    get_site_debris(site_source, length_unit)
+    # Step 3: Calculate the trajectory of each debris type:
+    traj_dict = {'wind speed': [], 'debris name': [], 'alongwind': [], 'acrosswind': []}
+    for speed in wind_speed:
+        for key in site_source.hasDebris:
+            model_input = site_source.hasDebris[key]
+            alongwind_dist, acrosswind_dist = get_trajectory(model_input, speed, length_unit)
 
 
 def get_site_debris(site, length_unit):
@@ -74,11 +89,17 @@ def get_source_bldgs(bldg, site, wind_direction):
     pt_list = [bldg.hasLocation['Geodesic']]
     for dir in wdirs:
         if bldg.hasGeometry['Length Unit'] == 'ft':
-            pt_list.append(distance.distance(miles=1).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir))
+            new_point = distance.distance(miles=1).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir)
+            pt_list.append(Point(new_point[1], new_point[0]))
         elif bldg.hasGeometry['Length Unit'] == 'm':
-            pt_list.append(distance.distance(kilometers=1.61).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir))
+            new_point = distance.distance(kilometers=1.61).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir)
+            pt_list.append(Point(new_point[1], new_point[0]))
     # Create a Polygon object for the debris source region:
     debris_region = Polygon(pt_list)
+    xpoly, ypoly = debris_region.exterior.xy
+    ax, fig = plt.subplots()
+    plt.plot(xpoly, ypoly)
+    plt.show()
     # Step 2: Find potential source buildings and add to new Site object:
     site_source = Site()
     for i in site.hasBuilding:
@@ -219,3 +240,40 @@ def get_horiz_impact_vel(wind_speed, c, tachikawa_num, gravity, horiz_fdist):
     x = gravity*horiz_fdist/(wind_speed**2)
     horiz_impact_vel = wind_speed*(1-exp(-1*sqrt(2*c*tachikawa_num*x)))
     return horiz_impact_vel
+
+
+# Testing the workflow:
+# Step 1: Generate Building data models for each building in a site:
+site = Site()
+df = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/BC_CParcels.csv')
+for row in range(0, len(df['Parcel Id'])):
+    new_bldg = Building()
+    pid, num_stories, occupancy = df['Parcel Id'][row], df['Stories'][row], df['Use Code'][row]
+    yr_built, address, area = df['Year Built'][row], df['Address'][row], df['Square Footage'][row]
+    lon, lat, length_unit = df['Longitude'][row], df['Latitude'][row], 'ft'
+    if 'PANAMA CITY BEACH' in address or 'MEXICO BEACH' in address:
+        pass
+    else:
+        new_bldg.add_parcel_data(pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit)
+        # Add roof element and data:
+        new_roof = Roof()
+        new_roof.hasCover = df['Roof Cover'][row]
+        new_roof.hasType = df['Roof Cover'][row]
+        new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
+        new_bldg.hasStory[-1].update_elements()
+        new_bldg.update_zones()
+        new_bldg.update_elements()
+        new_bldg.update_interfaces()
+        site.hasBuilding.append(new_bldg)
+        # Pull case study building:
+        if new_bldg.hasID == '13209-055-000':
+            bldg = new_bldg
+        else:
+            pass
+site.update_zones()
+site.update_elements()
+site.update_interfaces()
+# Step 2: Run through the debris workflow:
+wind_speed = np.arange(70, 200, 10)
+wind_direction = 0
+run_debris(bldg, site, length_unit, wind_direction, wind_speed)
