@@ -25,8 +25,9 @@ def run_debris(bldg, site, length_unit, wind_direction, wind_speed):
     traj_dict = {'wind speed': [], 'debris name': [], 'alongwind': [], 'acrosswind': []}
     for speed in wind_speed:
         for key in site_source.hasDebris:
-            model_input = site_source.hasDebris[key]
-            alongwind_dist, acrosswind_dist = get_trajectory(model_input, speed, length_unit)
+            for row in range(0, len(site_source.hasDebris[key])):
+                model_input = site_source.hasDebris[key].iloc[row]
+                alongwind_dist, acrosswind_dist = get_trajectory(model_input, speed, length_unit)
 
 
 def get_site_debris(site, length_unit):
@@ -99,19 +100,29 @@ def get_source_bldgs(bldg, site, wind_direction):
     xpoly, ypoly = debris_region.exterior.xy
     ax, fig = plt.subplots()
     plt.plot(xpoly, ypoly)
-    plt.show()
     # Step 2: Find potential source buildings and add to new Site object:
     site_source = Site()
     for i in site.hasBuilding:
         if debris_region.contains(i.hasLocation['Geodesic']):
             # Add this potential source bldg to new Site object:
             site_source.hasBuilding.append(i)
+            plt.scatter(i.hasLocation['Geodesic'].x, i.hasLocation['Geodesic'].y)
         else:
             pass
+    plt.show()
     return site_source
 
 
 def get_trajectory(model_input, wind_speed, length_unit):
+    """
+    A function to generate random variables for the debris alongwind and acrosswind trajectory.
+
+    :param model_input: Dictionary with input parameters for trajectory calculation: debris mass, coefficients (C, c1, c2, c3), flight time
+    :param wind_speed: The wind speed value to calculate the trajectory distances for (in mph or m/s)
+    :param length_unit: The length unit for the wind speed, set to 'mi' or 'm'
+    :return: alongwind_dist: A random variable for the alongwind distance, evaluated at the given wind speed.
+    acrosswind_dist: A random variable for the acrosswind distance, evaluated at the given wind speed.
+    """
     # Set up global parameter values:
     if length_unit == 'm':
         air_density = 1.225  # kg/m^3
@@ -122,12 +133,12 @@ def get_trajectory(model_input, wind_speed, length_unit):
         wind_speed = wind_speed*1.467  # ft/s
     # Populate parameters for stochastic flight trajectory model:
     # Calculate Tachikawa number:
-    tachikawa_num = air_density*(wind_speed**2)/(2*debris_mass*gravity)
+    tachikawa_num = air_density*(wind_speed**2)/(2*model_input['debris mass']*gravity)
     # Populate coefficients and flight time RV:
-    c, c1, c2, c3, flight_time = param_dict['c'], param_dict['c1'], param_dict['c2'], param_dict['c3'], param_dict['flight_time']
+    c, c1, c2, c3, flight_time = model_input['c'], model_input['c1'], model_input['c2'], model_input['c3'], model_input['flight_time']
     norm_time = flight_time.rvs(size=(1, 1))*gravity/wind_speed  # roof-level or use basic wind speed at site
     # Calculate mu_x (mean of alongwind distance):
-    alongwind_mean = (2*debris_mass/air_density)*((0.5*c*(tachikawa_num*norm_time)**2) + (c1*(tachikawa_num*norm_time)**3) + (c2*(tachikawa_num*norm_time)**4) + (c3*(tachikawa_num*norm_time)**5))
+    alongwind_mean = (2*model_input['debris mass']/air_density)*((0.5*c*(tachikawa_num*norm_time)**2) + (c1*(tachikawa_num*norm_time)**3) + (c2*(tachikawa_num*norm_time)**4) + (c3*(tachikawa_num*norm_time)**5))
     # Initialize remaining distribution parameters:
     sigma_along = 0.35*alongwind_mean
     sigma_across = 0.35*alongwind_mean
@@ -151,7 +162,7 @@ def get_debris_class(debris_type, debris_name):
     """
     # Three debris classes to choose from: sheet/plate, compact, and rod-like:
     # Define global types:
-    sheet_type = ['TILE', 'SHINGLE', 'SLATE', 'BUR', 'BUILT-UP', 'SHAKE', 'PLY', 'SPM', 'POLY', 'METAL']
+    sheet_type = ['TILE', 'SHINGLE', 'SLATE', 'BUR', 'BUILT-UP', 'SHAKE', 'PLY', 'SPM', 'POLY', 'METAL', 'SHNGL']
     rod_type = ['WOOD', 'JOIST', 'OWSJ', 'TRUSS']  # global list of structural types with frame members
     if debris_type == 'roof cover':
         if 'GRAVEL' in debris_name.upper():
@@ -180,7 +191,7 @@ def get_debris_mass(debris_class, debris_name, length_unit):
     :return: debris_mass: Float, the typical debris mass (derived from open data sources)
     """
     # Load debris mass data (in the future, extend to regional manufacturers):
-    df = read_csv('D:/Users/Karen/Documents/Github/DPWBE/Datasets/Debris/Typical_Debris_Masses.csv')
+    df = read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Debris/Typical_Debris_Masses.csv')
     if debris_class == 'roof cover':
         if 'ASPHALT' in debris_name.upper():
             df_sub = df['DEBRIS NAME'].str.contains('ASPHALT')
@@ -201,7 +212,9 @@ def get_debris_mass(debris_class, debris_name, length_unit):
                     debris_area = df_sub['DEBRIS NAME'].str.contains('TAB')['TYPICAL AREA M2']
                     debris_mass = df_sub['DEBRIS NAME'].str.contains('TAB')['MASS PER AREA KG/M2']
     else:
-        pass
+        debris_area = None
+        debris_mass = None
+        print('No debris mass or area information available for this type')
     return debris_area, debris_mass
 
 
@@ -209,7 +222,7 @@ def get_traj_params(debris_class):
     param_dict = {'c': None, 'c1': None, 'c2': None, 'c3': None, 'flight time': None}
     # Find flight time and coefficients for the debris class:
     if debris_class == 'sheet':
-        param_dict['flight_time'] = uniform(1, 2.5)  # This will be a uniform distribution
+        param_dict['flight time'] = uniform(1, 2.5)  # This will be a uniform distribution
         param_dict['c'] = 0.911
         param_dict['c1'] = -0.148
         param_dict['c2'] = 0.024
@@ -230,6 +243,7 @@ def get_traj_params(debris_class):
         param_dict['c2'] = -0.052
         param_dict['c3'] = 0.008
     return param_dict
+
 
 def calc_impact_momentum(debris_mass, debris_area, horiz_impact_vel):
     return debris_mass* debris_area* horiz_impact_vel
