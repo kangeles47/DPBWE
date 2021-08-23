@@ -2,7 +2,7 @@ from pandas import read_csv, DataFrame
 from scipy.stats import norm, uniform
 from geopy import distance
 from shapely.geometry import Polygon
-from OBDM.zone import Building
+from OBDM.zone import Site, Building
 from OBDM.element import Roof
 import numpy as np
 # Create decision trees to characterize missile environment and consequent debris trajectories
@@ -51,10 +51,12 @@ def get_site_debris(site, length_unit):
 
 def get_source_bldgs(bldg, site, wind_direction):
     """
+    A function that defines the potential source region for the given Building location and wind direction.
+    A function that then loops through the given Site object to identify Buildings within the potential source region.
 
-    :param bldg: A Building object with roof information and local wind speed values
-    :param site: A Site object with Building objects as described above (Site.hasBuilding)
-    :return:
+    :param bldg: A Building object with location information
+    :param site: A Site object containing Building objects with location information
+    :return: site_source: A Site object with Building objects within the specified potential source region (see Site.hasBuilding)
     """
     # Step 1: Define a maximum debris source region using the wind direction:
     wdirs = np.arange(wind_direction-45, wind_direction+45, 5)
@@ -66,33 +68,15 @@ def get_source_bldgs(bldg, site, wind_direction):
             pt_list.append(distance.distance(kilometers=1.61).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir))
     # Create a Polygon object for the debris source region:
     debris_region = Polygon(pt_list)
-    # Step 2: Find source buildings and calculate debris trajectories:
-    source_bldgs = []
+    # Step 2: Find potential source buildings and add to new Site object:
+    site_source = Site()
     for i in site.hasBuilding:
         if debris_region.contains(i.hasLocation['Geodesic']):
-            # Calculate the distance between this potential source bldg and target bldg:
-            bldg_dist = 0
-            # Calculate the trajectory for each of the source bldg's debris types:
-            for key in site.hasDebris:
-                # Find trajectory model input parameters for this component:
-                if key == 'roof cover' and i.adjacentElement['Roof'][0].hasCover is not None:
-                    debris_name = i.adjacentElement['Roof'][0].hasCover.upper()
-                elif key == 'roof sheathing' and i.adjacentElement['Roof'][0].hasSheathing is not None:
-                    debris_name = i.adjacentElement['Roof'][0].hasSheathing.upper()
-                elif key == 'roof member' and i.adjacentElement['Roof'][0].hasStructureType is not None:
-                    debris_name = i.adjacentElement['Roof'][0].hasStructureType.upper()
-                else:
-                    debris_name = ''
-                if len(debris_name) == 0:
-                    pass
-                else:
-                    model_input = site.hasDebris[key].loc[site.hasDebris[key]['debris name'] == debris_name]
-                    alongwind_dist, acrosswind_dist = get_trajectory(model_input, bldg.adjacentElement['Roof'][0].hasDemand['wind speed'], bldg.hasGeometry['Length Unit'])
-                    # Figure out if the debris will hit the building:
-                    if alongwind_dist > bldg_dist:
-                        source_bldgs.append(i)
+            # Add this potential source bldg to new Site object:
+            site_source.hasBuilding.append(i)
         else:
             pass
+    return site_source
 
 
 def get_trajectory(model_input, wind_speed, length_unit):
