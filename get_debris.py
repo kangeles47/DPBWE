@@ -15,9 +15,17 @@ import numpy as np
 
 
 def get_site_debris(site, length_unit):
+    """
+    A function that populates debris types within a site and their parameters for subsequent trajectory calculations.
+    Updates the site.hasDebris attribute.
+
+    :param site: A Site object containing all potential source buildings (derived using get_source_bldgs)
+    :param length_unit: String, set to 'ft' or 'm'. Supports query of debris characteristics in get_debris_mass.
+    :return:
+    """
     debris_type = {'roof cover': [], 'roof sheathing': [], 'roof member': []}  # 3 most common debris types
     for bldg in site.hasBuilding:
-        # Extract roof information for each building in the Site description:
+        # Step 1: Extract roof information for each building in the Site description:
         # Roof Cover
         if bldg.adjacentElement['Roof'][0].hasCover not in debris_type['roof cover'] and (
                 bldg.adjacentElement['Roof'][0].hasCover is not None):
@@ -30,22 +38,25 @@ def get_site_debris(site, length_unit):
         if bldg.adjacentElement['Roof'][0].hasStructureType not in debris_type['roof member'] and (
                 bldg.adjacentElement['Roof'][0].hasStructureType is not None):
             debris_type['roof member'].append(bldg.adjacentElement['Roof'][0].hasStructureType)
-    # Get debris characteristics:
+    # Step 2: Get debris characteristics:
     for key in debris_type:
         dtype_dict = {'debris name': debris_type[key]}
         dclass_list = []
         dmass_list = []
         for name in debris_type[key]:
-            # Find the debris class:
+            # Step 2a: Find the debris class:
             debris_class = get_debris_class(key, name)
             dclass_list.append(debris_class)
-            # Find the debris mass:
+            # Step 2b: Find the debris mass:
             debris_area, debris_mass = get_debris_mass(debris_class, name, length_unit)
             dmass_list.append(debris_mass)
+            # Step 2c: Find the debris' remaining trajectory parameters:
             param_dict = get_traj_params(debris_class)
+        # Step 3: Compile into dictionary for the debris type:
         dtype_dict['debris class'] = dclass_list
         dtype_dict['debris mass'] = dmass_list
         dtype_dict.update(param_dict)
+        # Step 4: Integrate into site's data model:
         site.hasDebris[key] = DataFrame(dtype_dict)
 
 
@@ -55,7 +66,7 @@ def get_source_bldgs(bldg, site, wind_direction):
     A function that then loops through the given Site object to identify Buildings within the potential source region.
 
     :param bldg: A Building object with location information
-    :param site: A Site object containing Building objects with location information
+    :param site: A Site object containing Building objects with location and debris information (e.g., roof cover)
     :return: site_source: A Site object with Building objects within the specified potential source region (see Site.hasBuilding)
     """
     # Step 1: Define a maximum debris source region using the wind direction:
@@ -110,6 +121,13 @@ def get_trajectory(model_input, wind_speed, length_unit):
 
 
 def get_debris_class(debris_type, debris_name):
+    """
+    A function to determine the given debris_type's corresponding debris class according to (Wills et al. 2002)
+
+    :param debris_type: String, set to 'roof cover', 'roof sheathing', or 'roof member'
+    :param debris_name: String, the common name for the debris type (e.g., asphalt shingles)
+    :return: debris_class: String, set to 'compact', 'sheet' or 'rod' depending on debris type and name
+    """
     # Three debris classes to choose from: sheet/plate, compact, and rod-like:
     # Define global types:
     sheet_type = ['TILE', 'SHINGLE', 'SLATE', 'BUR', 'BUILT-UP', 'SHAKE', 'PLY', 'SPM', 'POLY', 'METAL']
@@ -130,6 +148,16 @@ def get_debris_class(debris_type, debris_name):
 
 
 def get_debris_mass(debris_class, debris_name, length_unit):
+    """
+    A function to extract the typical debris mass (and area, if applicable) for the given debris class and name.
+    Values for mass and area are derived from open data sources and are populated into Typical_Debris_Masses.csv
+    See REFERENCES and ACCESS DATE data fields for provenance information for each data entry.
+
+    :param debris_class: String, the Wills et al. (2002) classification for the debris.
+    :param debris_name: String, the common name for the debris type (e.g., asphalt shingles)
+    :param length_unit: String, set to 'ft' or 'm'
+    :return: debris_mass: Float, the typical debris mass (derived from open data sources)
+    """
     # Load debris mass data (in the future, extend to regional manufacturers):
     df = read_csv('D:/Users/Karen/Documents/Github/DPWBE/Datasets/Debris/Typical_Debris_Masses.csv')
     if debris_class == 'roof cover':
