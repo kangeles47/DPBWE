@@ -772,7 +772,7 @@ class FemaHma(PostDisasterDamageDataset):
                             from OBDM.element import Roof
                             # Create "dummy" building models and add data:
                             for row in range(0, len(df_sub['damageCategory'])):
-                                for prop in range(0, df_sub['numberOfProperties'][row]):
+                                for prop in range(0, df_sub['numberOfProperties'][row]+1):
                                     data_details = {'available': True, 'fidelity': self,
                                                     'component type': component_type,
                                                     'hazard type': hazard_type, 'value': None}
