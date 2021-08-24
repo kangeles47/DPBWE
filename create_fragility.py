@@ -133,7 +133,15 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                     'total': lparams[key]['total']}
         df_new = pd.DataFrame(new_dict)
         df_params = pd.concat([df_params, df_new], ignore_index=True)
-    df_params.to_csv('Observations.csv')
+    # Make sure we get rid of any damage states that we cannot update:
+    for ds in df_params['DS Number'].unique():
+        df_sub = df_params.loc[df_params['DS Number'] == ds]
+        fail_unique = df_sub['fail'].unique()
+        if len(fail_unique) == 1 and fail_unique[0] == 0:
+            df_params = df_params.drop(df_sub.index)
+        else:
+            pass
+    df_params.to_csv('Observations.csv', index=False)
     # Calculate MLE estimate for comparison:
     mle_params = get_point_estimate(lparams)
     # Step 6c: Run Bayesian Parameter Estimation:
@@ -151,15 +159,16 @@ def conduct_bayesian(observations_file_path, mu_init, beta_init):
     ds_list = df['DS Number'].unique()
     for ds in range(0, len(ds_list)):
         df_sub = df.loc[df['DS Number'] == ds_list[ds]]
-        xj = df_sub['demand']
-        zj = df_sub['fail']
-        nj = df_sub['total']
+        xj = np.array(df_sub['demand'])
+        zj = np.array(df_sub['fail'])
+        nj = np.array(df_sub['total'])
         mu_ds = mu_init[ds]
         beta_ds = beta_init[ds]
         with pm.Model() as model:
             # Set up the prior:
             mu = pm.Normal('mu', mu_ds, 2.71)
             beta = pm.Normal('beta', beta_ds, 0.03)
+
             # Define fragility function equation:
             def normal_cdf(mu, beta, xj):
                 """Compute the log of the cumulative density function of the normal."""
@@ -170,13 +179,25 @@ def conduct_bayesian(observations_file_path, mu_init, beta_init):
             for RV in model.basic_RVs:
                 print(RV.name, RV.logp(model.test_point))
             # Determine the posterior
-            trace = pm.sample(3000, cores=1)
+            trace = pm.sample(2000, cores=1, return_inferencedata=True)
             # Plot the posterior distributions of each RV
             az.plot_trace(trace)
             az.plot_posterior(trace)
             az.plot_forest(trace, var_names=['mu', 'beta'])
-            print(az.summary(trace))
             plt.show()
+            print(az.summary(trace))
+            mu_mean = trace['posterior']['mu'].mean()
+            beta_mean = trace['posterior']['beta'].mean()
+            # Plot mean of prior, mean of posterior:
+            fig, ax = plt.subplots()
+            ax.scatter(xj, zj/nj)
+            im = np.arange(70, 200, 10)
+            y = pf(im, mu_mean, beta_mean)
+            ax.plot(im, y, 'r')
+            y_init = pf(im, mu_ds, beta_ds)
+            ax.plot(im, y_init, 'b')
+            plt.show()
+
 
 
 
@@ -413,7 +434,7 @@ def get_point_estimate(lparams):
     return mle_params
 
 
-def p_f(im, mu, beta):
+def pf(im, mu, beta):
     return norm.cdf(np.log(im), mu, beta)
 
 
@@ -569,7 +590,7 @@ def get_wind_speed(bldg, wind_speed_file_path, exposure, unit):
     return round(v_local)
 
 
-#observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations.csv'
-#mu_init = [4.69, 4.8]
-#beta_init = [0.16, 0.15]
-#conduct_bayesian(observations_file_path, mu_init, beta_init)
+observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations.csv'
+mu_init = [4.69, 4.8]
+beta_init = [0.16, 0.15]
+conduct_bayesian(observations_file_path, mu_init, beta_init)
