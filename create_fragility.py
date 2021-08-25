@@ -180,6 +180,15 @@ def conduct_bayesian(observations_file_path, mu_init, beta_init):
                 print(RV.name, RV.logp(model.test_point))
             # Determine the posterior
             trace = pm.sample(2000, cores=1, return_inferencedata=True)
+            # Posterior predictive check are a great way to validate model:
+            # Generate data from the model using parameters from draws from the posterior:
+            ppc = pm.sample_posterior_predictive(trace, vars=['mu', 'beta', 'like'])
+            print(ppc['like'].shape)
+            az.plot_ppc(az.from_pymc3(posterior_predictive=ppc, model=model))
+            # Plot the predicted relationship between the predictor and the outcome:
+            _, ax = plt.subplots()
+            im = np.arange(70, 200, 5)
+            pf_ppc = pf(im, mu_mean, beta_mean, label='updated')
             # Plot the posterior distributions of each RV
             az.plot_trace(trace)
             az.plot_posterior(trace)
@@ -191,12 +200,12 @@ def conduct_bayesian(observations_file_path, mu_init, beta_init):
             # Plot mean of prior, mean of posterior:
             fig, ax = plt.subplots()
             ax.scatter(xj, zj/nj)
-            im = np.arange(70, 200, 10)
-            y = pf(im, mu_mean, beta_mean)
+            y = pf(im, mu_mean, beta_mean, label='updated')
             ax.plot(im, y, 'r')
-            y_init = pf(im, mu_ds, beta_ds)
+            y_init = pf(im, mu_ds, beta_ds, label='simulation-based')
             ax.plot(im, y_init, 'b')
             plt.show()
+            # Playing with az.plot_pcc: az.plot_ppc(data, num_pp_samples=30, random_seed=7) data is an InferenceData object (trace)
 
 
 
