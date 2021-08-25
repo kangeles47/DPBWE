@@ -184,7 +184,7 @@ def conduct_bayesian(observations_file_path, mu_init, beta_init):
             # Generate data from the model using parameters from draws from the posterior:
             ppc = pm.sample_posterior_predictive(trace, vars=['mu', 'beta', 'like'])
             print(ppc['like'].shape)
-            az.plot_ppc(az.from_pymc3(posterior_predictive=ppc, model=model))
+            #az.plot_ppc(az.from_pymc3(posterior_predictive=ppc, model=model))
             # Plot the predicted relationship between the predictor and the outcome:
             _, ax = plt.subplots()
             im = np.arange(70, 200, 5)
