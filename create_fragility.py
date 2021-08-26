@@ -183,42 +183,42 @@ def conduct_bayesian(observations_file_path, mu_init, beta_init):
             # Posterior predictive check are a great way to validate model:
             # Generate data from the model using parameters from draws from the posterior:
             ppc = pm.sample_posterior_predictive(trace, var_names=['mu', 'beta', 'like'])
-            # Calculate failure probabilities using samples:
-            im = np.arange(70, 200, 5)
-            pf_ppc = []
-            for i in range(0, len(ppc['mu'])):
-                y = pf(im, ppc['mu'][i], ppc['beta'][i])
-                pf_ppc.append(y)
-            # Plot the HPD:
-            _, ax = plt.subplots()
-            az.plot_hdi(im, pf_ppc, fill_kwargs={'alpha': 0.2, 'color': 'blue', 'label': 'bounds of prediction: 94% HPD'})
-            # Calculate and plot the mean outcome:
-            pf_mean = pf(im, ppc['mu'].mean(), ppc['beta'].mean())
-            ax.plot(im, pf_mean, label='mean of prediction', color='r', linestyle='dashed')
-            # Plot the mean of the simulation-based fragility:
-            pf_sim = pf(im, mu_ds, beta_ds)
-            ax.plot(im, pf_sim, label='simulation-based', color='k')
-            # Plot the observations:
-            ax.scatter(xj, zj / nj, color='r', marker='^', label='observations')
-            ax.legend()
-            plt.show()
-            # Looking at the difference between the prior of the parameters and updated distributions:
-            new_mu_mean, new_mu_std = norm.fit(ppc['mu'])
-            plt.hist(ppc['mu'], bins=25, density=True, alpha=0.4, color='b')
-            xmin, xmax = plt.xlim()
-            x = np.linspace(xmin, xmax, 100)
-            p_prior = norm.pdf(x, mu_ds, 2.71)
-            p_new = norm.pdf(x, new_mu_mean, new_mu_std)
-            plt.plot(x, p_prior, 'k', linewidth=2, label='prior distribution')
-            plt.plot(x, p_new, 'r', linewidth=2, label='updated distribution', linestyle='dashed')
-            # Note az.plot_violin(trace, var_names=['mu']) can be helpful for seeing distribution of parameter values
-            # Plot the posterior distributions of each RV
-            fig, ax = plt.subplots()
-            az.plot_trace(trace)
-            az.plot_posterior(trace)
-            az.plot_forest(trace, var_names=['mu', 'beta'])
-            plt.show()
-            print(az.summary(trace))
+        # Calculate failure probabilities using samples:
+        im = np.arange(70, 200, 5)
+        pf_ppc = []
+        for i in range(0, len(ppc['mu'])):
+            y = pf(im, ppc['mu'][i], ppc['beta'][i])
+            pf_ppc.append(y)
+        # Plot the HPD:
+        _, ax = plt.subplots()
+        az.plot_hdi(im, pf_ppc, fill_kwargs={'alpha': 0.2, 'color': 'blue', 'label': 'bounds of prediction: 94% HPD'})
+        # Calculate and plot the mean outcome:
+        pf_mean = pf(im, ppc['mu'].mean(), ppc['beta'].mean())
+        ax.plot(im, pf_mean, label='mean of prediction', color='r', linestyle='dashed')
+        # Plot the mean of the simulation-based fragility:
+        pf_sim = pf(im, mu_ds, beta_ds)
+        ax.plot(im, pf_sim, label='simulation-based', color='k')
+        # Plot the observations:
+        ax.scatter(xj, zj / nj, color='r', marker='^', label='observations')
+        ax.legend()
+        plt.show()
+        # Looking at the difference between the prior of the parameters and updated distributions:
+        new_mu_mean, new_mu_std = norm.fit(ppc['mu'])
+        plt.hist(ppc['mu'], bins=25, density=True, alpha=0.4, color='b')
+        xmin, xmax = plt.xlim()
+        x = np.linspace(xmin, xmax, 100)
+        p_prior = norm.pdf(x, mu_ds, 2.71)
+        p_new = norm.pdf(x, new_mu_mean, new_mu_std)
+        plt.plot(x, p_prior, 'k', linewidth=2, label='prior distribution')
+        plt.plot(x, p_new, 'r', linewidth=2, label='updated distribution', linestyle='dashed')
+        # Note az.plot_violin(trace, var_names=['mu']) can be helpful for seeing distribution of parameter values
+        # Plot the posterior distributions of each RV
+        fig, ax = plt.subplots()
+        az.plot_trace(trace, chain_prop={'color': ['blue','red']})
+        az.plot_posterior(trace)
+        az.plot_forest(trace, var_names=['mu', 'beta'])
+        plt.show()
+        print(az.summary(trace))
 
 
 
