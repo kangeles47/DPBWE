@@ -1824,61 +1824,61 @@ class PressureCalc:
 
 
 # Plotting: % change in wind pressure vs. change in height
-pcalc = PressureCalc()
-area_eff = [50, 20, 50, 100]
-wind_speed = np.arange(100, 150, 5)
-h_bldg = 13.1234
-heights = np.arange(h_bldg*5, h_bldg*9, h_bldg)
-ref_height = round(h_bldg*6, 3)
-pitch = 0
-cat = 2
-hpr = True
-h_ocean = True
-encl_class = 'Enclosed'
-tpu_flag = False
-exposure = 'C'
-edition = 'ASCE 7-05'
-area_list = []
-for area in area_eff:
-    rcc_dict = {}
-    for h in heights:
-        rcc_list = []
-        for speed in wind_speed:
-            rccs = pcalc.rcc_pressure(speed, exposure, edition, h, pitch, area, cat, hpr, h_ocean, encl_class, tpu_flag)
-            rcc_list.append(rccs[-1])
-        rcc_dict[h] = rcc_list
-    area_list.append(rcc_dict)
+#pcalc = PressureCalc()
+#area_eff = [50, 20, 50, 100]
+#wind_speed = np.arange(100, 150, 5)
+#h_bldg = 13.1234
+#heights = np.arange(h_bldg*5, h_bldg*9, h_bldg)
+#ref_height = round(h_bldg*6, 3)
+#pitch = 0
+#cat = 2
+#hpr = True
+#h_ocean = True
+#encl_class = 'Enclosed'
+#tpu_flag = False
+#exposure = 'C'
+#edition = 'ASCE 7-05'
+#area_list = []
+#for area in area_eff:
+ #   rcc_dict = {}
+  #  for h in heights:
+   #     rcc_list = []
+    #    for speed in wind_speed:
+     #       rccs = pcalc.rcc_pressure(speed, exposure, edition, h, pitch, area, cat, hpr, h_ocean, encl_class, tpu_flag)
+      #      rcc_list.append(rccs[-1])
+       # rcc_dict[h] = rcc_list
+#    area_list.append(rcc_dict)
 # Print the pct_change between the base height
-df = pd.DataFrame(area_list[3])
-col_names = {}
-for h in range(0, len(heights)):
-    col_names[df.columns[h]] = round(heights[h],3)
-df = df.rename(columns=col_names)
-change_dict = {}
-for col in df.columns:
-    if col == round(ref_height,3):
-        change_dict[col] = 0
-    else:
-        change_dict[col] = (df[col][0] - df[ref_height][0])/df[ref_height][0]
-print(change_dict)
+#df = pd.DataFrame(area_list[3])
+#col_names = {}
+#for h in range(0, len(heights)):
+#    col_names[df.columns[h]] = round(heights[h],3)
+#df = df.rename(columns=col_names)
+#change_dict = {}
+#for col in df.columns:
+#    if col == round(ref_height,3):
+#        change_dict[col] = 0
+#    else:
+#        change_dict[col] = (df[col][0] - df[ref_height][0])/df[ref_height][0]
+#print(change_dict)
 # Plot pressure vs. wind speed for various heights:
-from matplotlib import rcParams
-rcParams['font.family'] = "Times New Roman"
-rcParams.update({'font.size': 28})
+#from matplotlib import rcParams
+#rcParams['font.family'] = "Times New Roman"
+#rcParams.update({'font.size': 28})
 #fig, axs = plt.subplots(2, 2)
-for d in range(0, len(area_list)):
+#for d in range(0, len(area_list)):
     # Plot the pressure vs. wind speed for all heights for one effective area
-    if d == 0:
-        count = 1*5
-        for key in area_list[d]:
-            h_label = 4*(count)  # [m]
-            plt.plot(wind_speed/2.237, np.array(area_list[d][key])/20.885, label=str(h_label)+' m')
-            count += 1
-        plt.xlabel('Wind Speed [m/s]')
-        plt.ylabel('Pressure [kN/$\mathregular{m^2}$]')
+#    if d == 0:
+#        count = 1*5
+#        for key in area_list[d]:
+#            h_label = 4*(count)  # [m]
+#            plt.plot(wind_speed/2.237, np.array(area_list[d][key])/20.885, label=str(h_label)+' m')
+#            count += 1
+#        plt.xlabel('Wind Speed [m/s]')
+#        plt.ylabel('Pressure [kN/$\mathregular{m^2}$]')
         #axs[0,0].set_ylabel('Pressure [kN/$m^2$]')
-        plt.legend()
-        plt.show()
+#        plt.legend()
+#        plt.show()
    # elif d == 1:
     #    for key in area_list[d]:
      #       axs[0, 1].plot(wind_speed, area_list[d][key])
@@ -1888,8 +1888,8 @@ for d in range(0, len(area_list)):
     #elif d == 3:
      #   for key in area_list[d]:
       #      axs[1, 1].plot(wind_speed, area_list[d][key])
-plt.show()
-a = 0
+#plt.show()
+#a = 0
 
 #pcalc = PressureCalc()
 #p=pcalc.wcc_pressure(134, 'B', 'ASCE 7-16', 52.5, 0, 75, 2, True, True, 'Enclosed', False)
