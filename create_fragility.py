@@ -611,53 +611,122 @@ def get_wind_speed(bldg, wind_speed_file_path, exposure, unit):
     return round(v_local)
 
 
-def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None):
+def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot_flag=True):
     """
     A function to conduct Bayesian updating of fragility models.
-    (Optional): Produce MCMC-related plots and updated distributions.
-    Notes: Here intensity measure is the wind speed: A normalizing factor is used to improve numerical stability.
+    (Optional): Produce MCMC-related plots (trace). Default: True
+    Notes:
+    Here intensity measure is the wind speed: A normalizing factor (max wind speed) is used to improve
+    numerical stability.
+
+    Prior distributions are designated according to the assumption that the Bayesian analysis will utilize
+    wind fragility functions from HAZUS (see priors for mu and beta). See De Brujin et al. (2020) for more information.
+
+    De Bruijn J. et al. (2020). "Using rapid damage observations from social media for Bayesian updating of hurricane
+    vulnerability functions: A case study of Hurricane Dorian." Nat.Hazards Earth Syst. Sci. Discuss. [preprint],
+    https://doi.org/10.5194/nhess-2020-282.
 
     :param xj: An array or list of observed intensity measure values for the damage measure.
     :param zj: An array or list of failure observations (number of failed buildings/components) for the given damage
                 and intensity measure.
     :param nj: An array or list of the total # of buildings for the given damage measure and intensity measure
     :param mu_init: The mean value of the prior distribution for the logarithmic mean.
-    :param beta_init:
-    :param num_samples:
-    :return: ppc: <dict> with samples from the posterior for each parameter
+    :param beta_init: The mean value of the prior distribution for the logarithmic std. dev.
+    :param num_samples: (Optional) The number of samples to conduct MCMC.
+    :param plot_flag: (Optional) Produce the trace plot for the MCMC and updated distributions for parameters.
+    :return: ppc: A dictionary with samples from the posterior for each parameter
+            df_summary: A DataFrame with summary statistics for each model parameter.
     """
-    df = pd.read_csv(observations_file_path)
-    # Get list of unique damage state values:
-    ds_list = df['DS Number'].unique()
-    for ds in range(0, len(ds_list)):
-        df_sub = df.loc[df['DS Number'] == ds_list[ds]]
-        # Note: including a normalization factor for wind speeds for numerical reasons
-        norm_factor = max(np.array(df_sub['demand']))
-        xj = np.array(df_sub['demand'])/norm_factor
-        zj = np.array(df_sub['fail'])
-        nj = np.array(df_sub['total'])
-        mu_ds = mu_init[ds]
-        beta_ds = beta_init[ds]
-        with pm.Model() as model:
-            # Set up the prior:
-            mu = pm.Normal('mu', mu_ds/norm_factor, 15/norm_factor)
-            beta = pm.Normal('beta', beta_ds, 0.03)
+    # Step 1: Normalize the intensity measure:
+    norm_factor = max(xj)
+    xj = xj/norm_factor
+    # Step 2: Build the Bayesian model in PyMC3:
+    with pm.Model() as model:
+        # Step 3a: Set up the prior
+        # Here we assume Normal distributions for both parameters of the fragility
+        # Note: Parameters for mu are also normalized for compatibility with intensity measure values.
+        # See De Brujin et al. for more information regarding the initialization of prior distributions.
+        mu = pm.Normal('mu', mu_init/norm_factor, 15/norm_factor)
+        beta = pm.Normal('beta', beta_init, 0.03)
 
-            # Define fragility function equation:
-            def normal_cdf(mu, beta, xj):
-                """Compute the log of the cumulative density function of the normal."""
-                return 0.5 * (1 + tt.erf((tt.log(xj/mu)) / (beta * tt.sqrt(2))))
-            # Define likelihood:
-            like = pm.Binomial('like', p=normal_cdf(mu, beta, xj), observed=zj, n=nj)
-            for RV in model.basic_RVs:
-                print(RV.name, RV.logp(model.test_point))
-            # Determine the posterior
-            trace = pm.sample(4000, cores=1, return_inferencedata=True)
-            # Posterior predictive check are a great way to validate model:
-            # Generate data from the model using parameters from draws from the posterior:
-            ppc = pm.sample_posterior_predictive(trace, var_names=['mu', 'beta', 'like'])
-            df = az.summary(trace)
-    return ppc
+        # Step 3b: Set up the likelihood function:
+        # The likelihood in this model is represented via a Binomial distribution.
+        # See Lallemant et al. (2015) for MLE derivation.
+        # Define fragility function equation:
+        def normal_cdf(mu, beta, xj):
+            """Compute the log of the cumulative density function of the normal."""
+            return 0.5 * (1 + tt.erf((tt.log(xj/mu)) / (beta * tt.sqrt(2))))
+        # Define the likelihood:
+        like = pm.Binomial('like', p=normal_cdf(mu, beta, xj), observed=zj, n=nj)
+        # Uncomment to do an initial check of parameter values (lookout for like = +/-inf)
+        #for RV in model.basic_RVs:
+         #   print(RV.name, RV.logp(model.test_point))
+        # Step 3c: Determine the posterior
+        # Note: can manually change number of cores if more computational power is available.
+        trace = pm.sample(4000, cores=1, return_inferencedata=True)
+        # (Optional): Plotting the trace and updated distributions for parameters:
+        if plot_flag:
+            az.plot_trace(trace, chain_prop={'color': ['blue', 'red']})
+            plt.title('Trace plot for parameters')
+        # Step 4: Generate summary statistics for the MCMC:
+        print('Summary statistics for the MCMC: see df_summary for DataFrame')
+        print(az.summary(trace))
+        df_summary = az.summary(trace)
+        # Step 5: Sample from the posterior:
+        ppc = pm.sample_posterior_predictive(trace, var_names=['mu', 'beta', 'like'])
+        if plot_flag:
+            # Plot prior and updated distributions for parameters:
+            # mu
+            fig, ax = plt.subplots()
+            new_mu_mean, new_mu_std = norm.fit(ppc['mu'])
+            ax.hist(ppc['mu'], bins=25, density=True, alpha=0.4, color='b')
+            xmin, xmax = ax.xlim()
+            x = np.linspace(xmin, xmax, 100)
+            #p_prior = norm.pdf(x, mu_init/norm_factor, 15/norm_factor)
+            p_prior = mu.random(x, 100)
+            p_new = norm.pdf(x, new_mu_mean, new_mu_std)
+            ax.plot(x, p_prior, 'k', linewidth=2, label='prior')
+            ax.plot(x, p_new, 'r', linewidth=2, label='updated', linestyle='dashed')
+            ax.title('Prior and updated distributions for mu')
+            ax.legend()
+            plt.show()
+            # beta
+            fig2, ax2 = plt.subplots()
+            new_beta_mean, new_beta_std = norm.fit(ppc['beta'])
+            ax.hist(ppc['beta'], bins=25, density=True, alpha=0.4, color='b')
+            xmin, xmax = ax.xlim()
+            x = np.linspace(xmin, xmax, 100)
+            #p_prior2 = norm.pdf(x, beta_init, 0.03)
+            p_prior2 = beta.random(x, 100)
+            p_new2 = norm.pdf(x, new_beta_mean, new_beta_std)
+            ax2.plot(x, p_prior2, 'k', linewidth=2, label='prior')
+            ax2.plot(x, p_new2, 'r', linewidth=2, label='updated', linestyle='dashed')
+            ax2.title('Prior and updated distributions for beta')
+            ax2.legend()
+            # Calculate failure probabilities using samples:
+        im = np.arange(70, 200, 5)
+        pf_ppc = []
+        for i in range(0, len(ppc['mu'])):
+            y = pf(im, ppc['mu'][i], ppc['beta'][i])
+            pf_ppc.append(y)
+        # Plot the HPD:
+        _, ax = plt.subplots()
+        az.plot_hdi(im, pf_ppc, fill_kwargs={'alpha': 0.2, 'color': 'blue', 'label': 'bounds of prediction: 94% HPD'})
+        # Calculate and plot the mean outcome:
+        pf_mean = pf(im, ppc['mu'].mean(), ppc['beta'].mean())
+        ax.plot(im, pf_mean, label='mean of prediction', color='r', linestyle='dashed')
+        # Plot the mean of the simulation-based fragility:
+        pf_sim = pf(im, mu_init, beta_init)
+        ax.plot(im, pf_sim, label='simulation-based', color='k')
+        # Plot the observations:
+        ax.scatter(xj, zj / nj, color='r', marker='^', label='observations')
+        ax.legend()
+        plt.show()
+    return ppc, df_summary
+
+
+def plot_bayesian_results(ppc):
+    pass
 
 
 observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations.csv'
@@ -671,4 +740,4 @@ for ds in range(0, len(ds_list)):
     xj = np.array(df_sub['demand'])
     zj = np.array(df_sub['fail'])
     nj = np.array(df_sub['total'])
-    conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None)
+    ppc, df_summary = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init)
