@@ -611,7 +611,64 @@ def get_wind_speed(bldg, wind_speed_file_path, exposure, unit):
     return round(v_local)
 
 
+def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None):
+    """
+    A function to conduct Bayesian updating of fragility models.
+    (Optional): Produce MCMC-related plots and updated distributions.
+    Notes: Here intensity measure is the wind speed: A normalizing factor is used to improve numerical stability.
+
+    :param xj: An array or list of observed intensity measure values for the damage measure.
+    :param zj: An array or list of failure observations (number of failed buildings/components) for the given damage
+                and intensity measure.
+    :param nj: An array or list of the total # of buildings for the given damage measure and intensity measure
+    :param mu_init: The mean value of the prior distribution for the logarithmic mean.
+    :param beta_init:
+    :param num_samples:
+    :return: ppc: <dict> with samples from the posterior for each parameter
+    """
+    df = pd.read_csv(observations_file_path)
+    # Get list of unique damage state values:
+    ds_list = df['DS Number'].unique()
+    for ds in range(0, len(ds_list)):
+        df_sub = df.loc[df['DS Number'] == ds_list[ds]]
+        # Note: including a normalization factor for wind speeds for numerical reasons
+        norm_factor = max(np.array(df_sub['demand']))
+        xj = np.array(df_sub['demand'])/norm_factor
+        zj = np.array(df_sub['fail'])
+        nj = np.array(df_sub['total'])
+        mu_ds = mu_init[ds]
+        beta_ds = beta_init[ds]
+        with pm.Model() as model:
+            # Set up the prior:
+            mu = pm.Normal('mu', mu_ds/norm_factor, 15/norm_factor)
+            beta = pm.Normal('beta', beta_ds, 0.03)
+
+            # Define fragility function equation:
+            def normal_cdf(mu, beta, xj):
+                """Compute the log of the cumulative density function of the normal."""
+                return 0.5 * (1 + tt.erf((tt.log(xj/mu)) / (beta * tt.sqrt(2))))
+            # Define likelihood:
+            like = pm.Binomial('like', p=normal_cdf(mu, beta, xj), observed=zj, n=nj)
+            for RV in model.basic_RVs:
+                print(RV.name, RV.logp(model.test_point))
+            # Determine the posterior
+            trace = pm.sample(4000, cores=1, return_inferencedata=True)
+            # Posterior predictive check are a great way to validate model:
+            # Generate data from the model using parameters from draws from the posterior:
+            ppc = pm.sample_posterior_predictive(trace, var_names=['mu', 'beta', 'like'])
+            df = az.summary(trace)
+    return ppc
+
+
 observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations.csv'
+df = pd.read_csv(observations_file_path)
+ds_list = df['DS Number'].unique()
 mu_init = [4.69, 4.8]
+#mu_init = [108.85]
 beta_init = [0.16, 0.15]
-conduct_bayesian(observations_file_path, mu_init, beta_init)
+for ds in range(0, len(ds_list)):
+    df_sub = df.loc[df['DS Number'] == ds_list[ds]]
+    xj = np.array(df_sub['demand'])
+    zj = np.array(df_sub['fail'])
+    nj = np.array(df_sub['total'])
+    conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None)
