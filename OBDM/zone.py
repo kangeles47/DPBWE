@@ -301,6 +301,38 @@ class Site(Zone):
         self.hasRoughness = None
         self.hasDebris = {'roof cover': None, 'roof sheathing': None, 'roof member': None}
 
+    def site_gr_poly(self):
+        """
+        A simple function to generate a rectangular polygon of site's spatial extent (based on buildings lat/lon).
+        Site object's hasGeometry attribute is updated with new Shapely Polygon object (geographic coordinates).
+
+        """
+        from shapely.geometry import Polygon
+        # Cycle through the buildings in site to pull max, min latitude/longitude:
+        min_lat, min_lon, max_lat, max_lon = None, None, None, None
+        for bldg in self.hasBuilding:
+            if min_lat is None:
+                min_lat, max_lat = bldg.hasLocation['Geodesic'].y
+                min_lon, max_lon = bldg.hasLocation['Geodesic'].x
+            else:
+                # Latitude check:
+                if bldg.hasLocation['Geodesic'].y < min_lat:
+                    min_lat = bldg.hasLocation['Geodesic'].y
+                elif bldg.hasLocation['Geodesic'].y > max_lat:
+                    max_lat = bldg.hasLocation['Geodesic'].y
+                else:
+                    pass
+                # Longitude check:
+                if bldg.hasLocation['Geodesic'].x < min_lon:
+                    min_lon = bldg.hasLocation['Geodesic'].x
+                elif bldg.hasLocation['Geodesic'].x > max_lon:
+                    max_lon = bldg.hasLocation['Geodesic'].x
+                else:
+                    pass
+        # Create Polygon with final lat, lon coordinates:
+        site_rpoly = Polygon([(min_lon, min_lat), (max_lon, min_lat), (max_lat, max_lon), (min_lon, max_lat)])
+        self.hasGeometry['Geodesic Rectangle'] = site_rpoly
+
 
 class Building(Zone):
     def __init__(self):
