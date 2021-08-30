@@ -1,6 +1,7 @@
 import pandas as pd
 from numpy import isnan
 import requests
+import matplotlib.pyplot as plt
 
 
 class PostDisasterDamageDataset:
@@ -681,17 +682,15 @@ class FemaHma(PostDisasterDamageDataset):
             print('No data currently available for this event via API')
         return df_fema
 
-    def add_fema_hma_data(self, bldg, component_type, hazard_type, damage_scale_name, df_fema):
+    def add_fema_hma_data(self, bldg, component_type, hazard_type, df_fema):
         """
         A function to find damage observations within the Hazard Mitigation Assistance Mitigated Properties dataset.
 
         :param bldg: Parcel or Building object with hasOccupancy attribute filled.
         :param component_type: String specifying the component type.
         :param hazard_type: String specifying the hazard type.
-        :param damage_scale_name: String specifying the name of the damage scale that will be used for the semantic
-                                  translation of data fields to component damage observations.
         :param df_fema: DataFrame with data from the Hazard Mitigation Assistance dataset for a given event.
-        :return: dbldg_lst: List with "dummy" building data models with location and damage data information
+        :return: df_sub: DataFrame with all "representative" data entries for bldg, hazard, component type
         """
         # First find the appropriate residence type for the query:
         # Note: HMA Buildings are typically govt. bldgs, schools, critical facilities, churches, residential bldgs.
@@ -758,75 +757,110 @@ class FemaHma(PostDisasterDamageDataset):
                         # Drop any observations specific to storm shutters:
                         df_sub.drop(df_sub[df_sub['title'].str.contains('SHUTTER')].index, inplace=True)
                         df_sub = df_sub.reset_index(drop=True)
+                    elif component_type == 'window':
+                        df_sub = df_sub[df_sub['title'].str.contains('SHUTTER')]
+                    else:
+                        print('Component type not supported')
+                else:
+                    print('Hazards other than wind not currently supported')
+            else:
+                pass
         return df_sub
 
-    def post_process_hma(self, bldg, df_sub, damage_scale_name, component_type, wind_speed_file_path):
-        # Step 1: Pull up the hazard dataset and assign wind speeds:
-        wind_speed_list = []
+    def create_hma_data_models(self, bldg, df_sub, component_type, hazard_type, hazard_file_path):
+        # Import necessary modules:
+        from shapely.geometry import Point
+        from OBDM.zone import Building, Story
+        from OBDM.element import Roof
+        from create_fragility import get_wind_speed
+        # Loop through data entries, create building data models and populate location + hazard info:
+        hma_bldg_list = []
+        hazard_list = []
         for row in range(0, len(df_sub['damageCategory'])):
-            # Create a new dummy building model:
-
-            wind_speed_list.append(get_wind_speed(bldg, wind_speed_file_path, exposure='C', unit='english'))
-        if component_type == 'roof cover':
-            if damage_scale_name == 'HAZUS-HM':
-                self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
-            else:
-                # Populate default damage scale information to force development of mapping function:
+            for prop in range(0, df_sub['numberOfProperties'][row] + 1):
+                data_details = {'available': True, 'fidelity': self,
+                                'component type': component_type,
+                                'hazard type': hazard_type, 'value': None}
+                # Create a new parcel data model and add location data:
+                new_parcel = Building()
+                new_parcel.hasLocation['Zip Code'] = df_sub['zip'][row]
+                new_parcel.hasLocation['City'] = df_sub['city'][row].upper()
+                new_parcel.hasLocation['County'] = df_sub['county'][row].upper()
+                new_parcel.hasLocation['State'] = df_sub['state'][row].upper()
+                new_parcel.hasOccupancy = df_sub['structureType'][row].upper()
+                # Find latitude/longitude information:
+                df_geo = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Geodesic/FClaims_locs.csv')
+                idx = df_geo.loc[(df_geo['CITY'] == new_parcel.hasLocation['City']) & (
+                            df_geo['ZIP'] == new_parcel.hasLocation['Zip Code'])].index.to_list()
+                new_parcel.hasLocation['Geodesic'] = Point(df_geo['LONGITUDE'][idx], df_geo['LATITUDE'][idx])
+                # Add story and height information (currently based off of bldg features):
+                new_parcel.hasStory.append(Story())
+                new_parcel.hasGeometry['Height'] = bldg.hasGeometry['Height'] / len(bldg.hasStory)
+                # Create Roof element and add information:
+                new_roof = Roof()
+                new_roof.hasCover = bldg.hasElement['Roof'][0].hasCover
+                new_roof.hasType = bldg.hasElement['Roof'][0].hasCover
+                new_parcel.hasStory[-1].adjacentElement['Roof'] = [new_roof]
+                new_parcel.hasStory[-1].update_elements()
+                new_parcel.update_zones()
+                new_parcel.update_elements()
+                # Now find this building's hazard intensity information: Basic wind speed in this case
+                if hazard_type == 'wind':
+                    get_wind_speed(new_parcel, hazard_file_path, exposure='C', unit='english')
+                    hazard_list.append(new_parcel.hasDemand['wind speed'])
+                else:
+                    pass
+                # Add damage data:
+                # Populate damage scale information:
                 self.get_damage_scale('FEMA HMA', component_type, global_flag=True, component_flag=True)
-            # Import necessary modules:
-            from shapely.geometry import Point
-            from OBDM.zone import Building, Story
-            from OBDM.element import Roof
-            # Create "dummy" building models and add data:
-            for row in range(0, len(df_sub['damageCategory'])):
-                for prop in range(0, df_sub['numberOfProperties'][row]+1):
-                    data_details = {'available': True, 'fidelity': self,
-                                    'component type': component_type,
-                                    'hazard type': hazard_type, 'value': None}
-                    # Create a new parcel data model and add location data:
-                    new_parcel = Building()
-                    new_parcel.hasLocation['Zip Code'] = df_sub['zip'][row]
-                    new_parcel.hasLocation['City'] = df_sub['city'][row].upper()
-                    new_parcel.hasLocation['County'] = df_sub['county'][row].upper()
-                    new_parcel.hasLocation['State'] = df_sub['state'][row].upper()
-                    new_parcel.hasOccupancy = df_sub['structureType'][row].upper()
-                    # Find latitude/longitude information:
-                    df_geo = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Geodesic/FClaims_locs.csv')
-                    idx = df_geo.loc[(df_geo['CITY']==new_parcel.hasLocation['City']) & (df_geo['ZIP']==new_parcel.hasLocation['Zip Code'])].index.to_list()
-                    new_parcel.hasLocation['Geodesic'] = Point(df_geo['LONGITUDE'][idx], df_geo['LATITUDE'][idx])
-                    # Add story and height information:
-                    new_parcel.hasStory.append(Story())
-                    new_parcel.hasGeometry['Height'] = bldg.hasGeometry['Height']/len(bldg.hasStory)
-                    # Create Roof element and add information:
-                    new_roof = Roof()
-                    new_roof.hasCover = bldg.hasElement['Roof'][0].hasCover
-                    new_roof.hasType = bldg.hasElement['Roof'][0].hasCover
-                    new_parcel.hasStory[-1].adjacentElement['Roof'] = [new_roof]
-                    new_parcel.hasStory[-1].update_elements()
-                    new_parcel.update_zones()
-                    new_parcel.update_elements()
-                    # Add damage data:
-                    if damage_scale_name == 'HAZUS-HM':
-                        if '49' in df_sub['damageCategory'][row]:
-                            data_details['value'] = self.hasDamageScale['component damage states']['value'][1]
-                        elif '99' in df_sub['damageCategory'][row]:
-                            data_details['value'] = self.hasDamageScale['component damage states']['value'][2]
-                        else:  # Total loss
-                            data_details['value'] = self.hasDamageScale['component damage states']['value'][3]
-                    else:
-                        print('Semantic translation for specified damage scale + component currently not supported')
-                    new_parcel.hasElement['Roof'][0].hasDamageData = data_details
-                    new_parcel.hasDamageData['roof cover'] = new_parcel.hasElement['Roof'][0].hasDamageData
-                    dbldg_lst.append(new_parcel)
+                if '49' in df_sub['damageCategory'][row]:
+                    data_details['value'] = self.hasDamageScale['global damage states']['value'][0]
+                elif '99' in df_sub['damageCategory'][row]:
+                    data_details['value'] = self.hasDamageScale['component damage states']['value'][1]
+                else:  # Total loss
+                    data_details['value'] = self.hasDamageScale['component damage states']['value'][2]
+                new_parcel.hasElement['Roof'][0].hasDamageData = data_details
+                new_parcel.hasDamageData['roof cover'] = new_parcel.hasElement['Roof'][0].hasDamageData
+                hma_bldg_list.append(new_parcel)
+        # Create a histogram to help the user in their designation of damage measures:
+        plt.hist(hazard_list)
+        plt.ylabel('Frequency')
+        if hazard_type == 'wind':
+            plt.xlabel('Wind speed [mph]')
         else:
             pass
-    elif component_type == 'window':
-    df_sub = df_sub[df_sub['title'].str.contains('SHUTTER')]
-    print('Window/shutter rulesets not currently supported')
-else:
-print('Component type not supported')
-else:
-print('Hazards other than wind not currently supported')
-else:
-pass
-return dbldg_lst
+        plt.show()
+        return hma_bldg_list
+
+    def assign_hma_dms(self, hma_bldg_list, damage_scale_name, site):
+        from shapely.geometry import Polygon
+        # Cycle through the buildings in site to pull max, min latitude/longitude:
+        min_lat, min_lon, max_lat, max_lon = None, None, None, None
+        for bldg in site.hasBuilding:
+            if min_lat is None:
+                min_lat, max_lat = bldg.hasLocation['Geodesic'].y
+                min_lon, max_lon = bldg.hasLocation['Geodesic'].x
+            else:
+                # Latitude check:
+                if bldg.hasLocation['Geodesic'].y < min_lat:
+                    min_lat = bldg.hasLocation['Geodesic'].y
+                elif bldg.hasLocation['Geodesic'].y > max_lat:
+                    max_lat = bldg.hasLocation['Geodesic'].y
+                else:
+                    pass
+                # Longitude check:
+                if bldg.hasLocation['Geodesic'].x < min_lon:
+                    min_lon = bldg.hasLocation['Geodesic'].x
+                elif bldg.hasLocation['Geodesic'].x > max_lon:
+                    max_lon = bldg.hasLocation['Geodesic'].x
+                else:
+                    pass
+        # Create Polygon with final lat, lon coordinates:
+        site_rpoly = Polygon([(min_lon, min_lat), (max_lon, min_lat), (max_lat, max_lon), (min_lon, max_lat)])
+        # Use spatial filter to remove non-applicable buildings:
+        spatial_filter = []
+        for b in hma_bldg_list:
+            if b.hasLocation['Geodesic'].within(site_rpoly):
+                spatial_filter.append(b)
+            else:
+                pass
