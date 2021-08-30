@@ -832,35 +832,14 @@ class FemaHma(PostDisasterDamageDataset):
         plt.show()
         return hma_bldg_list
 
-    def assign_hma_dms(self, hma_bldg_list, damage_scale_name, site):
-        from shapely.geometry import Polygon
-        # Cycle through the buildings in site to pull max, min latitude/longitude:
-        min_lat, min_lon, max_lat, max_lon = None, None, None, None
-        for bldg in site.hasBuilding:
-            if min_lat is None:
-                min_lat, max_lat = bldg.hasLocation['Geodesic'].y
-                min_lon, max_lon = bldg.hasLocation['Geodesic'].x
-            else:
-                # Latitude check:
-                if bldg.hasLocation['Geodesic'].y < min_lat:
-                    min_lat = bldg.hasLocation['Geodesic'].y
-                elif bldg.hasLocation['Geodesic'].y > max_lat:
-                    max_lat = bldg.hasLocation['Geodesic'].y
-                else:
-                    pass
-                # Longitude check:
-                if bldg.hasLocation['Geodesic'].x < min_lon:
-                    min_lon = bldg.hasLocation['Geodesic'].x
-                elif bldg.hasLocation['Geodesic'].x > max_lon:
-                    max_lon = bldg.hasLocation['Geodesic'].x
-                else:
-                    pass
-        # Create Polygon with final lat, lon coordinates:
-        site_rpoly = Polygon([(min_lon, min_lat), (max_lon, min_lat), (max_lat, max_lon), (min_lon, max_lat)])
+    def assign_hma_dms(self, hma_bldg_list, spatial_filter, translate_to, component_type):
         # Use spatial filter to remove non-applicable buildings:
-        spatial_filter = []
         for b in hma_bldg_list:
-            if b.hasLocation['Geodesic'].within(site_rpoly):
-                spatial_filter.append(b)
+            if b.hasLocation['Geodesic'].within(spatial_filter):
+                dm_idx = self.hasDamageScale['global damage states']['value'].index(b.hasDamage)
+                if component_type == 'roof cover':
+                    b.hasElement['Roof'][0].hasDamageData['value'], b.hasDamageData['roof cover'] = translate_to[dm_idx]
+                else:
+                    pass
             else:
                 pass
