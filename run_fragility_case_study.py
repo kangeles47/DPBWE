@@ -18,12 +18,12 @@ from create_fragility import execute_fragility_workflow
 
 
 def run_hm_study(inventory='C:/Users/Karen/Desktop/MichaelBuildings.csv', hazard_type='wind',
-                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv', component_type='roof cover', parcel_id='30569-100-000'):
+                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv', component_type='roof cover', parcel_id='18145-000-000'):
     # Hurricane Michael case study:
     # Component type: Roof cover (built-up)
     # Hazard: Wind
     # Locality: Panama City Beach and Mexico Beach regions
-
+    # '30569-100-000' original parcel number for 6 story guy
     # Step 1: Create a Site Class that will hold all parcel-specific data models:
     site = Site()
     # Step 2: Populate building inventory data and create parcel-specific data models:
