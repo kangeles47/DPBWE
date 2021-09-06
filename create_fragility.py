@@ -97,7 +97,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
     if export_sample_flag:
         # Create dictionary to track pertinent sample building info (data visualization):
         sample_dict = {'Parcel Id': [], 'Address': [], component_type: [], 'Stories': [], 'Disaster Permit': [],
-                       'Permit Description': [], 'Demand Value': [], 'Value': []}
+                       'Permit Description': [], 'Demand Value': [], 'Value': [], 'Year Built': []}
         for s in sim_bldgs:
             # Step 4: Export attributes for all sample buildings (for sanity checking):
             sample_dict['Parcel Id'].append(s.hasID)
@@ -105,6 +105,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             sample_dict['Stories'].append(len(s.hasStory))
             sample_dict['Value'].append(s.hasElement['Roof'][0].hasDamageData['value'])
             sample_dict['Demand Value'].append(s.hasElement['Roof'][0].hasDemand['wind speed'])
+            sample_dict['Year Built'].append(s.hasYearBuilt)
             # Export permit descriptions when available as well:
             if len(s.hasPermitData['disaster']['number']) > 0:
                 sample_dict['Disaster Permit'].append(True)
@@ -643,6 +644,8 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
     # Step 1: Normalize the intensity measure:
     norm_factor = max(xj)
     xj = xj/norm_factor
+    nj = nj/4
+    zj = zj/4
     # Step 2: Build the Bayesian model in PyMC3:
     with pm.Model() as model:
         # Step 3a: Set up the prior
@@ -668,7 +671,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
          #   print(RV.name, RV.logp(model.test_point))
         # Step 3c: Determine the posterior
         # Note: can manually change number of cores if more computational power is available.
-        trace = pm.sample(4000, cores=1, return_inferencedata=True)
+        trace = pm.sample(8000, cores=1, return_inferencedata=True, tune=2000)  #tune=2000
         # (Optional): Plotting the trace and updated distributions for parameters:
         if plot_flag:
             from matplotlib import rcParams
