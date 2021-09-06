@@ -650,7 +650,9 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
         # Note: Parameters for mu are also normalized for compatibility with intensity measure values.
         # See De Brujin et al. for more information regarding the initialization of prior distributions.
         mu = pm.Normal('mu', mu_init/norm_factor, 15/norm_factor)
-        beta = pm.Normal('beta', beta_init, 0.03)
+        BoundedNormal = pm.Bound(pm.Normal, lower=0.0)
+        #x = BoundedNormal('x', mu=1.0, sigma=3.0)
+        beta = BoundedNormal('beta', beta_init, 0.03)
 
         # Step 3b: Set up the likelihood function:
         # The likelihood in this model is represented via a Binomial distribution.
@@ -673,7 +675,6 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
             rcParams['font.family'] = "Times New Roman"
             rcParams.update({'font.size': 12})
             az.plot_trace(trace, chain_prop={'color': ['blue', 'red']})
-            plt.title('Trace plot for parameters')
         # Step 4: Generate summary statistics for the MCMC:
         print('Summary statistics for the MCMC:')
         print(az.summary(trace))  # Note: can output this DataFrame if needed
@@ -687,30 +688,30 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
             # Plot prior and updated distributions for parameters:
             # mu
             fig, ax = plt.subplots()
-            new_mu_mean, new_mu_std = norm.fit(ppc['mu'])
-            ax.hist(ppc['mu'], bins=25, density=True, alpha=0.4, color='b', label='posterior samples')
+            ax.hist(ppc['mu']/2.237, bins=25, density=True, alpha=0.4, color='b', label='posterior samples')
             xmin, xmax = ax.set_xlim()
             x = np.linspace(xmin, xmax, 100)
-            p_prior = norm.pdf(x, mu_init, 15)
-            #p_prior = mu.random(x, 100)*norm_factor
-            p_new = norm.pdf(x, new_mu_mean, new_mu_std)
+            p_prior = norm.pdf(x, mu_init/2.237, 15/2.237)
+            p_new = norm.pdf(x, updated_values['mu']['mean']/2.237, updated_values['mu']['std dev']/2.237)
             ax.plot(x, p_prior, 'k', linewidth=2, label='prior')
             ax.plot(x, p_new, 'r', linewidth=2, label='updated', linestyle='dashed')
-            ax.set_title('Prior and updated distributions for mu')
+            ax.set_title('Prior and updated distributions for ' + r'$\theta_1$')
+            ax.set_xlabel(r'$\theta_1$')
+            ax.set_ylabel('Probability')
             ax.legend()
             plt.show()
             # beta
             fig2, ax2 = plt.subplots()
-            new_beta_mean, new_beta_std = norm.fit(ppc['beta'])
-            ax.hist(ppc['beta'], bins=25, density=True, alpha=0.4, color='b')
-            xmin, xmax = ax.set_xlim()
-            x = np.linspace(xmin, xmax, 100)
-            #p_prior2 = norm.pdf(x, beta_init, 0.03)
-            p_prior2 = beta.random(x, 100)
-            p_new2 = norm.pdf(x, new_beta_mean, new_beta_std)
-            ax2.plot(x, p_prior2, 'k', linewidth=2, label='prior')
-            ax2.plot(x, p_new2, 'r', linewidth=2, label='updated', linestyle='dashed')
-            ax2.set_title('Prior and updated distributions for beta')
+            ax2.hist(ppc['beta'], bins=25, density=True, alpha=0.4, color='b', label='posterior samples')
+            xmin2, xmax2 = ax2.set_xlim()
+            x2 = np.linspace(xmin2, xmax2, 100)
+            p_prior2 = norm.pdf(x2, beta_init, 0.03)
+            p_new2 = norm.pdf(x2, updated_values['beta']['mean'], updated_values['beta']['std dev'])
+            ax2.plot(x2, p_prior2, 'k', linewidth=2, label='prior')
+            ax2.plot(x2, p_new2, 'r', linewidth=2, label='updated', linestyle='dashed')
+            ax2.set_title('Prior and updated distributions for ' + r'$\theta_2$')
+            ax2.set_xlabel(r'$\theta_2$')
+            ax2.set_ylabel('Probability')
             ax2.legend()
             plt.show()
             # Calculate failure probabilities for prior, updated:
@@ -726,11 +727,16 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
                 pf_ppc.append(y)
             # Plot the credible intervals, mean outcome of prediction, mean of simulation-based:
             fig3, ax3 = plt.subplots()
-            az.plot_hdi(im, pf_ppc, fill_kwargs={'alpha': 0.1, 'color': 'blue', 'label': '94% credible interval'})
-            ax3.plot(im, pf_mean, label='mean of prediction', color='r', linestyle='dashed')
-            ax3.plot(im, pf_sim, label='mean of simulation-based', color='k')
+            ax3.set_clip_on(False)
+            ax3.set_ylim(0, 1.2)
+            ax3.spines['right'].set_visible(False)
+            ax3.spines['top'].set_visible(False)
+            az.plot_hdi(im/2.237, pf_ppc, hdi_prob=0.95, fill_kwargs={'alpha': 0.1, 'color': 'blue',
+                                                                      'label': '95% credible interval'})
+            ax3.plot(im/2.237, pf_mean, label='mean of prediction', color='r', linestyle='dashed')
+            ax3.plot(im/2.237, pf_sim, label='mean of simulation-based', color='k')
             # Plot the observations:
-            ax3.scatter(xj*norm_factor, zj / nj, color='r', marker='^', label='observations')
+            ax3.scatter(xj*norm_factor/2.237, zj / nj, color='darkviolet', label='observations', zorder=5, s=70)
             ax3.legend()
             plt.show()
     return updated_values
@@ -738,15 +744,18 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
 
 observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations.csv'
 df = pd.read_csv(observations_file_path)
+prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/F21_fit.csv'
+df_prior = pd.read_csv(prior_file_path)
 ds_list = df['DS Number'].unique()
 #mu_init = [4.69, 4.8]
-mu_ds = [108.85]
-beta_ds = [0.16, 0.15]
+#mu_ds = [108.85]
+#beta_ds = [0.16, 0.15]
 for ds in range(0, len(ds_list)):
     df_sub = df.loc[df['DS Number'] == ds_list[ds]]
     xj = np.array(df_sub['demand'])
     zj = np.array(df_sub['fail'])
     nj = np.array(df_sub['total'])
-    mu_init = mu_ds[ds]
-    beta_init = beta_ds[ds]
+    mu_init = df_prior['theta1'][ds]
+    beta_init = df_prior['theta2'][ds]
     updated_values = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init)
+    print(updated_values)
