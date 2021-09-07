@@ -78,7 +78,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                 df_fema = data_types[i].pull_fema_hma_data(event_name)
             else:
                 df_fema = pd.read_csv(file_paths[i])
-            new_bldgs = data_types[i].add_fema_hma_data(bldg, component_type, hazard_type, damage_scale_name, df_fema)
+            new_bldgs = data_types[i].add_fema_hma_data(bldg, component_type, hazard_type, df_fema, hazard_file_path)
         # Add new building models to list of similar buildings:
         if len(new_bldgs) > 0:
             for nbldg in new_bldgs:
@@ -745,20 +745,20 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
     return updated_values
 
 
-observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations.csv'
-df = pd.read_csv(observations_file_path)
-prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/F21_fit.csv'
-df_prior = pd.read_csv(prior_file_path)
-ds_list = df['DS Number'].unique()
-#mu_init = [4.69, 4.8]
-#mu_ds = [108.85]
-#beta_ds = [0.16, 0.15]
-for ds in range(0, len(ds_list)):
-    df_sub = df.loc[df['DS Number'] == ds_list[ds]]
-    xj = np.array(df_sub['demand'])
-    zj = np.array(df_sub['fail'])
-    nj = np.array(df_sub['total'])
-    mu_init = df_prior['theta1'][ds]
-    beta_init = df_prior['theta2'][ds]
-    updated_values = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init)
-    print(updated_values)
+# observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations.csv'
+# df = pd.read_csv(observations_file_path)
+# prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/F21_fit.csv'
+# df_prior = pd.read_csv(prior_file_path)
+# ds_list = df['DS Number'].unique()
+# #mu_init = [4.69, 4.8]
+# #mu_ds = [108.85]
+# #beta_ds = [0.16, 0.15]
+# for ds in range(0, len(ds_list)):
+#     df_sub = df.loc[df['DS Number'] == ds_list[ds]]
+#     xj = np.array(df_sub['demand'])
+#     zj = np.array(df_sub['fail'])
+#     nj = np.array(df_sub['total'])
+#     mu_init = df_prior['theta1'][ds]
+#     beta_init = df_prior['theta2'][ds]
+#     updated_values = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init)
+#     print(updated_values)
