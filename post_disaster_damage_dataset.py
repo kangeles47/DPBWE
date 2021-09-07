@@ -71,7 +71,7 @@ class PostDisasterDamageDataset:
                 if 'roof' in component_type:
                     comp_ds_nums = [0, 1, 2]
                     comp_ds_desc = ['Damage <= 49%', 'Damage >=50%', 'Total Loss']
-                    comp_ds_values = [[0, 49], [50, 99], 100]
+                    comp_ds_vals = [[0, 49], [50, 99], 100]
                 else:
                     print('Component damage values not supported for ' + damage_scale_name + 'and ' + component_type)
         elif damage_scale_name == 'FEMA IHARLD':
@@ -83,7 +83,7 @@ class PostDisasterDamageDataset:
                 if 'roof' in component_type:
                     comp_ds_nums = [0, 1]
                     comp_ds_desc = ['No Damage', 'Damage']
-                    comp_ds_values = [0, [0, 100]]
+                    comp_ds_vals = [0, [0, 100]]
                 else:
                     print('Component damage values not supported for ' + damage_scale_name + 'and ' + component_type)
         else:
@@ -682,7 +682,7 @@ class FemaHma(PostDisasterDamageDataset):
             print('No data currently available for this event via API')
         return df_fema
 
-    def add_fema_hma_data(self, bldg, component_type, hazard_type, df_fema):
+    def add_fema_hma_data(self, bldg, component_type, hazard_type, df_fema, hazard_file_path):
         """
         A function to find damage observations within the Hazard Mitigation Assistance Mitigated Properties dataset.
 
@@ -757,6 +757,7 @@ class FemaHma(PostDisasterDamageDataset):
                         # Drop any observations specific to storm shutters:
                         df_sub.drop(df_sub[df_sub['title'].str.contains('SHUTTER')].index, inplace=True)
                         df_sub = df_sub.reset_index(drop=True)
+                        self.create_hma_data_models(bldg, df_sub, component_type, hazard_type, hazard_file_path)
                     elif component_type == 'window':
                         df_sub = df_sub[df_sub['title'].str.contains('SHUTTER')]
                     else:
@@ -823,12 +824,27 @@ class FemaHma(PostDisasterDamageDataset):
                 new_parcel.hasDamageData['roof cover'] = new_parcel.hasElement['Roof'][0].hasDamageData
                 hma_bldg_list.append(new_parcel)
         # Create a histogram to help the user in their designation of damage measures:
-        plt.hist(hazard_list)
+        from scipy.stats.distributions import norm, lognorm
+        import numpy as np
+        # Adding in here braindump of fit code:
+        shape, loc, scale = lognorm.fit(hazard_list)
+        x = np.linspace(min(np.array(hazard_list)), max(np.array(hazard_list)))
+        log_pdf = lognorm.pdf(x, shape, loc, scale)
+        plt.plot(x, log_pdf)
+        from matplotlib import rcParams
+        rcParams['font.family'] = "Times New Roman"
+        rcParams.update({'font.size': 12})
+        plt.hist(hazard_list, bins=20)
         plt.ylabel('Frequency')
         if hazard_type == 'wind':
             plt.xlabel('Wind speed [mph]')
         else:
             pass
+        plt.show()
+        # Plot the final cdf:
+        y = lognorm.cdf(x, shape, loc, scale)
+        inv_y = 1-y
+        plt.plot(x, y, label='P(X >= x), DS1')
         plt.show()
         return hma_bldg_list
 
