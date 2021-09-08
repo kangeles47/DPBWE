@@ -11,7 +11,9 @@ def get_sim_bldgs(bldg, site, hazard_type, component_type, event_year):
             # Find buildings in the regional inventory that have the same or similar roof cover type:
             for compare_bldg in site.hasBuilding:
                 # Skip buildings constructed after the year of the event:
-                if compare_bldg.hasYearBuilt > event_year:
+                if compare_bldg.hasYearBuilt >= 2016:
+                    print(compare_bldg.hasID)
+                elif compare_bldg.hasYearBuilt > 2002:
                     pass
                 else:
                     # Check if this building has a similar or same roof cover:
