@@ -37,6 +37,22 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/MichaelBuildings.csv', hazard
         new_roof = Roof()
         new_roof.hasCover = df['Roof Cover'][row]
         new_roof.hasType = df['Roof Cover'][row]
+        # try:
+        #     if len(df['Issued'][row]) > 0:
+        #         pdesc = df['Description'][row][2:-2].split("'")
+        #         pyear = df['Issued'][row][2:-2].split("'")
+        #         year = 0
+        #         for p in range(0, len(pdesc)):
+        #             if 'REROOF' in pdesc[p] or 'RERF' in pdesc[p] or 'ROOF' in pdesc[p]:
+        #                 new_year = int(pyear[p][:4])
+        #                 if new_year > year:
+        #                     year = new_year
+        #             else:
+        #                 pass
+        #         new_roof.hasYearBuilt = year
+        #         new_bldg.hasYearBuilt = year
+        # except TypeError:
+        #     new_roof.hasYearBuilt = new_bldg.hasYearBuilt
         new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
         new_bldg.hasStory[-1].update_elements()
         new_bldg.update_zones()
