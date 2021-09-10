@@ -183,7 +183,9 @@ def query_parcel_info_2(driver_path, url, parcel_identifier, address_flag):
         searchButton.click()
     # Parcel Summary page - We can now parse the parcel details
     # Create a global dictionary to hold parcel_information:
-    parcel_info = {'Parcel Id': None, 'Address': None, 'Use Code': None, 'Building Value': None, 'Just Market Value': None, 'Permit Number': None, 'Building Data': {'Square Footage': [],
+    parcel_info = {'Parcel Id': None, 'Address': None, 'Use Code': None, 'Building Value': None, 'Just Market Value': None, 'Permit Issued Date': None,
+                   'Permit Number': None, 'Permit Type': None, 'Permit Description': None, 'Permit Amount': None,
+                   'Building Data': {'Square Footage': [],
                    'Stories': [], 'Year Built': [], 'OccType': [],
                    'Exterior Walls': [], 'Roof Cover': [], 'Interior Walls': [],
                    'Frame Type': [], 'Floor Cover': [], 'Unit No.': None, 'Floor': None,
@@ -294,15 +296,31 @@ def query_parcel_info_2(driver_path, url, parcel_identifier, address_flag):
                         elif 'Floor Cover' in tag:
                             parcel_info['Building Data']['Floor Cover'].append(value.splitlines()[1])
             elif 'Permit' in tab.find_all('tr')[0].get_text():
+                issued_list = []
                 permit_list = []
+                type_list = []
+                desc_list = []
+                amt_list = []
                 count = 0
                 for row in tab.find_all('tr'):
                     if count == 0:
                         count = count+1
                     elif count > 0:
+                        issued_list.append(row.get_text().splitlines()[1])
                         permit_list.append(row.get_text().splitlines()[2])
+                        # b = row.get_text().splitlines()[-1].split('$')
+                        # td_list.append(b[0])
+                        # amt_list.append(b[1])
+                permit_list.append(tab.find_all('td')[0].get_text().strip())
+                type_list.append(tab.find_all('td')[1].get_text().strip())
+                desc_list.append(tab.find_all('td')[2].get_text().strip())
+                amt_list.append(tab.find_all('td')[3].get_text().strip().strip('$'))
                 # Save the address, parcel number, and permit numbers in a separate CSV:
                 parcel_info['Permit Number'] = permit_list
+                parcel_info['Permit Issued Date'] = issued_list
+                parcel_info['Permit Type'] = type_list
+                parcel_info['Permit Description'] = desc_list
+                parcel_info['Permit Amount'] = amt_list
             else:
                 pass
     # Close the browser:
@@ -313,13 +331,15 @@ def query_parcel_info_2(driver_path, url, parcel_identifier, address_flag):
 driver_path = 'C:/Users/Karen/Desktop/chromedriver.exe'
 url = "https://qpublic.schneidercorp.com/application.aspx?app=BayCountyFL&PageType=Search"
 address_flag = False
-df = pd.read_csv('C:/Users/Karen/Desktop/BayCountyCommercial.csv')
+df = pd.read_csv('C:/Users/Karen/Desktop/PCB_MB_SF.csv')
+df = df.iloc[2488:]
+df = df.reset_index()
 for row in range(0, len(df['Parcel ID'])):
     parcel_identifier = df['Parcel ID'][row]
     parcel_info = query_parcel_info_2(driver_path, url, parcel_identifier, address_flag)
     # Save the building's data:
     for bldg in range(0, len(parcel_info['Building Data']['Stories'])):
-        with open('BayCountyCommercialParcels.csv', 'a', newline='') as csvfile:
+        with open('MB_res.csv', 'a', newline='') as csvfile:
             fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType',
                           'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover', 'Unit No.', 'Floor',
                           'Living Area', 'Number of Bedrooms', 'Number of Bathrooms', 'Permit Number']
