@@ -825,7 +825,20 @@ class FemaHma(PostDisasterDamageDataset):
                 hma_bldg_list.append(new_parcel)
         # Create a histogram to help the user in their designation of damage measures:
         from scipy.stats.distributions import norm, lognorm
+        from seaborn import kdeplot
         import numpy as np
+        # Use Kernel Density Estimation to fit the data and extract resulting values:
+        kde = kdeplot(hazard_list)
+        line = kde.lines[0]
+        x, y = line.get_data()
+        # Plot the data and its KDE plot:
+        fig, ax = plt.subplots()
+        ax.plot(x, y)
+        # Let's try calculating the gradient:
+        step_size = x[1]-x[0]
+        grad = np.gradient(y, step_size)
+        grad_zero = np.where(grad==0)
+        # And calculate the slope to make sure we get 
         # Adding in here braindump of fit code:
         shape, loc, scale = lognorm.fit(hazard_list)
         x = np.linspace(min(np.array(hazard_list)), max(np.array(hazard_list)))
@@ -859,3 +872,6 @@ class FemaHma(PostDisasterDamageDataset):
                     pass
             else:
                 pass
+
+    def find_fit_(self):
+        pass
