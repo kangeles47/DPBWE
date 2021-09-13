@@ -825,39 +825,38 @@ class FemaHma(PostDisasterDamageDataset):
                 hma_bldg_list.append(new_parcel)
         # Create a histogram to help the user in their designation of damage measures:
         from scipy.stats.distributions import norm, lognorm
-        from seaborn import kdeplot
+        from seaborn import kdeplot, distplot
         import numpy as np
         # Use Kernel Density Estimation to fit the data and extract resulting values:
         kde = kdeplot(hazard_list)
         line = kde.lines[0]
         x, y = line.get_data()
+        split_pt = self.find_fit_points(x,y)
+        # Split the data:
+        h_array = np.array(hazard_list)
+        split1 = h_array[np.where(h_array < split_pt[0])]
+        split2 = h_array[np.where(h_array > split_pt[0])]
         # Plot the data and its KDE plot:
         fig, ax = plt.subplots()
         ax.plot(x, y)
-        # Let's try calculating the gradient:
-        step_size = x[1]-x[0]
-        grad = np.gradient(y, step_size)
-        grad_zero = np.where(grad==0)
-        # And calculate the slope to make sure we get 
-        # Adding in here braindump of fit code:
-        shape, loc, scale = lognorm.fit(hazard_list)
-        x = np.linspace(min(np.array(hazard_list)), max(np.array(hazard_list)))
-        log_pdf = lognorm.pdf(x, shape, loc, scale)
-        plt.plot(x, log_pdf)
+        ax.hist(hazard_list, bins=20)
+        mean1, var1 = norm.fit(split1)
+        mean2, var2 = norm.fit(split2)
+        xmin, xmax = ax.set_xlim()
+        xs = np.linspace(xmin, xmax, 100)
+        norm_pdf1 = norm.pdf(xs, mean1, var1)
+        norm_pdf2 = norm.pdf(xs, mean2, var2)
+        plt.plot(x, norm_pdf1)
+        plt.plot(x, norm_pdf2)
         from matplotlib import rcParams
         rcParams['font.family'] = "Times New Roman"
         rcParams.update({'font.size': 12})
-        plt.hist(hazard_list, bins=20)
+        #plt.hist(hazard_list, bins=20)
         plt.ylabel('Frequency')
         if hazard_type == 'wind':
             plt.xlabel('Wind speed [mph]')
         else:
             pass
-        plt.show()
-        # Plot the final cdf:
-        y = lognorm.cdf(x, shape, loc, scale)
-        inv_y = 1-y
-        plt.plot(x, y, label='P(X >= x), DS1')
         plt.show()
         return hma_bldg_list
 
@@ -873,5 +872,41 @@ class FemaHma(PostDisasterDamageDataset):
             else:
                 pass
 
-    def find_fit_(self):
-        pass
+    def find_fit_points(self, x, y):
+        from scipy.stats.distributions import norm
+        peak_flag = False
+        peaks_idx = []
+        valleys_idx = []
+        for i in range(0, len(y)-1):
+            if i == 0:
+                pass
+            else:
+                # Find the first peak:
+                if y[i] > y[i+1] and y[i] > y[i-1] and not peak_flag:
+                    peak_flag = True
+                    peaks_idx.append(i)
+                elif y[i-1] > y[i] and y[i] < y[i+1] and peak_flag:
+                    valleys_idx.append(i)
+                    peak_flag = False
+                #elif y[i-1] < y[i] < y[i+1] and peak_flag:
+                 #   second_peak_idx = i
+                  #  min_flag = True
+                #elif y[i - 1] > y[i] > y[i + 1] and min_flag:
+                 #   break
+        # Plot for verification:
+        for p in peaks_idx:
+            plt.scatter(x[p], y[p], color='b')
+        for v in valleys_idx:
+            plt.scatter(x[v], y[v], color='r')
+        plt.plot(x, y)
+        plt.hist(y)
+        plt.show()
+        split = 2
+        if split == 2:
+            split_pt = (x[valleys_idx[0]], y[valleys_idx][0])
+            # Find the parameters for the separate Gaussians:
+            mean1, var1 = norm.fit(y[:valleys_idx[0]])
+            mean2, var2 = norm.fit(y[valleys_idx[0]:])
+        #split_pt = (0, 0)
+        #peak_pts = [global_max, (x[second_peak_idx], y[second_peak_idx])]
+        return split_pt
