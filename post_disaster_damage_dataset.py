@@ -112,42 +112,59 @@ class STEER(PostDisasterDamageDataset):
         self.hasAccuracy = True
         self.hasType['field observations'] = True
 
+    def add_query_column(self, steer_file_path):
+        df_steer = pd.read_csv(steer_file_path)
+        if 'address_query' in df_steer.columns:
+            pass
+        else:
+            # Create a new column to make address queries:
+            query_col = []
+            for row in range(0, len(df_steer)):
+                sp = df_steer['address_full'][row].split()
+                new_address = ''
+                for s in sp[:-2]:
+                    new_address = new_address + s.upper() + ' '
+                query_col.append(new_address.strip())
+            df_steer['address_query'] = query_col
+            df_steer.to_csv(steer_file_path, index=False)
+
     def get_parcel_identifer(self, bldg):
         parcel_identifier = bldg.hasLocation['Street Number'] + ' ' + bldg.hasLocation['City'] + ' ' + bldg.hasLocation[
-            'County'] + ' ' + bldg.hasLocation['State'] + ' ' + bldg.hasLocation['Zip Code'] + ' USA'
-        parcel_identifier = parcel_identifier.upper().replace(' ', '')  # Data clean-up
+            'County'] + ' ' + bldg.hasLocation['State']
+        parcel_identifier = parcel_identifier.upper()  # Data clean-up
         return parcel_identifier
 
     def add_steer_bldg_data(self, bldg, parcel_identifier, steer_file_path):
         # Step 1: Load the StEER Dataset:
         df_steer = pd.read_csv(steer_file_path)
-        df_steer['address_full'] = df_steer['address_full'].str.upper().replace(' ', '')  # Data clean-up
-        df_steer['address_full'] = df_steer['address_full'].str.replace(' ', '')
         # Step 2: Use the parcel identifier to populate additional building and component attributes:
-        try:
-            # Check if the parcel has a StEER observation at its exact location:
-            idx = df_steer.loc[df_steer['address_full'] == parcel_identifier].index[0]
+        idx = df_steer.loc[df_steer['address_query'] == parcel_identifier].index
+        if len(idx) > 0:
+            idx = idx[0]
             # First check if we need to add roof shape info:
-            steer_roof_shape = df_steer['roof_shape'][idx].lower()
-            for key in bldg.adjacentElement['Roof'][0].hasShape:
-                if not bldg.adjacentElement['Roof'][0].hasShape:
-                    if key == steer_roof_shape:
-                        bldg.adjacentElement['Roof'][0].hasShape[key] = True
-                    elif key == 'complex' and 'complex' in steer_roof_shape:
-                        bldg.adjacentElement['Roof'][0].hasShape[key] = True
-                    elif key == 'complex' and ',' in steer_roof_shape:
-                        bldg.adjacentElement['Roof'][0].hasShape[key] = True
+            try:
+                steer_roof_shape = df_steer['roof_shape'][idx].lower()
+                for key in bldg.adjacentElement['Roof'][0].hasShape:
+                    if not bldg.adjacentElement['Roof'][0].hasShape:
+                        if key == steer_roof_shape:
+                            bldg.adjacentElement['Roof'][0].hasShape[key] = True
+                        elif key == 'complex' and 'complex' in steer_roof_shape:
+                            bldg.adjacentElement['Roof'][0].hasShape[key] = True
+                        elif key == 'complex' and ',' in steer_roof_shape:
+                            bldg.adjacentElement['Roof'][0].hasShape[key] = True
+                        else:
+                            pass
                     else:
                         pass
-                else:
-                    pass
+            except AttributeError:
+                pass
             # Now check if we need to add any year built information:
             from numpy import nan
             if bldg.hasYearBuilt == nan or bldg.hasYearBuilt == 0:
                 bldg.hasYearBuilt = df_steer['year_built'][idx]
             else:
                 pass
-        except IndexError:
+        else:
             pass
 
     def add_steer_data(self, bldg, component_type, hazard_type, steer_file_path):
@@ -163,8 +180,6 @@ class STEER(PostDisasterDamageDataset):
         """
         # Step 1: Load the StEER Dataset:
         df_steer = pd.read_csv(steer_file_path)
-        df_steer['address_full'] = df_steer['address_full'].str.upper().replace(' ', '')  # Data clean-up
-        df_steer['address_full'] = df_steer['address_full'].str.replace(' ', '')
         # Step 2: Define the parcel identifier:
         # Parcel identifier should be the parcel's address in the following format (not case-sensitive):
         # 1842 BRIDGE ST Panama City BAY FL 32409 USA (number, street, city, county, state, zip, country)
@@ -175,7 +190,7 @@ class STEER(PostDisasterDamageDataset):
         # Step 4: Look for damage observation for the given component and hazard type:
         try:
             # Check if the parcel has a StEER observation at its exact location:
-            idx = df_steer.loc[df_steer['address_full'] == parcel_identifier].index[0]
+            idx = df_steer.loc[df_steer['address_query'] == parcel_identifier].index[0]
             self.hasDate = df_steer['date'][idx]
             # Update the Location Precision attribute:
             self.hasLocationPrecision['street level'] = False
