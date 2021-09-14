@@ -2,6 +2,7 @@ from selenium import webdriver
 from bs4 import BeautifulSoup
 import pandas as pd
 import csv
+import numpy as np
 
 
 def query_parcel_info(driver_path, url, parcel_identifier, address_flag):
@@ -40,7 +41,7 @@ def query_parcel_info(driver_path, url, parcel_identifier, address_flag):
         tag = row.get_text().splitlines()[1]
         if tag == '':
             if 'Use Code' in row.find_all('th')[0].get_text():
-               tag = row.find_all('th')[0].get_text().splitlines()[1]
+                tag = row.find_all('th')[0].get_text().splitlines()[1]
         columns = row.find_all('td')
         value = columns[0].get_text()
         if 'Parcel ID' in tag:
@@ -130,7 +131,8 @@ def query_parcel_info(driver_path, url, parcel_identifier, address_flag):
                         elif 'Floor Cover' in tag:
                             fcover = value.splitlines()[1]
                 bldg_dict = {'Square Footage': area, 'Stories': stories, 'Year Built': yr_built, 'Frame Type': ftype,
-                             'OccType': occ_type, 'Exterior Walls': ext_wall, 'Roof Cover': rcover, 'Interior Walls': int_wall,
+                             'OccType': occ_type, 'Exterior Walls': ext_wall, 'Roof Cover': rcover,
+                             'Interior Walls': int_wall,
                              'Floor Cover': fcover}
                 # Create lists of parameters in cases when there are > 1 bldgs within parcel
                 if bldg_count == 1:
@@ -148,7 +150,7 @@ def query_parcel_info(driver_path, url, parcel_identifier, address_flag):
                 count = 0
                 for row in tab.find_all('tr'):
                     if count == 0:
-                        count = count+1
+                        count = count + 1
                     elif count > 0:
                         permit_list.append(row.get_text().splitlines()[2])
                 # Save the address, parcel number, and permit numbers in a separate CSV:
@@ -183,13 +185,14 @@ def query_parcel_info_2(driver_path, url, parcel_identifier, address_flag):
         searchButton.click()
     # Parcel Summary page - We can now parse the parcel details
     # Create a global dictionary to hold parcel_information:
-    parcel_info = {'Parcel Id': None, 'Address': None, 'Use Code': None, 'Building Value': None, 'Just Market Value': None, 'Permit Issued Date': None,
+    parcel_info = {'Parcel Id': None, 'Address': None, 'Use Code': None, 'Building Value': None,
+                   'Just Market Value': None, 'Permit Issued Date': None,
                    'Permit Number': None, 'Permit Type': None, 'Permit Description': None, 'Permit Amount': None,
                    'Building Data': {'Square Footage': [],
-                   'Stories': [], 'Year Built': [], 'OccType': [],
-                   'Exterior Walls': [], 'Roof Cover': [], 'Interior Walls': [],
-                   'Frame Type': [], 'Floor Cover': [], 'Unit No.': None, 'Floor': None,
-                   'Living Area': None, 'Number of Bedrooms': None, 'Number of Bathrooms': None}}
+                                     'Stories': [], 'Year Built': [], 'OccType': [],
+                                     'Exterior Walls': [], 'Roof Cover': [], 'Interior Walls': [],
+                                     'Frame Type': [], 'Floor Cover': [], 'Unit No.': None, 'Floor': None,
+                                     'Living Area': None, 'Number of Bedrooms': None, 'Number of Bathrooms': None}}
     parcelSoup = BeautifulSoup(browser.page_source, "html.parser")
     table = parcelSoup.find_all('table')
     table1 = table[0]  # First table provides overview of the Parcel
@@ -197,7 +200,7 @@ def query_parcel_info_2(driver_path, url, parcel_identifier, address_flag):
         tag = row.get_text().splitlines()[1]
         if tag == '':
             if 'Use Code' in row.find_all('th')[0].get_text():
-               tag = row.find_all('th')[0].get_text().splitlines()[1]
+                tag = row.find_all('th')[0].get_text().splitlines()[1]
         columns = row.find_all('td')
         value = columns[0].get_text()
         if 'Parcel ID' in tag:
@@ -212,10 +215,10 @@ def query_parcel_info_2(driver_path, url, parcel_identifier, address_flag):
     for i in prop_values:
         if 'Building Value' in i:
             sub_str = i.split('$')
-            parcel_info['Building Value'] = sub_str[-1].replace(',','')
+            parcel_info['Building Value'] = sub_str[-1].replace(',', '')
         elif 'Just' in i:
             sub_str = i.split('$')
-            parcel_info['Just Market Value'] = sub_str[-1].replace(',','')
+            parcel_info['Just Market Value'] = sub_str[-1].replace(',', '')
         else:
             pass
     # Exception cases: vacant lots and condominiums
@@ -304,17 +307,25 @@ def query_parcel_info_2(driver_path, url, parcel_identifier, address_flag):
                 count = 0
                 for row in tab.find_all('tr'):
                     if count == 0:
-                        count = count+1
+                        count = count + 1
                     elif count > 0:
                         issued_list.append(row.get_text().splitlines()[1])
-                        permit_list.append(row.get_text().splitlines()[2])
                         # b = row.get_text().splitlines()[-1].split('$')
                         # td_list.append(b[0])
                         # amt_list.append(b[1])
-                permit_list.append(tab.find_all('td')[0].get_text().strip())
-                type_list.append(tab.find_all('td')[1].get_text().strip())
-                desc_list.append(tab.find_all('td')[2].get_text().strip())
-                amt_list.append(tab.find_all('td')[3].get_text().strip().strip('$'))
+                # Permit data takes up four rows:
+                pnums_idx = np.arange(0, len(tab.find_all('td')), 4)
+                t_idx = np.arange(1, len(tab.find_all('td')), 4)
+                d_idx = np.arange(2, len(tab.find_all('td')), 4)
+                amt_idx = np.arange(3, len(tab.find_all('td')), 4)
+                for i in pnums_idx:
+                    permit_list.append(tab.find_all('td')[i].get_text().strip())
+                for j in t_idx:
+                    type_list.append(tab.find_all('td')[j].get_text().strip())
+                for k in d_idx:
+                    desc_list.append(tab.find_all('td')[k].get_text().strip())
+                for m in amt_idx:
+                    amt_list.append(tab.find_all('td')[m].get_text().strip().strip('$'))
                 # Save the address, parcel number, and permit numbers in a separate CSV:
                 parcel_info['Permit Number'] = permit_list
                 parcel_info['Permit Issued Date'] = issued_list
@@ -327,30 +338,45 @@ def query_parcel_info_2(driver_path, url, parcel_identifier, address_flag):
     browser.quit()
     return parcel_info
 
+
 # Play with this:
 driver_path = 'C:/Users/Karen/Desktop/chromedriver.exe'
 url = "https://qpublic.schneidercorp.com/application.aspx?app=BayCountyFL&PageType=Search"
 address_flag = False
 df = pd.read_csv('C:/Users/Karen/Desktop/PCB_MB_SF.csv')
-df = df.iloc[2488:]
+df = df.iloc[2456:]
 df = df.reset_index()
 for row in range(0, len(df['Parcel ID'])):
     parcel_identifier = df['Parcel ID'][row]
     parcel_info = query_parcel_info_2(driver_path, url, parcel_identifier, address_flag)
     # Save the building's data:
     for bldg in range(0, len(parcel_info['Building Data']['Stories'])):
-        with open('MB_res.csv', 'a', newline='') as csvfile:
+        with open('PCB_res.csv', 'a', newline='') as csvfile:
             fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType',
-                          'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover', 'Unit No.', 'Floor',
-                          'Living Area', 'Number of Bedrooms', 'Number of Bathrooms', 'Permit Number']
+                          'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover', 'Unit No.',
+                          'Floor',
+                          'Living Area', 'Number of Bedrooms', 'Number of Bathrooms', 'Permit Number',
+                          'Permit Issued Date', 'Permit Type',
+                          'Permit Description', 'Permit Amount']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writerow(
-                {'Parcel Id': parcel_info['Parcel Id'], 'Address': parcel_info['Address'], 'Use Code': parcel_info['Use Code'],
-                'Square Footage': parcel_info['Building Data']['Square Footage'][bldg], 'Stories': parcel_info['Building Data']['Stories'][bldg],
-                'Year Built': parcel_info['Building Data']['Year Built'][bldg], 'OccType': parcel_info['Building Data']['OccType'][bldg],
-                'Exterior Walls': parcel_info['Building Data']['Exterior Walls'][bldg], 'Roof Cover': parcel_info['Building Data']['Roof Cover'][bldg],
-                'Interior Walls': parcel_info['Building Data']['Interior Walls'][bldg], 'Frame Type': parcel_info['Building Data']['Frame Type'][bldg],
-                'Floor Cover': parcel_info['Building Data']['Floor Cover'][bldg], 'Unit No.': parcel_info['Building Data']['Unit No.'],
-                'Floor': parcel_info['Building Data']['Floor'], 'Living Area': parcel_info['Building Data']['Living Area'],
-                'Number of Bedrooms': parcel_info['Building Data']['Number of Bedrooms'], 'Number of Bathrooms': parcel_info['Building Data']['Number of Bathrooms'],
-                'Permit Number': parcel_info['Permit Number']})
+                {'Parcel Id': parcel_info['Parcel Id'], 'Address': parcel_info['Address'],
+                 'Use Code': parcel_info['Use Code'],
+                 'Square Footage': parcel_info['Building Data']['Square Footage'][bldg],
+                 'Stories': parcel_info['Building Data']['Stories'][bldg],
+                 'Year Built': parcel_info['Building Data']['Year Built'][bldg],
+                 'OccType': parcel_info['Building Data']['OccType'][bldg],
+                 'Exterior Walls': parcel_info['Building Data']['Exterior Walls'][bldg],
+                 'Roof Cover': parcel_info['Building Data']['Roof Cover'][bldg],
+                 'Interior Walls': parcel_info['Building Data']['Interior Walls'][bldg],
+                 'Frame Type': parcel_info['Building Data']['Frame Type'][bldg],
+                 'Floor Cover': parcel_info['Building Data']['Floor Cover'][bldg],
+                 'Unit No.': parcel_info['Building Data']['Unit No.'],
+                 'Floor': parcel_info['Building Data']['Floor'],
+                 'Living Area': parcel_info['Building Data']['Living Area'],
+                 'Number of Bedrooms': parcel_info['Building Data']['Number of Bedrooms'],
+                 'Number of Bathrooms': parcel_info['Building Data']['Number of Bathrooms'],
+                 'Permit Number': parcel_info['Permit Number'], 'Permit Issued Date': parcel_info['Permit Issued Date'],
+                 'Permit Type': parcel_info['Permit Type'],
+                 'Permit Description': parcel_info['Permit Description'],
+                 'Permit Amount': parcel_info['Permit Amount']})
