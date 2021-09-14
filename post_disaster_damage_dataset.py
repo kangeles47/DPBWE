@@ -7,15 +7,18 @@ import matplotlib.pyplot as plt
 class PostDisasterDamageDataset:
 
     def __init__(self):
-        self.hasDamagePrecision = {'component, discrete': False, 'component, range': False, 'building, discrete': False, 'building, range': False}
-        self.hasLocationPrecision = {'exact location': False, 'street level': False, 'city/town level': False, 'zipcode/censusblock level': False}
+        self.hasDamagePrecision = {'component, discrete': False, 'component, range': False, 'building, discrete': False,
+                                   'building, range': False}
+        self.hasLocationPrecision = {'exact location': False, 'street level': False, 'city/town level': False,
+                                     'zipcode/censusblock level': False}
         self.hasAccuracy = False
         self.hasCurrentness = False
         self.hasReliability = False
         self.hasDate = '00/00/0000'
         self.hasDamageScale = {'type': '', 'global damage states': {'number': [], 'description': [], 'value': []},
                                'component damage states': {'number': [], 'description': [], 'value': []}}
-        self.hasHazard = {'wind': False, 'tree': False, 'rain': False, 'wind-borne debris': False, 'flood': False, 'surge': False}
+        self.hasHazard = {'wind': False, 'tree': False, 'rain': False, 'wind-borne debris': False, 'flood': False,
+                          'surge': False}
         self.hasType = {'field observations': False, 'permit data': False, 'crowdsourced': False,
                         'remote sensing/imagery': False, 'fema modeled assessment': False, 'fema claims data': False}
         self.hasEventName = ''
@@ -66,7 +69,7 @@ class PostDisasterDamageDataset:
             self.hasDamageScale['type'] = 'FEMA HMA'
             global_ds_nums = [0, 1, 2]
             global_ds_desc = ['Damage <= 49%', 'Damage >=50%', 'Total Loss']
-            global_ds_vals = [[0-49], [50, 99], 100]
+            global_ds_vals = [[0 - 49], [50, 99], 100]
             if component_flag:
                 if 'roof' in component_type:
                     comp_ds_nums = [0, 1, 2]
@@ -110,7 +113,8 @@ class STEER(PostDisasterDamageDataset):
         self.hasType['field observations'] = True
 
     def get_parcel_identifer(self, bldg):
-        parcel_identifier = bldg.hasLocation['Street Number'] + ' ' + bldg.hasLocation['City'] + ' ' + bldg.hasLocation['County'] + ' ' + bldg.hasLocation['State'] + ' ' + bldg.hasLocation['Zip Code'] + ' USA'
+        parcel_identifier = bldg.hasLocation['Street Number'] + ' ' + bldg.hasLocation['City'] + ' ' + bldg.hasLocation[
+            'County'] + ' ' + bldg.hasLocation['State'] + ' ' + bldg.hasLocation['Zip Code'] + ' USA'
         parcel_identifier = parcel_identifier.upper().replace(' ', '')  # Data clean-up
         return parcel_identifier
 
@@ -124,20 +128,25 @@ class STEER(PostDisasterDamageDataset):
             # Check if the parcel has a StEER observation at its exact location:
             idx = df_steer.loc[df_steer['address_full'] == parcel_identifier].index[0]
             # First check if we need to add roof shape info:
-            steer_roof_shape = df_steer['roof shape'][idx].lower()
-            for key in bldg.adjacentElement['Roof'].hasShape:
-                if not bldg.adjacentElement['Roof'].hasShape:
+            steer_roof_shape = df_steer['roof_shape'][idx].lower()
+            for key in bldg.adjacentElement['Roof'][0].hasShape:
+                if not bldg.adjacentElement['Roof'][0].hasShape:
                     if key == steer_roof_shape:
-                        bldg.adjacentElement['Roof'].hasShape[key] = True
+                        bldg.adjacentElement['Roof'][0].hasShape[key] = True
                     elif key == 'complex' and 'complex' in steer_roof_shape:
-                        bldg.adjacentElement['Roof'].hasShape[key] = True
+                        bldg.adjacentElement['Roof'][0].hasShape[key] = True
                     elif key == 'complex' and ',' in steer_roof_shape:
-                        bldg.adjacentElement['Roof'].hasShape[key] = True
+                        bldg.adjacentElement['Roof'][0].hasShape[key] = True
                     else:
                         pass
                 else:
                     pass
-
+            # Now check if we need to add any year built information:
+            from numpy import nan
+            if bldg.hasYearBuilt == nan or bldg.hasYearBuilt == 0:
+                bldg.hasYearBuilt = df_steer['year_built'][idx]
+            else:
+                pass
         except IndexError:
             pass
 
@@ -288,7 +297,8 @@ class BayCountyPermits(PostDisasterDamageDataset):
                     # Reset area and area_factor:
                     area_factor, bldg_count = 0, 0
                     # First check to make sure this is a building-related roof permit:
-                    if 'GAZ' in bldg.hasPermitData['disaster']['description'][p] or 'CANOP' in bldg.hasPermitData['disaster']['description'][p]:
+                    if 'GAZ' in bldg.hasPermitData['disaster']['description'][p] or 'CANOP' in \
+                            bldg.hasPermitData['disaster']['description'][p]:
                         pass
                     else:
                         # Note that there is a roof permit (at least one):
@@ -296,12 +306,15 @@ class BayCountyPermits(PostDisasterDamageDataset):
                         rcover_damage_cat = None  # reset damage category for each new permit
                         # Check if parcel shares a parcel number ( > 1 buildings in lot):
                         for b in site.hasBuilding:
-                            if (b.hasID == bldg.hasID or (b.hasLocation['Address'] == bldg.hasLocation['Address'])) and ('COND' not in b.hasOccupancy):
+                            if (b.hasID == bldg.hasID or (
+                                    b.hasLocation['Address'] == bldg.hasLocation['Address'])) and (
+                                    'COND' not in b.hasOccupancy):
                                 bldg_count += 1
                             else:
                                 pass
                         if bldg_count > 1:
-                            area_factor = bldg.hasGeometry['Total Floor Area'] / (bldg_count-1)  # Used for quantitative desc
+                            area_factor = bldg.hasGeometry['Total Floor Area'] / (
+                                        bldg_count - 1)  # Used for quantitative desc
                         else:
                             area_factor = 1
                         # Now check if this is a quantitative roof permit description: i.e., tells us # of roof squares
@@ -310,16 +323,18 @@ class BayCountyPermits(PostDisasterDamageDataset):
                             if desc[i].isdigit():
                                 # Calculate the number of roof squares and percent roof cover damage:
                                 num_roof_squares = float(desc[i]) * area_factor
-                                rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Floor Area'], len(bldg.hasStory),
-                                                                                      num_roof_squares, length_unit)
+                                rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Floor Area'],
+                                                                                   len(bldg.hasStory),
+                                                                                   num_roof_squares, length_unit)
                                 rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
                                 break
                             else:
                                 if 'SQ' in desc[i]:  # Case when there is no space between quantity and roof SQ
                                     num_roof_squares = float(desc[i][0:-2]) * area_factor
-                                    rcover_damage_percent = self.rcover_damage_percent(bldg.hasGeometry['Total Floor Area'],
-                                                                                       len(bldg.hasStory),
-                                                                                         num_roof_squares, length_unit)
+                                    rcover_damage_percent = self.rcover_damage_percent(
+                                        bldg.hasGeometry['Total Floor Area'],
+                                        len(bldg.hasStory),
+                                        num_roof_squares, length_unit)
                                     rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
                                     break
                                 else:
@@ -470,7 +485,8 @@ class BayCountyPermits(PostDisasterDamageDataset):
             if any([substring in permit_data['DESCRIPTION'].upper() for substring in substrings]):
                 pass
             else:
-                if 'NEW' in permit_data['PERMITSUBTYPE'] or 'REPLACEMENT' in permit_data['PERMITSUBTYPE']:  # Figure out what to do with roof-over
+                if 'NEW' in permit_data['PERMITSUBTYPE'] or 'REPLACEMENT' in permit_data[
+                    'PERMITSUBTYPE']:  # Figure out what to do with roof-over
                     new_year = int(permit_data['ISSUED'][-4:])
                     if bldg.hasElement['Roof'].hasYearBuilt < new_year < event_year:
                         bldg.hasElement['Roof'].hasYearBuilt = new_year
@@ -598,7 +614,8 @@ class FemaIahrld(PostDisasterDamageDataset):
                                         'hazard type': hazard_type, 'value': None}
                         # Specify the damage scale that will be used to do semantic translations of damage:
                         if damage_scale_name == 'HAZUS-HM':
-                            self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
+                            self.get_damage_scale(damage_scale_name, component_type, global_flag=True,
+                                                  component_flag=True)
                         else:
                             # Populate default damage scale information to force development of mapping function:
                             self.get_damage_scale('FEMA IHARLD', component_type, global_flag=True, component_flag=True)
@@ -614,7 +631,9 @@ class FemaIahrld(PostDisasterDamageDataset):
                         new_parcel.hasOccupancy = df_sub['residenceType'][row].upper()
                         # Find latitude/longitude information:
                         df_geo = pd.read_csv('C:/Users/Karen/Desktop/FClaims_locs.csv')
-                        idx = df_geo.loc[df_geo['CITY'] == new_parcel.hasLocation['City'] & df_geo['ZIP'] ==new_parcel.hasLocation['Zip Code']].index.to_list()
+                        idx = df_geo.loc[
+                            df_geo['CITY'] == new_parcel.hasLocation['City'] & df_geo['ZIP'] == new_parcel.hasLocation[
+                                'Zip Code']].index.to_list()
                         new_parcel.hasLocation['Geodesic'] = Point(df_geo['LONGITUDE'][idx], df_geo['LATITUDE'][idx])
                         # Add story and height information:
                         if res_type != 'CONDO':
@@ -623,7 +642,8 @@ class FemaIahrld(PostDisasterDamageDataset):
                         else:
                             # Assume a three story structure for condominium buildings:
                             new_parcel.hasStory = [Story(), Story(), Story()]
-                            new_parcel.hasGeometry['Height'] = len(new_parcel.hasStory)*(bldg.hasGeometry['Height'] / len(bldg.hasStory))
+                            new_parcel.hasGeometry['Height'] = len(new_parcel.hasStory) * (
+                                        bldg.hasGeometry['Height'] / len(bldg.hasStory))
                         # Create Roof element and add information:
                         new_roof = Roof()
                         new_roof.hasCover = bldg.hasElement['Roof'][0].hasCover
@@ -640,11 +660,15 @@ class FemaIahrld(PostDisasterDamageDataset):
                                 if not df_sub['floodDamage'][row]:
                                     if 'roof' in component_type:
                                         if not df_sub['habitabilityRepairsRequired'][row] and df_sub['ppfvl'][row] == 0:
-                                            data_details['value'] = self.hasDamageScale['component damage states']['value'][1]
-                                        elif not df_sub['habitabilityRepairsRequired'][row] and df_sub['ppfvl'][row] > 0:
-                                            data_details['value'] = self.hasDamageScale['component damage states']['value'][2]
+                                            data_details['value'] = \
+                                            self.hasDamageScale['component damage states']['value'][1]
+                                        elif not df_sub['habitabilityRepairsRequired'][row] and df_sub['ppfvl'][
+                                            row] > 0:
+                                            data_details['value'] = \
+                                            self.hasDamageScale['component damage states']['value'][2]
                                         elif df_sub['habitabilityRepairsRequired'][row] and df_sub['ppfvl'][row] > 0:
-                                            data_details['value'] = self.hasDamageScale['component damage states']['value'][3]
+                                            data_details['value'] = \
+                                            self.hasDamageScale['component damage states']['value'][3]
                                     else:
                                         print('Only roof components supported at this time')
                                 else:
@@ -777,7 +801,8 @@ class FemaHma(PostDisasterDamageDataset):
                 df_sub = df_fema.loc[(df_fema['structureType'] == struc_type)]
             else:
                 # Get all entries that are either non-residential private or public:
-                df_sub = df_fema.loc[(df_fema['structureType']=='NON-RESIDENTIAL - PRIVATE') | (df_fema['structureType']=='NON-RESIDENTIAL - PUBLIC')]
+                df_sub = df_fema.loc[(df_fema['structureType'] == 'NON-RESIDENTIAL - PRIVATE') | (
+                            df_fema['structureType'] == 'NON-RESIDENTIAL - PUBLIC')]
             if len(df_sub) > 0:
                 # Find subset of dataset specific to the given hazard, component:
                 if hazard_type == 'wind':
@@ -823,7 +848,7 @@ class FemaHma(PostDisasterDamageDataset):
                 # Find latitude/longitude information:
                 df_geo = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Geodesic/FClaims_locs.csv')
                 idx = df_geo.loc[(df_geo['CITY'] == new_parcel.hasLocation['City']) & (
-                            df_geo['ZIP'] == new_parcel.hasLocation['Zip Code'])].index.to_list()
+                        df_geo['ZIP'] == new_parcel.hasLocation['Zip Code'])].index.to_list()
                 new_parcel.hasLocation['Geodesic'] = Point(df_geo['LONGITUDE'][idx], df_geo['LATITUDE'][idx])
                 # Add story and height information (currently based off of bldg features):
                 new_parcel.hasStory.append(Story())
@@ -866,9 +891,9 @@ class FemaHma(PostDisasterDamageDataset):
         fig, ax = plt.subplots()
         ax.plot(x, y)
         # Let's try calculating the gradient:
-        step_size = x[1]-x[0]
+        step_size = x[1] - x[0]
         grad = np.gradient(y, step_size)
-        grad_zero = np.where(grad==0)
+        grad_zero = np.where(grad == 0)
         # And calculate the slope to make sure we get
         # Adding in here braindump of fit code:
         shape, loc, scale = lognorm.fit(hazard_list)
@@ -887,7 +912,7 @@ class FemaHma(PostDisasterDamageDataset):
         plt.show()
         # Plot the final cdf:
         y = lognorm.cdf(x, shape, loc, scale)
-        inv_y = 1-y
+        inv_y = 1 - y
         plt.plot(x, y, label='P(X >= x), DS1')
         plt.show()
         return hma_bldg_list
