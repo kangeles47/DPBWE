@@ -42,27 +42,27 @@ class BldgCode:
                         edition = '1988 SFBC'
                         print('Building created before modern codes: use oldest available code', edition)
                 else:
-                    if parcel.hasYearBuilt > 1983 & parcel.hasYearBuilt <= 1986:
+                    if 1983 < parcel.hasYearBuilt <= 1986:
                         edition = '1983 CABO'
-                    elif parcel.hasYearBuilt > 1986 & parcel.hasYearBuilt <= 1989:
+                    elif 1986 < parcel.hasYearBuilt <= 1989:
                         edition = '1986 CABO'
-                    elif parcel.hasYearBuilt > 1989 & parcel.hasYearBuilt <= 1991:
+                    elif 1989 < parcel.hasYearBuilt <= 1991:
                         edition = '1989 CABO'
-                    elif parcel.hasYearBuilt > 1991 & parcel.hasYearBuilt <= 1995:
+                    elif 1991 < parcel.hasYearBuilt <= 1995:
                         edition = '1992 CABO'
-                    elif parcel.hasYearBuilt > 1995 & parcel.hasYearBuilt <= 2001:
+                    elif 1995 < parcel.hasYearBuilt <= 2001:
                         edition = '1995 CABO'
-                    elif parcel.hasYearBuilt > 2001 & parcel.hasYearBuilt <= 2004:
+                    elif 2001 < parcel.hasYearBuilt <= 2004:
                         edition = '2001 FBC - Residential'
-                    elif parcel.hasYearBuilt > 2004 & parcel.hasYearBuilt <= 2008:
+                    elif 2004 < parcel.hasYearBuilt <= 2008:
                         edition = '2004 FBC - Residential'
-                    elif parcel.hasYearBuilt > 2008 & parcel.hasYearBuilt <= 2011:
+                    elif 2008 < parcel.hasYearBuilt <= 2011:
                         edition = '2007 FBC - Residential'
-                    elif parcel.hasYearBuilt > 2011 & parcel.hasYearBuilt <= 2014:
+                    elif 2011 < parcel.hasYearBuilt <= 2014:
                         edition = '2010 FBC - Residential'
-                    elif parcel.hasYearBuilt > 2014 & parcel.hasYearBuilt <= 2017:
+                    elif 2014 < parcel.hasYearBuilt <= 2017:
                         edition = '2014 FBC - Residential'
-                    elif parcel.hasYearBuilt > 2017 & parcel.hasYearBuilt <= 2020:
+                    elif 2017 < parcel.hasYearBuilt <= 2020:
                         edition = '2017 FBC - Residential'
                     else:
                         edition = '1983 CABO'
