@@ -17,11 +17,15 @@ from bldg_code import FBC
 from create_fragility import execute_fragility_workflow
 
 
-def run_hm_study(inventory='C:/Users/Karen/Desktop/MichaelBuildings.csv', hazard_type='wind',
-                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv', component_type='roof cover', parcel_id='18145-000-000'):
+def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_res_clean.csv', hazard_type='wind',
+                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv', component_type='roof cover', parcel_id='04973-150-000'):
     # Hurricane Michael case study:
     # Component type: Roof cover (built-up)
     # Hazard: Wind
+    # Commercial inventory: 'C:/Users/Karen/Desktop/MichaelBuildings.csv'
+    # LR commercial case study: 18145-000-000
+    # Mexico Beach Inventory: 'C:/Users/Karen/Desktop/MB_res_clean.csv'
+    # residential, mexico beach: 04973-150-000
     # Locality: Panama City Beach and Mexico Beach regions
     # '30569-100-000' original parcel number for 6 story guy
     # Step 1: Create a Site Class that will hold all parcel-specific data models:
@@ -143,4 +147,4 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
                                file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='05/20/2021',
                                hazard_file_path=hazard_file_path)
 
-run_hi_study()
+run_hm_study()
