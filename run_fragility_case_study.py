@@ -143,4 +143,4 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
                                file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='05/20/2021',
                                hazard_file_path=hazard_file_path)
 
-run_hm_study()
+run_hi_study()
