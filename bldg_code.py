@@ -113,14 +113,16 @@ class FBC(BldgCode):
         else:
             print('Building level attributes currently not supported')
 
-    def roof_attributes(self, edition, parcel, survey):
+    def roof_attributes(self, edition, parcel):
         # Populate roof attributes for this instance (parcel)
         roof_cover = parcel.hasElement['Roof'][0].hasCover
         if isinstance(roof_cover, str):
             if 'BUILT' in roof_cover or 'CONCRETE' in roof_cover:
                 parcel.hasElement['Roof'][0].hasPitch = 0  #'flat'  # roof slopes under 2:12
                 parcel.hasElement['Roof'][0].hasShape['flat'] = True
-            if edition == '2001 FBC' and survey == 'CBECS' and parcel.hasYearBuilt < 2003:
+            if ('ASPHALT' in roof_cover or 'ENG' in roof_cover) and ('FBC' in edition or 'CABO' in edition):
+                parcel.hasElement['Roof'][0].hasPitch = (2/12)*100  # Minimum pitch for asphalt roof covers
+            if edition == '2001 FBC' and parcel.isComm and parcel.hasYearBuilt < 2003:
                 # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
                 if 'BUILT' in roof_cover or 'CONCRETE' in roof_cover or 'SYNTHETIC' in roof_cover or 'METAL SURFACING' in roof_cover:
                     parcel.hasElement['Roof'][0].hasPitch = 'flat'  # roof slopes under 2:12
@@ -129,7 +131,7 @@ class FBC(BldgCode):
                     parcel.hasElement['Roof'][0].hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
                 else:
                     parcel.hasElement['Roof'][0].hasPitch = 'unknown'
-            elif edition == '1988 SBC' and survey == 'CBECS' and parcel.hasYearBuilt < 1990:
+            elif edition == '1988 SBC' and parcel.isComm and parcel.hasYearBuilt < 1990:
                 # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
                 if 'BUILT' in roof_cover or 'METAL SURFACING' in roof_cover or 'PLY' in roof_cover or 'CONCRETE' in roof_cover or 'RUBBER' in roof_cover:
                     parcel.hasElement['Roof'][0].hasPitch = 'flat'  # roof slopes under 2:12
@@ -946,8 +948,14 @@ class ASCE7(BldgCode):
                                 rcover_case = 1  # Case 1 : gable roofs with theta <= 10 degrees
                             elif 10 < bldg.hasElement['Roof'][0].hasPitch <= 45 and bldg.hasShape['gable']:
                                 rcover_case = 2  # Case 2: gable roofs with 10 < theta < 45
-                            elif 10 < bldg.hasElement['Roof'][0].hasPitch <= 30 and (bldg.hasShape['hip'] or bldg.hasShape['gable/hip combo']):
-                                rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
+                            else:
+                                if self.hasEdition == 'ASCE 7-95':
+                                    if 10 < bldg.hasElement['Roof'][0].hasPitch <= 30 and (bldg.hasShape['hip'] or bldg.hasShape['gable/hip combo']):
+                                        rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
+                                    else:
+                                        pass
+                                else:
+                                    pass
                     else:
                         pass
                     if rcover_case == 0:
@@ -958,6 +966,8 @@ class ASCE7(BldgCode):
                             rcover_case = 2  # Case 2: gable roofs with 10 < theta < 45
                         elif bldg.hasElement['Roof'][0].hasShape['hip']:
                             rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
+                        else:
+                            print('No roof cover load path use case for this parcel:' + bldg.hasID)
             else:
                 rcover_case = 8
         else:
