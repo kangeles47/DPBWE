@@ -36,6 +36,8 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_res.csv', hazard_type='win
     # We will also be tapping into the StEER dataset for additional building attributes:
     steer_obj = STEER()
     steer_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/StEER/HM_D2D_Building.csv'
+    # Make sure the StEER data is ready for querying:
+    steer_obj.add_query_column(steer_file_path)
     for row in range(0, len(df.index)):
         # Create simple data model for each parcel and add roof and cover data:
         new_bldg = Building()
@@ -70,7 +72,7 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_res.csv', hazard_type='win
         steer_obj.add_steer_bldg_data(new_bldg, parcel_identifier, steer_file_path)
         # Populate code-informed component-level information
         code_informed = FBC(new_bldg, loading_flag=False)
-        code_informed.roof_attributes(code_informed.hasEdition, new_bldg, 'CBECS')
+        code_informed.roof_attributes(code_informed.hasEdition, new_bldg)
         # Add height information (if available):
         new_bldg.hasGeometry['Height'] = df['Stories'][row]*4.0*3.28084  # ft
         # Parcel data for this inventory includes some permit numbers.
