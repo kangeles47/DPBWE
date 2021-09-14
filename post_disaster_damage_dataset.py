@@ -109,6 +109,38 @@ class STEER(PostDisasterDamageDataset):
         self.hasAccuracy = True
         self.hasType['field observations'] = True
 
+    def get_parcel_identifer(self, bldg):
+        parcel_identifier = bldg.hasLocation['Street Number'] + ' ' + bldg.hasLocation['City'] + ' ' + bldg.hasLocation['County'] + ' ' + bldg.hasLocation['State'] + ' ' + bldg.hasLocation['Zip Code'] + ' USA'
+        parcel_identifier = parcel_identifier.upper().replace(' ', '')  # Data clean-up
+        return parcel_identifier
+
+    def add_steer_bldg_data(self, bldg, parcel_identifier, steer_file_path):
+        # Step 1: Load the StEER Dataset:
+        df_steer = pd.read_csv(steer_file_path)
+        df_steer['address_full'] = df_steer['address_full'].str.upper().replace(' ', '')  # Data clean-up
+        df_steer['address_full'] = df_steer['address_full'].str.replace(' ', '')
+        # Step 2: Use the parcel identifier to populate additional building and component attributes:
+        try:
+            # Check if the parcel has a StEER observation at its exact location:
+            idx = df_steer.loc[df_steer['address_full'] == parcel_identifier].index[0]
+            # First check if we need to add roof shape info:
+            steer_roof_shape = df_steer['roof shape'][idx].lower()
+            for key in bldg.adjacentElement['Roof'].hasShape:
+                if not bldg.adjacentElement['Roof'].hasShape:
+                    if key == steer_roof_shape:
+                        bldg.adjacentElement['Roof'].hasShape[key] = True
+                    elif key == 'complex' and 'complex' in steer_roof_shape:
+                        bldg.adjacentElement['Roof'].hasShape[key] = True
+                    elif key == 'complex' and ',' in steer_roof_shape:
+                        bldg.adjacentElement['Roof'].hasShape[key] = True
+                    else:
+                        pass
+                else:
+                    pass
+
+        except IndexError:
+            pass
+
     def add_steer_data(self, bldg, component_type, hazard_type, steer_file_path):
         """
         A function to search for StEER damage observations for the specified building.
@@ -127,8 +159,7 @@ class STEER(PostDisasterDamageDataset):
         # Step 2: Define the parcel identifier:
         # Parcel identifier should be the parcel's address in the following format (not case-sensitive):
         # 1842 BRIDGE ST Panama City BAY FL 32409 USA (number, street, city, county, state, zip, country)
-        parcel_identifier = bldg.hasLocation['Street Number'] + ' ' + bldg.hasLocation['City'] + ' ' + bldg.hasLocation['County'] + ' ' + bldg.hasLocation['State'] + ' ' + bldg.hasLocation['Zip Code'] + ' USA'
-        parcel_identifier = parcel_identifier.upper().replace(' ', '')  # Data clean-up
+        parcel_identifier = self.get_parcel_identifer(bldg)
         # Step 3: # Set up data_details dictionary:
         data_details = {'available': False, 'fidelity': self, 'component type': component_type,
                         'hazard type': hazard_type, 'value': None}
@@ -838,7 +869,7 @@ class FemaHma(PostDisasterDamageDataset):
         step_size = x[1]-x[0]
         grad = np.gradient(y, step_size)
         grad_zero = np.where(grad==0)
-        # And calculate the slope to make sure we get 
+        # And calculate the slope to make sure we get
         # Adding in here braindump of fit code:
         shape, loc, scale = lognorm.fit(hazard_list)
         x = np.linspace(min(np.array(hazard_list)), max(np.array(hazard_list)))
