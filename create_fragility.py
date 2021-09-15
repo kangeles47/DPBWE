@@ -768,23 +768,23 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
     return updated_values
 
 
-observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_res.csv'
-df = pd.read_csv(observations_file_path)
-prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/A9_fit.csv'
-df_prior = pd.read_csv(prior_file_path)
-ds_list = df['DS Number'].unique()
-#mu_init = [4.69, 4.8]
-#mu_ds = [108.85]
-#beta_ds = [0.16, 0.15]
-for ds in range(0, len(ds_list)):
-    df_sub = df.loc[df['DS Number'] == ds_list[ds]]
-    xj = np.array(df_sub['demand'])
-    zj = np.array(df_sub['fail'])
-    nj = np.array(df_sub['total'])
-    mu_init = df_prior['theta1'][ds]
-    beta_init = df_prior['theta2'][ds]
-    updated_values = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init)
-    print('Update fragility model parameter values:')
-    print(updated_values)
+# observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_res.csv'
+# df = pd.read_csv(observations_file_path)
+# prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/A9_fit.csv'
+# df_prior = pd.read_csv(prior_file_path)
+# ds_list = df['DS Number'].unique()
+# #mu_init = [4.69, 4.8]
+# #mu_ds = [108.85]
+# #beta_ds = [0.16, 0.15]
+# for ds in range(0, len(ds_list)):
+#     df_sub = df.loc[df['DS Number'] == ds_list[ds]]
+#     xj = np.array(df_sub['demand'])
+#     zj = np.array(df_sub['fail'])
+#     nj = np.array(df_sub['total'])
+#     mu_init = df_prior['theta1'][ds]
+#     beta_init = df_prior['theta2'][ds]
+#     updated_values = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init)
+#     print('Update fragility model parameter values:')
+#     print(updated_values)
 # Notes:
 # For MB case study: /24 + 4000 samples, 1000 tune

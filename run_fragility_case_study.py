@@ -18,8 +18,8 @@ from create_fragility import execute_fragility_workflow
 from post_disaster_damage_dataset import STEER, BayCountyPermits
 
 
-def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_res.csv', hazard_type='wind',
-                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv', component_type='roof cover', parcel_id='04973-150-000'):
+def run_hm_study(inventory='C:/Users/Karen/Desktop/PCB_res_clean.csv', hazard_type='wind',
+                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv', component_type='roof cover', parcel_id='38515-000-000'):
     # Hurricane Michael case study:
     # Component type: Roof cover (built-up)
     # Hazard: Wind
@@ -27,6 +27,8 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_res.csv', hazard_type='win
     # LR commercial case study: 18145-000-000
     # Mexico Beach Inventory: 'C:/Users/Karen/Desktop/MB_res_clean.csv'
     # residential, mexico beach: 04973-150-000
+    # Panama City Beach inventory:
+
     # Locality: Panama City Beach and Mexico Beach regions
     # '30569-100-000' original parcel number for 6 story guy
     # Step 1: Create a Site Class that will hold all parcel-specific data models:
