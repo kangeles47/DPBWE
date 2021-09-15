@@ -44,8 +44,11 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                 data_details = data_types[i].add_steer_data(sbldg, component_type, hazard_type, file_paths[i])
             elif isinstance(data_types[i], post_disaster_damage_dataset.BayCountyPermits):
                 length_unit = 'ft'
-                data_details = data_types[i].add_disaster_permit_data(sbldg, component_type, hazard_type, site,
-                                 file_paths[i], length_unit, damage_scale_name)
+                if sbldg.hasLocation['City'].upper() == 'MEXICO BEACH' and not sbldg.isComm:
+                    data_details = data_types[i].add_mb_disaster_res_permit_data(sbldg, component_type, hazard_type, damage_scale_name)
+                else:
+                    data_details = data_types[i].add_disaster_permit_data(sbldg, component_type, hazard_type, site,
+                                     file_paths[i], length_unit, damage_scale_name)
             # Check if damage data is available for this data source:
             if data_details['available']:
                 avail_flag = True
