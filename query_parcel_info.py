@@ -343,15 +343,15 @@ def query_parcel_info_2(driver_path, url, parcel_identifier, address_flag):
 driver_path = 'C:/Users/Karen/Desktop/chromedriver.exe'
 url = "https://qpublic.schneidercorp.com/application.aspx?app=BayCountyFL&PageType=Search"
 address_flag = False
-df = pd.read_csv('C:/Users/Karen/Desktop/PCB_MB_SF.csv')
-df = df.iloc[2456:]
+df = pd.read_csv('C:/Users/Karen/Desktop/PCB_56.csv')
+df = df.iloc[132:]
 df = df.reset_index()
 for row in range(0, len(df['Parcel ID'])):
     parcel_identifier = df['Parcel ID'][row]
     parcel_info = query_parcel_info_2(driver_path, url, parcel_identifier, address_flag)
     # Save the building's data:
     for bldg in range(0, len(parcel_info['Building Data']['Stories'])):
-        with open('PCB_res.csv', 'a', newline='') as csvfile:
+        with open('PCB_56res.csv', 'a', newline='') as csvfile:
             fieldnames = ['Parcel Id', 'Address', 'Use Code', 'Square Footage', 'Stories', 'Year Built', 'OccType',
                           'Exterior Walls', 'Roof Cover', 'Interior Walls', 'Frame Type', 'Floor Cover', 'Unit No.',
                           'Floor',
