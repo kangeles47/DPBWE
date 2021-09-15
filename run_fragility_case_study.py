@@ -81,6 +81,7 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_res.csv', hazard_type='win
         # Parcel data for this inventory includes some permit numbers.
         # Add when available and differentiate between disaster and regular permits.
         permit_data = df['Permit Number'][row]
+        permit_description = df['Permit Type'][row]
         if isinstance(permit_data,str):
             permit_data = ast.literal_eval(permit_data)
             for item in permit_data:
@@ -88,6 +89,7 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_res.csv', hazard_type='win
                     new_bldg.hasPermitData['disaster']['number'].append(item)
                 else:
                     new_bldg.hasPermitData['other']['number'].append(item)
+                    new_bldg.hasPermitData['other']['permit type'].append(permit_description)
         else:
             pass
         # Step 3: Add new parcel-specific data model to the site description:

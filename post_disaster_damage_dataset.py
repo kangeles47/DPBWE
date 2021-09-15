@@ -240,14 +240,14 @@ class BayCountyPermits(PostDisasterDamageDataset):
                         # Check damage scale information:
                         if damage_scale_name == 'HAZUS-HM' and hazard_type == 'wind':
                             # Check if this is a roof-related permit:
-                            if 'ROOF' in bldg.hasPermit['other']['type'][p] or 'RERF' in bldg.hasPermit['other']['type'][p] or 'DEM' in bldg.hasPermit['other']['type'][p]:
+                            if 'ROOF' in bldg.hasPermit['other']['permit type'][p] or 'RERF' in bldg.hasPermit['other']['permit type'][p] or 'DEM' in bldg.hasPermit['other']['permit type'][p]:
                                 self.hasDamagePrecision['component, range'] = True
                                 self.hasDamagePrecision['component, discrete'] = False
                                 data_details['available'] = True
-                                if 'RERF' in bldg.hasPermit['other']['type'][p]:
+                                if 'RERF' in bldg.hasPermit['other']['permit type'][p]:
                                     data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][1]
                                     data_details['value'] = self.hasDamageScale['component damage states']['value'][1]
-                                elif 'ROOF' in bldg.hasPermit['other']['type'][p]:
+                                elif 'ROOF' in bldg.hasPermit['other']['permit type'][p]:
                                     data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][2]
                                     data_details['value'] = self.hasDamageScale['component damage states']['value'][2]
                                 else:
