@@ -117,7 +117,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             if component_type == 'roof cover':
                 sample_dict[component_type].append(s.hasElement['Roof'][0].hasCover)
         # Export as csv file:
-        pd.DataFrame(sample_dict).to_csv('SampleBuildings_res_post.csv', index=False)
+        pd.DataFrame(sample_dict).to_csv('SampleBuildings_res_post_permit.csv', index=False)
     # Step 6: Bayesian Parameter Estimation
     # Step 6a: Populate the prior:
     if hazard_type == 'wind' and damage_scale_name == 'HAZUS-HM':
@@ -142,7 +142,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             df_params = df_params.drop(df_sub.index)
         else:
             pass
-    df_params.to_csv('Observations_res_post.csv', index=False)
+    df_params.to_csv('Observations_res_post_permit.csv', index=False)
     # Calculate MLE estimate for comparison:
     mle_params = get_point_estimate(lparams)
     # Step 6c: Run Bayesian Parameter Estimation:
@@ -648,8 +648,8 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
         xj = xj/norm_factor
         mu_init = mu_init/norm_factor
         mu_std_dev = 15/norm_factor
-        nj = nj/24
-        zj = zj/24
+        nj = nj/30
+        zj = zj/30
     else:
         mu_std_dev = 15
     beta_std_dev = 0.03
@@ -768,23 +768,24 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
     return updated_values
 
 
-# observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_res.csv'
-# df = pd.read_csv(observations_file_path)
-# prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/A9_fit.csv'
-# df_prior = pd.read_csv(prior_file_path)
-# ds_list = df['DS Number'].unique()
-# #mu_init = [4.69, 4.8]
-# #mu_ds = [108.85]
-# #beta_ds = [0.16, 0.15]
-# for ds in range(0, len(ds_list)):
-#     df_sub = df.loc[df['DS Number'] == ds_list[ds]]
-#     xj = np.array(df_sub['demand'])
-#     zj = np.array(df_sub['fail'])
-#     nj = np.array(df_sub['total'])
-#     mu_init = df_prior['theta1'][ds]
-#     beta_init = df_prior['theta2'][ds]
-#     updated_values = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init)
-#     print('Update fragility model parameter values:')
-#     print(updated_values)
+observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_res_post_permit.csv'
+df = pd.read_csv(observations_file_path)
+prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/A9_fit.csv'
+df_prior = pd.read_csv(prior_file_path)
+ds_list = df['DS Number'].unique()
+#mu_init = [4.69, 4.8]
+#mu_ds = [108.85]
+#beta_ds = [0.16, 0.15]
+for ds in range(0, len(ds_list)):
+    df_sub = df.loc[df['DS Number'] == ds_list[ds]]
+    xj = np.array(df_sub['demand'])
+    zj = np.array(df_sub['fail'])
+    nj = np.array(df_sub['total'])
+    mu_init = df_prior['theta1'][ds]
+    beta_init = df_prior['theta2'][ds]
+    updated_values = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init)
+    print('Update fragility model parameter values:')
+    print(updated_values)
 # Notes:
 # For MB case study: /24 + 4000 samples, 1000 tune
+# fine for most, not great for post FBC with permits

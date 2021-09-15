@@ -54,22 +54,22 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_res.csv', hazard_type='win
         new_bldg.hasStory[-1].update_elements()
         new_bldg.update_zones()
         new_bldg.update_elements()
-        # try:
-        #     if len(df['Permit Issued Date'][row]) > 0:
-        #         pdesc = df['Permit Description'][row][2:-2].split("'")
-        #         pyear = df['Permit Issued Date'][row][2:-2].split("'")
-        #         year = df['Year Built'][row]
-        #         for p in range(0, len(pdesc)):
-        #             if 'REROOF' in pdesc[p] or 'RERF' in pdesc[p] or 'ROOF' in pdesc[p]:
-        #                 new_year = int(pyear[p][:4])
-        #                 if year < new_year < 2018:
-        #                     year = new_year
-        #             else:
-        #                 pass
-        #         new_bldg.adjacentElement['Roof'][0].hasYearBuilt = year
-        #         new_bldg.hasYearBuilt = year
-        # except TypeError:
-        #     new_bldg.adjacentElement['Roof'][0].hasYearBuilt = new_bldg.hasYearBuilt
+        try:
+            if len(df['Permit Issued Date'][row]) > 0:
+                pdesc = df['Permit Description'][row][2:-2].split("'")
+                pyear = df['Permit Issued Date'][row][2:-2].split("'")
+                year = df['Year Built'][row]
+                for p in range(0, len(pdesc)):
+                    if 'REROOF' in pdesc[p] or 'RERF' in pdesc[p] or 'ROOF' in pdesc[p]:
+                        new_year = int(pyear[p][:4])
+                        if year < new_year < 2018:
+                            year = new_year
+                    else:
+                        pass
+                new_bldg.adjacentElement['Roof'][0].hasYearBuilt = year
+                new_bldg.hasYearBuilt = year
+        except TypeError:
+            new_bldg.adjacentElement['Roof'][0].hasYearBuilt = new_bldg.hasYearBuilt
         # Bring in additional attributes from StEER:
         parcel_identifier = steer_obj.get_parcel_identifer(new_bldg)
         steer_obj.add_steer_bldg_data(new_bldg, parcel_identifier, steer_file_path)
