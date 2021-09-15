@@ -117,7 +117,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             if component_type == 'roof cover':
                 sample_dict[component_type].append(s.hasElement['Roof'][0].hasCover)
         # Export as csv file:
-        pd.DataFrame(sample_dict).to_csv('SampleBuildings_res.csv', index=False)
+        pd.DataFrame(sample_dict).to_csv('SampleBuildings_PCBres.csv', index=False)
     # Step 6: Bayesian Parameter Estimation
     # Step 6a: Populate the prior:
     if hazard_type == 'wind' and damage_scale_name == 'HAZUS-HM':
@@ -142,7 +142,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             df_params = df_params.drop(df_sub.index)
         else:
             pass
-    df_params.to_csv('Observations_res.csv', index=False)
+    df_params.to_csv('Observations_PCBres.csv', index=False)
     # Calculate MLE estimate for comparison:
     mle_params = get_point_estimate(lparams)
     # Step 6c: Run Bayesian Parameter Estimation:
@@ -642,10 +642,17 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
     :return: updated_values: A dictionary with each parameter's updated mean and standard deviation.
     """
     # Step 1: Normalize the intensity measure:
-    norm_factor = max(xj)
-    xj = xj/norm_factor
-    nj = nj/4
-    zj = zj/4
+    norm_analysis = True
+    if norm_analysis:
+        norm_factor = max(xj)
+        xj = xj/norm_factor
+        mu_init = mu_init/norm_factor
+        mu_std_dev = 15/norm_factor
+        nj = nj/24
+        zj = zj/24
+    else:
+        mu_std_dev = 15
+    beta_std_dev = 0.03
     # Step 2: Build the Bayesian model in PyMC3:
     with pm.Model() as model:
         # Step 3a: Set up the prior
@@ -655,8 +662,8 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
         #mu = pm.Normal('mu', mu_init/norm_factor, 15/norm_factor)
         BoundedNormal = pm.Bound(pm.Normal, lower=0.0)
         #x = BoundedNormal('x', mu=1.0, sigma=3.0)
-        mu = BoundedNormal('mu', mu_init / norm_factor, 15 / norm_factor)
-        beta = BoundedNormal('beta', beta_init, 0.03)
+        mu = BoundedNormal('mu', mu_init, mu_std_dev)
+        beta = BoundedNormal('beta', beta_init, beta_std_dev)
 
         # Step 3b: Set up the likelihood function:
         # The likelihood in this model is represented via a Binomial distribution.
@@ -672,7 +679,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
          #   print(RV.name, RV.logp(model.test_point))
         # Step 3c: Determine the posterior
         # Note: can manually change number of cores if more computational power is available.
-        trace = pm.sample(4000, cores=1, return_inferencedata=True, tune=2000, random_seed=52)
+        trace = pm.sample(4000, cores=1, return_inferencedata=True, tune=1000, random_seed=52)
         #trace = pm.sample(8000, cores=1, return_inferencedata=True, tune=2000, random_seed=52)  #tune=2000
         # (Optional): Plotting the trace and updated distributions for parameters:
         if plot_flag:
@@ -686,7 +693,10 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
         # Step 5: Sample from the posterior and save updated values for mean and std. dev:
         ppc = pm.sample_posterior_predictive(trace, var_names=['mu', 'beta', 'like'])
         # Re-scale values for logarithmic mean:
-        ppc['mu'] = ppc['mu']*norm_factor
+        if norm_analysis:
+            ppc['mu'] = ppc['mu']*norm_factor
+        else:
+            pass
         updated_values = {'mu': {'mean': ppc['mu'].mean(), 'std dev': np.std(ppc['mu'])},
                           'beta': {'mean': ppc['beta'].mean(), 'std dev': np.std(ppc['beta'])}}
         if plot_flag:
@@ -696,7 +706,10 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
             ax.hist(ppc['mu']/2.237, bins=25, density=True, alpha=0.4, color='b', label='posterior samples')
             xmin, xmax = ax.set_xlim()
             x = np.linspace(xmin, xmax, 100)
-            p_prior = norm.pdf(x, mu_init/2.237, 15/2.237)
+            if norm_analysis:
+                p_prior = norm.pdf(x, mu_init*norm_factor / 2.237, mu_std_dev*norm_factor / 2.237)
+            else:
+                p_prior = norm.pdf(x, mu_init/2.237, mu_std_dev/2.237)
             p_new = norm.pdf(x, updated_values['mu']['mean']/2.237, updated_values['mu']['std dev']/2.237)
             ax.plot(x, p_prior, 'k', linewidth=2, label='prior')
             ax.plot(x, p_new, 'r', linewidth=2, label='updated', linestyle='dashed')
@@ -722,7 +735,10 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
             # Calculate failure probabilities for prior, updated:
             im = np.arange(70, 200, 5)
             # Mean of simulation-based fragility:
-            pf_sim = pf(im, mu_init, beta_init)
+            if norm_analysis:
+                pf_sim = pf(im, mu_init*norm_factor, beta_init)
+            else:
+                pf_sim = pf(im, mu_init, beta_init)
             # Mean of updated fragility:
             pf_mean = pf(im, ppc['mu'].mean(), ppc['beta'].mean())
             # Calculate entire distribution of pfs using posterior samples:
@@ -741,7 +757,10 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
             ax3.plot(im/2.237, pf_mean, label='mean of prediction', color='r', linestyle='dashed')
             ax3.plot(im/2.237, pf_sim, label='mean of simulation-based', color='k')
             # Plot the observations:
-            ax3.scatter(xj*norm_factor/2.237, zj / nj, color='darkviolet', label='observations', zorder=5, s=70)
+            if norm_analysis:
+                ax3.scatter(xj*norm_factor/2.237, zj / nj, color='darkviolet', label='observations', zorder=5, s=70)
+            else:
+                ax3.scatter(xj / 2.237, zj / nj, color='darkviolet', label='observations', zorder=5, s=70)
             ax3.set_xlabel('Wind Speed [m/s]')
             ax3.set_ylabel('Probability of Failure')
             ax3.legend()
@@ -749,21 +768,23 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
     return updated_values
 
 
-# observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_postFBC.csv'
-# df = pd.read_csv(observations_file_path)
-# prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/F8_fit.csv'
-# df_prior = pd.read_csv(prior_file_path)
-# ds_list = df['DS Number'].unique()
-# #mu_init = [4.69, 4.8]
-# #mu_ds = [108.85]
-# #beta_ds = [0.16, 0.15]
-# for ds in range(0, len(ds_list)):
-#     df_sub = df.loc[df['DS Number'] == ds_list[ds]]
-#     xj = np.array(df_sub['demand'])
-#     zj = np.array(df_sub['fail'])
-#     nj = np.array(df_sub['total'])
-#     mu_init = df_prior['theta1'][ds]
-#     beta_init = df_prior['theta2'][ds]
-#     updated_values = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init)
-#     print('Update fragility model parameter values:')
-#     print(updated_values)
+observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_res.csv'
+df = pd.read_csv(observations_file_path)
+prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/A9_fit.csv'
+df_prior = pd.read_csv(prior_file_path)
+ds_list = df['DS Number'].unique()
+#mu_init = [4.69, 4.8]
+#mu_ds = [108.85]
+#beta_ds = [0.16, 0.15]
+for ds in range(0, len(ds_list)):
+    df_sub = df.loc[df['DS Number'] == ds_list[ds]]
+    xj = np.array(df_sub['demand'])
+    zj = np.array(df_sub['fail'])
+    nj = np.array(df_sub['total'])
+    mu_init = df_prior['theta1'][ds]
+    beta_init = df_prior['theta2'][ds]
+    updated_values = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init)
+    print('Update fragility model parameter values:')
+    print(updated_values)
+# Notes:
+# For MB case study: /24 + 4000 samples, 1000 tune
