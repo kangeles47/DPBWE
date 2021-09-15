@@ -18,17 +18,18 @@ from create_fragility import execute_fragility_workflow
 from post_disaster_damage_dataset import STEER, BayCountyPermits
 
 
-def run_hm_study(inventory='C:/Users/Karen/Desktop/PCB_res_clean.csv', hazard_type='wind',
-                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv', component_type='roof cover', parcel_id='38515-000-000'):
+def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_res.csv', hazard_type='wind',
+                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv', component_type='roof cover', parcel_id='04973-808-000'):
     # Hurricane Michael case study:
     # Component type: Roof cover (built-up)
     # Hazard: Wind
     # Commercial inventory: 'C:/Users/Karen/Desktop/MichaelBuildings.csv'
     # LR commercial case study: 18145-000-000
-    # Mexico Beach Inventory: 'C:/Users/Karen/Desktop/MB_res_clean.csv'
-    # residential, mexico beach: 04973-150-000
+    # Mexico Beach Inventory: 'C:/Users/Karen/Desktop/MB_res.csv'
+    # residential, mexico beach: 04973-808-000
     # Panama City Beach inventory:
-
+    # 'C:/Users/Karen/Desktop/PCB_res_clean.csv'
+    # '38515-000-000'
     # Locality: Panama City Beach and Mexico Beach regions
     # '30569-100-000' original parcel number for 6 story guy
     # Step 1: Create a Site Class that will hold all parcel-specific data models:
@@ -49,26 +50,26 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/PCB_res_clean.csv', hazard_ty
         new_roof = Roof()
         new_roof.hasCover = df['Roof Cover'][row]
         new_roof.hasType = df['Roof Cover'][row]
-        # try:
-        #     if len(df['Issued'][row]) > 0:
-        #         pdesc = df['Description'][row][2:-2].split("'")
-        #         pyear = df['Issued'][row][2:-2].split("'")
-        #         year = 0
-        #         for p in range(0, len(pdesc)):
-        #             if 'REROOF' in pdesc[p] or 'RERF' in pdesc[p] or 'ROOF' in pdesc[p]:
-        #                 new_year = int(pyear[p][:4])
-        #                 if new_year > year:
-        #                     year = new_year
-        #             else:
-        #                 pass
-        #         new_roof.hasYearBuilt = year
-        #         new_bldg.hasYearBuilt = year
-        # except TypeError:
-        #     new_roof.hasYearBuilt = new_bldg.hasYearBuilt
         new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
         new_bldg.hasStory[-1].update_elements()
         new_bldg.update_zones()
         new_bldg.update_elements()
+        # try:
+        #     if len(df['Permit Issued Date'][row]) > 0:
+        #         pdesc = df['Permit Description'][row][2:-2].split("'")
+        #         pyear = df['Permit Issued Date'][row][2:-2].split("'")
+        #         year = df['Year Built'][row]
+        #         for p in range(0, len(pdesc)):
+        #             if 'REROOF' in pdesc[p] or 'RERF' in pdesc[p] or 'ROOF' in pdesc[p]:
+        #                 new_year = int(pyear[p][:4])
+        #                 if year < new_year < 2018:
+        #                     year = new_year
+        #             else:
+        #                 pass
+        #         new_bldg.adjacentElement['Roof'][0].hasYearBuilt = year
+        #         new_bldg.hasYearBuilt = year
+        # except TypeError:
+        #     new_bldg.adjacentElement['Roof'][0].hasYearBuilt = new_bldg.hasYearBuilt
         # Bring in additional attributes from StEER:
         parcel_identifier = steer_obj.get_parcel_identifer(new_bldg)
         steer_obj.add_steer_bldg_data(new_bldg, parcel_identifier, steer_file_path)
