@@ -223,6 +223,54 @@ class BayCountyPermits(PostDisasterDamageDataset):
         self.hasAccuracy = False
         self.hasType['permit data'] = True
 
+    def add_mb_disaster_res_permit_data(self, bldg, component_type, hazard_type, damage_scale_name):
+        # Check if this building is in Mexico Beach:
+        if bldg.hasLocation['City'].upper() == 'MEXICO BEACH':
+            # Step 1: Activate the damage scale information that will be used:
+            self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
+            # Step 2: Populate data_details dictionary:
+            if 'roof' in component_type:
+                data_details_list = []
+                # Look for roof and demo-related information:
+                for p in range(0, len(bldg.hasPermit['other']['number'])):
+                    data_details = {'available': False, 'fidelity': self, 'component type': component_type,
+                                    'hazard type': hazard_type,
+                                    'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
+                    if 'MB' in bldg.hasPermit['other']['number'][p]:
+                        # Check damage scale information:
+                        if damage_scale_name == 'HAZUS-HM' and hazard_type == 'wind':
+                            # Check if this is a roof-related permit:
+                            if 'ROOF' in bldg.hasPermit['other']['type'][p] or 'RERF' in bldg.hasPermit['other']['type'][p] or 'DEM' in bldg.hasPermit['other']['type'][p]:
+                                self.hasDamagePrecision['component, range'] = True
+                                self.hasDamagePrecision['component, discrete'] = False
+                                data_details['available'] = True
+                                if 'RERF' in bldg.hasPermit['other']['type'][p]:
+                                    data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][1]
+                                    data_details['value'] = self.hasDamageScale['component damage states']['value'][1]
+                                elif 'ROOF' in bldg.hasPermit['other']['type'][p]:
+                                    data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][2]
+                                    data_details['value'] = self.hasDamageScale['component damage states']['value'][2]
+                                else:
+                                    data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][4]
+                                    data_details['value'] = self.hasDamageScale['component damage states']['value'][4]
+                        else:
+                            pass
+                    data_details_list.append(data_details)
+                # In some cases, there may be multiple permits available. Choose worse damage:
+                max_damage = 0
+                max_damage_idx = 0
+                for d in range(0, len(data_details_list)):
+                    if data_details_list[d]['hazard damage rating']['wind'] > max_damage:
+                        max_damage = data_details_list[d]['hazard damage rating']['wind']
+                        max_damage_idx = d
+                    else:
+                        pass
+                final_data_details = data_details_list[max_damage_idx]
+        else:
+            pass
+        return final_data_details
+
+
     def add_disaster_permit_data(self, bldg, component_type, hazard_type, site,
                                  permit_file_path, length_unit, damage_scale_name):
         """
