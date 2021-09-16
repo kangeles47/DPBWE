@@ -133,7 +133,7 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
         new_bldg.update_elements()
         # Populate code-informed component-level information
         code_informed = FBC(new_bldg, loading_flag=False)
-        code_informed.roof_attributes(code_informed.hasEdition, new_bldg, 'CBECS')
+        code_informed.roof_attributes(code_informed.hasEdition, new_bldg)
         # Add height information (if available):
         if df['Height'][row] != 0:
             new_bldg.hasGeometry['Height'] = df['Height'][row]
@@ -158,6 +158,65 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
     execute_fragility_workflow(bldg, site, component_type=component_type, hazard_type=hazard_type,
                                event_year=2017, event_name='Hurricane Irma', data_types=data_types,
                                file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='05/20/2021',
+                               hazard_file_path=hazard_file_path)
+
+
+def run_hh_study(inventory='C:/Users/Karen/Desktop/HH_NSF_CMMI1759996_BuildingAssessments.csv', hazard_type='wind',
+                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/ARA_Hurricane_Irma_Windspeed_v12.csv', component_type='roof cover', parcel_id='57360360006', sfh_flag=True):
+    # Irma case study:
+    # Step 1: Create a Site Class that will hold all parcel-specific data models:
+    site = Site()
+    # Step 2: Populate building inventory data and create parcel-specific data models:
+    df = pd.read_csv(inventory)
+    # Since building inventory is from StEER dataset, let's populate query column (if needed) to grab bldg attributes:
+    steer_obj = STEER()
+    # Make sure the StEER data is ready for querying:
+    steer_obj.add_query_column(inventory)
+    for row in range(0, len(df.index)):
+        use_code = df['assessment_type'][row]
+        if sfh_flag:
+            if 'Single' in use_code:
+                # Create simple data model for each parcel and add roof and cover data:
+                new_bldg = Building()
+                new_bldg.add_parcel_data(df['fulcrum_id'][row], df['number_of_stories'][row], df['assessment_type'][row], df['year_built'][row],
+                                         df['address_query'][row], 0, df['longitude'][row],
+                                         df['latitude'][row], 'ft')
+                # Add roof element and data:
+                new_roof = Roof()
+                new_roof.hasCover = df['roof_cover'][row]
+                new_roof.hasType = df['roof_cover'][row]
+                new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
+                new_bldg.hasStory[-1].update_elements()
+                new_bldg.update_zones()
+                new_bldg.update_elements()
+                # Populate code-informed component-level information
+                code_informed = FBC(new_bldg, loading_flag=False)
+                code_informed.roof_attributes(code_informed.hasEdition, new_bldg)
+                # Add height information (if available):
+                if df['Height'][row] != 0:
+                    new_bldg.hasGeometry['Height'] = df['Height'][row]
+                else:
+                    new_bldg.hasGeometry['Height'] = df['Stories'][row]*4.0*3.28084  # ft
+                # Step 3: Add new parcel-specific data model to the site description:
+                site.hasBuilding.append(new_bldg)
+            else:
+                pass
+    # Step 4: Update the site's zone and element information (relational attributes):
+    site.update_zones()
+    site.update_elements()
+    # Step 5: Extract the case study parcel's data model:
+    for b in site.hasBuilding:
+        if b.hasID == parcel_id:
+            bldg = b
+        else:
+            pass
+    # Step 6: Populate variables with list of post-disaster damage dataset types and file paths:
+    data_types = [STEER()]
+    file_paths = [inventory]
+    # Step 7: Run the workflow:
+    execute_fragility_workflow(bldg, site, component_type=component_type, hazard_type=hazard_type,
+                               event_year=2017, event_name='Hurricane Harvey', data_types=data_types,
+                               file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='09/16/2021',
                                hazard_file_path=hazard_file_path)
 
 run_hm_study()
