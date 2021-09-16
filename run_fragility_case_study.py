@@ -18,8 +18,9 @@ from create_fragility import execute_fragility_workflow
 from post_disaster_damage_dataset import STEER, BayCountyPermits
 
 
-def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_res.csv', hazard_type='wind',
-                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv', component_type='roof cover', parcel_id='04973-808-000'):
+def run_hm_study(inventory='C:/Users/Karen/Desktop/PCB_full_res.csv', hazard_type='wind',
+                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv',
+                 component_type='roof cover', parcel_id='38333-050-301', sfh_flag=True):
     # Hurricane Michael case study:
     # Component type: Roof cover (built-up)
     # Hazard: Wind
@@ -29,7 +30,7 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_res.csv', hazard_type='win
     # residential, mexico beach: 04973-808-000
     # Panama City Beach inventory:
     # 'C:/Users/Karen/Desktop/PCB_res_clean.csv'
-    # '38515-000-000'
+    # '38333-050-301'
     # Locality: Panama City Beach and Mexico Beach regions
     # '30569-100-000' original parcel number for 6 story guy
     # Step 1: Create a Site Class that will hold all parcel-specific data models:
@@ -107,7 +108,8 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_res.csv', hazard_type='win
     data_types = [STEER(), BayCountyPermits()]
     file_paths = [steer_file_path, 'C:/Users/Karen/PycharmProjects/DPBWE/BayCountyMichael_Permits.csv']
     # Step 7: Run the workflow:
-    execute_fragility_workflow(bldg, site, component_type=component_type, hazard_type=hazard_type, event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='03/04/2021', hazard_file_path=hazard_file_path)
+    execute_fragility_workflow(bldg, site, component_type=component_type, hazard_type=hazard_type, event_year=2018, event_name='Hurricane Michael', data_types=data_types, file_paths=file_paths,
+                               damage_scale_name='HAZUS-HM', analysis_date='03/04/2021', hazard_file_path=hazard_file_path, sfh_flag=True)
 
 
 def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_type='wind',

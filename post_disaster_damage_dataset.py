@@ -495,24 +495,26 @@ class BayCountyPermits(PostDisasterDamageDataset):
                  rcover_damage_percent: A list with two values: lower and upper percentages of roof cover damage.
         """
         substrings = ['RE-ROO', 'REROOF', 'ROOF REPAIR', 'COMMERCIAL HURRICANE REPAIRS',
-                      'ROOF OVER']
+                      'ROOF OVER', 'HURRICANE REPAIRS', 'ROOFOVER', 'HURRICANE RESIDENTIAL REPAIRS',
+                      'HURRICANE REPAIR', 'REPAIR ROOF', 'OVER']
         if self.hasDamageScale['type'] == 'HAZUS-HM':
             if any([substring in desc for substring in substrings]):
                 rcover_damage_percent = [2, 15]
                 rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
-            elif 'REPLACE' in desc:
+            elif 'REPLAC' in desc or 'REPALC' in desc:
                 rcover_damage_percent = [15, 50]
                 rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
-            elif 'WITHDRAWN' in desc:
+            elif 'WITHDRAWN' in desc or 'UNAUTHORIZED' in desc:
                 rcover_damage_percent = [0, 2]
                 rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
             elif 'NEW' in desc:
                 rcover_damage_percent = [50, 100]
                 rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
             else:
-                print(desc)
-                rcover_damage_cat = 'Unknown'
-                rcover_damage_percent = 'Unknown'
+                print('New roof permit qualitative damage description:' + desc)
+                # Assume lowest damage state (no damage):
+                rcover_damage_percent = [0, 2]
+                rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
         return rcover_damage_cat, rcover_damage_percent
 
     def rcover_damage_cat(self, rcover_damage):
