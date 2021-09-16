@@ -199,8 +199,11 @@ def query_parcel_info_2(driver_path, url, parcel_identifier, address_flag):
     for row in table1.find_all('tr'):
         tag = row.get_text().splitlines()[1]
         if tag == '':
-            if 'Use Code' in row.find_all('th')[0].get_text():
-                tag = row.find_all('th')[0].get_text().splitlines()[1]
+            try:
+                if 'Use Code' in row.find_all('th')[0].get_text():
+                    tag = row.find_all('th')[0].get_text().splitlines()[1]
+            except IndexError:
+                pass
         columns = row.find_all('td')
         value = columns[0].get_text()
         if 'Parcel ID' in tag:
@@ -344,7 +347,7 @@ driver_path = 'C:/Users/Karen/Desktop/chromedriver.exe'
 url = "https://qpublic.schneidercorp.com/application.aspx?app=BayCountyFL&PageType=Search"
 address_flag = False
 df = pd.read_csv('C:/Users/Karen/Desktop/PCB_56.csv')
-df = df.iloc[132:]
+df = df.iloc[2465:]
 df = df.reset_index()
 for row in range(0, len(df['Parcel ID'])):
     parcel_identifier = df['Parcel ID'][row]
