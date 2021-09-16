@@ -204,9 +204,13 @@ class STEER(PostDisasterDamageDataset):
                     # Check if there are roof-related damage descriptions:
                     if not isnan(df_steer['roof_cover_damage_'][idx]):
                         data_details['available'] = True
-                        data_details['value'] = df_steer['roof_cover_damage_'][idx]
                         # Update dataset object damage scale:
                         self.get_damage_scale('HAZUS-HM', 'roof cover', global_flag=True, component_flag=True)
+                        try:  # Case where data is either reported as string percent (10%) versus number (10)
+                            val = int(df_steer['roof_cover_damage_'][idx].split('%')[0])
+                            data_details['value'] = val
+                        except AttributeError:
+                            data_details['value'] = df_steer['roof_cover_damage_'][idx]
             else:
                 pass
         except IndexError:  # No StEER entry exists for this exact location: Check General Area or does not exist
