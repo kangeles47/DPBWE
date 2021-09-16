@@ -1,19 +1,22 @@
 from bldg_code import ASCE7
 
 
-def get_sim_bldgs(bldg, site, hazard_type, component_type, event_year):
+def get_sim_bldgs(bldg, site, hazard_type, component_type, event_year, sfh_flag):
     sim_bldgs = []
     if hazard_type == 'wind':
         if component_type == 'roof cover':
             # Calculate height range for the case study structure:
             hlower = ((bldg.hasGeometry['Height']) - (bldg.hasGeometry['Height']/len(bldg.hasStory)))
-            hupper = ((bldg.hasGeometry['Height']) + (bldg.hasGeometry['Height']/len(bldg.hasStory)))
+            if sfh_flag:  # Exception for single family homes: Do not look at two-story structures
+                hupper = ((bldg.hasGeometry['Height']) + 0.5*(bldg.hasGeometry['Height']/len(bldg.hasStory)))
+            else:
+                hupper = ((bldg.hasGeometry['Height']) + (bldg.hasGeometry['Height'] / len(bldg.hasStory)))
             # Find buildings in the regional inventory that have the same or similar roof cover type:
             for compare_bldg in site.hasBuilding:
                 # Skip buildings constructed after the year of the event:
-                if compare_bldg.hasYearBuilt >= 2016:
+                if compare_bldg.hasYearBuilt >= 2016 or compare_bldg.hasYearBuilt > event_year:
                     pass
-                elif compare_bldg.hasYearBuilt <= 2002:
+                elif compare_bldg.hasYearBuilt <= 2001:
                     pass
                 else:
                     # Check if this building has a similar or same roof cover:
