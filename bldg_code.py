@@ -944,18 +944,28 @@ class ASCE7(BldgCode):
                         if isinstance(bldg.hasElement['Roof'][0].hasPitch, str):
                             pass   # Need to find a way to distinguish between shallow/steep --> hip/gable
                         else:
-                            if bldg.hasElement['Roof'][0].hasPitch <= 10:
-                                rcover_case = 1  # Case 1 : gable roofs with theta <= 10 degrees
-                            elif 10 < bldg.hasElement['Roof'][0].hasPitch <= 45 and bldg.hasShape['gable']:
-                                rcover_case = 2  # Case 2: gable roofs with 10 < theta < 45
-                            else:
-                                if self.hasEdition == 'ASCE 7-95':
-                                    if 10 < bldg.hasElement['Roof'][0].hasPitch <= 30 and (bldg.hasShape['hip'] or bldg.hasShape['gable/hip combo']):
-                                        rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
-                                    else:
-                                        pass
+                            if self.hasEdition == 'ASCE 7-95':
+                                if 10 < bldg.hasElement['Roof'][0].hasPitch <= 30 and (
+                                        bldg.hasShape['hip'] or bldg.hasShape['gable/hip combo']):
+                                    rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
                                 else:
                                     pass
+                            else:
+                                pass
+                            if rcover_case == 0:
+                                if bldg.hasElement['Roof'][0].hasPitch <= 10:
+                                    rcover_case = 1  # Case 1 : gable roofs with theta <= 10 degrees
+                                elif 10 < bldg.hasElement['Roof'][0].hasPitch <= 45:  #  and bldg.hasShape['gable']
+                                    rcover_case = 2  # Case 2: gable roofs with 10 < theta < 45
+                                else:
+                                    pass
+                                #if self.hasEdition == 'ASCE 7-95':
+                                 #   if 10 < bldg.hasElement['Roof'][0].hasPitch <= 30 and (bldg.hasShape['hip'] or bldg.hasShape['gable/hip combo']):
+                                  #      rcover_case = 3  # Case 3: hip roofs with 10< theta <= 30
+                                   # else:
+                                    #    pass
+                                #else:
+                                 #   pass
                     else:
                         pass
                     if rcover_case == 0:
