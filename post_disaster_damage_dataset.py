@@ -120,11 +120,14 @@ class STEER(PostDisasterDamageDataset):
             # Create a new column to make address queries:
             query_col = []
             for row in range(0, len(df_steer)):
-                sp = df_steer['address_full'][row].split()
-                new_address = ''
-                for s in sp[:-2]:
-                    new_address = new_address + s.upper() + ' '
-                query_col.append(new_address.strip())
+                try:
+                    sp = df_steer['address_full'][row].split()
+                    new_address = ''
+                    for s in sp[:-2]:
+                        new_address = new_address + s.upper() + ' '
+                    query_col.append(new_address.strip())
+                except AttributeError:
+                    query_col.append('NONE')
             df_steer['address_query'] = query_col
             df_steer.to_csv(steer_file_path, index=False)
 
