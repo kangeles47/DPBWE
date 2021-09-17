@@ -369,7 +369,7 @@ class Building(Zone):
         self.hasPermitData = {'disaster': {'number': [], 'description': [], 'permit type': []}, 'other': {'number': [], 'description': [], 'permit type': []}}
         self.hasDamageData = {'roof cover': None, 'roof structure': None, 'cladding': None, 'glazing': None}
 
-    def add_parcel_data(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit):
+    def add_parcel_data(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit, loc_flag):
         """
         A simple function to update Building attributes with parcel data and instantiate Story objects
 
@@ -403,8 +403,11 @@ class Building(Zone):
         self.hasYearBuilt = int(yr_built)
         self.hasLocation['Address'] = address.upper()
         self.hasLocation['Geodesic'] = Point(lon, lat)
-        self.get_location_data()
-        # Tag the building as "commercial" or "not commercial"
+        if loc_flag:
+            self.get_location_data()
+        else:
+            pass
+            # Tag the building as "commercial" or "not commercial"
         comm_occupancies = ['PROFESS', 'HOTEL', 'MOTEL', 'FINANCIAL', 'COMMERCIAL', 'HOSP', 'MIXED',
                             'MUNICIPAL', 'OFFICE', 'CONDO', 'COUNT', 'FEDERAL', 'STORE', 'REST', 'COMMON',
                             'PRIVATE', 'SCH', 'SUPERMAR', 'CAMPS', 'COMMUNITY']  # example occupancies

@@ -67,6 +67,9 @@ class BldgCode:
                     else:
                         edition = '1983 CABO'
                         print('Building created before modern codes: use oldest available code', edition)
+            if parcel.hasLocation['State'] == 'TX':
+                edition = 'NONE'
+
         else:
             # For loading descriptions or component capacities using ASCE 7:
             if parcel.hasYearBuilt <= 1988:
@@ -88,6 +91,19 @@ class BldgCode:
             elif parcel.hasYearBuilt > 2016:
                 edition = 'ASCE 7-16'
         return edition
+
+
+class TX(BldgCode):
+
+    def __init__(self, parcel, loading_flag):
+        BldgCode.__init__(self, parcel, loading_flag)  # Bring in building code attributes (edition)
+
+    def roof_attributes(self, parcel):
+        # Populate roof attributes for this instance (parcel)
+        roof_cover = parcel.hasElement['Roof'][0].hasCover
+        if isinstance(roof_cover, str):
+            if ('ASPHALT' in roof_cover or 'ENG' in roof_cover):
+                parcel.hasElement['Roof'][0].hasPitch = (2/12)*100  # Minimum pitch for asphalt roof covers
 
 
 class FBC(BldgCode):

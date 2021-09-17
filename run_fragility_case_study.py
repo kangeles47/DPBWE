@@ -13,14 +13,14 @@ import pandas as pd
 import ast
 from OBDM.zone import Site, Building
 from OBDM.element import Roof
-from bldg_code import FBC
+from bldg_code import FBC, TX
 from create_fragility import execute_fragility_workflow
 from post_disaster_damage_dataset import STEER, BayCountyPermits
 
 
-def run_hm_study(inventory='C:/Users/Karen/Desktop/PCB_full_res.csv', hazard_type='wind',
+def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_PCB.csv', hazard_type='wind',
                  hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv',
-                 component_type='roof cover', parcel_id='38333-050-301', sfh_flag=True, rpermit_flag=True):
+                 component_type='roof cover', parcel_id='04973-808-000', sfh_flag=True, rpermit_flag=False):
     # Hurricane Michael case study:
     # Component type: Roof cover (built-up)
     # Hazard: Wind
@@ -46,7 +46,7 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/PCB_full_res.csv', hazard_typ
         # Create simple data model for each parcel and add roof and cover data:
         new_bldg = Building()
         new_bldg.add_parcel_data(df['Parcel Id'][row], df['Stories'][row], df['Use Code'][row], df['Year Built'][row],
-                                 df['Address'][row], df['Square Footage'][row], df['Longitude'][row], df['Latitude'][row], 'ft')
+                                 df['Address'][row], df['Square Footage'][row], df['Longitude'][row], df['Latitude'][row], 'ft', loc_flag=True)
         # Add roof element and data:
         new_roof = Roof()
         new_roof.hasCover = df['Roof Cover'][row]
@@ -127,7 +127,7 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
         new_bldg = Building()
         new_bldg.add_parcel_data(df['Parcel Id'][row], df['Stories'][row], df['Use Code'][row], df['Year Built'][row],
                                  df['Address'][row], df['Square Footage'][row], df['Longitude'][row],
-                                 df['Latitude'][row], 'ft')
+                                 df['Latitude'][row], 'ft', loc_flag=True)
         # Add roof element and data:
         new_roof = Roof()
         new_roof.hasCover = df['Roof Cover'][row]
@@ -163,47 +163,61 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
     execute_fragility_workflow(bldg, site, component_type=component_type, hazard_type=hazard_type,
                                event_year=2017, event_name='Hurricane Irma', data_types=data_types,
                                file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='05/20/2021',
-                               hazard_file_path=hazard_file_path)
+                               hazard_file_path=hazard_file_path, sfh_flag=False)
 
 
 def run_hh_study(inventory='C:/Users/Karen/Desktop/HH_NSF_CMMI1759996_BuildingAssessments.csv', hazard_type='wind',
-                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/ARA_Hurricane_Irma_Windspeed_v12.csv', component_type='roof cover', parcel_id='57360360006', sfh_flag=True):
+                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/ARA_Hurricane_Irma_Windspeed_v12.csv', component_type='roof cover', parcel_id='12d068d3-5948-4d6f-9204-e04942773081', sfh_flag=True):
     # Irma case study:
     # Step 1: Create a Site Class that will hold all parcel-specific data models:
     site = Site()
-    # Step 2: Populate building inventory data and create parcel-specific data models:
-    df = pd.read_csv(inventory)
     # Since building inventory is from StEER dataset, let's populate query column (if needed) to grab bldg attributes:
     steer_obj = STEER()
     # Make sure the StEER data is ready for querying:
     steer_obj.add_query_column(inventory)
+    # Step 2: Populate building inventory data and create parcel-specific data models:
+    df = pd.read_csv(inventory)
+    inland_areas = ['NUECES', 'TIVOLI', 'TAFT', 'SINTON', 'REFUGIO']
     for row in range(0, len(df.index)):
         use_code = df['assessment_type'][row]
         if sfh_flag:
             if 'Single' in use_code:
-                # Create simple data model for each parcel and add roof and cover data:
-                new_bldg = Building()
-                new_bldg.add_parcel_data(df['fulcrum_id'][row], df['number_of_stories'][row], df['assessment_type'][row], df['year_built'][row],
-                                         df['address_query'][row], 0, df['longitude'][row],
-                                         df['latitude'][row], 'ft')
-                # Add roof element and data:
-                new_roof = Roof()
-                new_roof.hasCover = df['roof_cover'][row]
-                new_roof.hasType = df['roof_cover'][row]
-                new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
-                new_bldg.hasStory[-1].update_elements()
-                new_bldg.update_zones()
-                new_bldg.update_elements()
-                # Populate code-informed component-level information
-                code_informed = FBC(new_bldg, loading_flag=False)
-                code_informed.roof_attributes(code_informed.hasEdition, new_bldg)
-                # Add height information (if available):
-                if df['Height'][row] != 0:
-                    new_bldg.hasGeometry['Height'] = df['Height'][row]
+                if any([i in df['address_locality'][row].upper() for i in inland_areas]):
+                    pass
                 else:
-                    new_bldg.hasGeometry['Height'] = df['Stories'][row]*4.0*3.28084  # ft
-                # Step 3: Add new parcel-specific data model to the site description:
-                site.hasBuilding.append(new_bldg)
+                    try:
+                        roof_cover = df['roof_cover'][row].upper()  # skip any empty roof cover entries
+                        # Create simple data model for each parcel and add roof and cover data:
+                        new_bldg = Building()
+                        new_bldg.add_parcel_data(df['fulcrum_id'][row], df['number_of_stories'][row], df['assessment_type'][row], df['year_built'][row],
+                                                 df['address_query'][row], 0, df['longitude'][row],
+                                                 df['latitude'][row], 'ft', loc_flag=False)
+                        new_bldg.hasLocation['State'] = 'TX'
+                        new_bldg.hasLocation['Street Number'] = df['address_sub_thoroughfare'][row] + ' ' + df['address_thoroughfare'][row]
+                        new_bldg.hasLocation['City'] = df['address_locality'][row]
+                        new_bldg.hasLocation['County'] = df['address_sub_admin_area'][row]
+                        new_bldg.hasLocation['Zip Code'] = df['address_postal_code'][row]
+                        # Add roof element and data:
+                        new_roof = Roof()
+                        if 'ASPHALT' in roof_cover and 'SEAM' not in roof_cover:
+                            new_roof.hasCover = 'ASPHALT SHINGLES'
+                            new_roof.hasType = 'ASPHALT SHINGLES'
+                        else:
+                            new_roof.hasCover = roof_cover
+                            new_roof.hasType = roof_cover
+                        new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
+                        new_bldg.hasStory[-1].update_elements()
+                        new_bldg.update_zones()
+                        new_bldg.update_elements()
+                        # Populate code-informed component-level information
+                        code_informed = TX(new_bldg, loading_flag=False)
+                        code_informed.roof_attributes(new_bldg)
+                        # Add height information:
+                        new_bldg.hasGeometry['Height'] = df['number_of_stories'][row]*4.0*3.28084  # ft
+                        # Step 3: Add new parcel-specific data model to the site description:
+                        site.hasBuilding.append(new_bldg)
+                    except AttributeError:
+                        pass
             else:
                 pass
     # Step 4: Update the site's zone and element information (relational attributes):
@@ -222,6 +236,6 @@ def run_hh_study(inventory='C:/Users/Karen/Desktop/HH_NSF_CMMI1759996_BuildingAs
     execute_fragility_workflow(bldg, site, component_type=component_type, hazard_type=hazard_type,
                                event_year=2017, event_name='Hurricane Harvey', data_types=data_types,
                                file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='09/16/2021',
-                               hazard_file_path=hazard_file_path)
+                               hazard_file_path=hazard_file_path, sfh_flag=True)
 
-run_hm_study()
+run_hh_study()
