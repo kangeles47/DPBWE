@@ -121,7 +121,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             if component_type == 'roof cover':
                 sample_dict[component_type].append(s.hasElement['Roof'][0].hasCover)
         # Export as csv file:
-        pd.DataFrame(sample_dict).to_csv('SampleBuildings_PCB_postFBC_rpermit.csv', index=False)
+        pd.DataFrame(sample_dict).to_csv('SampleBuildings_Harvey.csv', index=False)
     # Step 6: Bayesian Parameter Estimation
     # Step 6a: Populate the prior:
     if hazard_type == 'wind' and damage_scale_name == 'HAZUS-HM':
@@ -146,7 +146,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             df_params = df_params.drop(df_sub.index)
         else:
             pass
-    df_params.to_csv('Observations_PCB_postFBC_rpermit.csv', index=False)
+    df_params.to_csv('Observations_Harvey.csv', index=False)
     # Calculate MLE estimate for comparison:
     mle_params = get_point_estimate(lparams)
     # Step 6c: Run Bayesian Parameter Estimation:
@@ -292,8 +292,8 @@ def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type, p
     if plot_flag:
         from matplotlib import rcParams
         rcParams['font.family'] = "Times New Roman"
-        rcParams.update({'font.size': 10})
-        msize = 8
+        rcParams.update({'font.size': 16})
+        msize = 12
         fig, ax = plt.subplots()
         xflag = 0
         oflag = 0
@@ -328,7 +328,7 @@ def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type, p
         ax.set_yticks([0, 1, 2, 3, 4])
         ax.set_ylabel('Damage Measure')
         ax.set_xlabel('Peak Gust Wind Speed [m/s]')
-        ax.legend(loc='upper left', fontsize=9, markerscale=0.8)
+        ax.legend(loc='upper left', fontsize=12, markerscale=0.8)
         plt.show()
     # Step 3: Create dichotomous failure datasets for each damage measure:
     dichot_dict = {}
@@ -652,8 +652,10 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
         xj = xj/norm_factor
         mu_init = mu_init/norm_factor
         mu_std_dev = 15/norm_factor
-        nj = nj/30
-        zj = zj/30
+        nj = nj/24
+        zj = zj/24
+        #beta_init = beta_init/norm_factor
+        #beta_std_dev = 0.03/norm_factor
     else:
         mu_std_dev = 15
     beta_std_dev = 0.03
@@ -683,13 +685,13 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
          #   print(RV.name, RV.logp(model.test_point))
         # Step 3c: Determine the posterior
         # Note: can manually change number of cores if more computational power is available.
-        trace = pm.sample(4000, cores=1, return_inferencedata=True, tune=1000, random_seed=52)
+        trace = pm.sample(6000, cores=1, return_inferencedata=True, tune=2000, random_seed=52, target_accept=0.85)
         #trace = pm.sample(8000, cores=1, return_inferencedata=True, tune=2000, random_seed=52)  #tune=2000
         # (Optional): Plotting the trace and updated distributions for parameters:
         if plot_flag:
             from matplotlib import rcParams
             rcParams['font.family'] = "Times New Roman"
-            rcParams.update({'font.size': 12})
+            rcParams.update({'font.size': 16})
             az.plot_trace(trace, chain_prop={'color': ['blue', 'red']})
         # Step 4: Generate summary statistics for the MCMC:
         print('Summary statistics for the MCMC:')
@@ -772,7 +774,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
     return updated_values
 
 
-# observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_res_post_permit.csv'
+# observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_MB_preFBC.csv'
 # df = pd.read_csv(observations_file_path)
 # prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/A9_fit.csv'
 # df_prior = pd.read_csv(prior_file_path)
@@ -792,4 +794,8 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
 #     print(updated_values)
 # Notes:
 # For MB case study: /24 + 4000 samples, 1000 tune
-# fine for most, not great for post FBC with permits
+# fine for most, not great for post FBC with permits /30 in this case
+# full PCB: /140 10000/5000 --> 1 divergence
+# divide PCB full by norm factor, 6000/1000 for convergence (4000/1000 worked too)
+# FULL_preFBC: /160, 8000/1000, 0.85
+# MB_preFBC /24, 4000/2000, 0.85
