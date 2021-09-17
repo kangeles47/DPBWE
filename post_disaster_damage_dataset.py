@@ -236,22 +236,22 @@ class BayCountyPermits(PostDisasterDamageDataset):
             if 'roof' in component_type:
                 data_details_list = []
                 # Look for roof and demo-related information:
-                for p in range(0, len(bldg.hasPermit['other']['number'])):
+                for p in range(0, len(bldg.hasPermitData['other']['number'])):
                     data_details = {'available': False, 'fidelity': self, 'component type': component_type,
                                     'hazard type': hazard_type,
                                     'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
-                    if 'MB' in bldg.hasPermit['other']['number'][p]:
+                    if 'MB' in bldg.hasPermitData['other']['number'][p]:
                         # Check damage scale information:
                         if damage_scale_name == 'HAZUS-HM' and hazard_type == 'wind':
                             # Check if this is a roof-related permit:
-                            if 'ROOF' in bldg.hasPermit['other']['permit type'][p] or 'RERF' in bldg.hasPermit['other']['permit type'][p] or 'DEM' in bldg.hasPermit['other']['permit type'][p]:
+                            if 'ROOF' in bldg.hasPermitData['other']['permit type'][p] or 'RERF' in bldg.hasPermitData['other']['permit type'][p] or 'DEM' in bldg.hasPermitData['other']['permit type'][p]:
                                 self.hasDamagePrecision['component, range'] = True
                                 self.hasDamagePrecision['component, discrete'] = False
                                 data_details['available'] = True
-                                if 'RERF' in bldg.hasPermit['other']['permit type'][p]:
+                                if 'RERF' in bldg.hasPermitData['other']['permit type'][p]:
                                     data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][1]
                                     data_details['value'] = self.hasDamageScale['component damage states']['value'][1]
-                                elif 'ROOF' in bldg.hasPermit['other']['permit type'][p]:
+                                elif 'ROOF' in bldg.hasPermitData['other']['permit type'][p]:
                                     data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][2]
                                     data_details['value'] = self.hasDamageScale['component damage states']['value'][2]
                                 else:
@@ -261,15 +261,21 @@ class BayCountyPermits(PostDisasterDamageDataset):
                             pass
                     data_details_list.append(data_details)
                 # In some cases, there may be multiple permits available. Choose worse damage:
-                max_damage = 0
-                max_damage_idx = 0
-                for d in range(0, len(data_details_list)):
-                    if data_details_list[d]['hazard damage rating']['wind'] > max_damage:
-                        max_damage = data_details_list[d]['hazard damage rating']['wind']
-                        max_damage_idx = d
-                    else:
-                        pass
-                final_data_details = data_details_list[max_damage_idx]
+                if len(data_details_list) > 0:
+                    max_damage = 0
+                    max_damage_idx = 0
+                    for d in range(0, len(data_details_list)):
+                        if data_details_list[d]['available']:
+                            if data_details_list[d]['hazard damage rating']['wind'] > max_damage:
+                                max_damage = data_details_list[d]['hazard damage rating']['wind']
+                                max_damage_idx = d
+                        else:
+                            pass
+                    final_data_details = data_details_list[max_damage_idx]
+                else:
+                    final_data_details = {'available': False, 'fidelity': self, 'component type': component_type,
+                                            'hazard type': hazard_type,
+                                            'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
         else:
             pass
         return final_data_details
@@ -326,6 +332,8 @@ class BayCountyPermits(PostDisasterDamageDataset):
                             self.hasDate = '00/00/2019'
                         elif 'DIS20' in df['PERMITNUMBER'][i].upper():
                             self.hasDate = '00/00/2020'
+                        elif 'DIS21' in df['PERMITNUMBER'][i].upper():
+                            self.hasDate = '00/00/2021'
                     else:
                         self.hasDate = df['ISSUED'][i]
             except IndexError:
@@ -495,8 +503,8 @@ class BayCountyPermits(PostDisasterDamageDataset):
                  rcover_damage_percent: A list with two values: lower and upper percentages of roof cover damage.
         """
         substrings = ['RE-ROO', 'REROOF', 'ROOF REPAIR', 'COMMERCIAL HURRICANE REPAIRS',
-                      'ROOF OVER', 'HURRICANE REPAIRS', 'ROOFOVER', 'HURRICANE RESIDENTIAL REPAIRS',
-                      'HURRICANE REPAIR', 'REPAIR ROOF', 'OVER']
+                      'ROOF OVER', 'HURRICANE REPAIRS', 'ROOFOVER', 'HURRICANE RESIDENTIAL',
+                      'HURRICANE REPAIR', 'REPAIR ROOF', 'OVER', 'REOOF']
         if self.hasDamageScale['type'] == 'HAZUS-HM':
             if any([substring in desc for substring in substrings]):
                 rcover_damage_percent = [2, 15]
@@ -511,10 +519,15 @@ class BayCountyPermits(PostDisasterDamageDataset):
                 rcover_damage_percent = [50, 100]
                 rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
             else:
-                print('New roof permit qualitative damage description:' + desc)
-                # Assume lowest damage state (no damage):
-                rcover_damage_percent = [0, 2]
-                rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
+                if 'ROOF' in desc or 'RESIDENTIAL' in desc:
+                    # Assume damage state 1 (at least minor damage):
+                    rcover_damage_percent = [2, 15]
+                    rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
+                else:
+                    print('New roof permit qualitative damage description:' + desc)
+                    # Assume lowest damage state (no damage):
+                    rcover_damage_percent = [0, 2]
+                    rcover_damage_cat = self.rcover_damage_cat(rcover_damage_percent)
         return rcover_damage_cat, rcover_damage_percent
 
     def rcover_damage_cat(self, rcover_damage):
