@@ -20,7 +20,7 @@ from post_disaster_damage_dataset import STEER, BayCountyPermits
 
 def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_PCB.csv', hazard_type='wind',
                  hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv',
-                 component_type='roof cover', parcel_id='04973-808-000', sfh_flag=True, rpermit_flag=False):
+                 component_type='roof cover', parcel_id='04973-808-000', sfh_flag=True, rpermit_flag=True):
     # Hurricane Michael case study:
     # Component type: Roof cover (built-up)
     # Hazard: Wind
@@ -29,7 +29,7 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_PCB.csv', hazard_type='win
     # Mexico Beach Inventory: 'C:/Users/Karen/Desktop/MB_res.csv'
     # residential, mexico beach: 04973-808-000
     # Panama City Beach inventory:
-    # 'C:/Users/Karen/Desktop/PCB_res_clean.csv'
+    # 'C:/Users/Karen/Desktop/PCB_full_res.csv'
     # '38333-050-301'
     # Locality: Panama City Beach and Mexico Beach regions
     # '30569-100-000' original parcel number for 6 story guy
@@ -238,4 +238,4 @@ def run_hh_study(inventory='C:/Users/Karen/Desktop/HH_NSF_CMMI1759996_BuildingAs
                                file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='09/16/2021',
                                hazard_file_path=hazard_file_path, sfh_flag=True)
 
-run_hh_study()
+run_hm_study()
