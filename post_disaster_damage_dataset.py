@@ -36,7 +36,7 @@ class PostDisasterDamageDataset:
                 comp_ds_nums = [0, 1, 2, 3, 4]
                 comp_ds_desc = ['No Damage', 'Minor Damage', 'Moderate Damage', 'Severe Damage', 'Destruction']
                 if component_type == 'roof cover':
-                    comp_ds_vals = [[0, 2], [2, 15], [15, 50], [50, 100], [100, 100]]
+                    comp_ds_vals = [[0, 2], [2, 15], [15, 50], [50, 100], [50, 100]]
                 else:
                     print('Component damage values not supported for ' + damage_scale_name + 'and ' + component_type)
         elif damage_scale_name == 'WF':
@@ -236,7 +236,7 @@ class BayCountyPermits(PostDisasterDamageDataset):
             # Step 1: Activate the damage scale information that will be used:
             self.get_damage_scale(damage_scale_name, component_type, global_flag=True, component_flag=True)
             # Step 2: Populate data_details dictionary:
-            if 'roof' in component_type:
+            if component_type == 'roof cover':
                 data_details_list = []
                 # Look for roof and demo-related information:
                 for p in range(0, len(bldg.hasPermitData['other']['number'])):
@@ -258,8 +258,8 @@ class BayCountyPermits(PostDisasterDamageDataset):
                                     data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][2]
                                     data_details['value'] = self.hasDamageScale['component damage states']['value'][2]
                                 else:
-                                    data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][4]
-                                    data_details['value'] = self.hasDamageScale['component damage states']['value'][4]
+                                    data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][3]
+                                    data_details['value'] = self.hasDamageScale['component damage states']['value'][3]
                         else:
                             pass
                     data_details_list.append(data_details)
@@ -460,6 +460,13 @@ class BayCountyPermits(PostDisasterDamageDataset):
                                     self.hasDamagePrecision['component, range'] = True
                             else:
                                 pass
+                elif 'DEM' in bldg.hasPermitData['disaster']['permit type'][p]:
+                    if self.hasDamageScale['type'] == 'HAZUS-HM':
+                        data_details['value'] = self.hasDamageScale['component damage states']['value'][3]
+                        data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][3]
+                        self.hasDamagePrecision['component, range'] = True
+                        self.hasDamagePrecision['component, discrete'] = False
+                        data_details['available'] = True
                 else:
                     pass
         else:
