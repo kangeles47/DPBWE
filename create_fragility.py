@@ -618,7 +618,7 @@ def get_wind_speed(bldg, wind_speed_file_path, exposure, unit):
     return round(v_local)
 
 
-def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot_flag=True):
+def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, target_accept, plot_flag=True):
     """
     A function to conduct Bayesian updating of fragility models.
     (Optional): Produce MCMC-related plots (trace). Default: True
@@ -652,8 +652,8 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
         xj = xj/norm_factor
         mu_init = mu_init/norm_factor
         mu_std_dev = 15/norm_factor
-        nj = nj/24
-        zj = zj/24
+        #nj = nj/15
+        #zj = zj/15
         #beta_init = beta_init/norm_factor
         #beta_std_dev = 0.03/norm_factor
     else:
@@ -668,55 +668,82 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
         #mu = pm.Normal('mu', mu_init/norm_factor, 15/norm_factor)
         BoundedNormal = pm.Bound(pm.Normal, lower=0.0)
         #x = BoundedNormal('x', mu=1.0, sigma=3.0)
-        mu = BoundedNormal('mu', mu_init, mu_std_dev)
-        beta = BoundedNormal('beta', beta_init, beta_std_dev)
+        theta1 = BoundedNormal('theta1', mu_init, mu_std_dev)
+        theta2 = BoundedNormal('theta2', beta_init, beta_std_dev)
 
         # Step 3b: Set up the likelihood function:
         # The likelihood in this model is represented via a Binomial distribution.
         # See Lallemant et al. (2015) for MLE derivation.
         # Define fragility function equation:
-        def normal_cdf(mu, beta, xj):
+        def normal_cdf(theta1, theta2, xj):
             """Compute the log of the cumulative density function of the normal."""
-            return 0.5 * (1 + tt.erf((tt.log(xj/mu)) / (beta * tt.sqrt(2))))
+            return 0.5 * (1 + tt.erf((tt.log(xj/theta1)) / (theta2 * tt.sqrt(2))))
         # Define the likelihood:
-        like = pm.Binomial('like', p=normal_cdf(mu, beta, xj), observed=zj, n=nj)
+        like = pm.Binomial('like', p=normal_cdf(theta1, theta2, xj), observed=zj, n=nj)
         # Uncomment to do an initial check of parameter values (lookout for like = +/-inf)
         #for RV in model.basic_RVs:
          #   print(RV.name, RV.logp(model.test_point))
         # Step 3c: Determine the posterior
         # Note: can manually change number of cores if more computational power is available.
-        trace = pm.sample(6000, cores=1, return_inferencedata=True, tune=2000, random_seed=52, target_accept=0.85)
+        trace = pm.sample(draws, cores=1, return_inferencedata=False, tune=tune, random_seed=52, target_accept=target_accept)
+        #trace = trace[1000:]
+        print('Without burn-in')
+        print(az.summary(az.from_pymc3(trace)))
+        trace_idata = az.from_pymc3(trace=trace[burn:])
         #trace = pm.sample(8000, cores=1, return_inferencedata=True, tune=2000, random_seed=52)  #tune=2000
         # (Optional): Plotting the trace and updated distributions for parameters:
         if plot_flag:
             from matplotlib import rcParams
             rcParams['font.family'] = "Times New Roman"
             rcParams.update({'font.size': 16})
-            az.plot_trace(trace, chain_prop={'color': ['blue', 'red']})
+            az.plot_trace(trace_idata, chain_prop={'color': ['blue', 'red']})
+            # Plot the autocorrelation to check convergence:
+            ax_corr = az.plot_autocorr(trace_idata, combined=True)
+            ax_corr[0].set_title(r'$\theta_1$')
+            ax_corr[1].set_title(r'$\theta_2$')
+            ax_corr[0].set_ylabel('Autocorrelation')
+            ax_corr[0].set_xlabel('Lag')
+            ax_corr[1].set_xlabel('Lag')
         # Step 4: Generate summary statistics for the MCMC:
         print('Summary statistics for the MCMC:')
-        print(az.summary(trace))  # Note: can output this DataFrame if needed
+        print(az.summary(trace_idata))  # Note: can output this DataFrame if needed
+        df = az.summary(trace_idata, hdi_prob=0.89)
         # Step 5: Sample from the posterior and save updated values for mean and std. dev:
-        ppc = pm.sample_posterior_predictive(trace, var_names=['mu', 'beta', 'like'])
+        ppc = pm.sample_posterior_predictive(trace_idata, var_names=['theta1', 'theta2', 'like'])
         # Re-scale values for logarithmic mean:
         if norm_analysis:
-            ppc['mu'] = ppc['mu']*norm_factor
+            df['mean']['theta1'] = df['mean']['theta1']*norm_factor
+            df['sd']['theta1'] = df['sd']['theta1']*norm_factor
+            ppc['theta1'] = ppc['theta1']*norm_factor
         else:
             pass
-        updated_values = {'mu': {'mean': ppc['mu'].mean(), 'std dev': np.std(ppc['mu'])},
-                          'beta': {'mean': ppc['beta'].mean(), 'std dev': np.std(ppc['beta'])}}
+        # Export analysis results:
+        summary_dict = {}
+        for row in df.index:
+            for col in df.columns:
+                new_key = row + col
+                new_val = df[col][row]
+                summary_dict[new_key] = new_val
+        # Export MCMC details:
+        mcmc_dict = {'draws': draws, 'burn': burn, 'tune': tune, 'target_accept': target_accept}
+        for key in mcmc_dict:
+            summary_dict[key] = mcmc_dict[key]
+        df_summary = pd.DataFrame(summary_dict)
+        # Sample directly from the posterior to create figures:
+        updated_values = {'theta1': {'mean': ppc['theta1'].mean(), 'std dev': np.std(ppc['theta1'])},
+                          'theta2': {'mean': ppc['theta2'].mean(), 'std dev': np.std(ppc['theta2'])}}
         if plot_flag:
             # Plot prior and updated distributions for parameters:
             # mu
             fig, ax = plt.subplots()
-            ax.hist(ppc['mu']/2.237, bins=25, density=True, alpha=0.4, color='b', label='posterior samples')
+            ax.hist(ppc['theta1']/2.237, bins=25, density=True, alpha=0.4, color='b', label='posterior samples')
             xmin, xmax = ax.set_xlim()
             x = np.linspace(xmin, xmax, 100)
             if norm_analysis:
                 p_prior = norm.pdf(x, mu_init*norm_factor / 2.237, mu_std_dev*norm_factor / 2.237)
             else:
                 p_prior = norm.pdf(x, mu_init/2.237, mu_std_dev/2.237)
-            p_new = norm.pdf(x, updated_values['mu']['mean']/2.237, updated_values['mu']['std dev']/2.237)
+            p_new = norm.pdf(x, updated_values['theta1']['mean']/2.237, updated_values['theta1']['std dev']/2.237)
             ax.plot(x, p_prior, 'k', linewidth=2, label='prior')
             ax.plot(x, p_new, 'r', linewidth=2, label='updated', linestyle='dashed')
             ax.set_title('Prior and updated distributions for ' + r'$\theta_1$')
@@ -726,11 +753,11 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
             plt.show()
             # beta
             fig2, ax2 = plt.subplots()
-            ax2.hist(ppc['beta'], bins=25, density=True, alpha=0.4, color='b', label='posterior samples')
+            ax2.hist(ppc['theta2'], bins=25, density=True, alpha=0.4, color='b', label='posterior samples')
             xmin2, xmax2 = ax2.set_xlim()
             x2 = np.linspace(xmin2, xmax2, 100)
             p_prior2 = norm.pdf(x2, beta_init, 0.03)
-            p_new2 = norm.pdf(x2, updated_values['beta']['mean'], updated_values['beta']['std dev'])
+            p_new2 = norm.pdf(x2, updated_values['theta2']['mean'], updated_values['theta2']['std dev'])
             ax2.plot(x2, p_prior2, 'k', linewidth=2, label='prior')
             ax2.plot(x2, p_new2, 'r', linewidth=2, label='updated', linestyle='dashed')
             ax2.set_title('Prior and updated distributions for ' + r'$\theta_2$')
@@ -746,11 +773,11 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
             else:
                 pf_sim = pf(im, mu_init, beta_init)
             # Mean of updated fragility:
-            pf_mean = pf(im, ppc['mu'].mean(), ppc['beta'].mean())
+            pf_mean = pf(im, ppc['theta1'].mean(), ppc['theta2'].mean())
             # Calculate entire distribution of pfs using posterior samples:
             pf_ppc = []
-            for i in range(0, len(ppc['mu'])):
-                y = pf(im, ppc['mu'][i], ppc['beta'][i])
+            for i in range(0, len(ppc['theta1'])):
+                y = pf(im, ppc['theta1'][i], ppc['theta2'][i])
                 pf_ppc.append(y)
             # Plot the credible intervals, mean outcome of prediction, mean of simulation-based:
             fig3, ax3 = plt.subplots()
@@ -771,27 +798,32 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, num_samples=None, plot
             ax3.set_ylabel('Probability of Failure')
             ax3.legend()
             plt.show()
-    return updated_values
+    return df_summary
 
 
-# observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_MB_preFBC.csv'
-# df = pd.read_csv(observations_file_path)
-# prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/A9_fit.csv'
-# df_prior = pd.read_csv(prior_file_path)
-# ds_list = df['DS Number'].unique()
-# #mu_init = [4.69, 4.8]
-# #mu_ds = [108.85]
-# #beta_ds = [0.16, 0.15]
-# for ds in range(0, len(ds_list)):
-#     df_sub = df.loc[df['DS Number'] == ds_list[ds]]
-#     xj = np.array(df_sub['demand'])
-#     zj = np.array(df_sub['fail'])
-#     nj = np.array(df_sub['total'])
-#     mu_init = df_prior['theta1'][ds]
-#     beta_init = df_prior['theta2'][ds]
-#     updated_values = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init)
-#     print('Update fragility model parameter values:')
-#     print(updated_values)
+observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Fragilities/MexicoBeach/Observations_MB_preFBC.csv'
+df = pd.read_csv(observations_file_path)
+prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/A9_fit.csv'
+df_prior = pd.read_csv(prior_file_path)
+ds_list = df['DS Number'].unique()
+#mu_init = [4.69, 4.8]
+#mu_ds = [108.85]
+#beta_ds = [0.16, 0.15]
+for ds in range(0, len(ds_list)):
+    df_sub = df.loc[df['DS Number'] == ds_list[ds]]
+    xj = np.array(df_sub['demand'])
+    zj = np.array(df_sub['fail'])
+    nj = np.array(df_sub['total'])
+    mu_init = df_prior['theta1'][ds]
+    beta_init = df_prior['theta2'][ds]
+    draws = 12000
+    tune = 1000
+    burn = 1000
+    target_accept = 0.9
+    df_summary = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, target_accept)
+    df_summary.to_csv('MB_preFBC_BI.csv')
+    print('Update fragility model parameter values:')
+    print(df_summary)
 # Notes:
 # For MB case study: /24 + 4000 samples, 1000 tune
 # fine for most, not great for post FBC with permits /30 in this case
