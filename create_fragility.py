@@ -707,7 +707,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
         # Step 4: Generate summary statistics for the MCMC:
         print('Summary statistics for the MCMC:')
         print(az.summary(trace_idata))  # Note: can output this DataFrame if needed
-        df = az.summary(trace_idata, hdi_prob=0.89)
+        df = az.summary(trace_idata, hdi_prob=0.95)
         # Step 5: Sample from the posterior and save updated values for mean and std. dev:
         ppc = pm.sample_posterior_predictive(trace_idata, var_names=['theta1', 'theta2', 'like'])
         # Re-scale values for logarithmic mean:
@@ -728,7 +728,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
         mcmc_dict = {'draws': draws, 'burn': burn, 'tune': tune, 'target_accept': target_accept}
         for key in mcmc_dict:
             summary_dict[key] = mcmc_dict[key]
-        df_summary = pd.DataFrame(summary_dict)
+        df_summary = pd.DataFrame(summary_dict, index=[0])
         # Sample directly from the posterior to create figures:
         updated_values = {'theta1': {'mean': ppc['theta1'].mean(), 'std dev': np.std(ppc['theta1'])},
                           'theta2': {'mean': ppc['theta2'].mean(), 'std dev': np.std(ppc['theta2'])}}
@@ -737,6 +737,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
             # mu
             fig, ax = plt.subplots()
             ax.hist(ppc['theta1']/2.237, bins=25, density=True, alpha=0.4, color='b', label='posterior samples')
+            ax.set_xlim(70/2.237, 200/2.237)
             xmin, xmax = ax.set_xlim()
             x = np.linspace(xmin, xmax, 100)
             if norm_analysis:
@@ -754,6 +755,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
             # beta
             fig2, ax2 = plt.subplots()
             ax2.hist(ppc['theta2'], bins=25, density=True, alpha=0.4, color='b', label='posterior samples')
+            ax2.set_xlim(0, 0.3)
             xmin2, xmax2 = ax2.set_xlim()
             x2 = np.linspace(xmin2, xmax2, 100)
             p_prior2 = norm.pdf(x2, beta_init, 0.03)
@@ -785,8 +787,8 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
             ax3.set_ylim(0, 1.2)
             ax3.spines['right'].set_visible(False)
             ax3.spines['top'].set_visible(False)
-            az.plot_hdi(im/2.237, pf_ppc, hdi_prob=0.89, fill_kwargs={'alpha': 0.1, 'color': 'blue',
-                                                                      'label': '89% credible interval'})
+            az.plot_hdi(im/2.237, pf_ppc, hdi_prob=0.95, fill_kwargs={'alpha': 0.1, 'color': 'blue',
+                                                                      'label': '95% credible interval'})
             ax3.plot(im/2.237, pf_mean, label='mean of prediction', color='r', linestyle='dashed')
             ax3.plot(im/2.237, pf_sim, label='mean of simulation-based', color='k')
             # Plot the observations:
@@ -801,7 +803,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
     return df_summary
 
 
-observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Fragilities/MexicoBeach/Observations_MB_preFBC.csv'
+observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Fragilities/MexicoBeachAndPanamaCityBeach/Observations_FULL_preFBC.csv'
 df = pd.read_csv(observations_file_path)
 prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/A9_fit.csv'
 df_prior = pd.read_csv(prior_file_path)
@@ -821,7 +823,7 @@ for ds in range(0, len(ds_list)):
     burn = 1000
     target_accept = 0.9
     df_summary = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, target_accept)
-    df_summary.to_csv('MB_preFBC_BI.csv')
+    df_summary.to_csv('PCB_preFBC_DS' + str(ds+1) + '_BI.csv')
     print('Update fragility model parameter values:')
     print(df_summary)
 # Notes:
