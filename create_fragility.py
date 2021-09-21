@@ -688,7 +688,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
         trace = pm.sample(draws, cores=1, return_inferencedata=False, tune=tune, random_seed=52, target_accept=target_accept)
         #trace = trace[1000:]
         print('Without burn-in')
-        print(az.summary(az.from_pymc3(trace)))
+        print(az.summary(az.from_pymc3(trace), hdi_prob=0.95))
         trace_idata = az.from_pymc3(trace=trace[burn:])
         #trace = pm.sample(8000, cores=1, return_inferencedata=True, tune=2000, random_seed=52)  #tune=2000
         # (Optional): Plotting the trace and updated distributions for parameters:
@@ -736,7 +736,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
             # Plot prior and updated distributions for parameters:
             # mu
             fig, ax = plt.subplots()
-            ax.hist(ppc['theta1']/2.237, bins=25, density=True, alpha=0.4, color='b', label='posterior samples')
+            ax.hist(ppc['theta1']/2.237, bins=25, density=True, alpha=0.4, color='cornflowerblue', label='posterior samples')
             ax.set_xlim(70/2.237, 200/2.237)
             xmin, xmax = ax.set_xlim()
             x = np.linspace(xmin, xmax, 100)
@@ -754,7 +754,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
             plt.show()
             # beta
             fig2, ax2 = plt.subplots()
-            ax2.hist(ppc['theta2'], bins=25, density=True, alpha=0.4, color='b', label='posterior samples')
+            ax2.hist(ppc['theta2'], bins=25, density=True, alpha=0.4, color='cornflowerblue', label='posterior samples')
             ax2.set_xlim(0, 0.3)
             xmin2, xmax2 = ax2.set_xlim()
             x2 = np.linspace(xmin2, xmax2, 100)
@@ -768,7 +768,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
             ax2.legend()
             plt.show()
             # Calculate failure probabilities for prior, updated:
-            im = np.arange(70, 200, 5)
+            im = np.arange(70, 200, 2)
             # Mean of simulation-based fragility:
             if norm_analysis:
                 pf_sim = pf(im, mu_init*norm_factor, beta_init)
@@ -787,7 +787,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
             ax3.set_ylim(0, 1.2)
             ax3.spines['right'].set_visible(False)
             ax3.spines['top'].set_visible(False)
-            az.plot_hdi(im/2.237, pf_ppc, hdi_prob=0.95, fill_kwargs={'alpha': 0.1, 'color': 'blue',
+            az.plot_hdi(im/2.237, pf_ppc, hdi_prob=0.95, fill_kwargs={'alpha': 0.1, 'color': 'paleturquoise',
                                                                       'label': '95% credible interval'})
             ax3.plot(im/2.237, pf_mean, label='mean of prediction', color='r', linestyle='dashed')
             ax3.plot(im/2.237, pf_sim, label='mean of simulation-based', color='k')
@@ -823,7 +823,7 @@ for ds in range(0, len(ds_list)):
     burn = 1000
     target_accept = 0.9
     df_summary = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, target_accept)
-    df_summary.to_csv('PCB_preFBC_DS' + str(ds+1) + '_BI.csv')
+    df_summary.to_csv('MB_postFBC_rpermit_DS' + str(ds+1) + '_BI.csv')
     print('Update fragility model parameter values:')
     print(df_summary)
 # Notes:
