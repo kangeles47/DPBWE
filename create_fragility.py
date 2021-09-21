@@ -803,7 +803,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
     return df_summary
 
 
-observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Fragilities/MexicoBeachAndPanamaCityBeach/Observations_FULL_preFBC.csv'
+observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Fragilities/PanamaCityBeach/Observations_PCB_postFBC_rpermit.csv'
 df = pd.read_csv(observations_file_path)
 prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/A9_fit.csv'
 df_prior = pd.read_csv(prior_file_path)
@@ -823,7 +823,7 @@ for ds in range(0, len(ds_list)):
     burn = 1000
     target_accept = 0.9
     df_summary = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, target_accept)
-    df_summary.to_csv('MB_postFBC_rpermit_DS' + str(ds+1) + '_BI.csv')
+    df_summary.to_csv('PCB_postFBC_rpermit_DS' + str(ds+1) + '_BI.csv')
     print('Update fragility model parameter values:')
     print(df_summary)
 # Notes:
