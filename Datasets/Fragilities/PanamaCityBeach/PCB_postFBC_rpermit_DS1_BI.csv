@@ -1,0 +1,2 @@
+,theta1mean,theta1sd,theta1hdi_2.5%,theta1hdi_97.5%,theta1mcse_mean,theta1mcse_sd,theta1ess_bulk,theta1ess_tail,theta1r_hat,theta2mean,theta2sd,theta2hdi_2.5%,theta2hdi_97.5%,theta2mcse_mean,theta2mcse_sd,theta2ess_bulk,theta2ess_tail,theta2r_hat,draws,burn,tune,target_accept
+0,123.711,0.645,0.95,0.969,0.0,0.0,7027.0,8701.0,1.0,0.075,0.006,0.065,0.087,0.0,0.0,7218.0,8896.0,1.0,12000,1000,1000,0.9
