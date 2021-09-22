@@ -167,7 +167,7 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
 
 
 def run_hh_study(inventory='C:/Users/Karen/Desktop/HH_NSF_CMMI1759996_BuildingAssessments.csv', hazard_type='wind',
-                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/ARA_Hurricane_Irma_Windspeed_v12.csv', component_type='roof cover', parcel_id='12d068d3-5948-4d6f-9204-e04942773081', sfh_flag=True):
+                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/ARA_Hurricane_Harvey_Windspeed_v26.csv', component_type='roof cover', parcel_id='12d068d3-5948-4d6f-9204-e04942773081', sfh_flag=True):
     # Irma case study:
     # Step 1: Create a Site Class that will hold all parcel-specific data models:
     site = Site()
@@ -238,4 +238,4 @@ def run_hh_study(inventory='C:/Users/Karen/Desktop/HH_NSF_CMMI1759996_BuildingAs
                                file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='09/16/2021',
                                hazard_file_path=hazard_file_path, sfh_flag=True)
 
-run_hm_study()
+run_hh_study()
