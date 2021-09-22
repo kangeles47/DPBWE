@@ -184,3 +184,39 @@ ax6[2].plot(im*mph_to_ms, pf_fullr, color='b')
 ax6[2].plot(im*mph_to_ms, pf_full_fbcr, color='b', linestyle='dotted')
 ax6[2].set_title('Mexico Beach and \nPanama City Beach')
 plt.show()
+
+# Create plots for DM 1, 2, 3 for a/b, c/d for roof permit vs. non roof permit data
+df_case1_both = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Fragilities/MexicoBeachAndPanamaCityBeach/MB_PCB_preFBC_BI.csv')
+df_case2_both = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Fragilities/MexicoBeachAndPanamaCityBeach/MB_PCB_preFBC_rpermit_BI.csv')
+df_case3_both = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Fragilities/MexicoBeachAndPanamaCityBeach/MB_PCB_postFBC_BI.csv')
+df_case4_both = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Fragilities/MexicoBeachAndPanamaCityBeach/MB_PCB_postFBC_rpermit_BI.csv')
+ds_list = [1, 2, 3]
+case_list = [1, 2, 3, 4]
+df_list = [df_case1_both, df_case2_both, df_case3_both, df_case4_both]
+fig7, ax7 = plt.subplots(2,3)
+for j in ax7:
+    j.set_clip_on(False)
+    j.set_ylim(0, 1.2)
+    j.set_xlabel('Wind speed [m/s]')
+    j.spines['right'].set_visible(False)
+    j.spines['top'].set_visible(False)
+for ds in ds_list:
+    for case in case_list:
+        # Calculate P(f) for this case and damage state:
+        df_sub = df_list[case].loc[df_list[case]['Damage Measure']==ds]
+        if len(df_sub) == 0:
+            pass
+        else:
+            pf_sub = pf(im, df_sub['theta1mean'], df_sub['theta2mean'])
+            if case==1:
+                ax7[0, ds-1].plot(im, pf_sub, '-', label='without roof permits')
+            elif case == 2:
+                ax7[0, ds-1].plot(im, pf_sub, label='with roof permits')
+            elif case == 3:
+                ax7[1, ds - 1].plot(im, pf_sub, '-', label='without roof permits')
+            elif case == 4:
+                ax7[1, ds - 1].plot(im, pf_sub, label='with roof permits')
+ax7[0,0].set_ylabel('Probability of Failure')
+ax7[1,0].set_ylabel('Probability of Failure')
+ax7.legend()
+plt.show()
