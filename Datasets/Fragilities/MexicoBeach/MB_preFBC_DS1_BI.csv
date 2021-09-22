@@ -1,2 +1,2 @@
-theta1mean,theta1sd,theta1hdi_2.5%,theta1hdi_97.5%,theta1mcse_mean,theta1mcse_sd,theta1ess_bulk,theta1ess_tail,theta1r_hat,theta2mean,theta2sd,theta2hdi_2.5%,theta2hdi_97.5%,theta2mcse_mean,theta2mcse_sd,theta2ess_bulk,theta2ess_tail,theta2r_hat,draws,burn,tune,target_accept
-128.59,5.177,0.709,0.83,0.0,0.0,5640.0,6567.0,1.0,0.169,0.027,0.117,0.224,0.0,0.0,5541.0,5328.0,1.0,12000,1000,1000,0.9
+theta1mean,theta1sd,theta1hdi_2.5%,theta1hdi_97.5%,theta1mcse_mean,theta1mcse_sd,theta1ess_bulk,theta1ess_tail,theta1r_hat,theta2mean,theta2sd,theta2hdi_2.5%,theta2hdi_97.5%,theta2mcse_mean,theta2mcse_sd,theta2ess_bulk,theta2ess_tail,theta2r_hat,draws,target_accept
+128.59,5.177,118.23599999999999,138.44299999999998,0.0,0.0,6028.0,7020.0,1.0,0.168,0.027,0.115,0.222,0.0,0.0,6003.0,5740.0,1.0,12000,0.9
