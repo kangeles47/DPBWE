@@ -1,0 +1,4 @@
+damage_measure,theta1mean,theta1sd,theta1hdi_2.5%,theta1hdi_97.5%,theta1mcse_mean,theta1mcse_sd,theta1ess_bulk,theta1ess_tail,theta1r_hat,theta2mean,theta2sd,theta2hdi_2.5%,theta2hdi_97.5%,theta2mcse_mean,theta2mcse_sd,theta2ess_bulk,theta2ess_tail,theta2r_hat,draws,target_accept
+1,123.413,0.668,122.077,124.749,0,0,13529,11384,1,0.104,0.007,0.09,0.118,0,0,13195,12998,1,10000,0.8
+2,151.135,2.839,145.791,156.646,0,0,6452,6104,1,0.22,0.016,0.191,0.251,0,0,6126,6129,1,10000,0.95
+3,162.324,3.674,155.477,169.505,0,0,5491,5488,1,0.222,0.016,0.192,0.253,0,0,5508,6413,1,10000,0.95
