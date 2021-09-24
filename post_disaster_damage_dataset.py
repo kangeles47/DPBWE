@@ -986,22 +986,58 @@ class FemaHma(PostDisasterDamageDataset):
         from seaborn import kdeplot
         import numpy as np
         # Use Kernel Density Estimation to fit the data and extract resulting values:
-        kde = kdeplot(hazard_list)
-        line = kde.lines[0]
+        ax = kdeplot(hazard_list)
+        line = ax.lines[0]
         x, y = line.get_data()
         # Plot the data and its KDE plot:
-        fig, ax = plt.subplots()
-        ax.plot(x, y)
-        # Let's try calculating the gradient:
-        step_size = x[1] - x[0]
-        grad = np.gradient(y, step_size)
-        grad_zero = np.where(grad == 0)
+        ax.hist(hazard_list, density=True, color='gray')
+        # Find the first minimum:
+        max_pt_list = []
+        for i in range(0, len(y)):
+            if i == 0:
+                pass
+            elif y[i-1] < y[i] and y[i] > y[i+1]:
+                max_point_idx = i
+                max_pt_list.append(max_point_idx)
+            if len(max_pt_list) == 2:
+                break
+        for i in range(0, len(y)):
+            if i == 0:
+                pass
+            elif y[i-1] > y[i] and y[i] < y[i+1]:
+                min_point_idx = i
+                break
+        for j in max_pt_list:
+            ax.plot(x[j], y[j], 'ro')
+        plt.show()
+        # Split the data according to whether < > wind speed value at minimum:
+        split1, split2 = [], []
+        for h in hazard_list:
+            if h < x[min_point_idx]:
+                split1.append(h)
+            else:
+                split2.append(h)
+        # Fit normal distributions to both sets of data:
+        mu1, std_dev1 = norm.fit(split1)
+        mu2, std_dev2 = norm.fit(split2)
+        # # Plot the distributions:
+        x1 = np.linspace(min(np.array(split1)), max(np.array(split1)))
+        x2 = np.linspace(min(np.array(split2)), max(np.array(split2)))
         # And calculate the slope to make sure we get
-        # Adding in here braindump of fit code:
-        shape, loc, scale = lognorm.fit(hazard_list)
-        x = np.linspace(min(np.array(hazard_list)), max(np.array(hazard_list)))
-        log_pdf = lognorm.pdf(x, shape, loc, scale)
-        plt.plot(x, log_pdf)
+        xfull = np.linspace(min(np.array(hazard_list)), max(np.array(hazard_list)))
+        norm_pdf1 = norm.pdf(x, mu1, std_dev1)
+        norm_pdf2 = norm.pdf(x, mu2, std_dev2)
+        plt.plot(x, norm_pdf1)
+        plt.plot(x, norm_pdf2)
+        from sklearn import mixture
+        hdata = np.array(hazard_list)
+        gmm = mixture.GaussianMixture(n_components=2, max_iter=1000, covariance_type='full').fit(hdata)
+        print('means')
+        print(gmm.means_)
+        # print(gmm.covariances_)
+        print('std')
+        print(np.sqrt(gmm.covariances_))
+
         from matplotlib import rcParams
         rcParams['font.family'] = "Times New Roman"
         rcParams.update({'font.size': 12})
@@ -1011,11 +1047,6 @@ class FemaHma(PostDisasterDamageDataset):
             plt.xlabel('Wind speed [mph]')
         else:
             pass
-        plt.show()
-        # Plot the final cdf:
-        y = lognorm.cdf(x, shape, loc, scale)
-        inv_y = 1 - y
-        plt.plot(x, y, label='P(X >= x), DS1')
         plt.show()
         return hma_bldg_list
 
