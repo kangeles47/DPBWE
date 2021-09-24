@@ -15,7 +15,7 @@ from OBDM.zone import Site, Building
 from OBDM.element import Roof
 from bldg_code import FBC, TX
 from create_fragility import execute_fragility_workflow
-from post_disaster_damage_dataset import STEER, BayCountyPermits
+from post_disaster_damage_dataset import STEER, BayCountyPermits, FemaHma, FemaIahrld
 
 
 def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_PCB.csv', hazard_type='wind',
@@ -116,7 +116,13 @@ def run_hm_study(inventory='C:/Users/Karen/Desktop/MB_PCB.csv', hazard_type='win
 
 
 def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_type='wind',
-                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/ARA_Hurricane_Irma_Windspeed_v12.csv', component_type='roof cover', parcel_id='57360360006'):
+                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/ARA_Hurricane_Irma_Windspeed_v12.csv',
+                 component_type='roof cover', parcel_id='57360360006'):
+    # Make sure StEER data is ready for parsing:
+    steer_obj = STEER()
+    steer_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/StEER/HI-DA.csv'
+    # Make sure the StEER data is ready for querying:
+    steer_obj.add_query_column(steer_file_path)
     # Irma case study:
     # Step 1: Create a Site Class that will hold all parcel-specific data models:
     site = Site()
@@ -156,9 +162,8 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
         else:
             pass
     # Step 6: Populate variables with list of post-disaster damage dataset types and file paths:
-    from post_disaster_damage_dataset import STEER, FemaHma, FemaIahrld
     data_types = [STEER(), FemaHma(), FemaIahrld()]
-    file_paths = ['C:/Users/Karen/PycharmProjects/DPBWE/Datasets/StEER/HI-DA.csv', 'C:/Users/Karen/Desktop/HMA_Irma.csv', 'C:/Users/Karen/Desktop/Irma_IAHR_LD_V1.csv']
+    file_paths = [steer_file_path, 'C:/Users/Karen/Desktop/HMA_Irma.csv', 'C:/Users/Karen/Desktop/Irma_IAHR_LD_V1.csv']
     # Step 7: Run the workflow:
     execute_fragility_workflow(bldg, site, component_type=component_type, hazard_type=hazard_type,
                                event_year=2017, event_name='Hurricane Irma', data_types=data_types,
@@ -167,7 +172,8 @@ def run_hi_study(inventory='C:/Users/Karen/Desktop/IrmaBuildings.csv', hazard_ty
 
 
 def run_hh_study(inventory='C:/Users/Karen/Desktop/HH_NSF_CMMI1759996_BuildingAssessments.csv', hazard_type='wind',
-                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/ARA_Hurricane_Harvey_Windspeed_v26.csv', component_type='roof cover', parcel_id='12d068d3-5948-4d6f-9204-e04942773081', sfh_flag=True):
+                 hazard_file_path='C:/Users/Karen/PycharmProjects/DPBWE/Datasets/WindFields/ARA_Hurricane_Harvey_Windspeed_v26.csv',
+                 component_type='roof cover', parcel_id='12d068d3-5948-4d6f-9204-e04942773081', sfh_flag=True):
     # Irma case study:
     # Step 1: Create a Site Class that will hold all parcel-specific data models:
     site = Site()
@@ -238,4 +244,4 @@ def run_hh_study(inventory='C:/Users/Karen/Desktop/HH_NSF_CMMI1759996_BuildingAs
                                file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='09/16/2021',
                                hazard_file_path=hazard_file_path, sfh_flag=True)
 
-run_hh_study()
+run_hi_study()
