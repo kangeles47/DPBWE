@@ -82,7 +82,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                 df_fema = data_types[i].pull_fema_hma_data(event_name)
             else:
                 df_fema = pd.read_csv(file_paths[i])
-            new_bldgs = data_types[i].add_fema_hma_data(bldg, component_type, hazard_type, df_fema, hazard_file_path)
+            new_bldgs = data_types[i].add_fema_hma_data(bldg, component_type, hazard_type, df_fema, hazard_file_path, damage_scale_name)
         # Add new building models to list of similar buildings:
         if len(new_bldgs) > 0:
             for nbldg in new_bldgs:
