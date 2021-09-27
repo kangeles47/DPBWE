@@ -125,9 +125,9 @@ class STEER(PostDisasterDamageDataset):
                     new_address = ''
                     for s in sp[:-2]:
                         new_address = new_address + s.upper().strip(',') + ' '
-                    county = df_steer['address_sub_admin_area'][row].upper()
-                    state = ' TX'
-                    new_address = new_address + county + state
+                    # county = df_steer['address_sub_admin_area'][row].upper()
+                    # state = ' TX'
+                    # new_address = new_address + county + state
                     query_col.append(new_address.strip())
                 except AttributeError:
                     query_col.append('NONE')
@@ -945,7 +945,7 @@ class FemaHma(PostDisasterDamageDataset):
         hma_bldg_list = []
         hazard_list = []
         for row in range(0, len(df_sub['damageCategory'])):
-            for prop in range(0, df_sub['numberOfProperties'][row] + 1):
+            for prop in range(0, df_sub['numberOfProperties'][row]):
                 data_details = {'available': True, 'fidelity': self,
                                 'component type': component_type,
                                 'hazard type': hazard_type, 'value': None}
@@ -1020,17 +1020,24 @@ class FemaHma(PostDisasterDamageDataset):
             plt.legend()
             plt.show()
             # Assign damage measures for each building:
+            final_hbldg_list = []
             for hbldg in hma_bldg_list:
-                if 49 in hbldg.hasElement['Roof'][0].hasDamageData['value'] and damage_scale_name == 'HAZUS-HM':
-                    dm1_prob = 1-norm.cdf(hbldg.hasDemand['wind speed'], gmm.means_[0], np.sqrt(gmm.covariances_)[0])[0]
-                    dm2_prob = norm.cdf(hbldg.hasDemand['wind speed'], gmm.means_[1], np.sqrt(gmm.covariances_)[1])[0]
-                    if dm1_prob > dm2_prob:
-                        hbldg.hasElement['Roof'][0].hasDamageData['value'] = [2, 15]
-                        hbldg.hasDamageData['roof cover']['value'] = [2, 15]
-                    else:
-                        hbldg.hasElement['Roof'][0].hasDamageData['value'] = [15, 50]
-                        hbldg.hasDamageData['roof cover']['value'] = [15, 50]
+                if bldg.hasLocation['City'].upper() == 'MARCO ISLAND' or bldg.hasLocation['City'].upper() == 'KEY WEST':
+                    if hbldg.hasLocation['City'].upper() == 'MARCO ISLAND' or hbldg.hasLocation['City'].upper() == 'KEY WEST':
+                        if 49 in hbldg.hasElement['Roof'][0].hasDamageData['value'] and damage_scale_name == 'HAZUS-HM':
+                            dm1_prob = 1-norm.cdf(hbldg.hasDemand['wind speed'], gmm.means_[0], np.sqrt(gmm.covariances_)[0])[0]
+                            dm2_prob = norm.cdf(hbldg.hasDemand['wind speed'], gmm.means_[1], np.sqrt(gmm.covariances_)[1])[0]
+                            if dm1_prob > dm2_prob:
+                                hbldg.hasElement['Roof'][0].hasDamageData['value'] = [2, 15]
+                                hbldg.hasDamageData['roof cover']['value'] = [2, 15]
+                            else:
+                                hbldg.hasElement['Roof'][0].hasDamageData['value'] = [15, 50]
+                                hbldg.hasDamageData['roof cover']['value'] = [15, 50]
+                        else:
+                            print('Damage measure not reflected in data:')
+                            print(hbldg.hasElement['Roof'][0].hasDamageData['value'])
+                        # Add building to final HMA building list:
+                        final_hbldg_list.append(hbldg)
                 else:
-                    print('Damage measure not reflected in data:')
-                    print(hbldg.hasElement['Roof'][0].hasDamageData['value'])
-        return hma_bldg_list
+                    pass
+        return final_hbldg_list
