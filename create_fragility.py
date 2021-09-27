@@ -798,22 +798,22 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, target_accept, 
     return df_summary
 
 
-observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_Irma_commercial.csv'
-#observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_Harvey_coast.csv'
-df = pd.read_csv(observations_file_path)
-prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/F8_fit.csv'
-df_prior = pd.read_csv(prior_file_path)
-ds_list = df['DS Number'].unique()
-for ds in range(2, len(ds_list)):
-    df_sub = df.loc[df['DS Number'] == ds_list[ds]]
-    xj = np.array(df_sub['demand'])
-    zj = np.array(df_sub['fail'])
-    nj = np.array(df_sub['total'])
-    mu_init = df_prior['theta1'][ds]
-    beta_init = df_prior['theta2'][ds]
-    draws = 10000
-    target_accept = 0.95
-    df_summary = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, target_accept)
-    df_summary.to_csv('Irma_comm_DS' + str(ds+1) + '_BI.csv', index=False)
-    print('Update fragility model parameter values:')
-    print(df_summary)
+# observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_Irma_commercial.csv'
+# #observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_Harvey_coast.csv'
+# df = pd.read_csv(observations_file_path)
+# prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/F8_fit.csv'
+# df_prior = pd.read_csv(prior_file_path)
+# ds_list = df['DS Number'].unique()
+# for ds in range(2, len(ds_list)):
+#     df_sub = df.loc[df['DS Number'] == ds_list[ds]]
+#     xj = np.array(df_sub['demand'])
+#     zj = np.array(df_sub['fail'])
+#     nj = np.array(df_sub['total'])
+#     mu_init = df_prior['theta1'][ds]
+#     beta_init = df_prior['theta2'][ds]
+#     draws = 10000
+#     target_accept = 0.95
+#     df_summary = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, target_accept)
+#     df_summary.to_csv('Irma_comm_DS' + str(ds+1) + '_BI.csv', index=False)
+#     print('Update fragility model parameter values:')
+#     print(df_summary)

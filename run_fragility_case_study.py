@@ -236,12 +236,12 @@ def run_hh_study(inventory='C:/Users/Karen/Desktop/HH_NSF_CMMI1759996_BuildingAs
         else:
             pass
     # Step 6: Populate variables with list of post-disaster damage dataset types and file paths:
-    data_types = [STEER()]
-    file_paths = [inventory]
+    data_types = [STEER(), FemaIahrld()]
+    file_paths = [inventory, 'API']
     # Step 7: Run the workflow:
     execute_fragility_workflow(bldg, site, component_type=component_type, hazard_type=hazard_type,
                                event_year=2017, event_name='Hurricane Harvey', data_types=data_types,
                                file_paths=file_paths, damage_scale_name='HAZUS-HM', analysis_date='09/16/2021',
                                hazard_file_path=hazard_file_path, sfh_flag=True)
 
-run_hi_study()
+run_hh_study()

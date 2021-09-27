@@ -621,6 +621,8 @@ class FemaIahrld(PostDisasterDamageDataset):
             disasterNumber = '4399'
         elif event_name == 'Hurricane Irma':
             disasterNumber = '4337'
+        elif event_name == 'Hurricane Harvey':
+            disasterNumber = '4332'
         else:
             pass
         query = api_endpoint + '?$filter=disasterNumber eq ' + disasterNumber
