@@ -69,7 +69,7 @@ class PostDisasterDamageDataset:
             self.hasDamageScale['type'] = 'FEMA HMA'
             global_ds_nums = [0, 1, 2]
             global_ds_desc = ['Damage <= 49%', 'Damage >=50%', 'Total Loss']
-            global_ds_vals = [[0 - 49], [50, 99], 100]
+            global_ds_vals = [[0, 49], [50, 99], 100]
             if component_flag:
                 if 'roof' in component_type:
                     comp_ds_nums = [0, 1, 2]
@@ -125,9 +125,9 @@ class STEER(PostDisasterDamageDataset):
                     new_address = ''
                     for s in sp[:-2]:
                         new_address = new_address + s.upper().strip(',') + ' '
-                    county = df_steer['address_sub_admin_area'][row].upper()
-                    state = ' TX'
-                    new_address = new_address + county + state
+                    # county = df_steer['address_sub_admin_area'][row].upper()
+                    # state = ' TX'
+                    # new_address = new_address + county + state
                     query_col.append(new_address.strip())
                 except AttributeError:
                     query_col.append('NONE')
@@ -621,6 +621,8 @@ class FemaIahrld(PostDisasterDamageDataset):
             disasterNumber = '4399'
         elif event_name == 'Hurricane Irma':
             disasterNumber = '4337'
+        elif event_name == 'Hurricane Harvey':
+            disasterNumber = '4332'
         else:
             pass
         query = api_endpoint + '?$filter=disasterNumber eq ' + disasterNumber
@@ -839,7 +841,7 @@ class FemaHma(PostDisasterDamageDataset):
             print('No data currently available for this event via API')
         return df_fema
 
-    def add_fema_hma_data(self, bldg, component_type, hazard_type, df_fema, hazard_file_path):
+    def add_fema_hma_data(self, bldg, component_type, hazard_type, df_fema, hazard_file_path, damage_scale_name):
         """
         A function to find damage observations within the Hazard Mitigation Assistance Mitigated Properties dataset.
 
@@ -915,18 +917,27 @@ class FemaHma(PostDisasterDamageDataset):
                         # Drop any observations specific to storm shutters:
                         df_sub.drop(df_sub[df_sub['title'].str.contains('SHUTTER')].index, inplace=True)
                         df_sub = df_sub.reset_index(drop=True)
-                        self.create_hma_data_models(bldg, df_sub, component_type, hazard_type, hazard_file_path)
+                        # Pull create data models function created for irma, commercial
+                        disaster_number = df_fema['disasterNumber'][0]
+                        hma_bldgs = self.create_hma_data_models(bldg, df_sub, component_type, hazard_type,
+                                                                hazard_file_path, damage_scale_name, disaster_number)
                     elif component_type == 'window':
                         df_sub = df_sub[df_sub['title'].str.contains('SHUTTER')]
                     else:
                         print('Component type not supported')
                 else:
                     print('Hazards other than wind not currently supported')
-            else:
-                pass
-        return df_sub
+        else:
+            pass
+        try:
+            if len(hma_bldgs) > 0:
+                print('Successfully added damage descriptions from HMA dataset')
+        except NameError:
+            hma_bldgs = []
+            print('No HMA damage descriptions found for this case study')
+        return hma_bldgs
 
-    def create_hma_data_models(self, bldg, df_sub, component_type, hazard_type, hazard_file_path):
+    def create_hma_data_models(self, bldg, df_sub, component_type, hazard_type, hazard_file_path, damage_scale_name, disaster_number):
         # Import necessary modules:
         from shapely.geometry import Point
         from OBDM.zone import Building, Story
@@ -936,7 +947,7 @@ class FemaHma(PostDisasterDamageDataset):
         hma_bldg_list = []
         hazard_list = []
         for row in range(0, len(df_sub['damageCategory'])):
-            for prop in range(0, df_sub['numberOfProperties'][row] + 1):
+            for prop in range(0, df_sub['numberOfProperties'][row]):
                 data_details = {'available': True, 'fidelity': self,
                                 'component type': component_type,
                                 'hazard type': hazard_type, 'value': None}
@@ -975,61 +986,64 @@ class FemaHma(PostDisasterDamageDataset):
                 if '49' in df_sub['damageCategory'][row]:
                     data_details['value'] = self.hasDamageScale['global damage states']['value'][0]
                 elif '99' in df_sub['damageCategory'][row]:
-                    data_details['value'] = self.hasDamageScale['component damage states']['value'][1]
+                    data_details['value'] = self.hasDamageScale['global damage states']['value'][1]
                 else:  # Total loss
-                    data_details['value'] = self.hasDamageScale['component damage states']['value'][2]
+                    data_details['value'] = self.hasDamageScale['global damage states']['value'][2]
                 new_parcel.hasElement['Roof'][0].hasDamageData = data_details
                 new_parcel.hasDamageData['roof cover'] = new_parcel.hasElement['Roof'][0].hasDamageData
                 hma_bldg_list.append(new_parcel)
-        # Create a histogram to help the user in their designation of damage measures:
-        from scipy.stats.distributions import norm, lognorm
-        from seaborn import kdeplot
-        import numpy as np
-        # Use Kernel Density Estimation to fit the data and extract resulting values:
-        kde = kdeplot(hazard_list)
-        line = kde.lines[0]
-        x, y = line.get_data()
-        # Plot the data and its KDE plot:
-        fig, ax = plt.subplots()
-        ax.plot(x, y)
-        # Let's try calculating the gradient:
-        step_size = x[1] - x[0]
-        grad = np.gradient(y, step_size)
-        grad_zero = np.where(grad == 0)
-        # And calculate the slope to make sure we get
-        # Adding in here braindump of fit code:
-        shape, loc, scale = lognorm.fit(hazard_list)
-        x = np.linspace(min(np.array(hazard_list)), max(np.array(hazard_list)))
-        log_pdf = lognorm.pdf(x, shape, loc, scale)
-        plt.plot(x, log_pdf)
-        from matplotlib import rcParams
-        rcParams['font.family'] = "Times New Roman"
-        rcParams.update({'font.size': 12})
-        plt.hist(hazard_list, bins=20)
-        plt.ylabel('Frequency')
-        if hazard_type == 'wind':
-            plt.xlabel('Wind speed [mph]')
-        else:
-            pass
-        plt.show()
-        # Plot the final cdf:
-        y = lognorm.cdf(x, shape, loc, scale)
-        inv_y = 1 - y
-        plt.plot(x, y, label='P(X >= x), DS1')
-        plt.show()
-        return hma_bldg_list
-
-    def assign_hma_dms(self, hma_bldg_list, spatial_filter, translate_to, component_type):
-        # Use spatial filter to remove non-applicable buildings:
-        for b in hma_bldg_list:
-            if b.hasLocation['Geodesic'].within(spatial_filter):
-                dm_idx = self.hasDamageScale['global damage states']['value'].index(b.hasDamage)
-                if component_type == 'roof cover':
-                    b.hasElement['Roof'][0].hasDamageData['value'], b.hasDamageData['roof cover'] = translate_to[dm_idx]
+        # Translation of HMA damage measure to damage_scale_name:
+        if disaster_number == 4337 and bldg.isComm:
+            # Generate wind speed histogram for 0-49% damage and segement into HAZUS-HM damage measures:
+            from scipy.stats.distributions import norm
+            from sklearn import mixture
+            from seaborn import kdeplot
+            import numpy as np
+            from matplotlib import rcParams
+            rcParams['font.family'] = "Times New Roman"
+            rcParams.update({'font.size': 16})
+            # Plot a histogram of the wind speed data and its pdf:
+            ax = kdeplot(np.array(hazard_list)/2.237, linewidth=2)
+            line = ax.lines[0]
+            x, y = line.get_data()
+            ax.hist(np.array(hazard_list)/2.237, density=True, color='lightgray')
+            ax.set_xlabel('Wind Speed [m/s]')
+            ax.set_xlim(20, 60)
+            plt.show()
+            # Segment the dataset into two clusters:
+            xfull = np.linspace(min(x), max(x), 100)*2.237
+            #xfull = np.linspace(min(np.array(hazard_list)), max(np.array(hazard_list)))
+            hdata = np.array(hazard_list)
+            hdata = hdata.reshape(-1,1)
+            gmm = mixture.GaussianMixture(n_components=2, max_iter=1000, covariance_type='full').fit(hdata)
+            print('means')
+            print(gmm.means_)
+            print('std')
+            print(np.sqrt(gmm.covariances_))
+            plt.hist(np.array(hazard_list) / 2.237, density=True, color='lightgray')
+            plt.plot(xfull/2.237, norm.pdf(xfull, gmm.means_[0], np.sqrt(gmm.covariances_)[0])[0], linewidth=2, label='Damage measure 1 density')
+            plt.plot(xfull/2.237, norm.pdf(xfull, gmm.means_[1], np.sqrt(gmm.covariances_)[1])[0], '--', linewidth=2, label='Damage meaure 2 density')
+            plt.legend()
+            plt.show()
+            # Assign damage measures for each building:
+            final_hbldg_list = []
+            for hbldg in hma_bldg_list:
+                if bldg.hasLocation['City'].upper() == 'MARCO ISLAND' or bldg.hasLocation['City'].upper() == 'KEY WEST':
+                    if hbldg.hasLocation['City'].upper() == 'MARCO ISLAND' or hbldg.hasLocation['City'].upper() == 'KEY WEST':
+                        if 49 in hbldg.hasElement['Roof'][0].hasDamageData['value'] and damage_scale_name == 'HAZUS-HM':
+                            dm1_prob = 1-norm.cdf(hbldg.hasDemand['wind speed'], gmm.means_[0], np.sqrt(gmm.covariances_)[0])[0]
+                            dm2_prob = norm.cdf(hbldg.hasDemand['wind speed'], gmm.means_[1], np.sqrt(gmm.covariances_)[1])[0]
+                            if dm1_prob > dm2_prob:
+                                hbldg.hasElement['Roof'][0].hasDamageData['value'] = [2, 15]
+                                hbldg.hasDamageData['roof cover']['value'] = [2, 15]
+                            else:
+                                hbldg.hasElement['Roof'][0].hasDamageData['value'] = [15, 50]
+                                hbldg.hasDamageData['roof cover']['value'] = [15, 50]
+                        else:
+                            print('Damage measure not reflected in data:')
+                            print(hbldg.hasElement['Roof'][0].hasDamageData['value'])
+                        # Add building to final HMA building list:
+                        final_hbldg_list.append(hbldg)
                 else:
                     pass
-            else:
-                pass
-
-    def find_fit_(self):
-        pass
+        return final_hbldg_list

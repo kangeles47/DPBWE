@@ -82,7 +82,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
                 df_fema = data_types[i].pull_fema_hma_data(event_name)
             else:
                 df_fema = pd.read_csv(file_paths[i])
-            new_bldgs = data_types[i].add_fema_hma_data(bldg, component_type, hazard_type, df_fema, hazard_file_path)
+            new_bldgs = data_types[i].add_fema_hma_data(bldg, component_type, hazard_type, df_fema, hazard_file_path, damage_scale_name)
         # Add new building models to list of similar buildings:
         if len(new_bldgs) > 0:
             for nbldg in new_bldgs:
@@ -105,7 +105,10 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
         for s in sim_bldgs:
             # Step 4: Export attributes for all sample buildings (for sanity checking):
             sample_dict['Parcel Id'].append(s.hasID)
-            sample_dict['Address'].append(s.hasLocation['Address'])
+            if s.hasLocation['Address'] is not None:
+                sample_dict['Address'].append(s.hasLocation['Address'])
+            else:
+                sample_dict['Address'].append(s.hasLocation['City'] + ', ' + s.hasLocation['State'])
             sample_dict['Stories'].append(len(s.hasStory))
             sample_dict['Value'].append(s.hasElement['Roof'][0].hasDamageData['value'])
             sample_dict['Demand Value'].append(s.hasElement['Roof'][0].hasDemand['wind speed'])
@@ -121,7 +124,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             if component_type == 'roof cover':
                 sample_dict[component_type].append(s.hasElement['Roof'][0].hasCover)
         # Export as csv file:
-        pd.DataFrame(sample_dict).to_csv('SampleBuildings_FULL_postFBC_rpermit.csv', index=False)
+        pd.DataFrame(sample_dict).to_csv('SampleBuildings_Irma_commercial.csv', index=False)
     # Step 6: Bayesian Parameter Estimation
     # Step 6a: Populate the prior:
     if hazard_type == 'wind' and damage_scale_name == 'HAZUS-HM':
@@ -131,7 +134,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
     # Step 6b: Get input parameters for the likelihood function:
     lparams = get_likelihood_params(sim_bldgs, damage_scale_name, component_type, hazard_type)
     # Export into DataFrame:
-    df_params = pd.DataFrame(columns=['DS Number', 'demand', 'fail', 'total'])
+    df_params = pd.DataFrame(columns=['DS Number', 'demand', 'fail', 'total'], dtype='object')
     for key in lparams:
         ds_array = np.ones(len(lparams[key]['total'])) * key
         new_dict = {'DS Number': ds_array, 'demand': lparams[key]['demand'], 'fail': lparams[key]['fail'],
@@ -146,16 +149,9 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             df_params = df_params.drop(df_sub.index)
         else:
             pass
-    df_params.to_csv('Observations_FULL_postFBC_rpermit.csv', index=False)
+    df_params.to_csv('Observations_Irma_commercial.csv', index=False)
     # Calculate MLE estimate for comparison:
     mle_params = get_point_estimate(lparams)
-    # Step 6c: Run Bayesian Parameter Estimation:
-    # Step 7: Plotting:
-    if hazard_type == 'wind':
-        if length_unit == 'ft':
-            demand_values = np.arange(70, 200, 10)  # mph
-        elif length_unit == 'm':
-            demand_values = np.arange(30, 90, 5)  # m/s
 
 
 def conduct_bayesian(observations_file_path, mu_init, beta_init):
@@ -618,7 +614,7 @@ def get_wind_speed(bldg, wind_speed_file_path, exposure, unit):
     return round(v_local)
 
 
-def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, target_accept, plot_flag=True):
+def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, target_accept, plot_flag=True):
     """
     A function to conduct Bayesian updating of fragility models.
     (Optional): Produce MCMC-related plots (trace). Default: True
@@ -685,11 +681,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
          #   print(RV.name, RV.logp(model.test_point))
         # Step 3c: Determine the posterior
         # Note: can manually change number of cores if more computational power is available.
-        trace = pm.sample(draws, cores=1, return_inferencedata=False, tune=tune, random_seed=52, target_accept=target_accept)
-        #trace = trace[1000:]
-        print('Without burn-in')
-        print(az.summary(az.from_pymc3(trace), hdi_prob=0.95))
-        trace_idata = az.from_pymc3(trace=trace[burn:])
+        trace_idata = pm.sample(draws, cores=1, return_inferencedata=True, random_seed=52, target_accept=target_accept)
         #trace = pm.sample(8000, cores=1, return_inferencedata=True, tune=2000, random_seed=52)  #tune=2000
         # (Optional): Plotting the trace and updated distributions for parameters:
         if plot_flag:
@@ -722,13 +714,16 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
         for row in df.index:
             for col in df.columns:
                 new_key = row + col
-                new_val = df[col][row]
+                if 'hdi' in new_key and 'theta1' in new_key and norm_analysis:
+                    new_val = df[col][row]*norm_factor
+                else:
+                    new_val = df[col][row]
                 summary_dict[new_key] = new_val
         # Export MCMC details:
-        mcmc_dict = {'draws': draws, 'burn': burn, 'tune': tune, 'target_accept': target_accept}
+        mcmc_dict = {'draws': draws, 'target_accept': target_accept}
         for key in mcmc_dict:
             summary_dict[key] = mcmc_dict[key]
-        df_summary = pd.DataFrame(summary_dict, index=[0])
+        df_summary = pd.DataFrame(summary_dict, index=[0], dtype='object')
         # Sample directly from the posterior to create figures:
         updated_values = {'theta1': {'mean': ppc['theta1'].mean(), 'std dev': np.std(ppc['theta1'])},
                           'theta2': {'mean': ppc['theta2'].mean(), 'std dev': np.std(ppc['theta2'])}}
@@ -737,7 +732,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
             # mu
             fig, ax = plt.subplots()
             ax.hist(ppc['theta1']/2.237, bins=25, density=True, alpha=0.4, color='cornflowerblue', label='posterior samples')
-            ax.set_xlim(70/2.237, 200/2.237)
+            ax.set_xlim(50/2.237, 200/2.237)
             xmin, xmax = ax.set_xlim()
             x = np.linspace(xmin, xmax, 100)
             if norm_analysis:
@@ -768,7 +763,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
             ax2.legend()
             plt.show()
             # Calculate failure probabilities for prior, updated:
-            im = np.arange(70, 200, 2)
+            im = np.arange(5, 300, 2)
             # Mean of simulation-based fragility:
             if norm_analysis:
                 pf_sim = pf(im, mu_init*norm_factor, beta_init)
@@ -803,33 +798,22 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, tar
     return df_summary
 
 
-observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Fragilities/PanamaCityBeach/Observations_PCB_postFBC_rpermit.csv'
-df = pd.read_csv(observations_file_path)
-prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/A9_fit.csv'
-df_prior = pd.read_csv(prior_file_path)
-ds_list = df['DS Number'].unique()
-#mu_init = [4.69, 4.8]
-#mu_ds = [108.85]
-#beta_ds = [0.16, 0.15]
-for ds in range(0, len(ds_list)):
-    df_sub = df.loc[df['DS Number'] == ds_list[ds]]
-    xj = np.array(df_sub['demand'])
-    zj = np.array(df_sub['fail'])
-    nj = np.array(df_sub['total'])
-    mu_init = df_prior['theta1'][ds]
-    beta_init = df_prior['theta2'][ds]
-    draws = 12000
-    tune = 1000
-    burn = 1000
-    target_accept = 0.9
-    df_summary = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, tune, burn, target_accept)
-    df_summary.to_csv('PCB_postFBC_rpermit_DS' + str(ds+1) + '_BI.csv')
-    print('Update fragility model parameter values:')
-    print(df_summary)
-# Notes:
-# For MB case study: /24 + 4000 samples, 1000 tune
-# fine for most, not great for post FBC with permits /30 in this case
-# full PCB: /140 10000/5000 --> 1 divergence
-# divide PCB full by norm factor, 6000/1000 for convergence (4000/1000 worked too)
-# FULL_preFBC: /160, 8000/1000, 0.85
-# MB_preFBC /24, 4000/2000, 0.85
+# observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_Irma_commercial.csv'
+# #observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_Harvey_coast.csv'
+# df = pd.read_csv(observations_file_path)
+# prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/F8_fit.csv'
+# df_prior = pd.read_csv(prior_file_path)
+# ds_list = df['DS Number'].unique()
+# for ds in range(2, len(ds_list)):
+#     df_sub = df.loc[df['DS Number'] == ds_list[ds]]
+#     xj = np.array(df_sub['demand'])
+#     zj = np.array(df_sub['fail'])
+#     nj = np.array(df_sub['total'])
+#     mu_init = df_prior['theta1'][ds]
+#     beta_init = df_prior['theta2'][ds]
+#     draws = 10000
+#     target_accept = 0.95
+#     df_summary = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, target_accept)
+#     df_summary.to_csv('Irma_comm_DS' + str(ds+1) + '_BI.csv', index=False)
+#     print('Update fragility model parameter values:')
+#     print(df_summary)
