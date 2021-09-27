@@ -1004,11 +1004,15 @@ class FemaHma(PostDisasterDamageDataset):
             rcParams.update({'font.size': 16})
             # Plot a histogram of the wind speed data and its pdf:
             ax = kdeplot(np.array(hazard_list)/2.237, linewidth=2)
+            line = ax.lines[0]
+            x, y = line.get_data()
             ax.hist(np.array(hazard_list)/2.237, density=True, color='lightgray')
             ax.set_xlabel('Wind Speed [m/s]')
+            ax.set_xlim(20, 60)
             plt.show()
             # Segment the dataset into two clusters:
-            xfull = np.linspace(min(np.array(hazard_list)), max(np.array(hazard_list)))
+            xfull = np.linspace(min(x), max(x), 100)*2.237
+            #xfull = np.linspace(min(np.array(hazard_list)), max(np.array(hazard_list)))
             hdata = np.array(hazard_list)
             hdata = hdata.reshape(-1,1)
             gmm = mixture.GaussianMixture(n_components=2, max_iter=1000, covariance_type='full').fit(hdata)
