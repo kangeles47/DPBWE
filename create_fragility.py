@@ -681,7 +681,7 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, target_accept, 
          #   print(RV.name, RV.logp(model.test_point))
         # Step 3c: Determine the posterior
         # Note: can manually change number of cores if more computational power is available.
-        trace_idata = pm.sample(draws, cores=1, return_inferencedata=True, random_seed=52, target_accept=target_accept)
+        trace_idata = pm.sample(draws, cores=1, return_inferencedata=True, random_seed=72, target_accept=target_accept)
         #trace = pm.sample(8000, cores=1, return_inferencedata=True, tune=2000, random_seed=52)  #tune=2000
         # (Optional): Plotting the trace and updated distributions for parameters:
         if plot_flag:
@@ -762,8 +762,16 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, target_accept, 
             ax2.set_ylabel('Probability')
             ax2.legend()
             plt.show()
+            # Create forestplots:
+            # ax_forest = az.plot_forest(trace_idata.posterior['theta1']*norm_factor/2.237, hdi_prob=0.95, combined=True, var_names=['theta1'])
+            # ax_forest[0].set_xlim(45, 75)
+            # plt.show()
+            # ax_forest2 = az.plot_forest(trace_idata, hdi_prob=0.95, combined=True,
+            #                             var_names=['theta2'])
+            # ax_forest2[0].set_xlim(0, 0.5)
+            # plt.show()
             # Calculate failure probabilities for prior, updated:
-            im = np.arange(5, 300, 2)
+            im = np.arange(70, 200, 2)
             # Mean of simulation-based fragility:
             if norm_analysis:
                 pf_sim = pf(im, mu_init*norm_factor, beta_init)
@@ -798,22 +806,22 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, target_accept, 
     return df_summary
 
 
-# observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_Irma_commercial.csv'
-# #observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_Harvey_coast.csv'
-# df = pd.read_csv(observations_file_path)
-# prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/F8_fit.csv'
-# df_prior = pd.read_csv(prior_file_path)
-# ds_list = df['DS Number'].unique()
-# for ds in range(2, len(ds_list)):
-#     df_sub = df.loc[df['DS Number'] == ds_list[ds]]
-#     xj = np.array(df_sub['demand'])
-#     zj = np.array(df_sub['fail'])
-#     nj = np.array(df_sub['total'])
-#     mu_init = df_prior['theta1'][ds]
-#     beta_init = df_prior['theta2'][ds]
-#     draws = 10000
-#     target_accept = 0.95
-#     df_summary = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, target_accept)
-#     df_summary.to_csv('Irma_comm_DS' + str(ds+1) + '_BI.csv', index=False)
-#     print('Update fragility model parameter values:')
-#     print(df_summary)
+observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Fragilities/Irma/Observations_Irma_commercial.csv'
+#observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_Harvey_coast.csv'
+df = pd.read_csv(observations_file_path)
+prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/F8_fit.csv'
+df_prior = pd.read_csv(prior_file_path)
+ds_list = df['DS Number'].unique()
+for ds in range(2, len(ds_list)):
+    df_sub = df.loc[df['DS Number'] == ds_list[ds]]
+    xj = np.array(df_sub['demand'])
+    zj = np.array(df_sub['fail'])
+    nj = np.array(df_sub['total'])
+    mu_init = df_prior['theta1'][ds]
+    beta_init = df_prior['theta2'][ds]
+    draws = 10000
+    target_accept = 0.95
+    df_summary = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, target_accept)
+    df_summary.to_csv('Irma_comm_DS' + str(ds+1) + '_BI.csv', index=False)
+    print('Update fragility model parameter values:')
+    print(df_summary)
