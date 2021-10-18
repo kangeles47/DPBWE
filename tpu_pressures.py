@@ -1119,3 +1119,67 @@ def create_zcoords(footprint, zcoord):
         # Define z-coordinates for bottom floor of each story:
         zs.append(Point(xs[pt], ys[pt], zcoord))
     return zs
+
+
+def convert_to_tpu_wdir(wind_direction, bldg):
+    # TPU wind direction is dependent on (1) real-life wind direction AND (2) building's orientation:
+    rect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle  # local coords only for now
+    xrect, yrect = rect.exterior.xy
+    # Find out the building's orientation:
+    xdist = xrect[0] - xrect[3]
+    ydist = yrect[0] - yrect[3]
+    theta = degrees(atan2(ydist, xdist))
+    if theta < 0:
+        # Find the equivalent positive angle:
+        theta = 360 + theta
+    else:
+        pass
+    # Level 1 transformation (easiest case when building IRL axes coincide with TPU axes):
+    tpu_wdir = wind_direction*-1 + 270
+    if wind_direction <= 180:
+        tpu_wdir = 360-bldg.hasOrientation
+    else:
+        tpu_wdir = 0
+    # Determine the lengths of rectangle's sides using line segments:
+    side_lines = {'lines': [], 'length': [], 'TPU direction': [], 'TPU line': []}
+    max_length = 0  # Initialize dummy variable
+    for ind in range(0, len(xrect) - 1):
+        new_line = LineString([(xrect[ind], yrect[ind]), (xrect[ind + 1], yrect[ind + 1])])
+        side_lines['lines'].append(new_line)
+        side_lines['length'].append(new_line.length)
+        # Update the maximum length if needed:
+        if new_line.length > max_length:
+            max_length = new_line.length
+        else:
+            pass
+    # With the line geometry and their lengths, can now find the TPU direction of each line:
+    for line in range(0, len(side_lines['lines'])):
+        # For each line, figure out if line is in the TPU x-direction (longer length):
+        if side_lines['lines'][line].length == max_length:
+            line_direction = 'x'
+        else:
+            line_direction = 'y'
+        # Record line directions:
+        side_lines['TPU direction'].append(line_direction)
+    # Set up placeholder for footprint polygon:
+    tpu_poly_pts = []
+    for line in range(0, len(side_lines['lines'])):
+        if side_lines['TPU direction'][line] == 'y':
+            # y-direction in TPU corresponds to building breadth
+            # Leave alone since breadth is fixed to real-life building geometry
+            pass
+        else:
+            # x-direction in TPU corresponds to building depth:
+            # Create two new lines using this line's centroid:
+            ref_pt = side_lines['lines'][line].centroid
+            line_pts = list(side_lines['lines'][line].coords)
+            new_line1 = LineString([ref_pt, Point(line_pts[0])])
+            new_line2 = LineString([ref_pt, Point(line_pts[1])])
+            # Distribute half of dfull to each line segment:
+            new_point1 = new_line1.interpolate(dfull / 2)
+            new_point2 = new_line2.interpolate(dfull / 2)
+            # Combine the two new points into one LineString:
+            tpu_line = LineString([new_point1, new_point2])
+            # Save points for footprint polygon:
+            tpu_poly_pts.append((new_point1.x, new_point1.y))
+            tpu_poly_pts.append((new_point2.x, new_point2.y))
