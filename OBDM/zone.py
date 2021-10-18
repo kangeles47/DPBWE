@@ -382,6 +382,7 @@ class Building(Zone):
         :param lon: A number providing the building's longitude location
         :param lat: A number providing the building's latitude location
         :param length_unit: A string denoting the input base unit for geometry: 'ft', 'm'
+        :param loc_flag: Boolean, True if you want additional location data to be populated
         """
         self.hasID = pid
         # Exception for single family homes and condos:
