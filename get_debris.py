@@ -28,6 +28,10 @@ def run_debris(bldg, site, length_unit, wind_direction, wind_speed):
             for row in range(0, len(site_source.hasDebris[key])):
                 model_input = site_source.hasDebris[key].iloc[row]
                 alongwind_dist, acrosswind_dist = get_trajectory(model_input, speed, length_unit)
+                traj_dict['alongwind'].append(alongwind_dist)
+                traj_dict['acrosswind'].append(acrosswind_dist)
+                traj_dict['wind speed'].append(speed)
+                traj_dict['debris name'].append(site_source.hasDebris[key]['debris name'][row])
 
 
 def get_site_debris(site, length_unit):
@@ -211,6 +215,17 @@ def get_debris_mass(debris_class, debris_name, length_unit):
                 else:
                     debris_area = df_sub['DEBRIS NAME'].str.contains('TAB')['TYPICAL AREA M2']
                     debris_mass = df_sub['DEBRIS NAME'].str.contains('TAB')['MASS PER AREA KG/M2']
+        else:
+            if 'COMP' in debris_name.upper():
+                df_sub = df['DEBRIS NAME'].str.contains('COMP')
+            elif 'MOD METAL' in debris_name.upper() or 'MODULAR MT' in debris_name.upper():
+                df_sub = df['DEBRIS NAME'].str.contains('METAL ROOFING')
+            if length_unit == 'ft':
+                debris_area = df_sub['TYPICAL AREA FT2']
+                debris_mass = df_sub['MASS PER AREA LB/FT2']
+            else:
+                debris_area = df_sub['TYPICAL AREA M2']
+                debris_mass = df_sub['MASS PER AREA KG/M2']
     else:
         debris_area = None
         debris_mass = None
@@ -268,7 +283,7 @@ for row in range(0, len(df['Parcel Id'])):
     if 'PANAMA CITY BEACH' in address or 'MEXICO BEACH' in address:
         pass
     else:
-        new_bldg.add_parcel_data(pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit)
+        new_bldg.add_parcel_data(pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit, loc_flag=True)
         # Add roof element and data:
         new_roof = Roof()
         new_roof.hasCover = df['Roof Cover'][row]
