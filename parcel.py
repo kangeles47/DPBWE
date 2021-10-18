@@ -19,7 +19,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
     def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit):
         Building.__init__(self)  # Bring in all of the attributes that are defined in the BIM class for the parcel model
         # Add parcel data:
-        self.add_parcel_data(pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit)
+        self.add_parcel_data(pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit, loc_flag=True)
         # Define building-level attributes that are specific to parcel models
         # Building footprint:
         self.assign_footprint(self, num_stories)
@@ -158,14 +158,14 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             # Populate code-informed component-level information
             code_informed = bldg_code.FBC(self, loading_flag=False)
             code_informed.bldg_attributes(self)
-            code_informed.roof_attributes(code_informed.hasEdition, self, survey_data.isSurvey)
+            code_informed.roof_attributes(code_informed.hasEdition, self)
         else:
             pass
 
     def assign_footprint(self, parcel, num_stories):
         # Access file with region's building footprint information:
         if parcel.hasLocation['State'] == 'FL' and parcel.hasLocation['County'] == 'Bay':
-            jFile = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Geojson/BayCounty.geojson'
+            jFile = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/Geojson/BayCounty.geojson'
         else:
             print('Footprints for this region currently not supported')
 
