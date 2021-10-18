@@ -139,8 +139,6 @@ plt.show()
 # df_prior = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/SimulationFragilities/A9_fit.csv')
 # df_observations = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Fragilities/MexicoBeachAndPanamaCityBeach/Observations_FULL_postFBC_rpermit.csv')
 # df_sub = df_observations.loc[df_observations['DS Number']==1]
-im = np.arange(70, 300, 2)
-mph_to_ms = 1/2.237
 # pf_mb_fbcr = pf(im, df_mb_fbcr['theta1mean'][0], df_mb_fbcr['theta2mean'][0])
 # pf_pcb_fbcr = pf(im, df_pcb_fbcr['theta1mean'][0], df_pcb_fbcr['theta2mean'][0])
 # pf_full_fbcr = pf(im, df_full_fbcr['theta1mean'][0], df_full_fbcr['theta2mean'][0])
@@ -191,9 +189,12 @@ df_case1_both = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Frag
 df_case2_both = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Fragilities/MexicoBeachAndPanamaCityBeach/MB_PCB_preFBC_rpermit_BI.csv')
 df_case3_both = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Fragilities/MexicoBeachAndPanamaCityBeach/MB_PCB_postFBC_BI.csv')
 df_case4_both = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Fragilities/MexicoBeachAndPanamaCityBeach/MB_PCB_postFBC_rpermit_BI.csv')
+df_prior = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/SimulationFragilities/A9_fit.csv')
 ds_list = [1, 2, 3]
 case_list = [1, 2, 3, 4]
 df_list = [df_case1_both, df_case2_both, df_case3_both, df_case4_both]
+im = np.arange(70, 300, 2)
+mph_to_ms = 1/2.237
 # fig7, ax7 = plt.subplots(2,3)
 # for k in range(0,2):
 #     for j in range(0, len(ax7[k])):
@@ -230,6 +231,8 @@ df_list = [df_case1_both, df_case2_both, df_case3_both, df_case4_both]
 fig8, ax8 = plt.subplots(2,3)
 for k in range(0,2):
     for j in range(0, len(ax8[k])):
+        pf_prior = pf(im, df_prior['theta1'][j], df_prior['theta2'][j])
+        ax8[k,j].plot(im*mph_to_ms, pf_prior, 'k', label='simulation-based', linewidth=2)
         ax8[k,j].set_clip_on(False)
         ax8[k,j].set_ylim(0, 1.2)
         ax8[k,j].set_xlabel('Wind speed [m/s]')
@@ -247,13 +250,13 @@ for ds in ds_list:
         else:
             pf_sub = pf(im, df_sub['theta1mean'], df_sub['theta2mean'])
             if case==1:
-                ax8[0, ds-1].plot(im*mph_to_ms, pf_sub, '--', color='red', label='1) pre-FBC without roof permits')
+                ax8[0, ds-1].plot(im*mph_to_ms, pf_sub, '--', color='red', label='1) pre-FBC without roof permits', linewidth=2)
             elif case == 3:
-                ax8[0, ds-1].plot(im*mph_to_ms, pf_sub, color='blue', label='3) FBC without roof permits')
+                ax8[0, ds-1].plot(im*mph_to_ms, pf_sub, linestyle='dotted', color='blue', label='3) FBC without roof permits', linewidth=2)
             elif case == 2:
-                ax8[1, ds - 1].plot(im*mph_to_ms, pf_sub, '--', color='red', label='2) pre-FBC with roof permits')
+                ax8[1, ds - 1].plot(im*mph_to_ms, pf_sub, '--', color='red', label='2) pre-FBC with roof permits', linewidth=2)
             elif case == 4:
-                ax8[1, ds - 1].plot(im*mph_to_ms, pf_sub, color='blue', label='4) FBC with roof permits')
+                ax8[1, ds - 1].plot(im*mph_to_ms, pf_sub, linestyle='dotted', color='blue', label='4) FBC with roof permits', linewidth=2)
 ax8[0,0].set_ylabel('Probability of Failure')
 ax8[1,0].set_ylabel('Probability of Failure')
 ax8[0,2].legend()
