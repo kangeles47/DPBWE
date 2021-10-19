@@ -25,20 +25,41 @@ def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
     # Various tags are populated to identify the correct .mat file with TPU data
     # Given a building, determine its corresponding use case:
     # Step 1: wdir_tag:
-    if tpu_wdir == 0:
+    wdir_tag = ''
+    if tpu_wdir == 0 or tpu_wdir == 180:
         wdir_tag = '00.mat'
-    elif tpu_wdir == 15:
+    elif tpu_wdir == 15 or tpu_wdir == 165 or tpu_wdir == 195 or tpu_wdir == 345:
         wdir_tag = '15.mat'
-    elif tpu_wdir == 30:
+    elif tpu_wdir == 30 or tpu_wdir == 150 or tpu_wdir == 210 or tpu_wdir == 330:
         wdir_tag = '30.mat'
-    elif tpu_wdir == 45:
+    elif tpu_wdir == 45 or tpu_wdir == 135 or tpu_wdir == 225 or tpu_wdir == 315:
         wdir_tag = '45.mat'
-    elif tpu_wdir == 60:
+    elif tpu_wdir == 60 or tpu_wdir == 120 or tpu_wdir == 240 or tpu_wdir == 300:
         wdir_tag = '60.mat'
-    elif tpu_wdir == 75:
+    elif tpu_wdir == 75 or tpu_wdir == 105 or tpu_wdir == 255 or tpu_wdir == 285:
         wdir_tag = '75.mat'
-    elif tpu_wdir == 90:
+    elif tpu_wdir == 90 or tpu_wdir == 270:
         wdir_tag = '90.mat'
+    if len(wdir_tag) == 0:
+        # Assign wind direction tag based on "closest" wind direction:
+        print('Exact TPU wind direction not available for ' + str(tpu_wdir) + ' degrees')
+        if tpu_wdir <= 7.5 or tpu_wdir > 352.5 or (172.5 < tpu_wdir <= 187.5):
+            wdir_tag = '00.mat'
+        elif (7.5 < tpu_wdir <= 22.5) or (157.5 < tpu_wdir <= 172.5) or (187.5 < tpu_wdir <= 202.5) or (337.5 < tpu_wdir <= 352.5):
+            wdir_tag = '15.mat'
+        elif (22.5 < tpu_wdir <= 37.5) or (142.5 < tpu_wdir <= 157.5) or (202.5 < tpu_wdir <= 217.5) or (322.5 < tpu_wdir <= 337.5):
+            wdir_tag = '30.mat'
+        elif (37.5 < tpu_wdir <= 52.5) or (127.5 < tpu_wdir <= 142.5) or (217.5 < tpu_wdir <= 232.5) or (307.5 < tpu_wdir <= 322.5):
+            wdir_tag = '45.mat'
+        elif (52.5 < tpu_wdir <= 67.5) or (112.5 < tpu_wdir <= 127.5) or (232.5 < tpu_wdir <= 247.5) or (292.5 < tpu_wdir <= 307.5):
+            wdir_tag = '60.mat'
+        elif (67.5 < tpu_wdir <= 82.5) or (97.5 < tpu_wdir <= 112.5) or (247.5 < tpu_wdir <= 262.5) or (277.5 < tpu_wdir <= 292.5):
+            wdir_tag = '75.mat'
+        elif (82.5 < tpu_wdir <= 90) or (262.5 < tpu_wdir <= 277.5):
+            wdir_tag = '90.mat'
+        print('Approximate TPU wind direction: ' + wdir_tag[:-4] + ' will be used')
+    else:
+        pass
     # Step 2: Determine the building's aspect ratios:
     # Use an equivalent rectangle to calculate aspect ratios:
     rect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle  # local coords only for now
