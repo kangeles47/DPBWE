@@ -252,11 +252,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         xdist = xrect[3] - xrect[2]
         ydist = yrect[3] - yrect[2]
         theta = degrees(atan2(ydist, xdist))
-        if theta < 0:
-            # Find the equivalent positive angle:
-            theta = 360 + theta
-        else:
-            pass
+        # Orientation is according to normal cartesian coordinates (i.e., cw = (-) angle, ccw = (+) angle)
         # Add the building's orientation
         self.hasOrientation = theta
         #plt.plot(xrect, yrect)
