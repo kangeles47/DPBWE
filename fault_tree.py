@@ -9,8 +9,7 @@ def sim_bldg_pressure_response(bldg, wind_speed, wind_direction, tpu_flag, cc_fl
     # Populate envelope pressures:
     if tpu_flag:
         # Convert wind direction to TPU wind direction:
-        convert_to_tpu_wdir(wind_direction, bldg)
-        tpu_wdir = 0
+        tpu_wdir = convert_to_tpu_wdir(wind_direction, bldg)
         key = 'local'
         edition = 'ASCE 7-16'
         exposure = 'B'
@@ -26,5 +25,5 @@ test = Parcel('12345', 4, 'financial', 1989, '1002 23RD ST W PANAMA CITY 32405',
 test.hasElement['Roof'][0].hasShape['flat'] = True
 test.hasElement['Roof'][0].hasPitch = 0
 wind_speed = 120
-wind_direction = 0
+wind_direction = 45
 sim_bldg_pressure_response(test, wind_speed, wind_direction, tpu_flag=True, cc_flag=False, mwfrs_flag=False)
