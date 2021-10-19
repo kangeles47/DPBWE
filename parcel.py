@@ -249,8 +249,8 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         # Find the footprint's orientation using a minimum rectangle and its local geometry:
         rect = self.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
         xrect, yrect = rect.exterior.xy
-        xdist = xrect[0] - xrect[3]
-        ydist = yrect[0] - yrect[3]
+        xdist = xrect[3] - xrect[2]
+        ydist = yrect[3] - yrect[2]
         theta = degrees(atan2(ydist, xdist))
         if theta < 0:
             # Find the equivalent positive angle:
