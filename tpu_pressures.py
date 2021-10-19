@@ -57,7 +57,7 @@ def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
             wdir_tag = '75.mat'
         elif (82.5 < tpu_wdir <= 90) or (262.5 < tpu_wdir <= 277.5):
             wdir_tag = '90.mat'
-        print('Approximate TPU wind direction: ' + wdir_tag[:-4] + ' will be used')
+        print('Approximate TPU wind direction will be used')
     else:
         pass
     # Step 2: Determine the building's aspect ratios:
@@ -592,26 +592,34 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
     df_contour = pd.DataFrame(contour_values)
     # Step 3b: Coordinate transformation (for tpu_wdir > 90)
     if tpu_wdir > 90:
+        # Find index for column we are modifying:
+        for col in range(0, len(df_contour.columns)):
+            if df_contour.columns[col] == 'x':
+                x_col = col
+            elif df_contour.columns[col] == 'y':
+                y_col = col
+            else:
+                pass
         for row in range(0, len(df_contour['Mean Cp'])):
             surf_num = df_contour['Surface Number'][row]
             if 90 < tpu_wdir <= 180:
                 if surf_num == 1 or surf_num == 3 or surf_num == 5:
                     # Reflect Surface 1, 3, and 5 coordinates over x-axis:
-                    df_contour['x'][row] = df_contour['x'][row] * -1
+                    df_contour.iat[row, x_col] = df_contour['x'][row] * -1
                 elif surf_num == 2 or surf_num == 4:
                     # Reflect Surface 2 and 4 coordinates over x-axis:
-                    df_contour['y'][row] = df_contour['y'][row] * -1
+                    df_contour.iat[row, x_col] = df_contour['x'][row] * -1
             elif 180 < tpu_wdir <= 270:
                     # Reflect all Surface coordinates over x-axis and y-axis:
-                    df_contour['x'][row] = df_contour['x'][row] * -1
-                    df_contour['y'][row] = df_contour['y'][row] * -1
+                    df_contour.iat[row, x_col] = df_contour['x'][row] * -1
+                    df_contour.iat[row, y_col] = df_contour['y'][row] * -1
             else:
                 if surf_num == 1 or surf_num == 3 or surf_num == 5:
                     # Reflect Surface 1, 3, and 5 coordinates over x-axis:
-                    df_contour['y'][row] = df_contour['y'][row] * -1
+                    df_contour.iat[row, y_col] = df_contour['y'][row] * -1
                 elif surf_num == 2 or surf_num == 4:
                     # Reflect Surface 2 and 4 coordinates over x-axis:
-                    df_contour['x'][row] = df_contour['x'][row] * -1
+                    df_contour.iat[row, x_col] = df_contour['x'][row] * -1
     else:
         pass
     # Step 4: Mapping pressure tap locations to real-life scenario and calculating pressure
@@ -699,10 +707,17 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                         pass
                     else:
                         # Building orientation is determined using surface 1 geometry:
-                        spts = list(surf_dict[1].exterior.coords)
-                        theta = degrees(atan2((spts[1][0]-spts[2][0]), (spts[1][1]-spts[2][1])))
+                        rect = bldg.hasGeometry['Footprint'][
+                            'local'].minimum_rotated_rectangle  # local coords only for now
+                        xrect, yrect = rect.exterior.xy
+                        # Find out the building's orientation:
+                        xdist = xrect[3] - xrect[2]
+                        ydist = yrect[3] - yrect[2]
+                        theta = degrees(atan2(ydist, xdist))
+                        #spts = list(surf_dict[1].exterior.coords)
+                        #theta = degrees(atan2((spts[1][0]-spts[2][0]), (spts[1][1]-spts[2][1])))
                         # Rotate the roof point about the building's equivalent rectangle centroid:
-                        rotate_pt = affinity.rotate(Point(df_csurf.loc[row, 'x'], df_csurf.loc[row, 'y']), -1*theta, (0,0))
+                        rotate_pt = affinity.rotate(Point(df_csurf['x'][row], df_csurf['y'][row]), theta, (0,0))
                         rl_point = Point(rotate_pt.x+surf_dict[5].centroid.x, rotate_pt.y+surf_dict[5].centroid.y, hfull)
                 # Save the point's real-life location:
                 proj_dict['Real Life Location'].append(rl_point)
@@ -868,8 +883,14 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                             idx = np.where(x_unique == current_pt.x)[0] - 1
                         else:
                             idx = np.where(y_unique == current_pt.y)[0] - 1  # Exception: Surf 2 and 4 || to N-S direction
-                        # Shift all points to the corner of the surface:
-                        df_tpu_pressures.iat[pt, rl_loc] = Point(current_pt.x + dist * cos(theta), current_pt.y + dist * sin(theta), current_pt.z)
+                        if 90 < tpu_wdir <= 270 and snum == 5:
+                            # Shift all points to the corner of the wisurface:
+                            df_tpu_pressures.iat[pt, rl_loc] = Point(current_pt.x - dist * cos(theta),
+                                                                     current_pt.y - dist * sin(theta), current_pt.z)
+                        else:
+                            # Shift all points to the corner of the windward surface:
+                            df_tpu_pressures.iat[pt, rl_loc] = Point(current_pt.x + dist * cos(theta),
+                                                                     current_pt.y + dist * sin(theta), current_pt.z)
                         if snum != 5:
                             if current_pt.x == xmodel[min_idx] and current_pt.y == ymodel[min_idx]:
                                 pass
@@ -891,7 +912,12 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                                 pt_idx = idx + len(xvals)*multiplier
                                 # Note: Point lines are parallel to surface 2 and 4
                                 # Use origin pts and multiplier to define new coordinate pairs:
-                                df_tpu_pressures.iat[pt_idx, rl_loc] = Point(origin_pt.x - (new_space * multiplier * cos(theta)), origin_pt.y - (new_space * multiplier * sin(theta)), origin_pt.z)
+                                if tpu_wdir <= 90:
+                                    df_tpu_pressures.iat[pt_idx, rl_loc] = Point(origin_pt.x - (new_space * multiplier * cos(theta)), origin_pt.y - (new_space * multiplier * sin(theta)), origin_pt.z)
+                                elif 90 < tpu_wdir <= 270:
+                                    df_tpu_pressures.iat[pt_idx, rl_loc] = Point(
+                                        origin_pt.x + (new_space * multiplier * cos(theta)),
+                                        origin_pt.y + (new_space * multiplier * sin(theta)), origin_pt.z)
         # Plot the new pressure tap locations and their pressures:
         # Plot the full-scale pressures:
         fig4 = plt.figure()
@@ -1165,6 +1191,7 @@ def convert_to_tpu_wdir(wind_direction, bldg):
     xdist = xrect[3] - xrect[2]
     ydist = yrect[3] - yrect[2]
     theta = degrees(atan2(ydist, xdist))
+    bldg.hasOrientation = theta
     # Find the tpu wind direction according to building orientation and IRL wind direction:
     tpu_wdir = wind_direction*-1 + 270 + -1*(theta)
     return tpu_wdir
