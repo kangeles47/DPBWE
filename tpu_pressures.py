@@ -1129,6 +1129,6 @@ def convert_to_tpu_wdir(wind_direction, bldg):
     xdist = xrect[3] - xrect[2]
     ydist = yrect[3] - yrect[2]
     theta = degrees(atan2(ydist, xdist))
-    # Level 1 transformation (easiest case when building IRL axes coincide with TPU axes):
+    # Find the tpu wind direction according to building orientation and IRL wind direction:
     tpu_wdir = wind_direction*-1 + 270 + -1*(theta)
     return tpu_wdir
