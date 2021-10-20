@@ -77,6 +77,7 @@ class Roof(Element):
                          'gambrel': False, 'mansard': False, 'monoslope': False, 'user-defined': False}
         self.hasSheathing = None
         self.hasStructureType = None
+        self.hasSubElement = {'cover': [], 'sheathing': [], 'roof member': []}
 
 
 class Floor(Element):  # Consider how we might bring in something like piles
