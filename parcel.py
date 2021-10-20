@@ -149,7 +149,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     self.hasGeometry['3D Geometry'][key].append(bsurf_poly)
                     self.hasGeometry['Facade'][key].append(bsurf_poly)
         # Generate a set of building elements (with default attributes) for the parcel:
-        self.parcel_elements(self, zone_flag=False)
+        self.parcel_elements(self, zone_flag=True)
         # Update the Building's Elements:
         self.update_elements()
         # Populate instance attributes informed by national survey data:
@@ -266,7 +266,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         if zone_flag:
             asce7 = bldg_code.ASCE7(parcel, loading_flag=True)
             a = asce7.get_cc_zone_width(parcel)  # Determine the zone width
-            zone_pts, int_poly, zone2_polys = asce7.find_cc_zone_points(parcel, a, roof_flag=True, edition=None)  # Coordinates for start/end of zone locations
+            zone_pts, roof_polys = asce7.find_cc_zone_points(parcel, a, roof_flag=True, edition=None)  # Coordinates for start/end of zone locations
         else:
             pass
         # Assume that walls span one story for now:
@@ -285,6 +285,15 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             # Top floor:
             if story == len(parcel.hasStory) - 1:
                 new_roof = Roof()
+                if zone_flag:
+                    # Create roof sub_elements for C&C:
+                    for key in roof_polys.keys():
+                        for poly in roof_polys[key]:
+                            new_sub_element = Roof()
+                            new_sub_element.hasGeometry['2D Geometry']['local'] = poly
+                            new_roof.hasSubElement['cover'].append(new_sub_element)
+                else:
+                    pass
                 # Add roof to the story:
                 parcel.hasStory[story].adjacentElement.update({'Roof': new_roof})
                 element_dict['Roof'].append(new_roof)
