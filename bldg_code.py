@@ -919,12 +919,12 @@ class ASCE7(BldgCode):
                     if i < len(zone2_polys) - 1:
                         poly_points1 = list(zone2_polys[i].exterior.coords)
                         poly_points2 = list(zone2_polys[i + 1].exterior.coords)
-                        new_poly = Polygon([poly_points1[1], poly_points2[0], poly_points2[3], poly_points1[2]])
+                        new_poly = Polygon([poly_points1[1], (xc[i+1], yc[i+1]), poly_points2[0], poly_points2[3], poly_points1[2]])
                         zone3_polys.append(new_poly)
                     else:
                         poly_points1 = list(zone2_polys[i].exterior.coords)
                         poly_points2 = list(zone2_polys[0].exterior.coords)
-                        new_poly = Polygon([poly_points1[1], poly_points2[0], poly_points2[3], poly_points1[2]])
+                        new_poly = Polygon([poly_points1[1], (xc[i+1], yc[i+1]), poly_points2[0], poly_points2[3], poly_points1[2]])
                         zone3_polys.append(new_poly)
                 # Plot zone 3 polys:
                 for poly in zone3_polys:
@@ -934,7 +934,7 @@ class ASCE7(BldgCode):
                 plt.plot(xc, yc)
                 plt.plot(xpoly, ypoly)
                 plt.show()
-                roof_polys = {'Zone 1': int_poly, 'Zone 2': zone2_polys, 'Zone 3': zone3_polys}
+                roof_polys = {'Zone 1': [int_poly], 'Zone 2': zone2_polys, 'Zone 3': zone3_polys}
             elif edition == 'ASCE 7-16':
                 print('Code edition currently not supported for Roof MWFRS considerations')
         else:
