@@ -913,17 +913,34 @@ class ASCE7(BldgCode):
                     # Plotting:
                     xz, yz = new_poly.exterior.xy
                     plt.plot(xz, yz)
+                # With zone2_polys, find zone3_polys:
+                zone3_polys = []
+                for i in range(0, len(zone2_polys)):
+                    if i < len(zone2_polys) - 1:
+                        poly_points1 = list(zone2_polys[i].exterior.coords)
+                        poly_points2 = list(zone2_polys[i + 1].exterior.coords)
+                        new_poly = Polygon([poly_points1[1], poly_points2[0], poly_points2[3], poly_points1[2]])
+                        zone3_polys.append(new_poly)
+                    else:
+                        poly_points1 = list(zone2_polys[i].exterior.coords)
+                        poly_points2 = list(zone2_polys[0].exterior.coords)
+                        new_poly = Polygon([poly_points1[1], poly_points2[0], poly_points2[3], poly_points1[2]])
+                        zone3_polys.append(new_poly)
+                # Plot zone 3 polys:
+                for poly in zone3_polys:
+                    xpoly, ypoly = poly.exterior.xy
+                    plt.plot(xpoly, ypoly)
                 # Plot int_poly
                 plt.plot(xc, yc)
                 plt.plot(xpoly, ypoly)
                 plt.show()
+                roof_polys = {'Zone 1': int_poly, 'Zone 2': zone2_polys, 'Zone 3': zone3_polys}
             elif edition == 'ASCE 7-16':
                 print('Code edition currently not supported for Roof MWFRS considerations')
         else:
-            int_poly = None
-            zone2_polys = None
+            roof_polys = {}
 
-        return zone_pts, int_poly, zone2_polys
+        return zone_pts, roof_polys
 
     def get_rcover_case(self, bldg):
         # Roof C&C cases vary based on the roof pitch:
