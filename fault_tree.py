@@ -11,9 +11,9 @@ def populate_code_capacities(bldg, cc_flag, mwfrs_flag, exposure, wind_speed):
     if cc_flag:
         a = asce7.get_cc_zone_width(bldg)
         roof_flag = True
-        zone_pts, int_poly, zone2_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
+        zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
         asce7.assign_wcc_pressures(bldg, zone_pts, asce7.hasEdition, exposure, wind_speed)
-        asce7.assign_rcc_pressures(test, zone_pts, int_poly, asce7.hasEdition, exposure, wind_speed)
+        asce7.assign_rcc_pressures(test, zone_pts, roof_polys, asce7.hasEdition, exposure, wind_speed)
     if mwfrs_flag:
         asce7.assign_rmwfrs_pressures(test, asce7.hasEdition, exposure, wind_speed)
 
@@ -53,4 +53,8 @@ test.hasElement['Roof'][0].hasPitch = 0
 wind_speed = 120
 wind_direction = 45
 exposure = 'B'
-generate_pressure_loading(test, wind_speed, wind_direction, exposure, tpu_flag=True, cc_flag=False, mwfrs_flag=False)
+cc_flag, mwfrs_flag = True, True
+test.hasGeometry['Height'] = 9*4
+test.hasGeometry['Height'] = 9
+populate_code_capacities(test, cc_flag, mwfrs_flag, exposure, wind_speed)
+#generate_pressure_loading(test, wind_speed, wind_direction, exposure, tpu_flag=True, cc_flag=False, mwfrs_flag=False)
