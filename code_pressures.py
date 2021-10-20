@@ -1804,14 +1804,14 @@ class PressureCalc:
         use_case = [1, 2]
         # Populate similitude parameters for each case of Roof MWFRS:
         for case in use_case:
-            self.run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_pitch, ref_cat, wind_speed, edition, case, hpr, h_ocean, encl_class)
+            self.run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_pitch, ref_cat, wind_speed, edition, case, hpr, h_ocean, encl_class, plot_flag=False, save_flag=False)
         # ASCE 7-93/88 use cases
         edition = ['ASCE 7-93']
         # Define use cases:
         use_case = [3, 4]
         # Populate similitude parameters for each case of Roof MWFRS:
         for case in use_case:
-            self.run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_pitch, ref_cat, wind_speed, edition, case, hpr, h_ocean, encl_class)
+            self.run_sim_rmwfrs(ref_exposure, ref_hbldg, ref_pitch, ref_cat, wind_speed, edition, case, hpr, h_ocean, encl_class, plot_flag=False, save_flag=False)
         # (2) Wall C&C for mullion, glass panel, wall, all code editions (except ASCE 7-93)
         # Create a vector of editions:
         edition = ['ASCE 7-95', 'ASCE 7-98', 'ASCE 7-10', 'ASCE 7-16']
@@ -1820,7 +1820,7 @@ class PressureCalc:
         # C&C Types:
         ctype = ['mullion', 'glass panel', 'wall']
         for component in ctype:
-            self.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat, wind_speed, edition, component, parcel_flag, hpr, h_ocean, encl_class)
+            self.run_sim_wcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat, wind_speed, edition, component, parcel_flag, hpr, h_ocean, encl_class, plot_flag=False, save_flag=False)
 
 
 # Plotting: % change in wind pressure vs. change in height
