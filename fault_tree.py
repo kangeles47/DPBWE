@@ -5,9 +5,11 @@ from parcel import Parcel
 from bldg_code import ASCE7
 
 
-def populate_code_capacities(bldg, cc_flag, mwfrs_flag, exposure, wind_speed):
+def populate_code_capacities(bldg, cc_flag, mwfrs_flag, exposure):
     # Populate code-informed capacities:
     asce7 = ASCE7(bldg, loading_flag=True)
+    # Get the building's code wind speed:
+    wind_speed = asce7.get_code_wind_speed(bldg)
     if cc_flag:
         a = asce7.get_cc_zone_width(bldg)
         roof_flag = True
@@ -38,7 +40,7 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_fl
             roof_flag = True
             zone_pts, int_poly, zone2_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
             asce7.assign_wcc_pressures(bldg, zone_pts, asce7.hasEdition, exposure, wind_speed)
-            asce7.assign_rcc_pressures(test, zone_pts, int_poly, asce7.hasEdition, exposure, wind_speed)
+            asce7.assign_rcc_pressures(test, zone_pts, int_poly, asce7.hasEdition, exposure)
         if mwfrs_flag:
             asce7.assign_rmwfrs_pressures(test, asce7.hasEdition, exposure, wind_speed)
 
@@ -48,7 +50,7 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_fl
 # Parcel Models
 lon = -85.676188
 lat = 30.190142
-test = Parcel('12345', 4, 'financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
+test = Parcel('12345', 4, 'financial', 2000, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
 test.hasElement['Roof'][0].hasShape['flat'] = True
 test.hasElement['Roof'][0].hasPitch = 0
 wind_speed = 120
@@ -57,5 +59,5 @@ exposure = 'B'
 cc_flag, mwfrs_flag = True, True
 #test.hasGeometry['Height'] = 9*4
 #test.hasGeometry['Height'] = 9
-populate_code_capacities(test, cc_flag, mwfrs_flag, exposure, wind_speed)
+populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
 #generate_pressure_loading(test, wind_speed, wind_direction, exposure, tpu_flag=True, cc_flag=False, mwfrs_flag=False)
