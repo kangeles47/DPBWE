@@ -154,6 +154,7 @@ class FBC(BldgCode):
                     parcel.hasElement['Roof'][0].hasShape['flat'] = True
                 elif 'WOOD' in roof_cover or 'TILE' in roof_cover or 'SHINGLES' in roof_cover or 'SHNGL' in roof_cover:
                     parcel.hasElement['Roof'][0].hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
+                    parcel.hasElement['Roof'][0].hasPitch = 2/12
                 else:
                     parcel.hasElement['Roof'][0].hasPitch = 'unknown'
         else:
@@ -165,10 +166,12 @@ class FBC(BldgCode):
                     roof_weights = [211, 0, 244, 78]
                     parcel.hasElement['Roof'][0].hasType = random.choices(roof_matls, roof_weights)
                 elif parcel.hasElement['Roof'][0].hasPitch == 'shallow':
+                    parcel.hasElement['Roof'][0].hasPitch = 2/12
                     roof_matls = ['SHINGLES (NOT WOOD)','METAL SURFACING', 'WOODEN MATERIALS']
                     roof_weights = [234, 244, 0]
                     parcel.hasElement['Roof'][0].hasType = random.choices(roof_matls, roof_weights)
                 elif parcel.hasElement['Roof'][0].hasPitch == 'steeper':
+                    parcel.hasElement['Roof'][0].hasPitch = 4/12
                     roof_matls = ['SHINGLES (NOT WOOD)', 'SLATE OR TILE', 'WOODEN MATERIALS']
                     roof_weights = [234, 66, 0]
                     parcel.hasElement['Roof'][0].hasType = random.choices(roof_matls, roof_weights)
@@ -1054,3 +1057,51 @@ class ASCE7(BldgCode):
             elif 1.2*bldg.hasGeometry['Height'] > max(h_dim):
                 rcover_case = 7
         return rcover_case
+
+    def get_code_wind_speed(self, bldg):
+        # Find the parcel's basic or ultimate wind speed based on its location and year of construction:
+        if self.hasEdition == 'ASCE 7-88' or self.hasEdition == 'ASCE 7-93':
+            if bldg.hasLocation['State'] == 'FL':
+                if bldg.hasLocation['County'] == 'Bay':
+                    code_wind_speed = 100  # [mph], fastest mile, basic wind speed
+                else:
+                    pass
+        elif self.hasEdition == 'ASCE 7-95' or self.hasEdition == 'ASCE 7-98' or self.hasEdition == 'ASCE 7-02' or self.hasEdition == 'ASCE 7-05':
+            if bldg.hasLocation['State'] == 'FL':
+                if bldg.hasLocation['County'] == 'Bay':
+                    code_wind_speed = 130  # [mph], 3-s gust, referred to as nominal in 7-98
+                else:
+                    pass
+        elif self.hasEdition == 'ASCE 7-10' or self.hasEdition == 'ASCE 7-16':
+            cat = self.get_asce7_cat(bldg.hasOccupancy, bldg.isComm)
+            if bldg.hasLocation['State'] == 'FL':
+                if bldg.hasLocation['County'] == 'Bay':
+                    if cat == 1:
+                        code_wind_speed = 125  # [mph], 3-s gust
+                    elif cat == 2:
+                        code_wind_speed = 136
+                    elif cat == 3:
+                        code_wind_speed = 146
+                    else:
+                        if self.hasEdition == 'ASCE 7-10':
+                            code_wind_speed = 146
+                        else:
+                            code_wind_speed = 149
+                else:
+                    pass
+        return code_wind_speed
+
+    def get_asce7_cat(self, occupancy, is_comm):
+        if is_comm:
+            essential_facilities = ['HOSPITAL', 'FIRE', 'POLICE']
+            if any([substring in occupancy.upper() for substring in essential_facilities]):
+                cat = 4
+            else:
+                cat = 2
+        else:
+            low_risk = ['WAREHOUSE']
+            if any([substring in occupancy.upper() for substring in low_risk]):
+                cat = 1
+            else:
+                cat = 2
+        return cat
