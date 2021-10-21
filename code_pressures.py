@@ -1717,11 +1717,11 @@ class PressureCalc:
     def get_ctype(self, component):
         # Determine the ctype for the component:
         if isinstance(component, Wall):
-            wall_ctype = ['Masonry', 'Masonry and metal', 'Masonry and siding', 'Window glass and masonry',
-                      'Steel frame and masonry', 'Concrete panels', 'Window glass and concrete', 'Concrete and siding',
-                      'Pre-cast concrete panels', 'Brick, stone, or stucco', 'Concrete block or poured concrete']
-            cwall_ctype = ['Window/vision glass', 'Decor./construction glass', 'Window and construction glass',
-                       'Window or vision glass', 'Decorative or construction glass']
+            wall_ctype = ['masonry', 'masonry and metal', 'masonry and siding', 'window glass and masonry',
+                      'steel frame and masonry', 'concrete panels', 'window glass and concrete', 'concrete and siding',
+                      'pre-cast concrete panels', 'brick, stone, or stucco', 'concrete block or poured concrete']
+            cwall_ctype = ['window/vision glass', 'decor./construction glass', 'window and construction glass',
+                       'window or vision glass', 'decorative or construction glass']
             if component.hasType.lower() in wall_ctype:
                 ctype = 'wall'
             elif component.hasType.lower() in cwall_ctype:
