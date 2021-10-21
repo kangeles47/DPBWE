@@ -131,17 +131,17 @@ class FBC(BldgCode):
 
     def roof_attributes(self, edition, parcel):
         # Populate roof attributes for this instance (parcel)
-        roof_cover = parcel.hasElement['Roof'][0].hasCover
+        roof_cover = parcel.hasElement['Roof'][0].hasCover.upper()
         if isinstance(roof_cover, str):
-            if 'BUILT' in roof_cover or 'CONCRETE' in roof_cover:
+            if 'BUILT' in roof_cover or 'CONCRETE' in roof_cover or 'SYNTHETIC' in roof_cover:
                 parcel.hasElement['Roof'][0].hasPitch = 0  #'flat'  # roof slopes under 2:12
                 parcel.hasElement['Roof'][0].hasShape['flat'] = True
             if ('ASPHALT' in roof_cover or 'ENG' in roof_cover) and ('FBC' in edition or 'CABO' in edition):
                 parcel.hasElement['Roof'][0].hasPitch = (2/12)*100  # Minimum pitch for asphalt roof covers
             if edition == '2001 FBC' and parcel.isComm and parcel.hasYearBuilt < 2003:
                 # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
-                if 'BUILT' in roof_cover or 'CONCRETE' in roof_cover or 'SYNTHETIC' in roof_cover or 'METAL SURFACING' in roof_cover:
-                    parcel.hasElement['Roof'][0].hasPitch = 'flat'  # roof slopes under 2:12
+                if 'METAL SURFACING' in roof_cover:
+                    parcel.hasElement['Roof'][0].hasPitch = 0  # roof slopes under 2:12
                     parcel.hasElement['Roof'][0].hasShape['flat'] = True
                 elif 'ASPHALT' in roof_cover or 'SHINGLES' in roof_cover or 'SHNGL' in roof_cover or 'WOOD' in roof_cover or 'TILE' in roof_cover or 'SLATE' in roof_cover or 'SHAKES' in roof_cover:
                     parcel.hasElement['Roof'][0].hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
@@ -150,7 +150,7 @@ class FBC(BldgCode):
             elif edition == '1988 SBC' and parcel.isComm and parcel.hasYearBuilt < 1990:
                 # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
                 if 'BUILT' in roof_cover or 'METAL SURFACING' in roof_cover or 'PLY' in roof_cover or 'CONCRETE' in roof_cover or 'RUBBER' in roof_cover:
-                    parcel.hasElement['Roof'][0].hasPitch = 'flat'  # roof slopes under 2:12
+                    parcel.hasElement['Roof'][0].hasPitch = 0  # roof slopes under 2:12
                     parcel.hasElement['Roof'][0].hasShape['flat'] = True
                 elif 'WOOD' in roof_cover or 'TILE' in roof_cover or 'SHINGLES' in roof_cover or 'SHNGL' in roof_cover:
                     parcel.hasElement['Roof'][0].hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
@@ -160,6 +160,7 @@ class FBC(BldgCode):
             # Assign qualitative descriptions of roof cover type given roof pitch from survey data:
             if (roof_cover is None or isinstance(roof_cover, float)) and 'COND' not in parcel.hasOccupancy:
                 if parcel.hasElement['Roof'][0].hasPitch == 'flat':
+                    parcel.hasElement['Roof'][0].hasPitch = 0
                     roof_matls = ['BUILTUP', 'CONCRETE', 'METAL SURFACING', 'SYNTHETIC OR RUBBER']
                     roof_weights = [211, 0, 244, 78]
                     parcel.hasElement['Roof'][0].hasType = random.choices(roof_matls, roof_weights)
@@ -569,12 +570,12 @@ class ASCE7(BldgCode):
                 # Find the index where the element C&C type matches with unique types in zone_pressures:
                 utype_ind = zone_pressures[zone_pressures['Type'] == ectype].index.values
                 if zone4_flag:
-                    wp_dict = {'Positive': zone_pressures.iloc[utype_ind]['Pressures'][0][0],
-                               'Negative': zone_pressures.iloc[utype_ind]['Pressures'][0][2]}
+                    wp_dict = {'positive': zone_pressures.iloc[utype_ind]['Pressures'][0][0],
+                               'negative': zone_pressures.iloc[utype_ind]['Pressures'][0][2]}
                     elem.hasCapacity['wind pressure']['total'] = wp_dict
                 else:
-                    wp_dict = {'Positive': zone_pressures.iloc[utype_ind]['Pressures'][0][1],
-                               'Negative': zone_pressures.iloc[utype_ind]['Pressures'][0][3]}
+                    wp_dict = {'positive': zone_pressures.iloc[utype_ind]['Pressures'][0][1],
+                               'negative': zone_pressures.iloc[utype_ind]['Pressures'][0][3]}
                     elem.hasCapacity['wind pressure']['total'] = wp_dict
 
     def get_wcc_pressure(self, edition, h_bldg, h_story, ctype, exposure, wind_speed, pitch):
@@ -655,7 +656,7 @@ class ASCE7(BldgCode):
             pass
         return psim
 
-    def assign_rcc_pressures(self, bldg, zone_pts, int_poly, edition, exposure, wind_speed):
+    def assign_rcc_pressures(self, bldg, roof_polys, edition, exposure, wind_speed):
         """
         Orchestrates the designation of C&C pressures on roof.
 
@@ -685,15 +686,15 @@ class ASCE7(BldgCode):
         rcc_lst = rcc_lst.append({'Element': roof_elem, 'Type': ctype}, ignore_index=True)
         # Figure out what the ctype is for any additional roof components:
         if roof_elem.hasSubElement is None:
-            bldg.hasStory[-1].hasElement['Roof'][0].hasCapacity['type'].append('C&C Pressure')
             # Figure out what ctype the roof cover is:
             ctype = pressures.get_ctype(roof_elem)
             rcc_lst = rcc_lst.append({'Element': roof_elem, 'Type': ctype}, ignore_index=True)
         else:
-            for elem in roof_elem.hasSubElement:
-                # Figure out what ctype the roof component is:
-                ctype = pressures.get_ctype(elem)
-                rcc_lst = rcc_lst.append({'Element': elem, 'Type': ctype}, ignore_index=True)
+            for key in roof_elem.hasSubElement:
+                for elem in roof_elem.hasSubElement[key]:
+                    # Figure out what ctype the roof component is:
+                    ctype = pressures.get_ctype(elem)
+                    rcc_lst = rcc_lst.append({'Element': elem, 'Type': ctype}, ignore_index=True)
         # Find all unique C&C types and calculate (+)/(-) pressures at each zone:
         zone_pressures = pd.DataFrame(columns=['Type', 'Pressures'])
         for ctype in rcc_lst['Type'].unique():
@@ -711,41 +712,47 @@ class ASCE7(BldgCode):
             zone_pressures = zone_pressures.append({'Type': ctype, 'Pressures': psim}, ignore_index=True)
         # Assign zone pressures to each Roof C&C Element:
         for elem in rcc_lst['Element']:
-            zone2_flag = False
-            zone1_flag = False
-            # Use Zone 4 points and element coordinates to assign pressure
-            for seg in zone_pts['NewZoneStart']:
-                if not zone2_flag and not zone1_flag:
-                    # Create a line segment using zone 4 points
-                    zline = LineString([zone_pts['NewZoneStart'][seg], zone_pts['NewZoneEnd'][seg]])
-                    # Check if element falls within the zone or is exactly at zone points or is outsidezone 4:
-                    if elem.hasGeometry['1D Geometry'][0].within(zline) and elem.hasGeometry['1D Geometry'][1].within(
-                            zline):
-                        zone2_flag = True
-                    elif elem.hasGeometry['1D Geometry'][0] == zone_pts['NewZoneStart'][seg] and \
-                            elem.hasGeometry['1D Geometry'][1] == zone_pts['NewZoneEnd'][seg]:
-                        zone2_flag = True
-                    elif elem.hasGeometry['1D Geometry'][0].within(int_poly):
-                        zone1_flag = True
-                    else:
-                        pass
+            if len(elem.hasSubElement['cover']) > 0:
+                if psim[0:2] == psim[3:5]:  # ASCE 7-88/93: no positive roof pressure cases
+                    rneg_dict = {'zone 1': psim[0], 'zone 2': psim[1], 'zone 3': psim[2]}
+                    elem.hasCapacity['wind pressure']['total'] = {'negative': rneg_dict}
                 else:
-                    break
-            # Find the index where zone_pressures['Type'] matches the element's C&C type:
-            etype_ind = rcc_lst.loc[rcc_lst['Element'] == elem]
-            type_ind = zone_pressures.loc[zone_pressures['Type'] == rcc_lst['Type'][etype_ind]]
-            if zone2_flag:
-                rp_dict = {'Positive': zone_pressures['Pressures'][type_ind]['Zone2+'],
-                           'Negative': zone_pressures['Pressures'][type_ind]['Zone2-']}
-                elem.hasCapacity['value'] = rp_dict
-            elif zone1_flag:
-                rp_dict = {'Positive': zone_pressures['Pressures'][type_ind]['Zone1+'],
-                           'Negative': zone_pressures['Pressures'][type_ind]['Zone1-']}
-                elem.hasCapacity['value'] = rp_dict
+                    # Populate roof-level pressures:
+                    rneg_dict = {'zone 1': psim[0], 'zone 2': psim[1], 'zone 3': psim[2]}
+                    rpos_dict = {'zone 1': psim[3], 'zone 2': psim[4], 'zone 3': psim[5]}
+                    elem.hasCapacity['wind pressure']['total'] = {'positive': rpos_dict, 'negative': rneg_dict}
             else:
-                rp_dict = {'Positive': zone_pressures['Pressures'][type_ind]['Zone3+'],
-                           'Negative': zone_pressures['Pressures'][type_ind]['Zone3-']}
-                elem.hasCapacity['value'] = rp_dict
+                if len(roof_polys.keys()) == 3:
+                    # Three roof zones to check:
+                    elem_coords = list(elem.hasGeometry['2D Geometry']['local'].exterior.coords)
+                    # Check if element is in Zone 1:
+                    if elem.hasGeometry['2D Geometry']['local'].within(roof_polys['Zone 1'][0]) or elem_coords == list(roof_polys['Zone 1'][0].exterior.coords):
+                        if psim[0:2] == psim[3:5]:  # ASCE 7-88/93: no positive roof pressure cases
+                            elem.hasCapacity['wind pressure']['total'] = {'negative': psim[0]}
+                        else:
+                            elem.hasCapacity['wind pressure']['total'] = {'positive': psim[3], 'negative': psim[0]}
+                    else:
+                        # Check if element is in Zone 2:
+                        zone2_flag = False
+                        for zone2poly in roof_polys['Zone 2']:
+                            if elem.hasGeometry['2D Geometry']['local'].within(zone2poly) or elem_coords == list(zone2poly.exterior.coords):
+                                if psim[0:2] == psim[3:5]:  # ASCE 7-88/93: no positive roof pressure cases
+                                    elem.hasCapacity['wind pressure']['total'] = {'negative': psim[1]}
+                                else:
+                                    elem.hasCapacity['wind pressure']['total'] = {'positive': psim[4], 'negative': psim[1]}
+                                zone2_flag = True
+                            else:
+                                pass
+                        if zone2_flag:
+                            pass
+                        else:
+                            # The element is in Zone 3:
+                            if psim[0:2] == psim[3:5]:  # ASCE 7-88/93: no positive roof pressure cases
+                                elem.hasCapacity['wind pressure']['total'] = {'negative': psim[2]}
+                            else:
+                                elem.hasCapacity['wind pressure']['total'] = {'positive': psim[5], 'negative': psim[2]}
+                else:
+                    pass
 
     def get_rcc_pressure(self, edition, h_bldg, ctype, exposure, wind_speed, pitch):
         """
@@ -765,66 +772,75 @@ class ASCE7(BldgCode):
         Returns:
             df: Zone pressures (row) for each zone number (columns) and sign (e.g., Zone1+ vs. Zone1-)
         """
-        # Step 1: Semantic translation of roof pitch:
-        if pitch == 'flat':
-            # Code editions ASCE 7-98 and earlier use 10 degrees for first use case
-            # Code editions ASCE 7-02 and later use 7 degrees for first use case
-            # Assign angle < 7 degrees:
-            pitch = 6
+        # Step 1: Determine if a reference building is available for this bldg:
+        pressures = PressureCalc()
+        if h_bldg == 9 and pitch <= 10:  # [ft]
+            ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
+            file_path = 'D:/Users/Karen/Docuements/Github/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
+            sim_flag = True
+        else:
+            sim_flag = False
+            if ctype.lower() == 'flat roof cover' or ctype.lower() == 'fastener':
+                area_eff = 10  # Use minimum effective wind area (typical)
+            else:
+                print('Need to specify effective wind area for this type of C&C element')
+            psim = pressures.rcc_pressure(wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat=2, hpr=True, h_ocean=True, encl_class='Enclosed', tpu_flag=False)
         # Step 2: Determine which "family" of building codes will be needed (if necessary):
-        if pitch < 7:
-            if edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
-                edition = 'ASCE 7-98'
+        if sim_flag:
+            if pitch < 7:
+                if edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
+                    edition = 'ASCE 7-98'
+            else:
+                pass
+            if edition == 'ASCE 7-88':
+                edition = 'ASCE 7-93'
+            # Step 2: Access the appropriate reference building and determine the file path:
+            # NOTE: Might need to modify logic here once we add more reference buildings
+            if edition == 'ASCE 7-98' or edition == 'ASCE 7-93':
+                if pitch <= 10:
+                    use_case = 1
+                    ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
+                    file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
+            else:
+                if (
+                        edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and pitch <= 7:  # Still including this logic for non-Parcel models
+                    use_case = 1
+                    ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
+                    file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
+                elif (edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and 7 < pitch <= 27:
+                    use_case = 2
+                    print('Roof use case currently not supported')
+            # Step 4: Extract the reference pressures for component type -- COME BACK AND CHECK FOR OTHER USE CASES
+            pref = pd.read_csv(file_path + ctype + '/ref' + str(use_case) + '.csv', index_col='Edition').loc[[edition], :]
+            # Step 5: Extract similitude parameters for wind speed, height, and exposure
+            # Similitude in wind speed:
+            if wind_speed == ref_speed:
+                vfactor = 0.0
+            else:
+                if edition == 'ASCE 7-93':
+                    vfactor = pd.read_csv(file_path + '/v93.csv', index_col='Edition')[str(wind_speed)][edition]
+                else:
+                    vfactor = pd.read_csv(file_path + '/v.csv', index_col='Edition')[str(wind_speed)][edition]
+            # Similitude in height:
+            if h_bldg == ref_hbldg:
+                hfactor = 0.0
+            else:
+                if edition == 'ASCE 7-93':
+                    hfactor = pd.read_csv(file_path + '/h93.csv')[str(h_bldg) + ' ft'][0]
+                else:
+                    hfactor = pd.read_csv(file_path + '/h.csv', index_col='Edition')[str(h_bldg) + ' ft'][edition]
+            # Similitude in exposure categories:
+            if exposure == ref_exposure:
+                efactor = 0.0
+            else:
+                efactor = pd.read_csv(file_path + '/e' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][h_bldg]
+            # Step 6: Apply the similitude parameters to get the final pressures for each zone:
+            factor_lst = [vfactor, hfactor, efactor]
+            psim = pref.loc[edition]
+            for factor in factor_lst:
+                psim = factor * psim + psim
         else:
             pass
-        if edition == 'ASCE 7-88':
-            edition = 'ASCE 7-93'
-        # Step 2: Access the appropriate reference building and determine the file path:
-        pressures = PressureCalc()
-        # NOTE: Might need to modify logic here once we add more reference buildings
-        if edition == 'ASCE 7-98' or edition == 'ASCE 7-93':
-            if pitch <= 10:
-                use_case = 1
-                ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-                file_path = 'D:/Users/Karen/PycharmProjects/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
-        else:
-            if (
-                    edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and pitch <= 7:  # Still including this logic for non-Parcel models
-                use_case = 1
-                ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-                file_path = 'D:/Users/Karen/PycharmProjects/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
-            elif (edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and 7 < pitch <= 27:
-                use_case = 2
-                print('Roof use case currently not supported')
-        # Step 4: Extract the reference pressures for component type -- COME BACK AND CHECK FOR OTHER USE CASES
-        pref = pd.read_csv(file_path + ctype + '/ref' + str(use_case) + '.csv', index_col='Edition').loc[[edition], :]
-        # Step 5: Extract similitude parameters for wind speed, height, and exposure
-        # Similitude in wind speed:
-        if wind_speed == ref_speed:
-            vfactor = 0.0
-        else:
-            if edition == 'ASCE 7-93':
-                vfactor = pd.read_csv(file_path + '/v93.csv', index_col='Edition')[str(wind_speed)][edition]
-            else:
-                vfactor = pd.read_csv(file_path + '/v.csv', index_col='Edition')[str(wind_speed)][edition]
-        # Similitude in height:
-        if h_bldg == ref_hbldg:
-            hfactor = 0.0
-        else:
-            if edition == 'ASCE 7-93':
-                hfactor = pd.read_csv(file_path + '/h93.csv')[str(h_bldg) + ' ft'][0]
-            else:
-                hfactor = pd.read_csv(file_path + '/h.csv', index_col='Edition')[str(h_bldg) + ' ft'][edition]
-        # Similitude in exposure categories:
-        if exposure == ref_exposure:
-            efactor = 0.0
-        else:
-            efactor = pd.read_csv(file_path + '/e' + edition[-2:] + '.csv', index_col='Height in ft')[exposure][h_bldg]
-        # Step 6: Apply the similitude parameters to get the final pressures for each zone:
-        factor_lst = [vfactor, hfactor, efactor]
-        psim = pref.loc[edition]
-        for factor in factor_lst:
-            psim = factor * psim + psim
         return psim
 
     def get_cc_zone_width(self, bldg):
