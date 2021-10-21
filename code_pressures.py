@@ -36,7 +36,6 @@ class PressureCalc:
         is_cc = True
         # All components and cladding calculations require qh:
         qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag)
-        print(qh)
         # Get GCps and calculate the pressure for each zone:
         wpos = [True, True, False, False]
         wzone = [4, 5, 4, 5]
@@ -1723,21 +1722,24 @@ class PressureCalc:
                       'Pre-cast concrete panels', 'Brick, stone, or stucco', 'Concrete block or poured concrete']
             cwall_ctype = ['Window/vision glass', 'Decor./construction glass', 'Window and construction glass',
                        'Window or vision glass', 'Decorative or construction glass']
-            if component.hasType in wall_ctype:
+            if component.hasType.lower() in wall_ctype:
                 ctype = 'wall'
-            elif component.hasType in cwall_ctype:
+            elif component.hasType.lower() in cwall_ctype:
                 ctype = 'glass panel'
             else:
                 print('C&C type currently not supported')
                 ctype = None
         elif isinstance(component, Roof):
-            # Determine the ctype for the component:
-            mtl_ctype = ['Metal surfacing', 'Built-up', 'Built-up and metal']
-            if component.hasCover in mtl_ctype:
-                ctype = 'Metal deck'
+            if component.hasPitch <= 2/12:
+                ctype = 'flat roof cover'
             else:
-                print('C&C type currently not supported')
-                ctype = None
+                # Determine the ctype for the component:
+                mtl_ctype = ['metal surfacing', 'built-up', 'built-up and metal']
+                if component.hasCover.lower() in mtl_ctype:
+                    ctype = 'metal deck'
+                else:
+                    print('C&C type currently not supported')
+                    ctype = None
         return ctype
 
 
