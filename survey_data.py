@@ -179,7 +179,7 @@ class SurveyData:
                 # Window type tag for 2003 CBECS:
                 CBECS_data2 = pd.read_csv(path + str(data_yr) + '_2.csv')
                 CBECS_data2 = CBECS_data2.loc[(CBECS_data2[cendiv_tag] == census_div) & (CBECS_data2[yrc_tag] == value_yrconc) & (CBECS_data2[sqft_tag] == value_area)]
-                win_tag = 'WINTYP'
+                win_tag = 'WINTYP' + yr_id
                 win_options = CBECS_data2[win_tag].unique()
             else:
                 pass
@@ -214,8 +214,8 @@ class SurveyData:
             roof_weights.append(CBECS_data.loc[CBECS_data[rtype_tag] == option, wght_tag].sum())
 
         # Choose wall and roof types:
-        wall_choice = random.choices(wall_options,wall_weights)[0]
-        roof_choice = random.choices(roof_options,roof_weights)[0]
+        wall_choice = int(random.choices(wall_options,wall_weights)[0])
+        roof_choice = int(random.choices(roof_options,roof_weights)[0])
 
         # Conduct the semantic translations from the respective CBECS dataset
         # Wall type descriptions:
@@ -258,7 +258,7 @@ class SurveyData:
             if wall_choice == 1:
                 wtype = 'Brick, stone, or stucco'
             elif wall_choice == 2:
-                choice = 'Pre-cast concrete panels'
+                wtype = 'Pre-cast concrete panels'
             elif wall_choice == 3:
                 wtype = 'Concrete block or poured concrete'
             elif wall_choice == 4:
@@ -348,7 +348,7 @@ class SurveyData:
                     win_weights.append(CBECS_data.loc[CBECS_data2[win_tag] == option, wght_tag].sum())
                 else:
                     win_weights.append(CBECS_data.loc[CBECS_data[win_tag] == option, wght_tag].sum())
-            win_choice = random.choices(win_options, win_weights)[0]
+            win_choice = int(random.choices(win_options, win_weights)[0])
             if win_choice == 1:
                 win_type = 'Single layer glass'
             elif win_choice == 2:
@@ -360,28 +360,28 @@ class SurveyData:
             # Add windows to wall elements:
             if win_choice != 4:
                 for story in parcel.hasStory:
-                    wall = story.adjacentElement['Wall']
-                    wall.hasSubElement = 'Window: ' + win_type
-            # Building glass percentage:
-            glsspc_weights = []
-            for option in glsspc_options:
-                glsspc_weights.append(CBECS_data.loc[CBECS_data[glsspc_tag] == option, wght_tag].sum())
-            # Choose glass percent: ********NEED TO CREATE A WINDOW ASSEMBLY AND BRING IN ************
-            glsspc_choice = random.choices(glsspc_options, glsspc_weights)[0]
-            if glsspc_choice == 1:
-                choice2 = '1 percent or less'
-            elif glsspc_choice == 2:
-                choice2 = '2 to 10 percent'
-            elif glsspc_choice == 3:
-                choice2 = '11 to 25 percent'
-            elif glsspc_choice == 4:
-                choice2 = '26 to 50 percent'
-            elif glsspc_choice == 5:
-                choice2 = '51 to 75 percent'
-            elif glsspc_choice == 6:
-                choice2 = '76 to 100 percent'
-            # Additional "roof tilt" attribute for 2012 CBECS:
+                    for wall in story.adjacentElement['Walls']:
+                        wall.hasSubElement.hasType = win_type
             if data_yr == 2012:
+                # Building glass percentage and roof tilt:
+                glsspc_weights = []
+                for option in glsspc_options:
+                    glsspc_weights.append(CBECS_data.loc[CBECS_data[glsspc_tag] == option, wght_tag].sum())
+                # Choose glass percent: ********NEED TO CREATE A WINDOW ASSEMBLY AND BRING IN ************
+                glsspc_choice = random.choices(glsspc_options, glsspc_weights)[0]
+                if glsspc_choice == 1:
+                    choice2 = '1 percent or less'
+                elif glsspc_choice == 2:
+                    choice2 = '2 to 10 percent'
+                elif glsspc_choice == 3:
+                    choice2 = '11 to 25 percent'
+                elif glsspc_choice == 4:
+                    choice2 = '26 to 50 percent'
+                elif glsspc_choice == 5:
+                    choice2 = '51 to 75 percent'
+                elif glsspc_choice == 6:
+                    choice2 = '76 to 100 percent'
+                # "roof tilt" attribute:
                 rtilt_weights = []
                 for option in rtilt_options:
                     rtilt_weights.append(CBECS_data.loc[CBECS_data[rtilt_tag] == option, wght_tag].sum())
