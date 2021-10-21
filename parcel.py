@@ -298,6 +298,16 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             # Top floor:
             if story == len(parcel.hasStory) - 1:
                 new_roof = Roof()
+                # Add two-dimensional geometry:
+                for key in ['local', 'geodesic']:
+                    new_roof.hasGeometry['2D Geometry'][key] = self.hasGeometry['Footprint'][key]
+                    # Add three-dimensional geometry:
+                    xroof, yroof = new_roof.hasGeometry['2D Geometry'][key].exterior.xy
+                    rpt_list = []
+                    for x in range(0, len(xroof)):
+                        new_pt = Point(xroof[x], yroof[x], self.hasGeometry['Height'])
+                        rpt_list.append(new_pt)
+                    new_roof.hasGeometry['3D Geometry'][key] = Polygon(rpt_list)
                 if zone_flag:
                     # Create roof sub_elements for C&C:
                     for key in roof_polys.keys():
