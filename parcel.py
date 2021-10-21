@@ -16,7 +16,7 @@ from survey_data import SurveyData
 
 class Parcel(Building):  # Note here: Consider how story/floor assignments may need to change for elevated structures
 
-    def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit):
+    def __init__(self, pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit, plot_flag):
         Building.__init__(self)  # Bring in all of the attributes that are defined in the BIM class for the parcel model
         # Add parcel data:
         self.add_parcel_data(pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit, loc_flag=True)
@@ -38,7 +38,8 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 else:
                     pass
                 xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
-                plt.plot(np.array(xfpt) / 3.281, np.array(yfpt) / 3.281, 'k')
+                if plot_flag:
+                    plt.plot(np.array(xfpt) / 3.281, np.array(yfpt) / 3.281, 'k')
                 if key == 'local':
                     # Rotate the footprint to create a "rotated cartesian" axis:
                     rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle
@@ -48,16 +49,18 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     rotated_b = affinity.rotate(Polygon(new_point_list), theta, origin='centroid')
                     rflag = True
                     rx, ry = rotated_b.exterior.xy
-                    plt.plot(np.array(rx) / 3.281, np.array(ry) / 3.281, color='gray', linestyle='dashed')
-                    plt.legend(['local Cartesian', 'rotated Cartesian'], prop={"size":22}, loc='upper right')
+                    if plot_flag:
+                        plt.plot(np.array(rx) / 3.281, np.array(ry) / 3.281, color='gray', linestyle='dashed')
+                        plt.legend(['local Cartesian', 'rotated Cartesian'], prop={"size":22}, loc='upper right')
                 else:
                     rflag= False
                     # Uncomment to plot the footprint:
-                plt.xlabel('x [m]', fontsize=22)
-                plt.ylabel('y [m]', fontsize=22)
-                plt.xticks(fontsize=22)
-                plt.yticks(fontsize=22)
-                plt.show()
+                if plot_flag:
+                    plt.xlabel('x [m]', fontsize=22)
+                    plt.ylabel('y [m]', fontsize=22)
+                    plt.xticks(fontsize=22)
+                    plt.yticks(fontsize=22)
+                    plt.show()
         #if rflag:
             #self.hasGeometry['Footprint']['rotated'] = rotated_b
         # Pull building/story height information from DOE reference buildings:
@@ -91,8 +94,9 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 new_zpts.append(roof_zs)
                 # With new 3D coordinates for each horizontal plane, create surface geometry:
                 # Set up plotting:
-                fig = plt.figure()
-                ax = plt.axes(projection='3d')
+                if plot_flag:
+                    fig = plt.figure()
+                    ax = plt.axes(projection='3d')
                 for plane in range(0, len(new_zpts) - 1):
                     # Add the bottom and top planes for the Story:
                     plane_poly1 = Polygon(new_zpts[plane])
@@ -113,30 +117,32 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                             surf_xs.append(surf_points[0])
                             surf_ys.append(surf_points[1])
                             surf_zs.append(surf_points[2])
-                        # Plot the surfaces for the entire building to verify:
-                        ax.plot(np.array(surf_xs)/3.281, np.array(surf_ys)/3.281, np.array(surf_zs)/3.281, 'k')
-                        # Make the panes transparent:
-                        ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-                        ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-                        ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-                        # Make the grids transparent:
-                        ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-                        ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-                        ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-                        # Plot labels
-                        ax.set_xlabel('x [m]', fontsize=16, labelpad=10)
-                        ax.set_ylabel('y [m]', fontsize=16, labelpad=10)
-                        ax.set_zlabel('z [m]', fontsize=16, labelpad=10)
-                        #ax.set_zlim(0, 16)
-                        ax.set_zlim3d(0, 16)
+                        if plot_flag:
+                            # Plot the surfaces for the entire building to verify:
+                            ax.plot(np.array(surf_xs)/3.281, np.array(surf_ys)/3.281, np.array(surf_zs)/3.281, 'k')
+                            # Make the panes transparent:
+                            ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+                            ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+                            ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+                            # Make the grids transparent:
+                            ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                            ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                            ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                            # Plot labels
+                            ax.set_xlabel('x [m]', fontsize=16, labelpad=10)
+                            ax.set_ylabel('y [m]', fontsize=16, labelpad=10)
+                            ax.set_zlabel('z [m]', fontsize=16, labelpad=10)
+                            #ax.set_zlim(0, 16)
+                            ax.set_zlim3d(0, 16)
                 # Show the surfaces for each story:
                 #ax.set_xticks(np.arange(-20,20,5))
                 #ax.set_yticks(np.arange(-20, 20, 5))
-                ax.set_zticks(np.arange(0, 20, 4))
-                ax.xaxis.set_tick_params(labelsize=16)
-                ax.yaxis.set_tick_params(labelsize=16)
-                ax.zaxis.set_tick_params(labelsize=16)
-                plt.show()
+                if plot_flag:
+                    ax.set_zticks(np.arange(0, 20, 4))
+                    ax.xaxis.set_tick_params(labelsize=16)
+                    ax.yaxis.set_tick_params(labelsize=16)
+                    ax.zaxis.set_tick_params(labelsize=16)
+                    plt.show()
                 # Define full 3D surface renderings for the building using base plane and top plane:
                 base_poly = Polygon(new_zpts[0])
                 top_poly = Polygon(new_zpts[-1])
@@ -159,6 +165,13 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             code_informed = bldg_code.FBC(self, loading_flag=False)
             code_informed.bldg_attributes(self)
             code_informed.roof_attributes(code_informed.hasEdition, self)
+        else:
+            pass
+        # Update roof cover sub-elements (if-applicable):
+        if self.adjacentElement['Roof'][0].hasSubElement is not None:
+            for elem in self.adjacentElement['Roof'][0].hasSubElement['cover']:
+                elem.hasCover = self.adjacentElement['Roof'][0].hasCover
+                elem.hasPitch = self.adjacentElement['Roof'][0].hasPitch
         else:
             pass
 
@@ -295,7 +308,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 else:
                     pass
                 # Add roof to the story:
-                parcel.hasStory[story].adjacentElement.update({'Roof': new_roof})
+                parcel.hasStory[story].adjacentElement.update({'Roof': [new_roof]})
                 element_dict['Roof'].append(new_roof)
             else:
                 new_floor2 = Floor()
