@@ -168,7 +168,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         else:
             pass
         # Update roof cover sub-elements (if-applicable):
-        if self.adjacentElement['Roof'][0].hasSubElement is not None:
+        if len(self.adjacentElement['Roof'][0].hasSubElement['cover']) > 0:
             for elem in self.adjacentElement['Roof'][0].hasSubElement['cover']:
                 elem.hasCover = self.adjacentElement['Roof'][0].hasCover
                 elem.hasPitch = self.adjacentElement['Roof'][0].hasPitch
