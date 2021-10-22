@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from shapely.geometry import Polygon
 from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from parcel import Parcel
 from bldg_code import ASCE7
@@ -42,6 +43,13 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_fl
         for wall in bldg.adjacentElement['Walls']:
             wall_pressures = pd.DataFrame(columns=df_facade.columns)
             for idx in df_facade.index:
+                # Use the point geometry to buffer it out for a distance:
+                # buff_pt = df_facade['Real Life Location'][idx].buffer(distance=2)
+                # xb, yb = buff_pt.exterior.xy
+                # pts_xyz = []
+                # for j in range(0, len(xb)):
+                #     pts_xyz.append((xb[j], yb[j], df_facade['Real Life Location'][idx].z))
+                # buff_poly = Polygon(pts_xyz)
                 if df_facade['Real Life Location'][idx].within(wall.hasGeometry['3D Geometry']['local']) or df_facade['Real Life Location'][idx].intersects(wall.hasGeometry['3D Geometry']['local']):
                     # Check if this pressure is going to be mapped to a window element:
                     if wall.hasSubElement is not None:
@@ -50,7 +58,18 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_fl
                         pass
                     wall_pressures = wall_pressures.append(df_facade.iloc[idx], ignore_index=True)
                 else:
-                    pass
+                    # Buffer the point:
+                    # Use the point geometry to buffer it out for a distance:
+                    buff_pt = df_facade['Real Life Location'][idx].buffer(distance=3)
+                    xb, yb = buff_pt.exterior.xy
+                    pts_xyz = []
+                    for j in range(0, len(xb)):
+                        pts_xyz.append((xb[j], yb[j], df_facade['Real Life Location'][idx].z))
+                    buff_poly = Polygon(pts_xyz)
+                    if buff_poly.intersects(wall.hasGeometry['3D Geometry']['local']):
+                        wall_pressures = wall_pressures.append(df_facade.iloc[idx], ignore_index=True)
+                    else:
+                        pass
             wall.hasDemand['wind pressure']['external'] = wall_pressures
             wall_points = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
             xw, yw, zw = [], [], []
