@@ -37,6 +37,8 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_fl
         # Start with facade components:
         roof_indices = df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 5].index
         df_facade = df_tpu_pressures.drop(roof_indices)
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
         for wall in bldg.adjacentElement['Walls']:
             wall_pressures = pd.DataFrame(columns=df_facade.columns)
             for idx in df_facade.index:
@@ -50,6 +52,21 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_fl
                 else:
                     pass
             wall.hasDemand['wind pressure']['external'] = wall_pressures
+            wall_points = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
+            xw, yw, zw = [], [], []
+            for w in wall_points:
+                xw.append(w[0])
+                yw.append(w[1])
+                zw.append(w[2])
+            if len(wall_pressures) > 0:
+                ax.plot(xw, yw, zw, 'r')
+            else:
+                ax.plot(xw, yw, zw, 'k')
+        for idx in df_facade.index:
+            point = df_facade['Real Life Location'][idx]
+            xyz = list(point.coords)[0]
+            ax.scatter(xyz[0], xyz[1], xyz[2])
+        plt.show()
         # Map pressures onto roof elements:
         df_roof = df_tpu_pressures.iloc[roof_indices]
         if len(bldg.adjacentElement['Roof'][0].hasSubElement['cover']) > 0:
