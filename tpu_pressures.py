@@ -134,7 +134,7 @@ def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
         elif height_model == 160:
             htag = '08'
         # Depth to breadth use case:
-        if bldg.adjacentElement['Roof'].hasShape['flat'] or bldg.adjacentElement['Roof'].hasShape['gable']:
+        if bldg.adjacentElement['Roof'][0].hasShape['flat'] or bldg.adjacentElement['Roof'][0].hasShape['gable']:
             if db == 1:
                 depth_model = 160
                 db_ratio = 1
@@ -164,7 +164,7 @@ def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
             elif depth_model == 400:
                 dtag = '20'
             # Initialize roof tag, num_surf and, surf_dictionaries for each use case:
-            if bldg.adjacentElement['Roof'].hasShape['flat']:
+            if bldg.adjacentElement['Roof'][0].hasShape['flat']:
                 num_surf = 5
                 surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
                 rtag = '00'
@@ -189,7 +189,7 @@ def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
                     rtag = '45'
             # Initialize string to access the correct model building file:
             model_file = 'Cp_ts_g' + dtag + htag + rtag + wdir_tag
-        elif bldg.adjacentElement['Roof'].hasShape['hip']:  # Note: most common hip roof pitches 4:12-6:12
+        elif bldg.adjacentElement['Roof'][0].hasShape['hip']:  # Note: most common hip roof pitches 4:12-6:12
             num_surf = 8
             surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None, 8: None}
             db_ratio = 3 / 2  # One option for hip roof
