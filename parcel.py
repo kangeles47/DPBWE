@@ -314,6 +314,13 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         for poly in roof_polys[key]:
                             new_sub_element = Roof()
                             new_sub_element.hasGeometry['2D Geometry']['local'] = poly
+                            # Add 3D geometry:
+                            xpoly, ypoly = poly.exterior.xy
+                            poly_3d = []
+                            for j in range(0, len(xpoly)):
+                                poly_3d.append(Point(xpoly[j], ypoly[j], self.hasGeometry['Height']))
+                            new_sub_element.hasGeometry['3D Geometry']['local'] = Polygon(poly_3d)
+                            # Add subelement to roof:
                             new_roof.hasSubElement['cover'].append(new_sub_element)
                 else:
                     pass
@@ -343,6 +350,12 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         ext_wall.hasGeometry['1D Geometry']['local'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[
                             ind, col + 1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
                         ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry']['local'].length
+                        # (x, y, z) coordinates:
+                        zbottom = parcel.hasStory[story].hasGeometry['Height']*story
+                        ztop = parcel.hasStory[story].hasGeometry['Height']*(story+1)
+                        xline, yline = ext_wall.hasGeometry['1D Geometry']['local'].xy
+                        wall_xyz_poly = Polygon([Point(xline[0], yline[0], zbottom), Point(xline[1], yline[1], zbottom), Point(xline[1], yline[1], ztop), Point(xline[0], yline[0], ztop), Point(xline[0], yline[0], zbottom)])
+                        ext_wall.hasGeometry['3D Geometry']['local'] = wall_xyz_poly
                         new_wall_list.append(ext_wall)
             else:
                 xf, yf = parcel.hasGeometry['Footprint']['local'].exterior.xy
