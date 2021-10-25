@@ -36,7 +36,7 @@ class Element:
                     'peak flexural stress': None, 'peak shear stress': None, 'peak flexural strain': None, 'curvature': None,
                     'rotation': None, 'elongation': None}
         self.hasCapacity = edp_dict
-        self.hasDemand = edp_dict
+        self.hasDemand = edp_dict.copy()
         self.hasFailure = {}
         for key in edp_dict:
             self.hasFailure[key] = False
