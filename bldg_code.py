@@ -133,7 +133,7 @@ class FBC(BldgCode):
         # Populate roof attributes for this instance (parcel)
         roof_cover = parcel.hasElement['Roof'][0].hasCover.upper()
         if isinstance(roof_cover, str):
-            if 'BUILT' in roof_cover or 'CONCRETE' in roof_cover or 'SYNTHETIC' in roof_cover:
+            if 'BUILT' in roof_cover or 'CONCRETE' in roof_cover or 'SYNTHETIC' in roof_cover or 'METAL SURFACING' in roof_cover:
                 parcel.hasElement['Roof'][0].hasPitch = 0  #'flat'  # roof slopes under 2:12
                 parcel.hasElement['Roof'][0].hasShape['flat'] = True
             if ('ASPHALT' in roof_cover or 'ENG' in roof_cover) and ('FBC' in edition or 'CABO' in edition):
