@@ -277,7 +277,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         # Exterior Walls - Parcel approach: Geometries are derived considering ASCE 7 C&C zone locations:
         # Exterior Walls - Other approach: Geometries are derived using footprint vertices
         if zone_flag:
-            asce7 = bldg_code.ASCE7(parcel, loading_flag=True)
+            asce7 = bldg_code.ASCE7(parcel, loading_flag=False)
             a = asce7.get_cc_zone_width(parcel)  # Determine the zone width
             zone_pts, roof_polys = asce7.find_cc_zone_points(parcel, a, roof_flag=True, edition=None)  # Coordinates for start/end of zone locations
         else:
