@@ -23,7 +23,7 @@ def populate_code_capacities(bldg, cc_flag, mwfrs_flag, exposure):
         #asce7.assign_rmwfrs_pressures(test, asce7.hasEdition, exposure, wind_speed)
 
 
-def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_flag, cc_flag, mwfrs_flag):
+def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_flag):
     # Populate envelope pressures:
     if tpu_flag:
         # Convert wind direction to TPU wind direction:
@@ -103,19 +103,43 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_fl
                         pass
                 if not map_flag:
                     no_map_roof.append(df_roof.loc[idx])
-    else:
-        # Populate code-informed pressures:
-        asce7 = ASCE7(bldg, loading_flag=True)
-        if cc_flag:
-            a = asce7.get_cc_zone_width(bldg)
-            roof_flag = True
-            zone_pts, int_poly, zone2_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
-            asce7.assign_wcc_pressures(bldg, zone_pts, asce7.hasEdition, exposure, wind_speed)
-            asce7.assign_rcc_pressures(test, zone_pts, int_poly, asce7.hasEdition, exposure)
-        if mwfrs_flag:
-            asce7.assign_rmwfrs_pressures(test, asce7.hasEdition, exposure, wind_speed)
 
 
+def ftree(bldg):
+    # Loop through building envelope components and check for breach:
+    fail_elements = []
+    for key in bldg.adjacentElement:
+        if key == 'Floor':
+            pass
+        else:
+            for elem in bldg.adjacentElement[key]:
+                if key == 'Floor':
+                    pass
+                elif key == 'Roof':
+                    if len(bldg.adjacentElement[key][0].hasSubElement['cover']) > 0:
+                        for row in bldg.adjacentElement[key][0].hasDemand['wind pressure']:
+                            pass
+                    else:
+                        # Check the entire roof:
+                        for row in bldg.adjacentElement[key][0].hasDemand:
+                            pass
+                else:
+                    # Check facade components:
+                    try:
+                        for row in elem.hasDemand['wind pressure']['external'].index:
+                            pressure_demand = elem.hasDemand['wind pressure']['external'].iloc[row]['Pressure']
+                            if pressure_demand < 0 and pressure_demand < elem.hasCapacity['wind pressure']['total']['negative']:
+                                elem.hasFailure['wind pressure'] = True
+                            elif pressure_demand > 0 and pressure_demand > elem.hasCapacity['wind pressure']['total']['positive']:
+                                elem.hasFailure['wind pressure'] = True
+                    except TypeError:
+                        # Demand is a single value:
+                        if elem.hasDemand['wind pressure']['external'] >= elem.hasCapacity['wind pressure']['external']:
+                            pass
+                    if elem.hasFailure['wind pressure']:
+                        fail_elements.append(elem)
+                    else:
+                        pass
 
 # Asset Description
 # Parcel Models
@@ -130,5 +154,6 @@ exposure = 'B'
 cc_flag, mwfrs_flag = True, True
 #test.hasGeometry['Height'] = 9*4
 #test.hasGeometry['Height'] = 9
-#populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
-generate_pressure_loading(test, wind_speed, wind_direction, exposure, tpu_flag=True, cc_flag=False, mwfrs_flag=False)
+populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
+generate_pressure_loading(test, wind_speed, wind_direction, exposure, tpu_flag=True)
+ftree(test)
