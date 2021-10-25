@@ -40,7 +40,7 @@ class Element:
         self.hasFailure = {}
         for key in edp_dict:
             self.hasFailure[key] = False
-        self.hasFragility = edp_dict
+        self.hasFragility = edp_dict.copy()
         self.hasOutputVariable = {'repair cost': None, 'downtime': None, 'fatalities': None}
         self.hasServiceLife = None  # placeholder for typical replacement times (i.e., maintenance)
         self.hasManufacturer = None
