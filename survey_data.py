@@ -214,7 +214,11 @@ class SurveyData:
             roof_weights.append(CBECS_data.loc[CBECS_data[rtype_tag] == option, wght_tag].sum())
 
         # Choose wall and roof types:
-        wall_choice = int(random.choices(wall_options,wall_weights)[0])
+        try:
+            wall_choice = int(random.choices(wall_options,wall_weights)[0])
+        except ValueError:
+            # Try again:
+            wall_choice = int(random.choices(wall_options, wall_weights)[0])
         roof_choice = int(random.choices(roof_options,roof_weights)[0])
 
         # Conduct the semantic translations from the respective CBECS dataset
@@ -348,7 +352,11 @@ class SurveyData:
                     win_weights.append(CBECS_data.loc[CBECS_data2[win_tag] == option, wght_tag].sum())
                 else:
                     win_weights.append(CBECS_data.loc[CBECS_data[win_tag] == option, wght_tag].sum())
-            win_choice = int(random.choices(win_options, win_weights)[0])
+            try:
+                win_choice = int(random.choices(win_options, win_weights)[0])
+            except ValueError:
+                # Try again:
+                win_choice = int(random.choices(win_options, win_weights)[0])
             if win_choice == 1:
                 win_type = 'Single layer glass'
             elif win_choice == 2:
