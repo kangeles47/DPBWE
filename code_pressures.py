@@ -1719,7 +1719,7 @@ class PressureCalc:
         if isinstance(component, Wall):
             wall_ctype = ['masonry', 'masonry and metal', 'masonry and siding', 'window glass and masonry',
                       'steel frame and masonry', 'concrete panels', 'window glass and concrete', 'concrete and siding',
-                      'pre-cast concrete panels', 'brick, stone, or stucco', 'concrete block or poured concrete']
+                      'pre-cast concrete panels', 'brick, stone, or stucco', 'concrete block or poured concrete', 'sheet metal panels']
             cwall_ctype = ['window/vision glass', 'decor./construction glass', 'window and construction glass',
                        'window or vision glass', 'decorative or construction glass']
             if component.hasType.lower() in wall_ctype:
@@ -1737,6 +1737,8 @@ class PressureCalc:
                 mtl_ctype = ['metal surfacing', 'built-up', 'built-up and metal']
                 if component.hasCover.lower() in mtl_ctype:
                     ctype = 'metal deck'
+                elif 'asphalt' in component.hasCover.lower():
+                    ctype = 'asphalt shingle'
                 else:
                     print('C&C type currently not supported')
                     ctype = None
