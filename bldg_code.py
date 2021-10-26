@@ -721,8 +721,8 @@ class ASCE7(BldgCode):
                     elem.hasCapacity['wind pressure']['total'] = {'negative': rneg_dict}
                 else:
                     # Populate roof-level pressures:
-                    rneg_dict = {'zone 1': psim[0], 'zone 2': psim[1], 'zone 3': psim[2]}
-                    rpos_dict = {'zone 1': psim[3], 'zone 2': psim[4], 'zone 3': psim[5]}
+                    rpos_dict = {'zone 1': psim[0], 'zone 2': psim[1], 'zone 3': psim[2]}
+                    rneg_dict = {'zone 1': psim[3], 'zone 2': psim[4], 'zone 3': psim[5]}
                     elem.hasCapacity['wind pressure']['total'] = {'positive': rpos_dict, 'negative': rneg_dict}
             else:
                 if len(roof_polys.keys()) == 3:
@@ -731,18 +731,18 @@ class ASCE7(BldgCode):
                     # Check if element is in Zone 1:
                     if elem.hasGeometry['2D Geometry']['local'].within(roof_polys['Zone 1'][0]) or elem_coords == list(roof_polys['Zone 1'][0].exterior.coords):
                         if psim[0:2] == psim[3:5]:  # ASCE 7-88/93: no positive roof pressure cases
-                            elem.hasCapacity['wind pressure']['total'] = {'negative': psim[0]}
+                            elem.hasCapacity['wind pressure']['total'] = {'negative': psim[3]}
                         else:
-                            elem.hasCapacity['wind pressure']['total'] = {'positive': psim[3], 'negative': psim[0]}
+                            elem.hasCapacity['wind pressure']['total'] = {'positive': psim[0], 'negative': psim[3]}
                     else:
                         # Check if element is in Zone 2:
                         zone2_flag = False
                         for zone2poly in roof_polys['Zone 2']:
                             if elem.hasGeometry['2D Geometry']['local'].within(zone2poly) or elem_coords == list(zone2poly.exterior.coords):
                                 if psim[0:2] == psim[3:5]:  # ASCE 7-88/93: no positive roof pressure cases
-                                    elem.hasCapacity['wind pressure']['total'] = {'negative': psim[1]}
+                                    elem.hasCapacity['wind pressure']['total'] = {'negative': psim[4]}
                                 else:
-                                    elem.hasCapacity['wind pressure']['total'] = {'positive': psim[4], 'negative': psim[1]}
+                                    elem.hasCapacity['wind pressure']['total'] = {'positive': psim[1], 'negative': psim[4]}
                                 zone2_flag = True
                             else:
                                 pass
@@ -751,9 +751,9 @@ class ASCE7(BldgCode):
                         else:
                             # The element is in Zone 3:
                             if psim[0:2] == psim[3:5]:  # ASCE 7-88/93: no positive roof pressure cases
-                                elem.hasCapacity['wind pressure']['total'] = {'negative': psim[2]}
+                                elem.hasCapacity['wind pressure']['total'] = {'negative': psim[5]}
                             else:
-                                elem.hasCapacity['wind pressure']['total'] = {'positive': psim[5], 'negative': psim[2]}
+                                elem.hasCapacity['wind pressure']['total'] = {'positive': psim[2], 'negative': psim[5]}
                 else:
                     pass
 
@@ -785,6 +785,8 @@ class ASCE7(BldgCode):
             sim_flag = False
             if ctype.lower() == 'flat roof cover' or ctype.lower() == 'fastener':
                 area_eff = 10  # Use minimum effective wind area (typical)
+            elif 'asphalt' in ctype.lower():
+                area_eff = 3*12
             else:
                 print('Need to specify effective wind area for this type of C&C element')
             psim = pressures.rcc_pressure(wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat=2, hpr=True, h_ocean=True, encl_class='Enclosed', tpu_flag=False)
