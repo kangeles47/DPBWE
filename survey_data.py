@@ -219,8 +219,11 @@ class SurveyData:
         except ValueError:
             # Try again:
             wall_choice = int(random.choices(wall_options, wall_weights)[0])
-        roof_choice = int(random.choices(roof_options,roof_weights)[0])
-
+        try:
+            roof_choice = int(random.choices(roof_options,roof_weights)[0])
+        except ValueError:
+            # Try again:
+            roof_choice = int(random.choices(roof_options, roof_weights)[0])
         # Conduct the semantic translations from the respective CBECS dataset
         # Wall type descriptions:
         if data_yr == 1989:
