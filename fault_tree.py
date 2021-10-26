@@ -82,7 +82,16 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_fl
         #     ax.plot(xw, yw, zw, 'k')
         # plt.show()
         # Set up empty DataFrames for roof or roof_subelements:
-        df_roof = df_tpu_pressures.iloc[roof_indices]
+        r_indices = []
+        for row in df_facade.index:
+            ptap_z = df_facade.iloc[row]['Real Life Location'].z
+            if round(ptap_z, 4) == round(bldg.hasGeometry['Height'], 4):
+                r_indices.append(row)
+            else:
+                pass
+        for r in roof_indices:
+            r_indices.append(r)
+        df_roof = df_tpu_pressures.iloc[r_indices]
         # Map pressures onto roof elements:
         if len(bldg.adjacentElement['Roof'][0].hasSubElement['cover']) == 0:
             # Assign the entire DataFrame to the roof:
@@ -102,36 +111,43 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_fl
                     else:
                         pass
                 if not map_flag:
+                    # Try buffering the point:
+                    bpt = Point(rptap_loc.x, rptap_loc.y).buffer(distance=3)
+                    for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
+                        if bpt.intersects(subelem.hasGeometry['2D Geometry']['local']):
+                            subelem.hasDemand['wind pressure']['external'] = subelem.hasDemand['wind pressure'][
+                                'external'].append(df_roof.loc[idx], ignore_index=True)
+                            map_flag = True
+                        else:
+                            pass
+                if not map_flag:
                     no_map_roof.append(df_roof.loc[idx])
+            #print(len(no_map_roof))
 
 
 def ftree(bldg):
     # Loop through building envelope components and check for breach:
     fail_elements = []
+    fail_ptaps = []
+    fail_pairs = []
     for key in bldg.adjacentElement:
         if key == 'Floor':
             pass
-        else:
-            for elem in bldg.adjacentElement[key]:
-                if key == 'Floor':
-                    pass
-                elif key == 'Roof':
-                    if len(bldg.adjacentElement[key][0].hasSubElement['cover']) > 0:
-                        for row in bldg.adjacentElement[key][0].hasDemand['wind pressure']:
-                            pass
-                    else:
-                        # Check the entire roof:
-                        for row in bldg.adjacentElement[key][0].hasDemand:
-                            pass
-                else:
-                    # Check facade components:
+        elif key == 'Roof':
+            if len(bldg.adjacentElement[key][0].hasSubElement['cover']) > 0:
+                for elem in bldg.adjacentElement[key][0].hasSubElement['cover']:
                     try:
                         for row in elem.hasDemand['wind pressure']['external'].index:
                             pressure_demand = elem.hasDemand['wind pressure']['external'].iloc[row]['Pressure']
                             if pressure_demand < 0 and pressure_demand < elem.hasCapacity['wind pressure']['total']['negative']:
                                 elem.hasFailure['wind pressure'] = True
+                                fail_ptaps.append(elem.hasDemand['wind pressure']['external'].iloc[row])
+                                fail_pairs.append((pressure_demand, elem.hasCapacity['wind pressure']['total']['negative']))
                             elif pressure_demand > 0 and pressure_demand > elem.hasCapacity['wind pressure']['total']['positive']:
                                 elem.hasFailure['wind pressure'] = True
+                                fail_ptaps.append(elem.hasDemand['wind pressure']['external'].iloc[row])
+                                fail_pairs.append(
+                                    (pressure_demand, elem.hasCapacity['wind pressure']['total']['positive']))
                     except TypeError:
                         # Demand is a single value:
                         if elem.hasDemand['wind pressure']['external'] >= elem.hasCapacity['wind pressure']['external']:
@@ -140,6 +156,39 @@ def ftree(bldg):
                         fail_elements.append(elem)
                     else:
                         pass
+            else:
+                pass
+        elif key == 'Walls':
+            for elem in bldg.adjacentElement[key]:
+                try:
+                    for row in elem.hasDemand['wind pressure']['external'].index:
+                        pressure_demand = elem.hasDemand['wind pressure']['external'].iloc[row]['Pressure']
+                        if pressure_demand < 0 and pressure_demand < elem.hasCapacity['wind pressure']['total']['negative']:
+                            elem.hasFailure['wind pressure'] = True
+                        elif pressure_demand > 0 and pressure_demand > elem.hasCapacity['wind pressure']['total']['positive']:
+                            elem.hasFailure['wind pressure'] = True
+                except TypeError:
+                    # Demand is a single value:
+                    if elem.hasDemand['wind pressure']['external'] >= elem.hasCapacity['wind pressure']['external']:
+                        pass
+                if elem.hasFailure['wind pressure']:
+                    fail_elements.append(elem)
+                else:
+                    pass
+    # Plotting:
+    # Roof damage:
+    for fail_elem in fail_elements:
+        xf, yf = fail_elem.hasGeometry['2D Geometry']['local'].exterior.xy
+        plt.plot(xf, yf, 'k')
+    for tap in range(0, len(fail_ptaps)):
+        tloc = fail_ptaps[tap]['Real Life Location']
+        try:
+            plt.scatter(tloc.x, tloc.y, color='red')
+        except AttributeError:
+            pass
+    plt.title('Roof pressure taps - damaged')
+    plt.show()
+    d = 0
 
 # Asset Description
 # Parcel Models
