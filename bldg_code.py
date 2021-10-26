@@ -136,7 +136,7 @@ class FBC(BldgCode):
             if 'BUILT' in roof_cover or 'CONCRETE' in roof_cover or 'SYNTHETIC' in roof_cover or 'METAL SURFACING' in roof_cover:
                 parcel.hasElement['Roof'][0].hasPitch = 0  #'flat'  # roof slopes under 2:12
                 parcel.hasElement['Roof'][0].hasShape['flat'] = True
-            if ('ASPHALT' in roof_cover or 'ENG' in roof_cover) and ('FBC' in edition or 'CABO' in edition):
+            if ('ASPHALT' in roof_cover or 'ENG' in roof_cover) and ('FBC' in edition or 'CABO' in edition or 'SBC' in edition):
                 parcel.hasElement['Roof'][0].hasPitch = (2/12)*100  # Minimum pitch for asphalt roof covers
             if edition == '2001 FBC' and parcel.isComm and parcel.hasYearBuilt < 2003:
                 # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
