@@ -36,11 +36,30 @@ class Element:
                     'peak flexural stress': None, 'peak shear stress': None, 'peak flexural strain': None, 'curvature': None,
                     'rotation': None, 'elongation': None}
         self.hasCapacity = edp_dict
-        self.hasDemand = edp_dict.copy()
+        demand_dict = {'peak interstory drift ratio': None, 'peak absolute velocity': None,
+                    'peak absolute acceleration': None,
+                    'wind speed': None, 'wind pressure': {'external': None, 'internal': None, 'total': None},
+                    'debris impact': None, 'axial force': None, 'shear force': None, 'bending moment': None,
+                    'peak flexural stress': None, 'peak shear stress': None, 'peak flexural strain': None,
+                    'curvature': None,
+                    'rotation': None, 'elongation': None}
+        self.hasDemand = demand_dict
         self.hasFailure = {}
-        for key in edp_dict:
-            self.hasFailure[key] = False
-        self.hasFragility = edp_dict.copy()
+        failure_dict = {'peak interstory drift ratio': False, 'peak absolute velocity': False,
+                    'peak absolute acceleration': False,
+                    'wind speed': False, 'wind pressure': False,
+                    'debris impact': False, 'axial force': False, 'shear force': False, 'bending moment': False,
+                    'peak flexural stress': False, 'peak shear stress': False, 'peak flexural strain': False,
+                    'curvature': False, 'rotation': False, 'elongation': False}
+        self.hasFailure = failure_dict
+        fragility_dict = {'peak interstory drift ratio': None, 'peak absolute velocity': None,
+                    'peak absolute acceleration': None,
+                    'wind speed': None, 'wind pressure': {'external': None, 'internal': None, 'total': None},
+                    'debris impact': None, 'axial force': None, 'shear force': None, 'bending moment': None,
+                    'peak flexural stress': None, 'peak shear stress': None, 'peak flexural strain': None,
+                    'curvature': None,
+                    'rotation': None, 'elongation': None}
+        self.hasFragility = fragility_dict
         self.hasOutputVariable = {'repair cost': None, 'downtime': None, 'fatalities': None}
         self.hasServiceLife = None  # placeholder for typical replacement times (i.e., maintenance)
         self.hasManufacturer = None
