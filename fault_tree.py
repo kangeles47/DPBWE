@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from shapely.geometry import Polygon, Point
-from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
+from scipy.spatial import Voronoi, voronoi_plot_2d
+from time_history_tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from parcel import Parcel
 from bldg_code import ASCE7
 
@@ -189,6 +190,24 @@ def ftree(bldg):
     plt.title('Roof pressure taps - damaged')
     plt.show()
     d = 0
+
+
+def get_voronoi(bldg):
+    # Get the voronoi discretization of pressure tap areas - element specific:
+    # Start with roof elements and their pressure taps:
+    if len(bldg.adjacentElement['Roof'][0].hasSubElement['cover']) == 0:
+        # Find polygons for the entire roof surface:
+        pass
+    else:
+        for elem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
+            # Use pressure tap locations as input coordinate list:
+            coord_list = []
+            for idx in elem.hasDemand['wind pressure']['external'].index:
+                ptap_loc = elem.hasDemand['wind pressure']['external'].iloc[idx]['Real Life Location']
+                coord_list.append((ptap_loc.x, ptap_loc.y))
+            vor = Voronoi(coord_list)
+            # Plot the discretization:
+            voronoi_plot_2d(vor, show_points=True)
 
 # Asset Description
 # Parcel Models
