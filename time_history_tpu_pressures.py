@@ -648,7 +648,9 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         pass
     # Step 4: Mapping pressure tap locations to real-life scenario and calculating pressure
     proj_dict = {'Index': [], 'Real Life Location': [], 'Surface Number': []}
-    for surf in list(surf_dict.keys()).sort():  # surf_dict holds surface geometries for each TPU surface number
+    surf_keys_list = list(surf_dict.keys())
+    surf_keys_list.sort()
+    for surf in surf_keys_list:  # surf_dict holds surface geometries for each TPU surface number
         df_csurf = df_contour.loc[df_contour['Surface Number'] == surf]
         # Extract all index and Surface numbers first (b/c dictionary key order is arbitrary):
         for idx in df_csurf.index.tolist():
@@ -756,12 +758,17 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
     df_tpu_pressures = pd.DataFrame(proj_dict).set_index('Index')
     # Calculate the pressure at each location:
     pressure_calc = PressureCalc()
-    pressures = []
-    for k in df_tpu_pressures.index.to_list():
-        #pressures.append(pressure_calc.get_tpu_pressure(wind_speed, df_tpu_pressures['Mean Cp'][k], 'B', df_tpu_pressures['Real Life Location'][k].z, 'mph'))
-        pressures.append(pressure_calc.get_tpu_pressure(wind_speed, df_tpu_pressures['Mean Cp'][k], 'B', hfull, 'mph'))
+    for t in tlabels_list:
+        pressures = []
+        for k in df_tpu_pressures.index.to_list():
+            if df_tpu_pressures['Real Life Location'][k].z == 0:
+                cp = 0
+            else:
+                cp = df_contour[t][k]
+            pressures.append(pressure_calc.get_tpu_pressure(wind_speed, cp, 'B', hfull, 'mph'))
+        df_tpu_pressures['p' + t] = pressures
     # Add a new column with the calculated pressures to the DataFrame:
-    df_tpu_pressures['Pressure'] = pressures
+    #df_tpu_pressures['Pressure'] = pressures
     # Plot the real-life pressure tap locations:
     # fig2 = plt.figure()
     # ax2 = plt.axes(projection='3d')
@@ -769,60 +776,60 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
     # ax2.scatter(np.array([i.x])/3.281, np.array([i.y])/3.281, np.array([i.z])/3.281, 'o')
     # plt.show()
     # Plot the full-scale pressures:
-    fig3 = plt.figure()
-    ax3 = plt.axes(projection='3d')
-    rl_xs = []
-    rl_ys = []
-    rl_zs = []
-    for k in df_tpu_pressures.index.to_list():
-        rl_xs.append(df_tpu_pressures['Real Life Location'][k].x)
-        rl_ys.append(df_tpu_pressures['Real Life Location'][k].y)
-        rl_zs.append(df_tpu_pressures['Real Life Location'][k].z)
-    img = ax3.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281,
-                        c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 5))
-    fig3.colorbar(img)
-    print('max and min Surface 1')
-    print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 1, 'Pressure'])/0.020885)
-    print(min(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 1, 'Pressure'])/0.020885)
-    print('max and min Surface 2')
-    print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 2, 'Pressure']) / 0.020885)
-    print(min(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 2, 'Pressure']) / 0.020885)
-    print('max and min Surface 3')
-    print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 3, 'Pressure']) / 0.020885)
-    print(min(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 3, 'Pressure']) / 0.020885)
-    print('max and min Surface 4')
-    print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 4, 'Pressure']) / 0.020885)
-    print(min(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 4, 'Pressure']) / 0.020885)
-    print('max and min Surface 5')
-    print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 5, 'Pressure']) / 0.020885)
-    print(min(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 5, 'Pressure']) / 0.020885)
-    # Make the panes transparent:
-    ax3.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax3.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax3.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    # Make the grids transparent:
-    ax3.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    ax3.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    ax3.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    # Plot labels
-    ax3.set_xlabel('x [m]')
-    ax3.set_ylabel('y [m]')
-    ax3.set_zlabel('z [m]')
-    # Plot all surface geometries for verification
-    for key in surf_dict:
-        xsurf, ysurf, zsurf = [], [], []
-        xr, yr, zr = [], [], []
-        for p in list(surf_dict[key].exterior.coords):
-            xsurf.append(p[0])
-            ysurf.append(p[1])
-            zsurf.append(p[2])
-        for b in list(rect_surf_dict[key].exterior.coords):
-            xr.append(b[0])
-            yr.append(b[1])
-            zr.append(b[2])
-        ax3.plot(np.array(xsurf)/3.281, np.array(ysurf)/3.281, np.array(zsurf)/3.281, linestyle='dashed', color='gray')
-        ax3.plot(np.array(xr) / 3.281, np.array(yr) / 3.281, np.array(zr) / 3.281, linestyle='dashed', color='gray')
-    plt.show()
+    # fig3 = plt.figure()
+    # ax3 = plt.axes(projection='3d')
+    # rl_xs = []
+    # rl_ys = []
+    # rl_zs = []
+    # for k in df_tpu_pressures.index.to_list():
+    #     rl_xs.append(df_tpu_pressures['Real Life Location'][k].x)
+    #     rl_ys.append(df_tpu_pressures['Real Life Location'][k].y)
+    #     rl_zs.append(df_tpu_pressures['Real Life Location'][k].z)
+    # img = ax3.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281,
+    #                     c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 5))
+    # fig3.colorbar(img)
+    # print('max and min Surface 1')
+    # print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 1, 'Pressure'])/0.020885)
+    # print(min(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 1, 'Pressure'])/0.020885)
+    # print('max and min Surface 2')
+    # print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 2, 'Pressure']) / 0.020885)
+    # print(min(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 2, 'Pressure']) / 0.020885)
+    # print('max and min Surface 3')
+    # print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 3, 'Pressure']) / 0.020885)
+    # print(min(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 3, 'Pressure']) / 0.020885)
+    # print('max and min Surface 4')
+    # print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 4, 'Pressure']) / 0.020885)
+    # print(min(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 4, 'Pressure']) / 0.020885)
+    # print('max and min Surface 5')
+    # print(max(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 5, 'Pressure']) / 0.020885)
+    # print(min(df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 5, 'Pressure']) / 0.020885)
+    # # Make the panes transparent:
+    # ax3.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # ax3.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # ax3.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # # Make the grids transparent:
+    # ax3.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # ax3.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # ax3.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # # Plot labels
+    # ax3.set_xlabel('x [m]')
+    # ax3.set_ylabel('y [m]')
+    # ax3.set_zlabel('z [m]')
+    # # Plot all surface geometries for verification
+    # for key in surf_dict:
+    #     xsurf, ysurf, zsurf = [], [], []
+    #     xr, yr, zr = [], [], []
+    #     for p in list(surf_dict[key].exterior.coords):
+    #         xsurf.append(p[0])
+    #         ysurf.append(p[1])
+    #         zsurf.append(p[2])
+    #     for b in list(rect_surf_dict[key].exterior.coords):
+    #         xr.append(b[0])
+    #         yr.append(b[1])
+    #         zr.append(b[2])
+    #     ax3.plot(np.array(xsurf)/3.281, np.array(ysurf)/3.281, np.array(zsurf)/3.281, linestyle='dashed', color='gray')
+    #     ax3.plot(np.array(xr) / 3.281, np.array(yr) / 3.281, np.array(zr) / 3.281, linestyle='dashed', color='gray')
+    # plt.show()
     # When geometries between actual building and model building are not fully compatible:
     # Wrap the pressures to the the parcel's full scale geometry:
     if match_flag:
@@ -944,54 +951,54 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                                         origin_pt.y + (new_space * multiplier * sin(theta)), origin_pt.z)
         # Plot the new pressure tap locations and their pressures:
         # Plot the full-scale pressures:
-        fig4 = plt.figure()
-        ax4 = plt.axes(projection='3d')
-        rl_xs, rl_ys, rl_zs = [], [], []
-        for k in df_tpu_pressures.index.to_list():
-            rl_xs.append(df_tpu_pressures['Real Life Location'][k].x)
-            rl_ys.append(df_tpu_pressures['Real Life Location'][k].y)
-            rl_zs.append(df_tpu_pressures['Real Life Location'][k].z)
-        img = ax4.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281, c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 5))
-        fig4.colorbar(img)
-        # Make the panes transparent:
-        ax4.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        ax4.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        ax4.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        # Make the grids transparent:
-        ax4.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        ax4.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        ax4.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        # Plot labels
-        ax4.set_xlabel('x [m]', fontsize=16, labelpad=10)
-        ax4.set_ylabel('y [m]', fontsize=16, labelpad=10)
-        ax4.set_zlabel('z [m]', fontsize=16, labelpad=10)
-        # Set label styles:
-        ax4.set_zticks(np.arange(0, 20, 4))
-        ax4.xaxis.set_tick_params(labelsize=16)
-        ax4.yaxis.set_tick_params(labelsize=16)
-        ax4.zaxis.set_tick_params(labelsize=16)
-        # Plot the surface geometries for verification
-        for key in rect_surf_dict:
-            xsurf, ysurf, zsurf = [], [], []
-            for p in list(rect_surf_dict[key].exterior.coords):
-                xsurf.append(p[0])
-                ysurf.append(p[1])
-                zsurf.append(p[2])
-            ax4.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, linestyle='dashed', color='gray', linewidth=2)
-            # Plot the building 3D Geometry:
-        for poly in bldg.hasGeometry['3D Geometry']['local']:
-            x_bpoly, y_bpoly, z_bpoly = [], [], []
-            for bpt in list(poly.exterior.coords):
-                x_bpoly.append(bpt[0])
-                y_bpoly.append(bpt[1])
-                z_bpoly.append(bpt[2])
-                # Plot the building geometry:
-            ax4.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, 'k', linewidth=2)
-        plt.show()
-        # Last part: Mapping pressures onto the true 3D geometry:
-        df_tpu_pressures['Surface Match'] = False  # Start by assuming there is not a perfect match with actual geometry
-        df_bldg_pressures = pd.DataFrame(columns=df_tpu_pressures.columns)  # Create master DataFrame for entire building
-        df_roof_pressures = pd.DataFrame(columns = df_tpu_pressures.columns)
+        # fig4 = plt.figure()
+        # ax4 = plt.axes(projection='3d')
+        # rl_xs, rl_ys, rl_zs = [], [], []
+        # for k in df_tpu_pressures.index.to_list():
+        #     rl_xs.append(df_tpu_pressures['Real Life Location'][k].x)
+        #     rl_ys.append(df_tpu_pressures['Real Life Location'][k].y)
+        #     rl_zs.append(df_tpu_pressures['Real Life Location'][k].z)
+        # img = ax4.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281, c=df_tpu_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 5))
+        # fig4.colorbar(img)
+        # # Make the panes transparent:
+        # ax4.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # ax4.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # ax4.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # # Make the grids transparent:
+        # ax4.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # ax4.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # ax4.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # # Plot labels
+        # ax4.set_xlabel('x [m]', fontsize=16, labelpad=10)
+        # ax4.set_ylabel('y [m]', fontsize=16, labelpad=10)
+        # ax4.set_zlabel('z [m]', fontsize=16, labelpad=10)
+        # # Set label styles:
+        # ax4.set_zticks(np.arange(0, 20, 4))
+        # ax4.xaxis.set_tick_params(labelsize=16)
+        # ax4.yaxis.set_tick_params(labelsize=16)
+        # ax4.zaxis.set_tick_params(labelsize=16)
+        # # Plot the surface geometries for verification
+        # for key in rect_surf_dict:
+        #     xsurf, ysurf, zsurf = [], [], []
+        #     for p in list(rect_surf_dict[key].exterior.coords):
+        #         xsurf.append(p[0])
+        #         ysurf.append(p[1])
+        #         zsurf.append(p[2])
+        #     ax4.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, linestyle='dashed', color='gray', linewidth=2)
+        #     # Plot the building 3D Geometry:
+        # for poly in bldg.hasGeometry['3D Geometry']['local']:
+        #     x_bpoly, y_bpoly, z_bpoly = [], [], []
+        #     for bpt in list(poly.exterior.coords):
+        #         x_bpoly.append(bpt[0])
+        #         y_bpoly.append(bpt[1])
+        #         z_bpoly.append(bpt[2])
+        #         # Plot the building geometry:
+        #     ax4.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, 'k', linewidth=2)
+        # plt.show()
+        # # Last part: Mapping pressures onto the true 3D geometry:
+        # df_tpu_pressures['Surface Match'] = False  # Start by assuming there is not a perfect match with actual geometry
+        # df_bldg_pressures = pd.DataFrame(columns=df_tpu_pressures.columns)  # Create master DataFrame for entire building
+        # df_roof_pressures = pd.DataFrame(columns = df_tpu_pressures.columns)
         # Set up plotting:
         fig5 = plt.figure()
         ax5 = plt.axes(projection='3d')
