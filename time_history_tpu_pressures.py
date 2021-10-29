@@ -614,6 +614,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             #plt.show()
     # Create a new DataFrame with new set of (x, y) and Cps:
     df_contour = pd.DataFrame(contour_values)
+    del contour_values
     # Step 3b: Coordinate transformation (for tpu_wdir > 90)
     if tpu_wdir > 90:
         # Find index for column we are modifying:
@@ -767,6 +768,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                 cp = df_contour[t][k]
             pressures.append(pressure_calc.get_tpu_pressure(wind_speed, cp, 'B', hfull, 'mph'))
         df_tpu_pressures['p' + t] = pressures
+    del df_contour, tlabels_list, proj_dict
     # Add a new column with the calculated pressures to the DataFrame:
     #df_tpu_pressures['Pressure'] = pressures
     # Plot the real-life pressure tap locations:
@@ -996,9 +998,9 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         #     ax4.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, 'k', linewidth=2)
         # plt.show()
         # # Last part: Mapping pressures onto the true 3D geometry:
-        # df_tpu_pressures['Surface Match'] = False  # Start by assuming there is not a perfect match with actual geometry
-        # df_bldg_pressures = pd.DataFrame(columns=df_tpu_pressures.columns)  # Create master DataFrame for entire building
-        # df_roof_pressures = pd.DataFrame(columns = df_tpu_pressures.columns)
+        df_tpu_pressures['Surface Match'] = False  # Start by assuming there is not a perfect match with actual geometry
+        df_bldg_pressures = pd.DataFrame(columns=df_tpu_pressures.columns)  # Create master DataFrame for entire building
+        df_roof_pressures = pd.DataFrame(columns = df_tpu_pressures.columns)
         # Set up plotting:
         fig5 = plt.figure()
         ax5 = plt.axes(projection='3d')
@@ -1168,8 +1170,8 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                 # Add the surface pressure tap data to the master DataFrame:
                 df_bldg_pressures = df_bldg_pressures.append(df_surf_pressures, ignore_index=True)
         # Save the roof surface and data:
-        bldg.hasDemand['wind pressure']['external']['surfaces'].append(roof_poly)
-        bldg.hasDemand['wind pressure']['external']['values'].append(df_roof_pressures)
+        #bldg.hasDemand['wind pressure']['external']['surfaces'].append(roof_poly)
+        #bldg.hasDemand['wind pressure']['external']['values'].append(df_roof_pressures)
         df_bldg_pressures = df_bldg_pressures.append(df_roof_pressures, ignore_index=True)
         # Plot the projected pressure taps:
         xf, yf, zf = [], [], []
@@ -1177,9 +1179,9 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             xf.append(df_bldg_pressures['Real Life Location'][k].x)
             yf.append(df_bldg_pressures['Real Life Location'][k].y)
             zf.append(df_bldg_pressures['Real Life Location'][k].z)
-        img = ax5.scatter3D(np.array([xf]) / 3.281, np.array([yf]) / 3.281, np.array([zf]) / 3.281,
-                            c=df_bldg_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 5))
-        fig5.colorbar(img)
+        #img = ax5.scatter3D(np.array([xf]) / 3.281, np.array([yf]) / 3.281, np.array([zf]) / 3.281,
+                            #c=df_bldg_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 5))
+        #fig5.colorbar(img)
         ax5.set_xlim(left=-20, right=20)
         ax5.set_ylim3d(bottom=-20, top=20)
         # Make the panes transparent:
