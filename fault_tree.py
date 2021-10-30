@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from shapely.geometry import Polygon, Point
-from shapely.ops import nearest_points, voronoi_diagram
+from shapely.ops import nearest_points
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from parcel import Parcel
