@@ -2,8 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from shapely.geometry import Polygon, Point
+from shapely.ops import nearest_points, voronoi_diagram
 from scipy.spatial import Voronoi, voronoi_plot_2d
-from time_history_tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
+from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from parcel import Parcel
 from bldg_code import ASCE7
 
@@ -195,19 +196,73 @@ def ftree(bldg):
 def get_voronoi(bldg):
     # Get the voronoi discretization of pressure tap areas - element specific:
     # Start with roof elements and their pressure taps:
+    coord_list = []
     if len(bldg.adjacentElement['Roof'][0].hasSubElement['cover']) == 0:
         # Find polygons for the entire roof surface:
-        pass
+        for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
+            ptap_loc = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].iloc[idx]['Real Life Location']
+            coord_list.append((ptap_loc.x, ptap_loc.y))
     else:
         for elem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
             # Use pressure tap locations as input coordinate list:
-            coord_list = []
             for idx in elem.hasDemand['wind pressure']['external'].index:
                 ptap_loc = elem.hasDemand['wind pressure']['external'].iloc[idx]['Real Life Location']
                 coord_list.append((ptap_loc.x, ptap_loc.y))
-            vor = Voronoi(coord_list)
-            # Plot the discretization:
-            voronoi_plot_2d(vor, show_points=True)
+    vor = Voronoi(list(set(coord_list)))
+    poly_list = []
+    # Use vertices and regions to create geometry for each pressure tap:
+    vertices = vor.vertices
+    regions = vor.regions  # list of lists - each list is a single region
+    for r in regions:
+        if len(r) > 0:
+            # Elements in list r are indices to the vertices array describing region:
+            point_list = []
+            if r[0] == -1:
+                npoint1 = nearest_points(Point((vertices[r[1]][0], vertices[r[1]][1])),
+                                         bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])[0]
+                point_list.append(npoint1)
+                for k in range(1, len(r)):
+                    point_list.append((vertices[r[k]][0], vertices[r[k]][1]))
+                npoint2 = nearest_points(Point((vertices[r[-1]][0], vertices[r[-1]][1])),
+                                         bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])[0]
+                point_list.append(npoint2)
+            elif r[-1] == -1:
+                for m in range(0, len(r)-1):
+                    point_list.append((vertices[r[m]][0], vertices[r[m]][1]))
+                npoint1 = nearest_points(Point((vertices[r[-2]][0], vertices[r[-2]][1])),
+                                         bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])[0]
+                point_list.append(npoint1)
+            else:
+                for i in range(0, len(r)):
+                    if r[i] != -1:
+                        point_list.append((vertices[r[i]][0], vertices[r[i]][1]))
+                        try:
+                            if r[i+1] != -1:
+                                pass
+                            else:
+                                # Use roof geometry to find nearest point (open geometries):
+                                npoint1 = nearest_points(Point((vertices[r[i]][0], vertices[r[i]][1])), bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])[0]
+                                npoint2 = nearest_points(Point((vertices[r[i+2]][0], vertices[r[i+2]][1])), bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])[0]
+                                point_list.append(npoint1)
+                                point_list.append(npoint2)
+                        except IndexError:
+                            pass
+                    else:
+                        pass
+            #point_list.append(point_list[0])
+            print(r)
+            poly_list.append(Polygon(point_list))
+        else:
+            pass
+    # Plot the discretization:
+    voronoi_plot_2d(vor, show_points=True)
+    for poly in poly_list:
+        xpoly, ypoly = poly.exterior.xy
+        plt.plot(xpoly, ypoly, 'r')
+    x, y = bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'].exterior.xy
+    plt.plot(x,y)
+    plt.show()
+    a=0
 
 # Asset Description
 # Parcel Models
@@ -224,4 +279,5 @@ cc_flag, mwfrs_flag = True, True
 #test.hasGeometry['Height'] = 9
 populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
 generate_pressure_loading(test, wind_speed, wind_direction, exposure, tpu_flag=True)
+get_voronoi(test)
 ftree(test)
