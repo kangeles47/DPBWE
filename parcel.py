@@ -320,6 +320,11 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                             for j in range(0, len(xpoly)):
                                 poly_3d.append(Point(xpoly[j], ypoly[j], self.hasGeometry['Height']))
                             new_sub_element.hasGeometry['3D Geometry']['local'] = Polygon(poly_3d)
+                            # Mark if subelement is on roof perimeter:
+                            if '2' in key or '3' in key:
+                                new_sub_element.hasGeometry['Perimeter'] = True
+                            else:
+                                pass
                             # Add subelement to roof:
                             new_roof.hasSubElement['cover'].append(new_sub_element)
                 else:

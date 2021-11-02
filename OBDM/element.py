@@ -97,6 +97,7 @@ class Roof(Element):
         self.hasSheathing = None
         self.hasStructureType = None
         self.hasSubElement = {'cover': [], 'sheathing': [], 'roof member': []}
+        self.hasGeometry['Perimeter'] = False
 
 
 class Floor(Element):  # Consider how we might bring in something like piles
