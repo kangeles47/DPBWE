@@ -311,6 +311,8 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 if zone_flag:
                     # Create roof sub_elements for C&C:
                     for key in roof_polys.keys():
+                        # Add roof zone geometries to main roof object:
+                        new_roof.hasGeometry[key] = roof_polys[key]
                         for poly in roof_polys[key]:
                             new_sub_element = Roof()
                             new_sub_element.hasGeometry['2D Geometry']['local'] = poly
