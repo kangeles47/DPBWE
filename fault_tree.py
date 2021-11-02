@@ -208,61 +208,39 @@ def get_voronoi(bldg):
             for idx in elem.hasDemand['wind pressure']['external'].index:
                 ptap_loc = elem.hasDemand['wind pressure']['external'].iloc[idx]['Real Life Location']
                 coord_list.append((ptap_loc.x, ptap_loc.y))
+    # Buffer out the roof geometry to ensure perimeter points get a closed geometry:
+    bpoly = bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'].buffer(distance=20)
+    for c in bpoly.exterior.coords:
+        coord_list.append(c)
     vor = Voronoi(list(set(coord_list)))
-    poly_list = []
-    # Use vertices and regions to create geometry for each pressure tap:
+    # Use vertices and regions to create geometry for each pressure tap:  # list of lists - each list is a single region
     vertices = vor.vertices
-    regions = vor.regions  # list of lists - each list is a single region
+    regions = vor.regions
+    poly_list = []
     for r in regions:
         if len(r) > 0:
             # Elements in list r are indices to the vertices array describing region:
             point_list = []
-            if r[0] == -1:
-                npoint1 = nearest_points(Point((vertices[r[1]][0], vertices[r[1]][1])),
-                                         bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])[0]
-                point_list.append(npoint1)
-                for k in range(1, len(r)):
-                    point_list.append((vertices[r[k]][0], vertices[r[k]][1]))
-                npoint2 = nearest_points(Point((vertices[r[-1]][0], vertices[r[-1]][1])),
-                                         bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])[0]
-                point_list.append(npoint2)
-            elif r[-1] == -1:
-                for m in range(0, len(r)-1):
-                    point_list.append((vertices[r[m]][0], vertices[r[m]][1]))
-                npoint1 = nearest_points(Point((vertices[r[-2]][0], vertices[r[-2]][1])),
-                                         bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])[0]
-                point_list.append(npoint1)
+            if -1 in r:
+                pass
             else:
                 for i in range(0, len(r)):
-                    if r[i] != -1:
-                        point_list.append((vertices[r[i]][0], vertices[r[i]][1]))
-                        try:
-                            if r[i+1] != -1:
-                                pass
-                            else:
-                                # Use roof geometry to find nearest point (open geometries):
-                                npoint1 = nearest_points(Point((vertices[r[i]][0], vertices[r[i]][1])), bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])[0]
-                                npoint2 = nearest_points(Point((vertices[r[i+2]][0], vertices[r[i+2]][1])), bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])[0]
-                                point_list.append(npoint1)
-                                point_list.append(npoint2)
-                        except IndexError:
-                            pass
-                    else:
-                        pass
-            #point_list.append(point_list[0])
-            print(r)
-            poly_list.append(Polygon(point_list))
-        else:
-            pass
-    # Plot the discretization:
-    voronoi_plot_2d(vor, show_points=True)
+                    point_list.append((vertices[r[i]][0], vertices[r[i]][1]))
+                # Check if the geometry intersects the roof perimeter:
+                new_poly = Polygon(point_list)
+                if new_poly.intersects(bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local']):
+                    # Find the intersection region:
+                    new_poly = new_poly.intersection(bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])
+                else:
+                    pass
+                poly_list.append(new_poly)
     for poly in poly_list:
         xpoly, ypoly = poly.exterior.xy
         plt.plot(xpoly, ypoly, 'r')
     x, y = bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'].exterior.xy
     plt.plot(x,y)
     plt.show()
-    a=0
+    return poly_list
 
 # Asset Description
 # Parcel Models
