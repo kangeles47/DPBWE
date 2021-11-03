@@ -25,17 +25,14 @@ def populate_code_capacities(bldg, cc_flag, mwfrs_flag, exposure):
         #asce7.assign_rmwfrs_pressures(test, asce7.hasEdition, exposure, wind_speed)
 
 
-def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_flag):
+def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag):
     # Populate envelope pressures:
     if tpu_flag:
         # Convert wind direction to TPU wind direction:
         tpu_wdir = convert_to_tpu_wdir(wind_direction, bldg)
         key = 'local'
-        edition = 'ASCE 7-16'
-        cat = 2
-        hpr = True
         # Find TPU wind pressures:
-        df_tpu_pressures = calc_tpu_pressures(bldg, key, tpu_wdir, wind_speed, exposure, edition, cat, hpr)
+        df_tpu_pressures = calc_tpu_pressures(bldg, key, tpu_wdir, wind_speed)
         # Map pressures to specific elements on building envelope:
         # Start with facade components:
         roof_indices = df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 5].index
@@ -127,7 +124,76 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, exposure, tpu_fl
             #print(len(no_map_roof))
 
 
-def ftree(bldg):
+def ftree(bldg, zone_flag):
+    # Loop through building envelope components and check for breach:
+    fail_elements = []
+    fail_ptaps = []
+    fail_pairs = []
+    roof_fail_dict = {}
+    for key in bldg.adjacentElement:
+        if key == 'Floor':
+            pass
+        elif key == 'Roof':
+            if len(bldg.adjacentElement[key][0].hasSubElement['cover']) > 0:
+                for elem in bldg.adjacentElement[key][0].hasSubElement['cover']:
+                    try:
+                        for row in elem.hasDemand['wind pressure']['external'].index:
+                            pressure_demand = elem.hasDemand['wind pressure']['external'].iloc[row]['Pressure']
+                            ptap_poly = elem.hasDemand['wind pressure']['external'].iloc[row]['Tap Polygon']
+                            # First check if failure occurred, then pull the corresponding failure region:
+                            if pressure_demand < 0 and pressure_demand < elem.hasCapacity['wind pressure']['total']['negative']:
+                                elem.hasFailure['wind pressure'] = True
+                                fail_ptaps.append(elem.hasDemand['wind pressure']['external'].iloc[row])
+                                fail_pairs.append((pressure_demand, elem.hasCapacity['wind pressure']['total']['negative']))
+                            elif pressure_demand > 0 and pressure_demand > elem.hasCapacity['wind pressure']['total']['positive']:
+                                elem.hasFailure['wind pressure'] = True
+                                fail_ptaps.append(elem.hasDemand['wind pressure']['external'].iloc[row])
+                                fail_pairs.append(
+                                    (pressure_demand, elem.hasCapacity['wind pressure']['total']['positive']))
+                    except TypeError:
+                        # Demand is a single value:
+                        if elem.hasDemand['wind pressure']['external'] >= elem.hasCapacity['wind pressure']['external']:
+                            pass
+                    if elem.hasFailure['wind pressure']:
+                        fail_elements.append(elem)
+                    else:
+                        pass
+            else:
+                pass
+        elif key == 'Walls':
+            for elem in bldg.adjacentElement[key]:
+                try:
+                    for row in elem.hasDemand['wind pressure']['external'].index:
+                        pressure_demand = elem.hasDemand['wind pressure']['external'].iloc[row]['Pressure']
+                        if pressure_demand < 0 and pressure_demand < elem.hasCapacity['wind pressure']['total']['negative']:
+                            elem.hasFailure['wind pressure'] = True
+                        elif pressure_demand > 0 and pressure_demand > elem.hasCapacity['wind pressure']['total']['positive']:
+                            elem.hasFailure['wind pressure'] = True
+                except TypeError:
+                    # Demand is a single value:
+                    if elem.hasDemand['wind pressure']['external'] >= elem.hasCapacity['wind pressure']['external']:
+                        pass
+                if elem.hasFailure['wind pressure']:
+                    fail_elements.append(elem)
+                else:
+                    pass
+    # Plotting:
+    # Roof damage:
+    for fail_elem in fail_elements:
+        xf, yf = fail_elem.hasGeometry['2D Geometry']['local'].exterior.xy
+        plt.plot(xf, yf, 'k')
+    for tap in range(0, len(fail_ptaps)):
+        tloc = fail_ptaps[tap]['Real Life Location']
+        try:
+            plt.scatter(tloc.x, tloc.y, color='red')
+        except AttributeError:
+            pass
+    plt.title('Roof pressure taps - damaged')
+    plt.show()
+    d = 0
+
+
+def ftree_initial(bldg):
     # Loop through building envelope components and check for breach:
     fail_elements = []
     fail_ptaps = []
@@ -222,7 +288,7 @@ def get_voronoi(bldg):
             # Elements in list r are indices to the vertices array describing region:
             point_list = []
             if -1 in r:
-                pass
+                new_poly = 0
             else:
                 for i in range(0, len(r)):
                     point_list.append((vertices[r[i]][0], vertices[r[i]][1]))
@@ -233,14 +299,30 @@ def get_voronoi(bldg):
                     new_poly = new_poly.intersection(bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])
                 else:
                     pass
-                poly_list.append(new_poly)
+        else:
+            new_poly = 0
+        poly_list.append(new_poly)
     for poly in poly_list:
-        xpoly, ypoly = poly.exterior.xy
-        plt.plot(xpoly, ypoly, 'r')
+        if isinstance(poly, Polygon):
+            xpoly, ypoly = poly.exterior.xy
+            plt.plot(xpoly, ypoly, 'r')
     x, y = bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'].exterior.xy
     plt.plot(x,y)
     plt.show()
-    return poly_list
+    if len(bldg.adjacentElement['Roof'][0].hasSubElement['cover']) == 0:
+        pass
+    else:
+        # Loop through pressure taps for each element and add their corresponding polygons:
+        for elem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
+            # Use pressure tap locations as input coordinate list:
+            tap_poly_list = []
+            for idx in elem.hasDemand['wind pressure']['external'].index:
+                ptap_loc = elem.hasDemand['wind pressure']['external'].iloc[idx]['Real Life Location']
+                new_arr = np.array([ptap_loc.x, ptap_loc.y])
+                vpoint_idx = np.where(vor.points==new_arr)[0][0]
+                vregion_idx = vor.point_region[vpoint_idx]
+                tap_poly_list.append(poly_list[vregion_idx])
+            elem.hasDemand['wind pressure']['external']['Tap Polygon'] = tap_poly_list
 
 # Asset Description
 # Parcel Models
@@ -256,6 +338,6 @@ cc_flag, mwfrs_flag = True, True
 #test.hasGeometry['Height'] = 9*4
 #test.hasGeometry['Height'] = 9
 populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
-generate_pressure_loading(test, wind_speed, wind_direction, exposure, tpu_flag=True)
+generate_pressure_loading(test, wind_speed, wind_direction, tpu_flag=True)
 get_voronoi(test)
-ftree(test)
+ftree(test, zone_flag=True)
