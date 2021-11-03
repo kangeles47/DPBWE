@@ -9,7 +9,7 @@ import pandas as pd
 from code_pressures import PressureCalc
 
 
-def calc_tpu_pressures(bldg, key, tpu_wdir, wind_speed, exposure, edition, cat, hpr):
+def calc_tpu_pressures(bldg, key, tpu_wdir, wind_speed):
     # Create new key-value pairs in the data model:
     bldg.hasGeometry['TPU_surfaces'] = {'geodesic': [], 'local': []}
     # Step 1: Determine the building's TPU use case:
@@ -19,6 +19,7 @@ def calc_tpu_pressures(bldg, key, tpu_wdir, wind_speed, exposure, edition, cat, 
     bfull, hfull, dfull, rect_surf_dict = get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict, rect_surf_dict)
     df_tpu_pressures = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, match_flag, h_bldg, rect_surf_dict, bldg)
     return df_tpu_pressures
+
 
 def find_tpu_use_case(bldg, key, tpu_wdir, eave_length):
     # This function determines the appropriate TPU use case for the given building.
