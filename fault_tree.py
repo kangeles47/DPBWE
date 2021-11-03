@@ -5,6 +5,7 @@ from shapely.geometry import Polygon, Point
 from shapely.ops import nearest_points
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
+from create_fragility import get_wind_speed
 from parcel import Parcel
 from bldg_code import ASCE7
 
@@ -127,29 +128,39 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag):
 def ftree(bldg, zone_flag):
     # Loop through building envelope components and check for breach:
     fail_elements = []
-    fail_ptaps = []
-    fail_pairs = []
-    roof_fail_dict = {}
     for key in bldg.adjacentElement:
         if key == 'Floor':
             pass
         elif key == 'Roof':
             if len(bldg.adjacentElement[key][0].hasSubElement['cover']) > 0:
+                roof_fail = {'time': [], 'region': [], 'area': []}
                 for elem in bldg.adjacentElement[key][0].hasSubElement['cover']:
+                    elem_fail = {'time': [], 'fail': [], 'region': []}
                     try:
                         for row in elem.hasDemand['wind pressure']['external'].index:
-                            pressure_demand = elem.hasDemand['wind pressure']['external'].iloc[row]['Pressure']
                             ptap_poly = elem.hasDemand['wind pressure']['external'].iloc[row]['Tap Polygon']
-                            # First check if failure occurred, then pull the corresponding failure region:
-                            if pressure_demand < 0 and pressure_demand < elem.hasCapacity['wind pressure']['total']['negative']:
-                                elem.hasFailure['wind pressure'] = True
-                                fail_ptaps.append(elem.hasDemand['wind pressure']['external'].iloc[row])
-                                fail_pairs.append((pressure_demand, elem.hasCapacity['wind pressure']['total']['negative']))
-                            elif pressure_demand > 0 and pressure_demand > elem.hasCapacity['wind pressure']['total']['positive']:
-                                elem.hasFailure['wind pressure'] = True
-                                fail_ptaps.append(elem.hasDemand['wind pressure']['external'].iloc[row])
-                                fail_pairs.append(
-                                    (pressure_demand, elem.hasCapacity['wind pressure']['total']['positive']))
+                            # Failure checks for each time step:
+                            for col in elem.hasDemand['wind pressure']['external'].columns[2:]:
+                                elem_fail['time'].append(int(col[2:]))
+                                pressure_demand = elem.hasDemand['wind pressure']['external'].iloc[row][col]
+                                # First check if failure occurred, then pull the corresponding failure region:
+                                if pressure_demand < 0 and pressure_demand < elem.hasCapacity['wind pressure']['total']['negative']:
+                                    elem_fail['fail'].append(True)
+                                    #fail_pairs.append((pressure_demand, elem.hasCapacity['wind pressure']['total']['negative']))
+                                elif pressure_demand > 0 and pressure_demand > elem.hasCapacity['wind pressure']['total']['positive']:
+                                    elem_fail['fail'].append(True)
+                                    #fail_pairs.append((pressure_demand, elem.hasCapacity['wind pressure']['total']['positive']))
+                                # If failure occurred, pull the corresponding failure region:
+                                if zone_flag:
+                                    if ptap_poly.intersects(elem.hasGeometry['2D Geometry']['local']):
+                                        elem_fail['region'].append(
+                                            ptap_poly.intersection(elem.hasGeometry['2D Geometry']['local']))
+                                    else:
+                                        elem_fail['region'].append(ptap_poly)  # Pressure tap is within the element's 2D geometry
+                                else:
+                                    # Grab the element's entire 2D polygon:
+                                    elem_fail['region'].append(elem.hasGeometry['2D Geometry']['local'])
+                        elem.hasFailure['wind pressure'] = elem_fail
                     except TypeError:
                         # Demand is a single value:
                         if elem.hasDemand['wind pressure']['external'] >= elem.hasCapacity['wind pressure']['external']:
@@ -158,9 +169,14 @@ def ftree(bldg, zone_flag):
                         fail_elements.append(elem)
                     else:
                         pass
+                # Figure out when maximum response occurred:
+                for t in range(0, len(elem_fail['time'])):
+                    if elem_fail['fail']:
+                        pass
             else:
                 pass
         elif key == 'Walls':
+            pass
             for elem in bldg.adjacentElement[key]:
                 try:
                     for row in elem.hasDemand['wind pressure']['external'].index:
@@ -179,18 +195,18 @@ def ftree(bldg, zone_flag):
                     pass
     # Plotting:
     # Roof damage:
-    for fail_elem in fail_elements:
-        xf, yf = fail_elem.hasGeometry['2D Geometry']['local'].exterior.xy
-        plt.plot(xf, yf, 'k')
-    for tap in range(0, len(fail_ptaps)):
-        tloc = fail_ptaps[tap]['Real Life Location']
-        try:
-            plt.scatter(tloc.x, tloc.y, color='red')
-        except AttributeError:
-            pass
-    plt.title('Roof pressure taps - damaged')
-    plt.show()
-    d = 0
+    # for fail_elem in fail_elements:
+    #     xf, yf = fail_elem.hasGeometry['2D Geometry']['local'].exterior.xy
+    #     plt.plot(xf, yf, 'k')
+    # for tap in range(0, len(fail_ptaps)):
+    #     tloc = fail_ptaps[tap]['Real Life Location']
+    #     try:
+    #         plt.scatter(tloc.x, tloc.y, color='red')
+    #     except AttributeError:
+    #         pass
+    # plt.title('Roof pressure taps - damaged')
+    # plt.show()
+    # d = 0
 
 
 def ftree_initial(bldg):
@@ -331,9 +347,11 @@ lat = 30.190142
 test = Parcel('12345', 4, 'financial', 2000, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
 test.hasElement['Roof'][0].hasShape['flat'] = True
 test.hasElement['Roof'][0].hasPitch = 0
-wind_speed = 120
-wind_direction = 45
+wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
 exposure = 'B'
+unit = 'english'
+wind_speed = get_wind_speed(test, wind_speed_file_path, exposure, unit)
+wind_direction = 90
 cc_flag, mwfrs_flag = True, True
 #test.hasGeometry['Height'] = 9*4
 #test.hasGeometry['Height'] = 9
