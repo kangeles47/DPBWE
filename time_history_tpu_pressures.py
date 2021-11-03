@@ -319,7 +319,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
         ax.set_xlabel('x [m]', fontsize=16, labelpad=10)
         ax.set_ylabel('y [m]', fontsize=16, labelpad=10)
         ax.set_zlabel('z [m]', fontsize=16, labelpad=10)
-        plt.show()
+        #plt.show()
         # Add roof surfaces to the end of the list:
         if num_surf == 5:
             roof_surf = Polygon(new_zpts[-1])
@@ -350,7 +350,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
     ax_ex.yaxis.set_tick_params(labelsize=20)
     ax_ex.set_xlabel('x [m]', fontsize=20)
     ax_ex.set_ylabel('y [m]', fontsize=20)
-    plt.show()
+    #plt.show()
     # Next step: Determine the surface numberings:
     # First need to establish which polygons correspond to specific TPU surface numbers:
     if side_lines['TPU direction'][1] == 'x':
@@ -437,7 +437,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
     ax2.set_zlabel('z [m]')
     ax2.set_title('Surfaces for TPU Wind Direction: ' + str(tpu_wdir))
     # plt.axis('off')
-    plt.show()
+    #plt.show()
     # Step 5: Save the surfaces to the building description:
     bldg.hasGeometry['TPU_surfaces'][key] = surf_dict
     return bfull, hfull, dfull, rect_surf_dict
@@ -455,7 +455,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
     df['y'] = df['y'] / 305
     # Start by plotting out the points to see what they look like:
     # plt.plot(df['x'], df['y'], 'o')
-    plt.show()
+    #plt.show()
     # Step 1: Convert to full-scale dimensions:
     for pt in range(0, len(df['Point Number'])):
         if num_surf == 5 or num_surf == 8:  # Both flat and hip roofs have rectangular vertical planes
@@ -1202,7 +1202,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         ax5.xaxis.set_tick_params(labelsize=14)
         ax5.yaxis.set_tick_params(labelsize=14)
         ax5.zaxis.set_tick_params(labelsize=14)
-        plt.show()
+        #plt.show()
     return df_bldg_pressures
 
 
