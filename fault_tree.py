@@ -121,21 +121,21 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_fl
                 subelem.hasDemand['wind pressure']['external'] = []
             # Map pressures to roof subelements
             no_map_roof = []
-            for idx in df_roof.index:
+            for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
                 map_flag = False
-                rptap_loc = df_roof['Real Life Location'][idx]
+                rtap_poly = df_roof['Tap Polygon'][idx]
                 for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
-                    if Point(rptap_loc.x, rptap_loc.y).within(subelem.hasGeometry['2D Geometry']['local']) or Point(rptap_loc.x, rptap_loc.y).intersects(subelem.hasGeometry['2D Geometry']['local']):
+                    if rtap_poly.within(subelem.hasGeometry['2D Geometry']['local']) or rtap_poly.intersects(subelem.hasGeometry['2D Geometry']['local']):
                         subelem.hasDemand['wind pressure']['external'].append(idx)
                         #subelem.hasDemand['wind pressure']['external'] = subelem.hasDemand['wind pressure']['external'].append(df_roof.loc[idx], ignore_index=True)
                         map_flag = True
                     else:
                         pass
                 if not map_flag:
-                    # Try buffering the point:
-                    bpt = Point(rptap_loc.x, rptap_loc.y).buffer(distance=3)
+                    # Try buffering the polygon:
+                    bpoly = rtap_poly.buffer(distance=3)
                     for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
-                        if bpt.intersects(subelem.hasGeometry['2D Geometry']['local']):
+                        if bpoly.intersects(subelem.hasGeometry['2D Geometry']['local']):
                             subelem.hasDemand['wind pressure']['external'].append(idx)
                             map_flag = True
                         else:
@@ -224,39 +224,10 @@ def ftree(bldg, zone_flag):
                                 pass
                         # Add the data to the element's data model:
                         elem.hasFailure['wind pressure'] = elem_fail.loc[elem_fail['fail']==True]
-                        # for row in elem.hasDemand['wind pressure']['external'].index:
-                        #     ptap_poly = elem.hasDemand['wind pressure']['external'].loc[row]['Tap Polygon']
-                        #     # Failure checks for each time step:
-                        #     for t in tcols:
-                        #         pressure_demand = bldg.hasDemand['wind pressure']['external'].loc[row][t]
-                        #         # First check if failure occurred, then pull the corresponding failure region:
-                        #         if pressure_demand < 0 and pressure_demand < elem.hasCapacity['wind pressure']['total']['negative']:
-                        #             elem_fail['fail'].append(True)
-                        #             #fail_pairs.append((pressure_demand, elem.hasCapacity['wind pressure']['total']['negative']))
-                        #         elif pressure_demand > 0 and pressure_demand > elem.hasCapacity['wind pressure']['total']['positive']:
-                        #             elem_fail['fail'].append(True)
-                        #             #fail_pairs.append((pressure_demand, elem.hasCapacity['wind pressure']['total']['positive']))
-                        #         else:
-                        #             elem_fail['fail'].append(False)
-                        #         # If failure occurred, pull the corresponding failure region:
-                        #         if zone_flag:
-                        #             if ptap_poly.intersects(elem.hasGeometry['2D Geometry']['local']):
-                        #                 elem_fail['region'].append(
-                        #                     ptap_poly.intersection(elem.hasGeometry['2D Geometry']['local']))
-                        #             else:
-                        #                 elem_fail['region'].append(ptap_poly)  # Pressure tap is within the element's 2D geometry
-                        #         else:
-                        #             # Grab the element's entire 2D polygon:
-                        #             elem_fail['region'].append(elem.hasGeometry['2D Geometry']['local'])
-                        # elem.hasFailure['wind pressure'] = elem_fail
                     except TypeError:
                         # Demand is a single value:
                         if elem.hasDemand['wind pressure']['external'] >= elem.hasCapacity['wind pressure']['external']:
                             pass
-                    # if elem.hasFailure['wind pressure']:
-                    #     fail_elements.append(elem)
-                    # else:
-                    #     pass
                 # Figure out when maximum response occurred:
                 max_idx = roof_fail.loc[roof_fail['area'] == max(roof_fail['area'])].index[0]
                 max_time = roof_fail['time'][max_idx]
@@ -270,12 +241,12 @@ def ftree(bldg, zone_flag):
                             plt.plot(xr, yr, 'r')
                     else:
                         elem.hasFailure['wind pressure'] = False
+                    # Plot element geometries:
+                    xe, ye = elem.hasGeometry['2D Geometry']['local'].exterior.xy
+                    plt.plot(xe, ye, 'g')
                 x, y = bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'].exterior.xy
-                plt.plot(x, y)
+                plt.plot(x, y, 'k', linestyle='dashed')
                 plt.show()
-                for t in range(0, len(elem_fail['time'])):
-                    if elem_fail['fail']:
-                        pass
             else:
                 pass
         elif key == 'Walls':
@@ -464,7 +435,6 @@ def get_voronoi(bldg):
         for no_map in no_map_poly:
             if bpt.intersects(no_map):
                 bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].at[idx, 'Tap Polygon'] = no_map
-                print(idx)
                 break
         else:
             pass
