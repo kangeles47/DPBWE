@@ -158,9 +158,9 @@ def ftree(bldg, zone_flag):
             pass
         elif key == 'Roof':
             if len(bldg.adjacentElement[key][0].hasSubElement['cover']) > 0:
-                #roof_fail = pd.DataFrame({'time': tcols, 'region': np.zeros(len(tcols)), 'area': np.zeros(len(tcols))})
+                roof_fail = pd.DataFrame({'time': tcols, 'area': np.zeros(len(tcols))})
                 for elem in bldg.adjacentElement[key][0].hasSubElement['cover']:
-                    elem_fail = pd.DataFrame({'time': tcols, 'fail': '', 'region': '', 'tap index': ''})
+                    elem_fail = pd.DataFrame({'time': tcols, 'fail': [False for col in tcols], 'region': [[] for col in tcols], 'tap index': [[] for col in tcols]})
                     fcol = np.where(elem_fail.columns == 'fail')[0][0]
                     rcol = np.where(elem_fail.columns == 'region')[0][0]
                     tap_col = np.where(elem_fail.columns == 'tap index')[0][0]
@@ -182,44 +182,44 @@ def ftree(bldg, zone_flag):
                         # Grab subsets of each dataframe to conduct query:
                         df_neg = df_neg[tneg_fcol]
                         df_pos = df_pos[tpos_fcol]
-                        print('columns in negative with true value:' + str(len(df_neg.columns)))
-                        print('columns in positive with true value:' + str(len(df_pos.columns)))
-                        if len(df_neg.columns) > 0 and len(df_pos.columns) > 0:
-                            print('time to figure out what to do with two dataframes')
-                            b = 0
-                            if (df_neg.index == df_pos.index).all():
-                                pass
+                        # print('columns in negative with true value:' + str(len(df_neg.columns)))
+                        # print('columns in positive with true value:' + str(len(df_pos.columns)))
                         # Before proceeding, get rid of any bigger data items we no longer need:
                         del pressure_demand, tneg_check, tpos_check, tneg_fcol, tpos_fcol
-                        if len(df_neg.columns) > 0:
-                            for col in df_neg.columns:
-                                elem_fail_tidx = elem_fail.loc[elem_fail['time']==col].index[0]
-                                fail_rows = df_neg.loc[df_neg[col]==True].index
-                                region_list = []
-                                tap_index_list = []
-                                for row in fail_rows:
-                                    # Save the tap's index for later reference:
-                                    tap_index_list.append(row)
-                                    # Find the resulting failure region:
-                                    ptap_poly = elem.hasDemand['wind pressure']['external'].loc[row]['Tap Polygon']
-                                    if zone_flag:
-                                        if ptap_poly.intersects(elem.hasGeometry['2D Geometry']['local']):
-                                            region_list.append(ptap_poly.intersection(elem.hasGeometry['2D Geometry']['local']))
+                        # Grab failed regions and record pressure tap indices:
+                        df_list = [df_neg, df_pos]
+                        for d in range(0, len(df_list)):
+                            df_query = df_list[d]
+                            if len(df_query) > 0:
+                                for col in df_query.columns:
+                                    elem_fail_tidx = elem_fail.loc[elem_fail['time']==col].index[0]
+                                    fail_rows = df_query.loc[df_query[col]==True].index
+                                    region_list = []
+                                    tap_index_list = []
+                                    for row in fail_rows:
+                                        # Save the tap's index for later reference:
+                                        tap_index_list.append(row)
+                                        # Find the resulting failure region:
+                                        ptap_poly = elem.hasDemand['wind pressure']['external'].loc[row]['Tap Polygon']
+                                        if zone_flag:
+                                            if ptap_poly.intersects(elem.hasGeometry['2D Geometry']['local']):
+                                                region_list.append(ptap_poly.intersection(elem.hasGeometry['2D Geometry']['local']))
+                                            else:
+                                                region_list.append(ptap_poly)  # Pressure tap is within the element's 2D geometry
                                         else:
-                                            region_list.append(ptap_poly)  # Pressure tap is within the element's 2D geometry
-                                    else:
-                                        # Grab the element's entire 2D polygon:
-                                        region_list.append(elem.hasGeometry['2D Geometry']['local'])
-                                # Add failure information to element's dataframe:
-                                elem_fail.iat[elem_fail_tidx, rcol] = region_list
-                                elem_fail.iat[elem_fail_tidx, fcol] = True
-                                elem_fail.iat[elem_fail_tidx, tap_col] = tap_index_list
-                        else:
-                            pass
-                        if len(df_pos) > 0:
-                            pass
-                        else:
-                            pass
+                                            # Grab the element's entire 2D polygon:
+                                            region_list.append(elem.hasGeometry['2D Geometry']['local'])
+                                    # Add failure information to element's dataframe:
+                                    elem_fail.iat[elem_fail_tidx, rcol] = elem_fail.iat[elem_fail_tidx, rcol] + region_list
+                                    elem_fail.iat[elem_fail_tidx, fcol] = True
+                                    elem_fail.iat[elem_fail_tidx, tap_col] = elem_fail.iat[elem_fail_tidx, tap_col] + tap_index_list
+                                    # Add failure area to overall roof failure information:
+                                    for r in region_list:
+                                        roof_fail.iat[elem_fail_tidx, 1] += r.area
+                            else:
+                                pass
+                        # Add the data to the element's data model:
+                        elem.hasFailure['wind pressure'] = elem_fail.loc[elem_fail['fail']==True]
                         # for row in elem.hasDemand['wind pressure']['external'].index:
                         #     ptap_poly = elem.hasDemand['wind pressure']['external'].loc[row]['Tap Polygon']
                         #     # Failure checks for each time step:
@@ -249,11 +249,26 @@ def ftree(bldg, zone_flag):
                         # Demand is a single value:
                         if elem.hasDemand['wind pressure']['external'] >= elem.hasCapacity['wind pressure']['external']:
                             pass
-                    if elem.hasFailure['wind pressure']:
-                        fail_elements.append(elem)
-                    else:
-                        pass
+                    # if elem.hasFailure['wind pressure']:
+                    #     fail_elements.append(elem)
+                    # else:
+                    #     pass
                 # Figure out when maximum response occurred:
+                max_idx = roof_fail.loc[roof_fail['area'] == max(roof_fail['area'])].index[0]
+                max_time = roof_fail['time'][max_idx]
+                # Loop through elements and retain only data for max response:
+                for elem in bldg.adjacentElement[key][0].hasSubElement['cover']:
+                    max_idx_elem = elem.hasFailure['wind pressure'].loc[elem.hasFailure['wind pressure']['time']==max_time].index
+                    if len(max_idx_elem) > 0:
+                        elem.hasFailure['wind pressure'] = elem.hasFailure['wind pressure'].loc[max_idx_elem[0]]
+                        for r in elem.hasFailure['wind pressure']['region']:
+                            xr, yr = r.exterior.xy
+                            plt.plot(xr, yr, 'r')
+                    else:
+                        elem.hasFailure['wind pressure'] = False
+                x, y = bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'].exterior.xy
+                plt.plot(x, y)
+                plt.show()
                 for t in range(0, len(elem_fail['time'])):
                     if elem_fail['fail']:
                         pass
@@ -423,6 +438,7 @@ def get_voronoi(bldg):
                 vregion_idx = vor.point_region[vpoint_idx]
                 tap_poly_list.append(poly_list[vregion_idx])
             elem.hasDemand['wind pressure']['external']['Tap Polygon'] = tap_poly_list
+    a = 0
 
 # Asset Description
 # Parcel Models
