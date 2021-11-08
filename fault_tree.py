@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from shapely.geometry import Polygon, Point
+from shapely.geometry import Polygon, Point, LineString
 from shapely.ops import nearest_points
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from time_history_tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
@@ -53,6 +53,8 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_fl
         roof_indices = df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 5].index
         tcols = [col for col in df_tpu_pressures.columns if 'pt' in col]
         df_facade = df_tpu_pressures.drop(roof_indices).drop(tcols, axis=1)
+        # Add tap polygon geometries:
+        df_facade = get_facade_mesh(bldg, df_facade)
         # Add empty DataFrames to facade elements:
         for wall in bldg.adjacentElement['Walls']:
             wall.hasDemand['wind pressure']['external'] = []
@@ -88,6 +90,21 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_fl
             if not map_flag:
                 no_map.append(idx)
                 #ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z, 'r')
+        # Plotting:
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
+        for story in bldg.hasStory:
+            for wall in story.adjacentElement['Walls']:
+                wall_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
+                xw, yw, zw = [], [], []
+                for w in wall_pts:
+                    xw.append(w[0])
+                    yw.append(w[1])
+                    zw.append(w[2])
+                ax.plot(xw, yw, zw)
+                for idx in wall.hasDemand['wind pressure']['external']:
+                    ptap_loc = df_tpu_pressures['Real Life Location'][idx]
+                    ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z)
         # for wall in bldg.adjacentElement['Walls']:
         #     wall_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
         #     xw, yw, zw = [], [], []
@@ -467,6 +484,66 @@ def get_voronoi(bldg):
     #             tap_poly_list.append(poly_list[vregion_idx])
     #         elem.hasDemand['wind pressure']['external']['Tap Polygon'] = tap_poly_list
     #a = 0
+
+
+def get_facade_mesh(bldg, df_facade):
+    # Collect (x, y) tap locations around bldg perimeter:
+    perim_points = []
+    xp, yp = [], []
+    zlist = []
+    for idx in df_facade.index:
+        ptap_loc = df_facade['Real Life Location'][idx]
+        zlist.append(ptap_loc.z)
+        #zlist.append(round(ptap_loc.z, 6))
+        if ptap_loc.z == 0:
+            perim_points.append(ptap_loc)
+            xp.append(ptap_loc.x)
+            yp.append(ptap_loc.y)
+    # Order z locations:
+    zlist_order = np.sort(np.array(list(set(zlist))))
+    # Find each point's adjacent points:
+    point_dict = {'point': [], 'adjacent': [], 'distance': []}
+    for p in perim_points:
+        point_dict['point'].append(Point(round(p.x, 5), round(p.y, 5)))
+        distance = []
+        for i in range(0, len(perim_points)):
+            distance.append(p.distance(perim_points[i]))
+        dist_arr = np.array(distance)
+        arr = np.partition(dist_arr, 3) # grab the three smallest values
+        adj_pts = []
+        dist_pts = []
+        for j in arr[0:3]:
+            if j != 0:
+                arr_idx = np.where(dist_arr==j)[0][0]
+                adj_pts.append(perim_points[arr_idx])
+                dist_pts.append(dist_arr[arr_idx])
+        point_dict['adjacent'].append(adj_pts)
+    # Create tap geometries:
+    tap_poly_list = []
+    for idx in df_facade.index:
+        ptap_loc = df_facade['Real Life Location'][idx]
+        zidx = np.where(zlist_order==ptap_loc.z)[0][0]
+        zmin = zlist[zidx-1]/2
+        zmax = zlist[zidx+1]/2
+        for k in range(0, len(point_dict['point'])):
+            if round(ptap_loc.x, 5) == point_dict['point'][k].x and round(ptap_loc.y, 5) == point_dict['point'][k].y:
+                poly_list = []
+                # Find distance between adjacent points and project to find new point:
+                for a in range(0, len(point_dict['adjacent'][k])):
+                    new_line = LineString([(ptap_loc.x, ptap_loc.y), point_dict['adjacent'][k][a]])
+                    ipt = new_line.interpolate(new_line.length/2)
+                    if a == 0:
+                        poly_list.append((ipt.x, ipt.y, zmin))
+                        poly_list.append((ipt.x, ipt.y, zmax))
+                    else:
+                        poly_list.append((ipt.x, ipt.y, zmax))
+                        poly_list.append((ipt.x, ipt.y, zmin))
+                tap_poly_list.append(Polygon(poly_list))
+            else:
+                pass
+    # Add the polygons to the input DataFrame:
+    df_facade['Tap Polygon'] = tap_poly_list
+    return df_facade
 
 # Asset Description
 # Parcel Models
