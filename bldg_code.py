@@ -921,9 +921,9 @@ class ASCE7(BldgCode):
                 for j in range(0, len(xpoly)):
                     poly_list.append((xpoly[-1-j], ypoly[-1-j]))
                 int_poly = Polygon(poly_list)
-                plt.plot(xc, yc)
-                plt.plot(xpoly, ypoly)
-                plt.show()
+                #plt.plot(xc, yc)
+                #plt.plot(xpoly, ypoly)
+                #plt.show()
                 # Find geometries for Zone 2 Locations using zone points
                 zone2_polys = []
                 for row in range(0, len(zone_pts)):
@@ -968,9 +968,9 @@ class ASCE7(BldgCode):
                     xp, yp = poly.exterior.xy
                     plt.plot(xp, yp, 'b')
                 # Plot int_poly
-                plt.plot(xc, yc, 'k')
-                plt.plot(xpoly, ypoly, 'r')
-                plt.show()
+                #plt.plot(xc, yc, 'k')
+                #plt.plot(xpoly, ypoly, 'r')
+                #plt.show()
                 roof_polys = {'Zone 1': [int_poly], 'Zone 2': zone2_polys, 'Zone 3': zone3_polys}
             elif edition == 'ASCE 7-16':
                 print('Code edition currently not supported for Roof MWFRS considerations')
