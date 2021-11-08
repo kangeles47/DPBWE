@@ -501,48 +501,72 @@ def get_facade_mesh(bldg, df_facade):
             yp.append(ptap_loc.y)
     # Order z locations:
     zlist_order = np.sort(np.array(list(set(zlist))))
-    # Find each point's adjacent points:
-    point_dict = {'point': [], 'adjacent': [], 'distance': []}
-    for p in perim_points:
-        point_dict['point'].append(Point(round(p.x, 5), round(p.y, 5)))
-        distance = []
-        for i in range(0, len(perim_points)):
-            distance.append(p.distance(perim_points[i]))
-        dist_arr = np.array(distance)
-        arr = np.partition(dist_arr, 3) # grab the three smallest values
-        adj_pts = []
-        dist_pts = []
-        for j in arr[0:3]:
-            if j != 0:
-                arr_idx = np.where(dist_arr==j)[0][0]
-                adj_pts.append(perim_points[arr_idx])
-                dist_pts.append(dist_arr[arr_idx])
-        point_dict['adjacent'].append(adj_pts)
+    # Order points according to building footprint geometry:
+    plist = []
+    x, y = bldg.hasGeometry['Footprint']['local'].exterior.xy
+    for i in range(0, len(x)-1):
+        max_x = max(x[i], x[i+1])
+        min_x = min(x[i], x[i+1])
+        max_y = max(y[i], y[i+1])
+        min_y = min(y[i], y[i+1])
+        point_info = {'points': [], 'distance': []}
+        for p in perim_points:
+            if min_x <= p.x <= max_x and min_y <= p.y <= max_y:
+                point_info['points'].append(p)
+                # Calculate the distance from this point to origin point:
+                origin_dist = Point(x[i], y[i]).distance(p)
+                point_info['distance'].append(origin_dist)
+        dist_sort = np.sort(np.array(point_info['distance']))
+        for d in dist_sort:
+            pidx = np.where(point_info['distance']==d)[0][0]
+            plist.append(point_info['points'][pidx])
     # Create tap geometries:
     tap_poly_list = []
     for idx in df_facade.index:
         ptap_loc = df_facade['Real Life Location'][idx]
         zidx = np.where(zlist_order==ptap_loc.z)[0][0]
-        zmin = zlist[zidx-1]/2
-        zmax = zlist[zidx+1]/2
-        for k in range(0, len(point_dict['point'])):
-            if round(ptap_loc.x, 5) == point_dict['point'][k].x and round(ptap_loc.y, 5) == point_dict['point'][k].y:
-                poly_list = []
-                # Find distance between adjacent points and project to find new point:
-                for a in range(0, len(point_dict['adjacent'][k])):
-                    new_line = LineString([(ptap_loc.x, ptap_loc.y), point_dict['adjacent'][k][a]])
-                    ipt = new_line.interpolate(new_line.length/2)
-                    if a == 0:
-                        poly_list.append((ipt.x, ipt.y, zmin))
-                        poly_list.append((ipt.x, ipt.y, zmax))
-                    else:
-                        poly_list.append((ipt.x, ipt.y, zmax))
-                        poly_list.append((ipt.x, ipt.y, zmin))
+        if ptap_loc.z == 0:
+            zmin = ptap_loc.z
+        else:
+            zmin = zlist_order[zidx-1] + (ptap_loc.z-zlist_order[zidx-1])/2
+        if ptap_loc.z != max(zlist_order):
+            zmax = ptap_loc.z + (zlist_order[zidx+1] - ptap_loc.z)/2
+        else:
+            zmax = ptap_loc.z
+        # Find matching (x, y) for this point:
+        poly_list = []
+        for p in range(0, len(plist)):
+            if ptap_loc.x == plist[p].x and ptap_loc.y == plist[p].y:
+                poly_list.append((ptap_loc.x, ptap_loc.y, zmin))
+                poly_list.append((plist[p-1].x, plist[p-1].y, zmin))
+                poly_list.append((plist[p-1].x, plist[p-1].y, zmax))
+                poly_list.append((ptap_loc.x, ptap_loc.y, zmax))
+                if p == len(plist)-1:
+                    poly_list.append((plist[0].x, plist[0].y, zmax))
+                    poly_list.append((plist[0].x, plist[0].y, zmin))
+                else:
+                    poly_list.append((plist[p+1].x, plist[p+1].y, zmax))
+                    poly_list.append((plist[p+1].x, plist[p+1].y, zmin))
+                poly_list.append((ptap_loc.x, ptap_loc.y, zmin))
                 tap_poly_list.append(Polygon(poly_list))
+                break
             else:
                 pass
     # Add the polygons to the input DataFrame:
     df_facade['Tap Polygon'] = tap_poly_list
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    for idx in df_facade.index:
+        ptap_loc = df_facade['Real Life Location'][idx]
+        ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z)
+        coords_list = df_facade['Tap Polygon'][idx].exterior.coords
+        xpoly, ypoly, zpoly = [], [], []
+        for c in coords_list:
+            xpoly.append(c[0])
+            ypoly.append(c[1])
+            zpoly.append(c[2])
+        ax.plot(xpoly, ypoly, zpoly)
+    plt.show()
     return df_facade
 
 # Asset Description
