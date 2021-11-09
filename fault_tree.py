@@ -65,6 +65,10 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_fl
         for idx in df_facade.index:
             map_flag = False
             ptap_loc = df_facade['Real Life Location'][idx]
+            # We are going to use line geometies to map pressure tap trib areas to walls:
+            xtap, ytap = df_facade['Tap Polygon'][idx].exterior.xy
+            tap_line = LineString([(min(xtap), min(ytap)), (max(xtap), max(ytap))])
+            #bound_tap_poly = Polygon([(max(xtap), max(ytap)), (min(xtap), max(ytap)), (min(xtap), min(ytap)), (max(xtap), min(ytap))])
             for story in bldg.hasStory:
                 if story.hasElevation[0] <= ptap_loc.z <= story.hasElevation[1]:
                     for wall in story.adjacentElement['Walls']:
@@ -75,7 +79,7 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_fl
                             yw.append(w[1])
                             zw.append(w[2])
                         bound_poly = Polygon([(max(xw), max(yw)), (min(xw), max(yw)), (min(xw), min(yw)), (max(xw), min(yw))])
-                        if Point(ptap_loc.x, ptap_loc.y).within(bound_poly) or Point(ptap_loc.x, ptap_loc.y).intersects(bound_poly):
+                        if tap_line.within(bound_poly) or tap_line.intersects(bound_poly):
                             if min(zw) <= ptap_loc.z <= max(zw):
                                 wall.hasDemand['wind pressure']['external'].append(idx)
                                 #wall.hasDemand['wind pressure']['external'] = wall.hasDemand['wind pressure']['external'].append(df_tpu_pressures.iloc[idx], ignore_index=True)
@@ -103,7 +107,7 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_fl
                     zw.append(w[2])
                 ax.plot(xw, yw, zw)
                 for idx in wall.hasDemand['wind pressure']['external']:
-                    ptap_loc = df_tpu_pressures['Real Life Location'][idx]
+                    ptap_loc = df_facade['Real Life Location'][idx]
                     ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z)
         # for wall in bldg.adjacentElement['Walls']:
         #     wall_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
