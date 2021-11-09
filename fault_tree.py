@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from shapely.geometry import Polygon, Point, LineString
-from shapely.ops import nearest_points
+from shapely.ops import nearest_points, snap
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from time_history_tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from create_fragility import get_wind_speed
@@ -493,7 +493,7 @@ def get_facade_mesh(bldg, df_facade):
     zlist = []
     for idx in df_facade.index:
         ptap_loc = df_facade['Real Life Location'][idx]
-        zlist.append(ptap_loc.z)
+        zlist.append(round(ptap_loc.z, 6))
         #zlist.append(round(ptap_loc.z, 6))
         if ptap_loc.z == 0:
             perim_points.append(ptap_loc)
@@ -504,6 +504,17 @@ def get_facade_mesh(bldg, df_facade):
     # Order points according to building footprint geometry:
     plist = []
     x, y = bldg.hasGeometry['Footprint']['local'].exterior.xy
+    # np_list = []
+    # for p in perim_points:
+    #     if p.intersects(bldg.hasGeometry['Footprint']['local']):
+    #         np_list.append(p)
+    #     else:
+    #         npt = nearest_points(Point(p.x, p.y), bldg.hasGeometry['Footprint']['local'])
+    #         for n in npt:
+    #             if n.intersects(bldg.hasGeometry['Footprint']['local']):
+    #                 np_list.append(p)
+    #             else:
+    #                 pass
     for i in range(0, len(x)-1):
         max_x = max(x[i], x[i+1])
         min_x = min(x[i], x[i+1])
@@ -524,12 +535,12 @@ def get_facade_mesh(bldg, df_facade):
     tap_poly_list = []
     for idx in df_facade.index:
         ptap_loc = df_facade['Real Life Location'][idx]
-        zidx = np.where(zlist_order==ptap_loc.z)[0][0]
+        zidx = np.where(zlist_order==round(ptap_loc.z, 6))[0][0]
         if ptap_loc.z == 0:
             zmin = ptap_loc.z
         else:
             zmin = zlist_order[zidx-1] + (ptap_loc.z-zlist_order[zidx-1])/2
-        if ptap_loc.z != max(zlist_order):
+        if round(ptap_loc.z, 6) != max(zlist_order):
             zmax = ptap_loc.z + (zlist_order[zidx+1] - ptap_loc.z)/2
         else:
             zmax = ptap_loc.z
@@ -537,16 +548,26 @@ def get_facade_mesh(bldg, df_facade):
         poly_list = []
         for p in range(0, len(plist)):
             if ptap_loc.x == plist[p].x and ptap_loc.y == plist[p].y:
+                # Find the point between this point and the point preceding it:
+                new_line1 = LineString([(ptap_loc.x, ptap_loc.y), (plist[p-1].x, plist[p-1].y)])
+                dist1 = Point(ptap_loc.x, ptap_loc.y).distance(plist[p-1])
+                ip1 = new_line1.interpolate(distance=dist1/2)
                 poly_list.append((ptap_loc.x, ptap_loc.y, zmin))
-                poly_list.append((plist[p-1].x, plist[p-1].y, zmin))
-                poly_list.append((plist[p-1].x, plist[p-1].y, zmax))
+                poly_list.append((ip1.x, ip1.y, zmin))
+                poly_list.append((ip1.x, ip1.y, zmax))
                 poly_list.append((ptap_loc.x, ptap_loc.y, zmax))
                 if p == len(plist)-1:
-                    poly_list.append((plist[0].x, plist[0].y, zmax))
-                    poly_list.append((plist[0].x, plist[0].y, zmin))
+                    new_line2 = LineString([(ptap_loc.x, ptap_loc.y), (plist[0].x, plist[0].y)])
+                    dist2 = Point(ptap_loc.x, ptap_loc.y).distance(plist[0])
+                    ip2 = new_line2.interpolate(distance=dist2/2)
+                    poly_list.append((ip2.x, ip2.y, zmax))
+                    poly_list.append((ip2.x, ip2.y, zmin))
                 else:
-                    poly_list.append((plist[p+1].x, plist[p+1].y, zmax))
-                    poly_list.append((plist[p+1].x, plist[p+1].y, zmin))
+                    new_line2 = LineString([(ptap_loc.x, ptap_loc.y), (plist[p + 1].x, plist[p + 1].y)])
+                    dist2 = Point(ptap_loc.x, ptap_loc.y).distance(plist[p + 1])
+                    ip2 = new_line2.interpolate(distance=dist2/2)
+                    poly_list.append((ip2.x, ip2.y, zmax))
+                    poly_list.append((ip2.x, ip2.y, zmin))
                 poly_list.append((ptap_loc.x, ptap_loc.y, zmin))
                 tap_poly_list.append(Polygon(poly_list))
                 break
@@ -558,14 +579,14 @@ def get_facade_mesh(bldg, df_facade):
     ax = plt.axes(projection='3d')
     for idx in df_facade.index:
         ptap_loc = df_facade['Real Life Location'][idx]
-        ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z)
+        ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z, color='c')
         coords_list = df_facade['Tap Polygon'][idx].exterior.coords
         xpoly, ypoly, zpoly = [], [], []
         for c in coords_list:
             xpoly.append(c[0])
             ypoly.append(c[1])
             zpoly.append(c[2])
-        ax.plot(xpoly, ypoly, zpoly)
+        ax.plot(xpoly, ypoly, zpoly, 'k')
     plt.show()
     return df_facade
 
