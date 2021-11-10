@@ -274,32 +274,64 @@ def pressure_ftree(bldg, zone_flag, time_flag):
             else:
                 pass
         elif key == 'Walls':
-            fig = plt.figure()
-            ax = plt.axes(projection='3d')
             wall_fail = pd.DataFrame({'time': tcols, 'area': np.zeros(len(tcols))})
             for elem in bldg.adjacentElement[key]:
                 if time_flag:
                     time_hist_element_pressure_failure_check(elem, bldg, zone_flag, tcols)
-                xw, yw, zw = [],[],[]
+                # Pull failure data for building-level analysis:
+                if len(elem.hasFailure['wind pressure'].index) > 0:
+                    for idx in elem.hasFailure['wind pressure'].index:
+                        for r in elem.hasFailure['wind pressure'].loc[idx]['region']:
+                            poly_coord_list = list(r.exterior.coords)
+                            poly = []
+                            for p in poly_coord_list:
+                                poly.append([p[0], p[1], p[2]])
+                            wall_fail.iat[idx, 1] += polygon_area(poly)
+                else:
+                    pass
+            # Figure out when maximum response occurred:
+            max_idx = wall_fail.loc[wall_fail['area'] == max(wall_fail['area'])].index[0]
+            max_time = wall_fail['time'][max_idx]
+            fig = plt.figure()
+            ax = plt.axes(projection='3d')
+            # Loop through elements and retain only data for max response:
+            for elem in bldg.adjacentElement[key]:
+                max_idx_elem = elem.hasFailure['wind pressure'].loc[elem.hasFailure['wind pressure']['time'] == max_time].index
+                if len(max_idx_elem) > 0:
+                    elem.hasFailure['wind pressure'] = elem.hasFailure['wind pressure'].loc[max_idx_elem[0]]
+                    for r in elem.hasFailure['wind pressure']['region']:
+                        xr, yr, zr = [], [], []
+                        for i in list(r.exterior.coords):
+                            xr.append(i[0])
+                            yr.append(i[1])
+                            zr.append(i[2])
+                        ax.plot(xr, yr, zr, 'r')
+                else:
+                    elem.hasFailure['wind pressure'] = False
+                # Plot element geometries:
+                xw, yw, zw = [], [], []
                 wall_coords = list(elem.hasGeometry['3D Geometry']['local'].exterior.coords)
                 for w in wall_coords:
                     xw.append(w[0])
                     yw.append(w[1])
                     zw.append(w[2])
                 ax.plot(xw, yw, zw, color='k')
-                # Plot all of the wall's pressure taps:
-                for idx in elem.hasDemand['wind pressure']['external'].index:
-                    ptap_loc = elem.hasDemand['wind pressure']['external'].loc[idx]['Real Life Location']
-                    ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z, color='c')
-                # Pull failure data for building-level analysis:
-                if len(elem.hasFailure['wind pressure'].index) > 0:
-                    for idx in elem.hasFailure['wind pressure'].index:
-                        for r in elem.hasFailure['wind pressure'].loc[idx]['region']:
-                            wall_fail.iat[idx, 1] += r.area
-                else:
-                    pass
-            # Figure out when maximum response occurred:
+            plt.show()
             a = 0
+
+
+def polygon_area(poly):
+    # Reference: https://stackoverflow.com/questions/12642256/find-area-of-polygon-from-xyz-coordinates
+    #shape (N, 3)
+    if isinstance(poly, list):
+        poly = np.array(poly)
+    #all edges
+    edges = poly[1:] - poly[0:1]
+    # row wise cross product
+    cross_product = np.cross(edges[:-1],edges[1:], axis=1)
+    #area of all triangles
+    area = np.linalg.norm(cross_product, axis=1)/2
+    return sum(area)
 
 
 def time_hist_element_pressure_failure_check(elem, bldg, zone_flag, tcols):
@@ -355,26 +387,50 @@ def time_hist_element_pressure_failure_check(elem, bldg, zone_flag, tcols):
                                 xp.append(i[0])
                                 yp.append(i[1])
                                 zp.append(i[2])
-                            pline = LineString([(min(xp), min(yp)), (max(xp), max(yp))])
+                            # Keep only unique (x, y) pairs:
+                            tap_coords_list = []
+                            for j in range(0, len(xp)):
+                                if (xp[j], yp[j]) not in tap_coords_list:
+                                    tap_coords_list.append((xp[j], yp[j]))
+                            pline = LineString(tap_coords_list)
                             if pline.intersects(elem.hasGeometry['1D Geometry']['local']):
                                 # Find the intersection:
                                 iline = pline.intersection(elem.hasGeometry['1D Geometry']['local'])
-                                x_iline = iline.xy[0]
-                                y_iline = iline.xy[1]
-                                # Now figure out z-range:
-                                zw = []
-                                for w in list(elem.hasGeometry['3D Geometry']['local'].exterior.coords):
-                                    zw.append(w[2])
-                                if max(zw) > max(zp):
-                                    zmax = max(zp)
+                                if isinstance(iline, Point):
+                                    pass
                                 else:
-                                    zmax = max(zw)
-                                if min(zp) > min(zw):
-                                    zmin = min(zp)
-                                else:
-                                    zmin = min(zw)
-                                new_poly = Polygon([(min(x_iline), min(y_iline), zmin), (min(x_iline), min(y_iline), zmax), (max(x_iline), max(y_iline), zmax), (max(x_iline), max(y_iline), zmin)])
-                                region_list.append(new_poly)
+                                    try:
+                                        x_iline = iline.xy[0]
+                                        y_iline = iline.xy[1]
+                                    except NotImplementedError:
+                                        # The output geometry is a multistring:
+                                        x_iline, y_iline = [], []
+                                        lines = list(iline.geoms)
+                                        for l in lines:
+                                            x_iline += l.xy[0]
+                                            y_iline += l.xy[1]
+                                    # Now figure out z-range:
+                                    zw = []
+                                    for w in list(elem.hasGeometry['3D Geometry']['local'].exterior.coords):
+                                        zw.append(w[2])
+                                    if max(zw) > max(zp):
+                                        zmax = max(zp)
+                                    else:
+                                        zmax = max(zw)
+                                    if min(zp) > min(zw):
+                                        zmin = min(zp)
+                                    else:
+                                        zmin = min(zw)
+                                    # Create intersection's geometry:
+                                    pcoords_list = []
+                                    # Add zmin points first:
+                                    for k in range(0, len(x_iline)):
+                                        pcoords_list.append((x_iline[k], y_iline[k], zmin))
+                                    # Now add zmax points:
+                                    for k in range(0, len(x_iline)):
+                                        pcoords_list.append((x_iline[-1 - k], y_iline[-1 - k], zmax))
+                                    new_poly = Polygon(pcoords_list)
+                                    region_list.append(new_poly)
                             elif ptap_poly.within(elem.hasGeometry['3D Geometry']['local']):
                                 region_list.append(ptap_poly)
                             else:
