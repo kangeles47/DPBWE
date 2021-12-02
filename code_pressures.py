@@ -1907,26 +1907,27 @@ class PressureCalc:
 #ctype = 'Metal deck'
 #rcc = pressures.run_sim_rcc(ref_exposure, ref_hbldg, ref_hstory, ref_pitch, ref_cat,  wind_speed, edition, ctype, parcel_flag, hpr, h_ocean, encl_class)
 
-pcalc = PressureCalc()
-wind_speed = 134
-#wind_speed = 123.342
-exposure = 'B'
-edition = 'ASCE 7-16'
-h_bldg = 52.5
-pitch = 0
-area_eff = (h_bldg/4)*(h_bldg/4)/3
-cat = 2
-hpr = True
-h_ocean = True
-encl_class = 'Enclosed'
-tpu_flag = False
-p = pcalc.wcc_pressure(wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class, tpu_flag)
-print(p)
-print(np.array(p)/ 0.020885)
-direction = 'normal'
-# Calculate length of footprint:
-length = 146
-ratio = h_bldg/length
-rp = pcalc.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, direction, length, ratio, pitch, cat, hpr, h_ocean, encl_class, tpu_flag)
-print(rp)
-print(np.array(rp)/ 0.020885)
+# Case study run through:
+# pcalc = PressureCalc()
+# wind_speed = 134
+# #wind_speed = 123.342
+# exposure = 'B'
+# edition = 'ASCE 7-16'
+# h_bldg = 52.5
+# pitch = 0
+# area_eff = (h_bldg/4)*(h_bldg/4)/3
+# cat = 2
+# hpr = True
+# h_ocean = True
+# encl_class = 'Enclosed'
+# tpu_flag = False
+# p = pcalc.wcc_pressure(wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class, tpu_flag)
+# print(p)
+# print(np.array(p)/ 0.020885)
+# direction = 'normal'
+# # Calculate length of footprint:
+# length = 146
+# ratio = h_bldg/length
+# rp = pcalc.rmwfrs_pressure(wind_speed, exposure, edition, h_bldg, direction, length, ratio, pitch, cat, hpr, h_ocean, encl_class, tpu_flag)
+# print(rp)
+# print(np.array(rp)/ 0.020885)
