@@ -50,13 +50,13 @@ def get_bldgs_at_dist(site, ref_bldg, dist, unit, plot_flag):
     # Create an empty list to hold any qualifying bldg:
     bldg_list = []
     for bldg in site.hasBuilding:
-        bldg_location = bldg.hasLocation['Geodesic']  # Shapely Point object
+        bldg_footprint = bldg.hasGeometry['Footprint']['geodesic']  # Shapely Point object
         # Check if the building is within the specified distance:
-        if bldg_location.within(query_area):
+        if bldg_footprint.within(query_area) or bldg_footprint.intersects(query_area):
             bldg_list.append(bldg)
             if plot_flag:
                 # Plot the bldg's footprint:
-                xs, ys = bldg.hasGeometry['Footprint']['geodesic'].exterior.xy
+                xs, ys = bldg_footprint.exterior.xy
                 ax.plot(xs, ys)
         else:
             pass
