@@ -7,6 +7,7 @@ from math import sqrt, pi, sin, atan2, degrees
 from scipy import spatial
 from shapely.geometry import LineString, Point, Polygon
 from shapely import affinity
+from pandas import DataFrame
 import bldg_code
 from OBDM.zone import Building
 from OBDM.element import Roof, Wall, Floor, Ceiling
@@ -401,6 +402,38 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         else:
             wall.hasDirection = 'y'
         #print(wall.hasDirection + ' xdist:' + str(xdist) + '   ydist:' + str(ydist))
+
+    def ds_corr(self, test, element_type):
+        pij = []
+        # Find each wall's story number:
+        snum_list = []
+        column_names = []
+        for wall in test.adjacentElement['Walls']:
+            # Create new row:
+            row = []
+            # Find the story this wall is in:
+            for story in range(0, len(test.hasStory)):
+                story_flag = False
+                if wall in test.hasStory[story].adjacentElement['Walls']:
+                    snum_list.append(story)
+                    story_flag = True
+                else:
+                    pass
+                # Populate correlation coefficients for each wall in this story:
+                if not story_flag:
+                    for swall in test.hasStory[story].adjacentElement['Walls']:
+                        row.append(0.6)
+                else:
+                    for swall in test.hasStory[story].adjacentElement['Walls']:
+                        row.append(1.0)
+                # Add column names:
+                if len(column_names) < len(test.adjacentElement['Walls']):
+                    cnames = [story for i in test.hasStory[story].adjacentElement['Walls']]
+                    column_names = column_names + cnames
+                else:
+                    pass
+            pij.append(row)
+        df = DataFrame(np.matrix(pij), index=snum_list, columns=column_names)
 
 # Test run:
 # 1) Create parcel data model:
