@@ -388,3 +388,64 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             parcel.hasStory[story].adjacentElement.update({'Walls': element_dict['Walls']})
             # Update hasElement attribute for the story:
             parcel.hasStory[story].hasElement.update(element_dict)
+
+    def get_wall_dir(wall, geom_rep):
+        if geom_rep == 'rotated':
+            wline = wall.hasGeometry['1D Geometry']['rotated']  # Shapely LineString Object
+            xs, ys = wline.xy  # Access line points
+            xdist = xs[1] - xs[0]  # Calculate x distance
+            ydist = ys[1] - ys[0]  # Calculate y distance
+            if xdist > ydist:
+                wall.hasOrientation = 'x'
+            else:
+                wall.hasOrientation = 'y'
+        else:
+            print('Please define rotated Cartesian geometry')
+
+# Test run:
+# 1) Create parcel data model:
+lon = -85.676188
+lat = 30.190142
+test = Parcel('12345', 4, 'financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
+
+# # 2) Create query area:
+# ref_pt = test.hasLocation['Geodesic']
+# dist = 0.4
+# unit = 'km'
+# # Define the site area:
+# angles = np.linspace(0, 360, 100)
+# pt_list = []
+# for angle in angles:
+#     if unit == 'mi':
+#         new_pt = distance.distance(miles=dist).destination((ref_pt.y, ref_pt.x), angle)  # input point (lat, lon)
+#     elif unit == 'km':
+#         new_pt = distance.distance(kilometers=dist).destination((ref_pt.y, ref_pt.x), angle)  # input point (lat, lon)
+#     pt_list.append((new_pt[1], new_pt[0])) # Save as (lon, lat)
+# query_area = Polygon(pt_list)  # Shapely Polygon
+#
+# # 3) Query footprint database to find surrounding buildings:
+# jFile = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Geojson/BayCounty.geojson'
+# data = gpd.read_file(jFile)
+# # data is a DataFrame object with column label = ['geometry'] and indexes = [0: end]
+# # Accessing a specific Polygon object then requires: data['geometry'][index]
+# footprint_list = []
+# for idx in data.index:
+#     footprint = data['geometry'][idx]
+#     if footprint.within(query_area) or footprint.intersects(query_area):
+#         if footprint.intersects(test.hasGeometry['Footprint']['geodesic']):
+#             pass
+#         else:
+#             footprint_list.append(footprint)
+#     else:
+#         pass
+# # Plot the query area:
+# xq, yq = query_area.exterior.xy
+# plt.plot(xq, yq, 'k', linewidth=2)
+# # Plot the reference building footprint:
+# xref, yref = test.hasGeometry['Footprint']['geodesic'].exterior.xy
+# plt.plot(xref, yref, 'r', linewidth=2)
+# # PLot the footprints within the query area:
+# for f in footprint_list:
+#     xf, yf = f.exterior.xy
+#     plt.plot(xf, yf, 'k')
+# plt.show()
