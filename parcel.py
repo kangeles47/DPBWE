@@ -24,45 +24,18 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         # Building footprint:
         self.assign_footprint(self, num_stories)
         plt.rcParams["font.family"] = "Times New Roman"
-        # Clean up building footprint for illustrative example:
-        for key in self.hasGeometry['Footprint']:
-            if key == 'type':
-                pass
-            else:
-                xcoord, ycoord = self.hasGeometry['Footprint'][key].exterior.xy
-                new_point_list = []
-                if address == '1002 23RD ST W PANAMA CITY 32405':
-                    for idx in range(2, len(xcoord) - 2):
-                        new_point_list.append(Point(xcoord[idx], ycoord[idx]))
-                    self.hasGeometry['Footprint'][key] = Polygon(new_point_list)
-                else:
-                    pass
-                xfpt, yfpt = self.hasGeometry['Footprint'][key].exterior.xy
-                if plot_flag:
-                    plt.plot(np.array(xfpt) / 3.281, np.array(yfpt) / 3.281, 'k')
-                if key == 'local':
-                    # Rotate the footprint to create a "rotated cartesian" axis:
-                    rect = self.hasGeometry['Footprint'][key].minimum_rotated_rectangle
-                    spts = list(rect.exterior.coords)
-                    theta = degrees(atan2((spts[1][0] - spts[2][0]), (spts[1][1] - spts[2][1])))
-                    # Rotate the the building footprint to create the TPU axis:
-                    rotated_b = affinity.rotate(Polygon(new_point_list), theta, origin='centroid')
-                    rflag = True
-                    rx, ry = rotated_b.exterior.xy
-                    if plot_flag:
-                        plt.plot(np.array(rx) / 3.281, np.array(ry) / 3.281, color='gray', linestyle='dashed')
-                        plt.legend(['local Cartesian', 'rotated Cartesian'], prop={"size":22}, loc='upper right')
-                else:
-                    rflag= False
-                    # Uncomment to plot the footprint:
-                if plot_flag:
-                    plt.xlabel('x [m]', fontsize=22)
-                    plt.ylabel('y [m]', fontsize=22)
-                    plt.xticks(fontsize=22)
-                    plt.yticks(fontsize=22)
-                    plt.show()
-        #if rflag:
-            #self.hasGeometry['Footprint']['rotated'] = rotated_b
+        # Plot global and local CRS:
+        if plot_flag:
+            xfpt, yfpt = self.hasGeometry['Footprint']['local'].exterior.xy
+            plt.plot(np.array(xfpt) / 3.281, np.array(yfpt) / 3.281, 'k')
+            rx, ry = self.hasGeometry['Footprint']['rotated'].exterior.xy
+            plt.plot(np.array(rx) / 3.281, np.array(ry) / 3.281, color='gray', linestyle='dashed')
+            plt.legend(['local Cartesian', 'rotated Cartesian'], prop={"size":22}, loc='upper right')
+            plt.xlabel('x [m]', fontsize=22)
+            plt.ylabel('y [m]', fontsize=22)
+            plt.xticks(fontsize=22)
+            plt.yticks(fontsize=22)
+            plt.show()
         # Pull building/story height information from DOE reference buildings:
         survey_data = SurveyData()  # create an instance of the survey data class
         survey_data.run(self, ref_bldg_flag=True, parcel_flag=False)
@@ -77,7 +50,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         for key in geo_keys:
             if key == 'type':
                 pass
-            else:
+            elif key == 'local':
                 new_zpts = []
                 roof_zs = []
                 # Create z coordinates for each story:
@@ -155,7 +128,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     self.hasGeometry['3D Geometry'][key].append(bsurf_poly)
                     self.hasGeometry['Facade'][key].append(bsurf_poly)
         # Generate a set of building elements (with default attributes) for the parcel:
-        self.parcel_elements(self, zone_flag=True)
+        self.parcel_elements(self, zone_flag=False)
         # Update the Building's Elements:
         self.update_elements()
         # Populate instance attributes informed by national survey data:
@@ -257,17 +230,32 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             point_list.append(Point(xdist, ydist))
         # Create a new polygon object:
         xy_poly = Polygon(point_list)
+        if self.hasLocation['Address'] == '1002 23RD ST W PANAMA CITY 32405':
+            xcoord, ycoord = xy_poly.exterior.xy
+            new_point_list = []
+            for idx in range(2, len(xcoord) - 2):
+                new_point_list.append(Point(xcoord[idx], ycoord[idx]))
+            xy_poly = Polygon(new_point_list)
         # Add to Parcel:
         parcel.hasGeometry['Footprint']['local'] = xy_poly
-        # Find the footprint's orientation using a minimum rectangle and its local geometry:
+        # Rotate the footprint to create a "rotated cartesian" axis:
         rect = self.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
-        xrect, yrect = rect.exterior.xy
-        xdist = xrect[3] - xrect[2]
-        ydist = yrect[3] - yrect[2]
-        theta = degrees(atan2(ydist, xdist))
+        spts = list(rect.exterior.coords)
+        theta = degrees(atan2((spts[1][0] - spts[2][0]), (spts[1][1] - spts[2][1])))
+        self.hasOrientation = theta
+        # Rotate the the building footprint to create the TPU axis:
+        rotated_b = affinity.rotate(Polygon(new_point_list), theta, origin='centroid')
+        self.hasGeometry['Footprint']['rotated'] = rotated_b
+        rx, ry = rotated_b.exterior.xy
+        # Find the footprint's orientation using a minimum rectangle and its local geometry:
+        # rect = self.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
+        # xrect, yrect = rect.exterior.xy
+        # xdist = xrect[3] - xrect[2]
+        # ydist = yrect[3] - yrect[2]
+        # theta = degrees(atan2(ydist, xdist))
         # Orientation is according to normal cartesian coordinates (i.e., cw = (-) angle, ccw = (+) angle)
         # Add the building's orientation
-        self.hasOrientation = theta
+        #self.hasOrientation = theta
         #plt.plot(xrect, yrect)
         #plt.show()
 
@@ -363,6 +351,11 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         xline, yline = ext_wall.hasGeometry['1D Geometry']['local'].xy
                         wall_xyz_poly = Polygon([Point(xline[0], yline[0], zbottom), Point(xline[1], yline[1], zbottom), Point(xline[1], yline[1], ztop), Point(xline[0], yline[0], ztop), Point(xline[0], yline[0], zbottom)])
                         ext_wall.hasGeometry['3D Geometry']['local'] = wall_xyz_poly
+                        # Add rotated geometry:
+                        new_rline = affinity.rotate(ext_wall.hasGeometry['1D Geometry']['local'], self.hasOrientation,
+                                                   origin=self.hasGeometry['Footprint']['local'].centroid)
+                        ext_wall.hasGeometry['1D Geometry']['rotated'] = new_rline
+                        self.get_wall_dir(ext_wall, 'rotated')
                         new_wall_list.append(ext_wall)
             else:
                 xf, yf = parcel.hasGeometry['Footprint']['local'].exterior.xy
@@ -374,6 +367,11 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     ext_wall.hasGeometry['Height'] = parcel.hasStory[story].hasGeometry['Height']
                     ext_wall.hasGeometry['1D Geometry']['local'] = LineString([(xf[pt], yf[pt]), (xf[pt+1], yf[pt+1])])  # Line segment with start/end coordinates of wall (respetive to building origin)
                     ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry']['local'].length
+                    # Add rotated geometry:
+                    new_rline = affinity.rotate(ext_wall.hasGeometry['1D Geometry']['local'], self.hasOrientation,
+                                                origin=self.hasGeometry['Footprint']['local'].centroid)
+                    ext_wall.hasGeometry['1D Geometry']['rotated'] = new_rline
+                    self.get_wall_dir(ext_wall, 'rotated')
                     new_wall_list.append(ext_wall)
             # Add all walls to element_dict:
             element_dict['Walls'] = new_wall_list
@@ -389,24 +387,27 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             # Update hasElement attribute for the story:
             parcel.hasStory[story].hasElement.update(element_dict)
 
-    def get_wall_dir(wall, geom_rep):
+    def get_wall_dir(self, wall, geom_rep):
         if geom_rep == 'rotated':
             wline = wall.hasGeometry['1D Geometry']['rotated']  # Shapely LineString Object
-            xs, ys = wline.xy  # Access line points
-            xdist = xs[1] - xs[0]  # Calculate x distance
-            ydist = ys[1] - ys[0]  # Calculate y distance
-            if xdist > ydist:
-                wall.hasOrientation = 'x'
-            else:
-                wall.hasOrientation = 'y'
+        elif geom_rep == 'local':
+            wline = wall.hasGeometry['1D Geometry']['local']
+        # Find direction:
+        xs, ys = wline.xy  # Access line points
+        xdist = abs(xs[1] - xs[0])  # Calculate x distance
+        ydist = abs(ys[1] - ys[0])  # Calculate y distance
+        if xdist > ydist:
+            wall.hasDirection = 'x'
         else:
-            print('Please define rotated Cartesian geometry')
+            wall.hasDirection = 'y'
+        #print(wall.hasDirection + ' xdist:' + str(xdist) + '   ydist:' + str(ydist))
 
 # Test run:
 # 1) Create parcel data model:
 lon = -85.676188
 lat = 30.190142
 test = Parcel('12345', 4, 'financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
+a = 0
 
 # # 2) Create query area:
 # ref_pt = test.hasLocation['Geodesic']
