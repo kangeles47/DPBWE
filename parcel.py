@@ -403,45 +403,68 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             wall.hasDirection = 'y'
         #print(wall.hasDirection + ' xdist:' + str(xdist) + '   ydist:' + str(ydist))
 
-    def ds_corr(self, test, element_type):
+    def ds_corr_ext_walls(self, test, wall_type):
         pij = []
         # Find each wall's story number:
         snum_list = []
         column_names = []
         for wall in test.adjacentElement['Walls']:
-            # Create new row:
-            row = []
-            # Find the story this wall is in:
-            for story in range(0, len(test.hasStory)):
-                story_flag = False
-                if wall in test.hasStory[story].adjacentElement['Walls']:
-                    snum_list.append(story)
-                    story_flag = True
-                else:
-                    pass
-                # Populate correlation coefficients for each wall in this story:
-                if not story_flag:
+            if wall.hasType == wall_type:
+                # Create new row:
+                row = []
+                # Find the story this wall is in:
+                for story in range(0, len(test.hasStory)):
+                    story_flag = False
+                    if wall in test.hasStory[story].adjacentElement['Walls']:
+                        snum_list.append(story)
+                        story_flag = True
+                    else:
+                        pass
+                    # Populate correlation coefficients for each wall in this story:
                     for swall in test.hasStory[story].adjacentElement['Walls']:
-                        row.append(0.6)
-                else:
-                    for swall in test.hasStory[story].adjacentElement['Walls']:
-                        row.append(1.0)
-                # Add column names:
-                if len(column_names) < len(test.adjacentElement['Walls']):
-                    cnames = [story for i in test.hasStory[story].adjacentElement['Walls']]
-                    column_names = column_names + cnames
-                else:
-                    pass
-            pij.append(row)
+                        cnames = []
+                        if swall.hasType == wall_type:
+                            if swall.hasModeOfFabrication['on-site']:
+                                if not story_flag:
+                                    row.append(0.6)
+                                else:
+                                    row.append(1.0)
+                            else:
+                                pass
+                            cnames.append(story)
+                        else:
+                            pass
+                    # Add column names:
+                    if len(column_names) < len(test.adjacentElement['Walls']):
+                        column_names = column_names + cnames
+                    else:
+                        pass
+                pij.append(row)
+            else:
+                pass
         df = DataFrame(np.matrix(pij), index=snum_list, columns=column_names)
+        return df
 
 # Test run:
 # 1) Create parcel data model:
 lon = -85.676188
 lat = 30.190142
 test = Parcel('12345', 4, 'financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
+# Add mode of fabrication:
+for wall in test.adjacentElement['Walls']:
+    wall.hasModeOfFabrication['on-site'] = True
+df_corr = test.ds_corr_ext_walls(test, test.adjacentElement['Walls'][0].hasType)
 a = 0
-
+# Wall direction plot:
+for wall in test.hasStory[0].adjacentElement['Walls']:
+    xl, yl = wall.hasGeometry['1D Geometry']['rotated'].xy
+    if wall.hasDirection == 'x':
+        plt.plot(xl, yl, 'r')
+    else:
+        plt.plot(xl, yl, 'b', linestyle='dashed')
+plt.xlabel('[m]')
+plt.ylabel('[m]')
+plt.show()
 # # 2) Create query area:
 # ref_pt = test.hasLocation['Geodesic']
 # dist = 0.4
