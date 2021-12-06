@@ -4,7 +4,7 @@ import pandas as pd
 from shapely.geometry import Polygon, Point, LineString
 from shapely.ops import nearest_points, snap
 from scipy.spatial import Voronoi, voronoi_plot_2d
-from time_history_tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
+from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from create_fragility import get_wind_speed
 from parcel import Parcel
 from bldg_code import ASCE7
@@ -44,6 +44,7 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_fl
         else:
             # Convert wind direction to TPU wind direction:
             tpu_wdir = convert_to_tpu_wdir(wind_direction, bldg)
+            tpu_wdir = 0
             key = 'local'
             # Find TPU wind pressures:
             df_tpu_pressures = calc_tpu_pressures(bldg, key, tpu_wdir, wind_speed)
@@ -774,6 +775,91 @@ def get_facade_mesh(bldg, df_facade):
     plt.show()
     return df_facade
 
+
+def facade_wind_fault_tree(bldg):
+    # Loop through facade elements by story:
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    for story in bldg.hasStory:
+        undamaged_elem = []
+        ext_pressures = []
+        breached_elem = []
+        for key in story.adjacentElement:
+            if key == 'Walls' or key == 'Windows':
+                for elem in story.adjacentElement[key]:
+                    wall_pts = list(elem.hasGeometry['3D Geometry']['local'].exterior.coords)
+                    xw, yw, zw = [], [], []
+                    for w in wall_pts:
+                        xw.append(w[0])
+                        yw.append(w[1])
+                        zw.append(w[2])
+                    xw = np.array(xw)/3.281
+                    yw = np.array(yw) / 3.281
+                    zw = np.array(zw)/3.281
+                    # Demand vs. capacity checks:
+                    for p in elem.hasDemand['wind pressure']['external']:
+                        if p > elem.hasCapacity['wind pressure']['external']['positive']:
+                            elem.hasFailure['wind pressure'] = True
+                            break
+                        elif p < elem.hasCapacity['wind pressure']['external']['negative']:
+                            elem.hasFailure['wind pressure'] = True
+                            break
+                        else:
+                            pass
+                    if elem.hasFailure['wind pressure']:
+                        for p in elem.hasDemand['wind pressure']['external']:
+                            ext_pressures.append(p)
+                            breached_elem.append(elem)
+                    else:
+                        undamaged_elem.append(elem)
+                        ax.plot(xw, yw, zw, 'k', zorder=2)
+            else:
+                pass
+        for b in breached_elem:
+            wall_pts = list(b.hasGeometry['3D Geometry']['local'].exterior.coords)
+            xw, yw, zw = [], [], []
+            for w in wall_pts:
+                xw.append(w[0])
+                yw.append(w[1])
+                zw.append(w[2])
+            xw = np.array(xw) / 3.281
+            yw = np.array(yw) / 3.281
+            zw = np.array(zw) / 3.281
+            ax.plot(xw, yw, zw, 'r', zorder=1)
+        if len(ext_pressures) > 0:
+            # Calculate the new internal pressure:
+            int_pressure = np.array(ext_pressures).mean()
+            print('New story internal pressure:')
+            print(int_pressure/0.020885)
+            # Recalculate wind pressures for each undamaged component:
+            for u in undamaged_elem:
+                u.hasDemand['wind pressure']['internal'] = int_pressure
+                u.hasDemand['wind pressure']['total'] = u.hasDemand['wind pressure']['external'] + int_pressure
+        # Plot the roof:
+        xr, yr = bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'].exterior.xy
+        ax.plot(np.array(xr)/ 3.281, np.array(yr)/ 3.281, np.ones(len(xr))*bldg.hasGeometry['Height']/ 3.281, 'k')
+        # Make the panes transparent:
+        ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # Make the grids transparent:
+        ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # Plot labels
+        ax.set_xlabel('x [m]', fontsize=14, labelpad=10)
+        ax.set_ylabel('y [m]', fontsize=14, labelpad=10)
+        ax.set_zlabel('z [m]', fontsize=14, labelpad=10)
+        # Set label styles:
+        ax.set_zticks(np.arange(0, 20, 4))
+        ax.set_yticks(np.arange(-20, 30, 10))
+        ax.set_xticks(np.arange(-20, 30, 10))
+        ax.xaxis.set_tick_params(labelsize=14)
+        ax.yaxis.set_tick_params(labelsize=14)
+        ax.zaxis.set_tick_params(labelsize=14)
+    ax.legend(labels=['breached', 'not breached'])
+    plt.show()
+
 # Asset Description
 # Parcel Models
 lon = -85.676188
@@ -784,12 +870,25 @@ test.hasElement['Roof'][0].hasPitch = 0
 wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
 exposure = 'B'
 unit = 'english'
-wind_speed = get_wind_speed(test, wind_speed_file_path, exposure, unit)
-wind_direction = 90
+wind_speed = 123.342
+#wind_speed = get_wind_speed(test, wind_speed_file_path, exposure, unit)
+wind_direction = 0
 cc_flag, mwfrs_flag = True, True
 #test.hasGeometry['Height'] = 9*4
-#test.hasGeometry['Height'] = 9
-populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
-generate_pressure_loading(test, wind_speed, wind_direction, tpu_flag=True, csv_flag=True)
+#test.hasGeometry['Height'] = 52.5
+#populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
+generate_pressure_loading(test, wind_speed, wind_direction, tpu_flag=True, csv_flag=False)
+# Set positive and negative capacities per wall element:
+gcpi = 0.18
+rho = 1.225
+avg_factor = (1/1.52)**2
+for wall in test.adjacentElement['Walls']:
+    wall.hasCapacity['wind pressure']['external']['positive'] = 400*0.020885
+    wall.hasCapacity['wind pressure']['external']['negative'] = -600 * 0.020885
+    wall.hasDemand['wind pressure']['internal'] = (0.5*rho*((wind_speed/2.237)**2)*gcpi)* 0.020885
+    wall.hasDemand['wind pressure']['external'] = wall.hasDemand['wind pressure']['external']['Pressure']
+print(wall.hasDemand['wind pressure']['internal'])
+facade_wind_fault_tree(test)
+ftree_initial(test)
 #get_voronoi(test)
-pressure_ftree(test, zone_flag=True, time_flag=True)
+#pressure_ftree(test, zone_flag=True, time_flag=True)

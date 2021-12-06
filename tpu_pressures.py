@@ -17,7 +17,7 @@ def calc_tpu_pressures(bldg, key, tpu_wdir, wind_speed):
     h_bldg = bldg.hasGeometry['Height']
     match_flag, num_surf, side_lines, model_file, hb_ratio, db_ratio, rect, surf_dict, rect_surf_dict = find_tpu_use_case(bldg, key, tpu_wdir, eave_length)
     bfull, hfull, dfull, rect_surf_dict = get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict, rect_surf_dict)
-    df_tpu_pressures = map_tap_data_simple(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, match_flag, h_bldg, rect_surf_dict, bldg)
+    df_tpu_pressures = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, match_flag, h_bldg, rect_surf_dict, bldg)
     return df_tpu_pressures
 
 

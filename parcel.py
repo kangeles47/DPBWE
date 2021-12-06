@@ -350,6 +350,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         zbottom = parcel.hasStory[story].hasGeometry['Height']*story
                         ztop = parcel.hasStory[story].hasGeometry['Height']*(story+1)
                         xline, yline = ext_wall.hasGeometry['1D Geometry']['local'].xy
+                        # Add local 3D geometry:
                         wall_xyz_poly = Polygon([Point(xline[0], yline[0], zbottom), Point(xline[1], yline[1], zbottom), Point(xline[1], yline[1], ztop), Point(xline[0], yline[0], ztop), Point(xline[0], yline[0], zbottom)])
                         ext_wall.hasGeometry['3D Geometry']['local'] = wall_xyz_poly
                         # Add rotated geometry:
@@ -368,6 +369,14 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     ext_wall.hasGeometry['Height'] = parcel.hasStory[story].hasGeometry['Height']
                     ext_wall.hasGeometry['1D Geometry']['local'] = LineString([(xf[pt], yf[pt]), (xf[pt+1], yf[pt+1])])  # Line segment with start/end coordinates of wall (respetive to building origin)
                     ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry']['local'].length
+                    # Add local 3D geometry:
+                    zbottom = parcel.hasStory[story].hasGeometry['Height'] * story
+                    ztop = parcel.hasStory[story].hasGeometry['Height'] * (story + 1)
+                    xline, yline = ext_wall.hasGeometry['1D Geometry']['local'].xy
+                    wall_xyz_poly = Polygon([Point(xline[0], yline[0], zbottom), Point(xline[1], yline[1], zbottom),
+                                             Point(xline[1], yline[1], ztop), Point(xline[0], yline[0], ztop),
+                                             Point(xline[0], yline[0], zbottom)])
+                    ext_wall.hasGeometry['3D Geometry']['local'] = wall_xyz_poly
                     # Add rotated geometry:
                     new_rline = affinity.rotate(ext_wall.hasGeometry['1D Geometry']['local'], self.hasOrientation,
                                                 origin=self.hasGeometry['Footprint']['local'].centroid)
@@ -447,24 +456,24 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
 
 # Test run:
 # 1) Create parcel data model:
-lon = -85.676188
-lat = 30.190142
-test = Parcel('12345', 4, 'financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
-# Add mode of fabrication:
-for wall in test.adjacentElement['Walls']:
-    wall.hasModeOfFabrication['on-site'] = True
-df_corr = test.ds_corr_ext_walls(test, test.adjacentElement['Walls'][0].hasType)
-a = 0
-# Wall direction plot:
-for wall in test.hasStory[0].adjacentElement['Walls']:
-    xl, yl = wall.hasGeometry['1D Geometry']['rotated'].xy
-    if wall.hasDirection == 'x':
-        plt.plot(xl, yl, 'r')
-    else:
-        plt.plot(xl, yl, 'b', linestyle='dashed')
-plt.xlabel('[m]')
-plt.ylabel('[m]')
-plt.show()
+# lon = -85.676188
+# lat = 30.190142
+# test = Parcel('12345', 4, 'financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
+# # Add mode of fabrication:
+# for wall in test.adjacentElement['Walls']:
+#     wall.hasModeOfFabrication['on-site'] = True
+# df_corr = test.ds_corr_ext_walls(test, test.adjacentElement['Walls'][0].hasType)
+# a = 0
+# # Wall direction plot:
+# for wall in test.hasStory[0].adjacentElement['Walls']:
+#     xl, yl = wall.hasGeometry['1D Geometry']['rotated'].xy
+#     if wall.hasDirection == 'x':
+#         plt.plot(xl, yl, 'r')
+#     else:
+#         plt.plot(xl, yl, 'b', linestyle='dashed')
+# plt.xlabel('[m]')
+# plt.ylabel('[m]')
+# plt.show()
 # # 2) Create query area:
 # ref_pt = test.hasLocation['Geodesic']
 # dist = 0.4
