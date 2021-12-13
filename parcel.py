@@ -279,10 +279,14 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
             if story == 0:
                 new_floor1 = Floor()
                 new_floor1.hasElevation = parcel.hasStory[story].hasElevation[0]
+                new_floor1.hasGeometry['2D Geometry'] = parcel.hasGeometry['Footprint']['local']
+                new_floor1.hasGeometry['Area'] = new_floor1.hasGeometry['2D Geometry'].area
                 element_dict['Floor'].append(new_floor1)
             else:
                 # Reference the prior story's top floor:
                 floor1 = parcel.hasStory[story - 1].hasElement['Floor'][1]
+                floor1.hasGeometry['2D Geometry'] = parcel.hasGeometry['Footprint']['local']
+                new_floor1.hasGeometry['Area'] = new_floor1.hasGeometry['2D Geometry'].area
                 element_dict['Floor'].append(floor1)
             # Top floor:
             if story == len(parcel.hasStory) - 1:
@@ -321,11 +325,14 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                 else:
                     pass
                 # Add roof to the story:
+                new_roof.hasGeometry['Area'] = new_roof.hasGeometry['2D Geometry']['local'].area
                 parcel.hasStory[story].adjacentElement.update({'Roof': [new_roof]})
                 element_dict['Roof'].append(new_roof)
             else:
                 new_floor2 = Floor()
                 new_floor2.hasElevation = parcel.hasStory[story].hasElevation[1]
+                new_floor2.hasGeometry['2D Geometry'] = parcel.hasGeometry['Footprint']['local']
+                new_floor2.hasGeometry['Area'] = new_floor2.hasGeometry['2D Geometry'].area
                 # new_floor_list.append(new_floor2)
                 element_dict['Floor'].append(new_floor2)
             # Create a new ceiling for the floor:
@@ -346,6 +353,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         ext_wall.hasGeometry['1D Geometry']['local'] = LineString([zone_pts.iloc[ind, col], zone_pts.iloc[
                             ind, col + 1]])  # Line segment with start/end coordinates of wall (respetive to building origin)
                         ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry']['local'].length
+                        ext_wall.hasGeometry['Area'] = ext_wall.hasGeometry['Height']* ext_wall.hasGeometry['Length']
                         # (x, y, z) coordinates:
                         zbottom = parcel.hasStory[story].hasGeometry['Height']*story
                         ztop = parcel.hasStory[story].hasGeometry['Height']*(story+1)
@@ -369,6 +377,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     ext_wall.hasGeometry['Height'] = parcel.hasStory[story].hasGeometry['Height']
                     ext_wall.hasGeometry['1D Geometry']['local'] = LineString([(xf[pt], yf[pt]), (xf[pt+1], yf[pt+1])])  # Line segment with start/end coordinates of wall (respetive to building origin)
                     ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry']['local'].length
+                    ext_wall.hasGeometry['Area'] = ext_wall.hasGeometry['Height'] * ext_wall.hasGeometry['Length']
                     # Add local 3D geometry:
                     zbottom = parcel.hasStory[story].hasGeometry['Height'] * story
                     ztop = parcel.hasStory[story].hasGeometry['Height'] * (story + 1)
