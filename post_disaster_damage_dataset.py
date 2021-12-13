@@ -249,32 +249,49 @@ class BayCountyPermits(PostDisasterDamageDataset):
             if component_type == 'roof cover':
                 data_details_list = []
                 # Look for roof and demo-related information:
+                permit_flag = False
                 for p in range(0, len(bldg.hasPermitData['other']['number'])):
                     data_details = {'available': False, 'fidelity': self, 'component type': component_type,
                                     'hazard type': hazard_type,
                                     'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
                     if 'MB' in bldg.hasPermitData['other']['number'][p]:
+                        permit_flag = True
                         # Check damage scale information:
                         if damage_scale_name == 'HAZUS-HM' and hazard_type == 'wind':
                             # Check if this is a roof-related permit:
-                            if 'ROOF' in bldg.hasPermitData['other']['permit type'][p] or 'RERF' in bldg.hasPermitData['other']['permit type'][p] or 'DEM' in bldg.hasPermitData['other']['permit type'][p]:
+                            if 'ROOF' in bldg.hasPermitData['other']['permit type'][p] or 'RERF' in \
+                                    bldg.hasPermitData['other']['permit type'][p] or 'DEM' in \
+                                    bldg.hasPermitData['other']['permit type'][p]:
                                 self.hasDamagePrecision['component, range'] = True
                                 self.hasDamagePrecision['component, discrete'] = False
                                 data_details['available'] = True
                                 if 'RERF' in bldg.hasPermitData['other']['permit type'][p]:
-                                    data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][1]
+                                    data_details['hazard damage rating']['wind'] = \
+                                        self.hasDamageScale['component damage states']['number'][1]
                                     data_details['value'] = self.hasDamageScale['component damage states']['value'][1]
                                 elif 'ROOF' in bldg.hasPermitData['other']['permit type'][p]:
-                                    data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][2]
+                                    data_details['hazard damage rating']['wind'] = \
+                                        self.hasDamageScale['component damage states']['number'][2]
                                     data_details['value'] = self.hasDamageScale['component damage states']['value'][2]
                                 else:
-                                    data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][3]
+                                    data_details['hazard damage rating']['wind'] = \
+                                        self.hasDamageScale['component damage states']['number'][3]
                                     data_details['value'] = self.hasDamageScale['component damage states']['value'][3]
+                            else:
+                                data_details = {'available': True, 'fidelity': self, 'component type': component_type,
+                                                'hazard type': hazard_type,
+                                                'value': [0, 2],
+                                                'hazard damage rating': {'wind': 0, 'surge': None, 'rain': None}}
                         else:
                             pass
+                    else:
+                        pass
+                    # if not data_details['available']: data_details = {'available': False, 'fidelity': self,
+                    # 'component type': component_type, 'hazard type': hazard_type, 'value': [0, 2], 'hazard damage
+                    # rating': {'wind': 0, 'surge': None, 'rain': None}}
                     data_details_list.append(data_details)
                 # In some cases, there may be multiple permits available. Choose worse damage:
-                if len(data_details_list) > 0:
+                if len(data_details_list) > 0 and permit_flag:
                     max_damage = 0
                     max_damage_idx = 0
                     for d in range(0, len(data_details_list)):
@@ -285,14 +302,14 @@ class BayCountyPermits(PostDisasterDamageDataset):
                         else:
                             pass
                     final_data_details = data_details_list[max_damage_idx]
-                else:
-                    final_data_details = {'available': False, 'fidelity': self, 'component type': component_type,
-                                            'hazard type': hazard_type,
-                                            'value': None, 'hazard damage rating': {'wind': None, 'surge': None, 'rain': None}}
+                elif not permit_flag:
+                    final_data_details = {'available': True, 'fidelity': self, 'component type': component_type,
+                                          'hazard type': hazard_type,
+                                          'value': [0, 2],
+                                          'hazard damage rating': {'wind': 0, 'surge': None, 'rain': None}}
         else:
             pass
         return final_data_details
-
 
     def add_disaster_permit_data(self, bldg, component_type, hazard_type, site,
                                  permit_file_path, length_unit, damage_scale_name):
@@ -355,8 +372,8 @@ class BayCountyPermits(PostDisasterDamageDataset):
         if len(bldg.hasPermitData['disaster']['number']) > 0:
             data_details = self.get_dis_permit_damage(bldg, component_type, hazard_type, site, length_unit)
         else:
-            data_details = {'available': False, 'fidelity': self, 'component type': component_type,
-                            'hazard type': hazard_type, 'value': None}
+            data_details = {'available': True, 'fidelity': self, 'component type': component_type,
+                            'hazard type': hazard_type, 'value': [0, 2]}
         return data_details
 
     def get_dis_permit_damage(self, bldg, component_type, hazard_type, site, length_unit):
@@ -402,7 +419,7 @@ class BayCountyPermits(PostDisasterDamageDataset):
                                 pass
                         if bldg_count > 1:
                             area_factor = bldg.hasGeometry['Total Floor Area'] / (
-                                        bldg_count - 1)  # Used for quantitative desc
+                                    bldg_count - 1)  # Used for quantitative desc
                         else:
                             area_factor = 1
                         # Now check if this is a quantitative roof permit description: i.e., tells us # of roof squares
@@ -473,12 +490,19 @@ class BayCountyPermits(PostDisasterDamageDataset):
                 elif 'DEM' in bldg.hasPermitData['disaster']['permit type'][p]:
                     if self.hasDamageScale['type'] == 'HAZUS-HM':
                         data_details['value'] = self.hasDamageScale['component damage states']['value'][3]
-                        data_details['hazard damage rating']['wind'] = self.hasDamageScale['component damage states']['number'][3]
+                        data_details['hazard damage rating']['wind'] = \
+                            self.hasDamageScale['component damage states']['number'][3]
                         self.hasDamagePrecision['component, range'] = True
                         self.hasDamagePrecision['component, discrete'] = False
                         data_details['available'] = True
                 else:
                     pass
+            # Populate no roof damage info for building w/o roof permits:
+            if not data_details['available']:
+                data_details = {'available': True, 'fidelity': self, 'component type': component_type,
+                                'hazard type': hazard_type, 'value': [0, 2]}
+            else:
+                pass
         else:
             pass
         return data_details
@@ -747,7 +771,7 @@ class FemaIahrld(PostDisasterDamageDataset):
                             # Assume a three story structure for condominium buildings:
                             new_parcel.hasStory = [Story(), Story(), Story()]
                             new_parcel.hasGeometry['Height'] = len(new_parcel.hasStory) * (
-                                        bldg.hasGeometry['Height'] / len(bldg.hasStory))
+                                    bldg.hasGeometry['Height'] / len(bldg.hasStory))
                         # Create Roof element and add information:
                         new_roof = Roof()
                         new_roof.hasCover = bldg.hasElement['Roof'][0].hasCover
@@ -765,14 +789,14 @@ class FemaIahrld(PostDisasterDamageDataset):
                                     if 'roof' in component_type:
                                         if not df_sub['habitabilityRepairsRequired'][row] and df_sub['ppfvl'][row] == 0:
                                             data_details['value'] = \
-                                            self.hasDamageScale['component damage states']['value'][1]
+                                                self.hasDamageScale['component damage states']['value'][1]
                                         elif not df_sub['habitabilityRepairsRequired'][row] and df_sub['ppfvl'][
                                             row] > 0:
                                             data_details['value'] = \
-                                            self.hasDamageScale['component damage states']['value'][2]
+                                                self.hasDamageScale['component damage states']['value'][2]
                                         elif df_sub['habitabilityRepairsRequired'][row] and df_sub['ppfvl'][row] > 0:
                                             data_details['value'] = \
-                                            self.hasDamageScale['component damage states']['value'][3]
+                                                self.hasDamageScale['component damage states']['value'][3]
                                     else:
                                         print('Only roof components supported at this time')
                                 else:
@@ -906,7 +930,7 @@ class FemaHma(PostDisasterDamageDataset):
             else:
                 # Get all entries that are either non-residential private or public:
                 df_sub = df_fema.loc[(df_fema['structureType'] == 'NON-RESIDENTIAL - PRIVATE') | (
-                            df_fema['structureType'] == 'NON-RESIDENTIAL - PUBLIC')]
+                        df_fema['structureType'] == 'NON-RESIDENTIAL - PUBLIC')]
             if len(df_sub) > 0:
                 # Find subset of dataset specific to the given hazard, component:
                 if hazard_type == 'wind':
@@ -937,7 +961,8 @@ class FemaHma(PostDisasterDamageDataset):
             print('No HMA damage descriptions found for this case study')
         return hma_bldgs
 
-    def create_hma_data_models(self, bldg, df_sub, component_type, hazard_type, hazard_file_path, damage_scale_name, disaster_number):
+    def create_hma_data_models(self, bldg, df_sub, component_type, hazard_type, hazard_file_path, damage_scale_name,
+                               disaster_number):
         # Import necessary modules:
         from shapely.geometry import Point
         from OBDM.zone import Building, Story
@@ -1003,36 +1028,41 @@ class FemaHma(PostDisasterDamageDataset):
             rcParams['font.family'] = "Times New Roman"
             rcParams.update({'font.size': 16})
             # Plot a histogram of the wind speed data and its pdf:
-            ax = kdeplot(np.array(hazard_list)/2.237, linewidth=2)
+            ax = kdeplot(np.array(hazard_list) / 2.237, linewidth=2)
             line = ax.lines[0]
             x, y = line.get_data()
-            ax.hist(np.array(hazard_list)/2.237, density=True, color='lightgray')
+            ax.hist(np.array(hazard_list) / 2.237, density=True, color='lightgray')
             ax.set_xlabel('Wind Speed [m/s]')
             ax.set_xlim(20, 60)
             plt.show()
             # Segment the dataset into two clusters:
-            xfull = np.linspace(min(x), max(x), 100)*2.237
-            #xfull = np.linspace(min(np.array(hazard_list)), max(np.array(hazard_list)))
+            xfull = np.linspace(min(x), max(x), 100) * 2.237
+            # xfull = np.linspace(min(np.array(hazard_list)), max(np.array(hazard_list)))
             hdata = np.array(hazard_list)
-            hdata = hdata.reshape(-1,1)
+            hdata = hdata.reshape(-1, 1)
             gmm = mixture.GaussianMixture(n_components=2, max_iter=1000, covariance_type='full').fit(hdata)
             print('means')
             print(gmm.means_)
             print('std')
             print(np.sqrt(gmm.covariances_))
             plt.hist(np.array(hazard_list) / 2.237, density=True, color='lightgray')
-            plt.plot(xfull/2.237, norm.pdf(xfull, gmm.means_[0], np.sqrt(gmm.covariances_)[0])[0], linewidth=2, label='Damage measure 1 density')
-            plt.plot(xfull/2.237, norm.pdf(xfull, gmm.means_[1], np.sqrt(gmm.covariances_)[1])[0], '--', linewidth=2, label='Damage meaure 2 density')
+            plt.plot(xfull / 2.237, norm.pdf(xfull, gmm.means_[0], np.sqrt(gmm.covariances_)[0])[0], linewidth=2,
+                     label='Damage measure 1 density')
+            plt.plot(xfull / 2.237, norm.pdf(xfull, gmm.means_[1], np.sqrt(gmm.covariances_)[1])[0], '--', linewidth=2,
+                     label='Damage meaure 2 density')
             plt.legend()
             plt.show()
             # Assign damage measures for each building:
             final_hbldg_list = []
             for hbldg in hma_bldg_list:
                 if bldg.hasLocation['City'].upper() == 'MARCO ISLAND' or bldg.hasLocation['City'].upper() == 'KEY WEST':
-                    if hbldg.hasLocation['City'].upper() == 'MARCO ISLAND' or hbldg.hasLocation['City'].upper() == 'KEY WEST':
+                    if hbldg.hasLocation['City'].upper() == 'MARCO ISLAND' or hbldg.hasLocation[
+                        'City'].upper() == 'KEY WEST':
                         if 49 in hbldg.hasElement['Roof'][0].hasDamageData['value'] and damage_scale_name == 'HAZUS-HM':
-                            dm1_prob = 1-norm.cdf(hbldg.hasDemand['wind speed'], gmm.means_[0], np.sqrt(gmm.covariances_)[0])[0]
-                            dm2_prob = norm.cdf(hbldg.hasDemand['wind speed'], gmm.means_[1], np.sqrt(gmm.covariances_)[1])[0]
+                            dm1_prob = 1 - norm.cdf(hbldg.hasDemand['wind speed'], gmm.means_[0],
+                                                    np.sqrt(gmm.covariances_)[0])[0]
+                            dm2_prob = \
+                                norm.cdf(hbldg.hasDemand['wind speed'], gmm.means_[1], np.sqrt(gmm.covariances_)[1])[0]
                             if dm1_prob > dm2_prob:
                                 hbldg.hasElement['Roof'][0].hasDamageData['value'] = [2, 15]
                                 hbldg.hasDamageData['roof cover']['value'] = [2, 15]

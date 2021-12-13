@@ -16,8 +16,8 @@ def get_sim_bldgs(bldg, site, hazard_type, component_type, event_year, sfh_flag)
                 # Skip buildings constructed after the year of the event:
                 if compare_bldg.hasYearBuilt >= 2016 or compare_bldg.hasYearBuilt > event_year:
                     pass
-                #elif compare_bldg.hasYearBuilt <= 2001:
-                 #   pass
+                elif compare_bldg.hasYearBuilt < 2002:  # >=
+                    pass
                 else:
                     # Check if this building has a similar or same roof cover:
                     rcover_flag = check_sim_rcover(bldg, compare_bldg)
