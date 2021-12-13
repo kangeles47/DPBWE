@@ -124,7 +124,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             if component_type == 'roof cover':
                 sample_dict[component_type].append(s.hasElement['Roof'][0].hasCover)
         # Export as csv file:
-        pd.DataFrame(sample_dict).to_csv('SampleBuildings_Irma_commercial.csv', index=False)
+        pd.DataFrame(sample_dict).to_csv('SampleBuildings_FBC_RR_MB.csv', index=False)
     # Step 6: Bayesian Parameter Estimation
     # Step 6a: Populate the prior:
     if hazard_type == 'wind' and damage_scale_name == 'HAZUS-HM':
@@ -149,7 +149,7 @@ def execute_fragility_workflow(bldg, site, component_type, hazard_type, event_ye
             df_params = df_params.drop(df_sub.index)
         else:
             pass
-    df_params.to_csv('Observations_Irma_commercial.csv', index=False)
+    df_params.to_csv('Observations_FBC_RR_MB.csv', index=False)
     # Calculate MLE estimate for comparison:
     mle_params = get_point_estimate(lparams)
 
@@ -269,7 +269,7 @@ def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type, p
                             else:
                                 pass
                         else:
-                            if gen_dataset.hasDamageScale['component damage states']['value'][dm][0] <= bldg.hasElement['Roof'][0].hasDamageData['value'] <= gen_dataset.hasDamageScale['component damage states']['value'][dm][1]:
+                            if gen_dataset.hasDamageScale['component damage states']['value'][dm][0] < bldg.hasElement['Roof'][0].hasDamageData['value'] <= gen_dataset.hasDamageScale['component damage states']['value'][dm][1]:
                                 new_dm = gen_dataset.hasDamageScale['component damage states']['number'][dm]
                                 break
                             else:
@@ -288,8 +288,8 @@ def get_dichot_dict(sim_bldgs, damage_scale_name, component_type, hazard_type, p
     if plot_flag:
         from matplotlib import rcParams
         rcParams['font.family'] = "Times New Roman"
-        rcParams.update({'font.size': 16})
-        msize = 12
+        rcParams.update({'font.size': 18})
+        msize = 16
         fig, ax = plt.subplots()
         xflag = 0
         oflag = 0
@@ -806,22 +806,22 @@ def conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, target_accept, 
     return df_summary
 
 
-# observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Fragilities/Irma/Observations_Irma_commercial.csv'
-# #observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_Harvey_coast.csv'
+# # #observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Fragilities/Irma/Observations_Irma_commercial.csv'
+# observations_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Observations_FBC_OR_compare.csv'
 # df = pd.read_csv(observations_file_path)
-# prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/F8_fit.csv'
+# prior_file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/SimulationFragilities/A9_fit.csv'
 # df_prior = pd.read_csv(prior_file_path)
 # ds_list = df['DS Number'].unique()
-# for ds in range(2, len(ds_list)):
+# for ds in range(0, len(ds_list)):
 #     df_sub = df.loc[df['DS Number'] == ds_list[ds]]
 #     xj = np.array(df_sub['demand'])
 #     zj = np.array(df_sub['fail'])
 #     nj = np.array(df_sub['total'])
 #     mu_init = df_prior['theta1'][ds]
 #     beta_init = df_prior['theta2'][ds]
-#     draws = 10000
-#     target_accept = 0.95
+#     draws = 12000
+#     target_accept = 0.9
 #     df_summary = conduct_bayesian_norm(xj, zj, nj, mu_init, beta_init, draws, target_accept)
-#     df_summary.to_csv('Irma_comm_DS' + str(ds+1) + '_BI.csv', index=False)
+#     df_summary.to_csv('HM_PFBC_DS' + str(ds+1) + '_BI.csv', index=False)
 #     print('Update fragility model parameter values:')
 #     print(df_summary)
