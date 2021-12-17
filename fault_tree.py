@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from shapely.geometry import Polygon, Point, LineString
+from shapely.geometry import Polygon, Point, LineString, MultiPoint, MultiLineString
 from shapely.ops import nearest_points, snap
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from time_history_tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
@@ -43,7 +43,7 @@ def generate_pressure_loading(bldg, basic_wind_speed, wind_direction, tpu_flag, 
     if tpu_flag:
         if csv_flag:
             # First see if we have a .csv available with pressure output:
-            df_tpu_pressures = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/SampleTHPressureOutput.csv')
+            df_tpu_pressures = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/TPU_ZERO_DEG_CS.csv')
             pt_locs = []
             for row in range(0, len(df_tpu_pressures['Real Life Location'])):
                 new_pt = df_tpu_pressures['Real Life Location'][row].split()[-3:]
@@ -60,7 +60,7 @@ def generate_pressure_loading(bldg, basic_wind_speed, wind_direction, tpu_flag, 
             key = 'local'
             # Find TPU wind pressures:
             df_tpu_pressures = calc_tpu_pressures(bldg, key, tpu_wdir, basic_wind_speed)
-            df_tpu_pressures.to_csv('D:/Users/Karen/Documents/Github/DPBWE/TPU_ZERO_DEG_CS.csv')
+            #df_tpu_pressures.to_csv('D:/Users/Karen/Documents/Github/DPBWE/TPU_ZERO_DEG_CS.csv')
         # Save the pressure loading to the Building object:
         bldg.hasDemand['wind pressure']['external'] = df_tpu_pressures
         # 2) Map pressures to specific elements on building envelope:
@@ -191,7 +191,17 @@ def generate_pressure_loading(bldg, basic_wind_speed, wind_direction, tpu_flag, 
                 subelem.hasDemand['wind pressure']['external'] = df_roof.loc[subelem.hasDemand['wind pressure']['external']]
 
 
-def pressure_ftree(bldg, zone_flag, time_flag):
+def find_peak_pressure_response(bldg, zone_flag, time_flag):
+    """
+     A function to find peak pressure response for a given building.
+     This is conducted using a series of demand versus capacity checks (i.e., fault tree analysis).
+     Peak response corresponds to that which causes the most area on building envelope to fail.
+
+    :param bldg: A Building object with pressure descriptions for its envelope components.
+    :param zone_flag:
+    :param time_flag: True if the fault tree is for a time history of pressures (find when peak response occurs).
+    :return:
+    """
     # Goal is to find when maximum damage occurs:
     if time_flag:
         tcols = [col for col in bldg.hasDemand['wind pressure']['external'].columns if 'pt' in col]
@@ -202,6 +212,7 @@ def pressure_ftree(bldg, zone_flag, time_flag):
         if key == 'Floor':
             pass
         elif key == 'Roof':
+            # First check if C vs. D checks are going to be on entire roof or subelements:
             if len(bldg.adjacentElement[key][0].hasSubElement['cover']) > 0:
                 roof_fail = pd.DataFrame({'time': tcols, 'area': np.zeros(len(tcols))})
                 for elem in bldg.adjacentElement[key][0].hasSubElement['cover']:
@@ -216,6 +227,7 @@ def pressure_ftree(bldg, zone_flag, time_flag):
                         # Check capacity versus demand for all pressure taps and times:
                         elem_idx = elem.hasDemand['wind pressure']['external'].index
                         pressure_demand = bldg.hasDemand['wind pressure']['external'].loc[elem_idx][tcols]
+                        # Set up DataFrames with Booleans checking demand versus capacity:
                         df_neg = pressure_demand < neg_ecapacity
                         df_pos = pressure_demand > pos_ecapacity
                         # By time step, check if demand exceeded capacity in any of the pressure taps for this element:
@@ -245,12 +257,15 @@ def pressure_ftree(bldg, zone_flag, time_flag):
                                         # Save the tap's index for later reference:
                                         tap_index_list.append(row)
                                         # Find the resulting failure region:
+                                        # Here we want the most accurate estimation of roof cover damage.
+                                        # If pressure tap intersects element, take area within element geometry.
+                                        # If pressure tap is inside the element geometry, record pressure tap area
                                         ptap_poly = elem.hasDemand['wind pressure']['external'].loc[row]['Tap Polygon']
                                         if zone_flag:
                                             if ptap_poly.intersects(elem.hasGeometry['2D Geometry']['local']):
                                                 region_list.append(ptap_poly.intersection(elem.hasGeometry['2D Geometry']['local']))
                                             else:
-                                                region_list.append(ptap_poly)  # Pressure tap is within the element's 2D geometry
+                                                region_list.append(ptap_poly)  # Pressure tap is within element's 2D geometry
                                         else:
                                             # Grab the element's entire 2D polygon:
                                             region_list.append(elem.hasGeometry['2D Geometry']['local'])
@@ -272,6 +287,7 @@ def pressure_ftree(bldg, zone_flag, time_flag):
                 # Figure out when maximum response occurred:
                 max_idx = roof_fail.loc[roof_fail['area'] == max(roof_fail['area'])].index[0]
                 max_time = roof_fail['time'][max_idx]
+                print('Max time of roof failure: ' + str(max_time))
                 # Loop through elements and retain only data for max response:
                 for elem in bldg.adjacentElement[key][0].hasSubElement['cover']:
                     max_idx_elem = elem.hasFailure['wind pressure'].loc[elem.hasFailure['wind pressure']['time']==max_time].index
@@ -309,6 +325,7 @@ def pressure_ftree(bldg, zone_flag, time_flag):
             # Figure out when maximum response occurred:
             max_idx = wall_fail.loc[wall_fail['area'] == max(wall_fail['area'])].index[0]
             max_time = wall_fail['time'][max_idx]
+            print('Max time of envelope failure: ' + str(max_time))
             fig = plt.figure()
             ax = plt.axes(projection='3d')
             # Loop through elements and retain only data for max response:
@@ -352,6 +369,15 @@ def polygon_area(poly):
 
 
 def time_hist_element_pressure_failure_check(elem, bldg, zone_flag, tcols):
+    """
+    A function to find failure regions due to pressure on building envelope per time step.
+
+    :param elem:
+    :param bldg:
+    :param zone_flag:
+    :param tcols:
+    :return:
+    """
     elem_fail = pd.DataFrame({'time': tcols, 'fail': [False for col in tcols], 'region': [[] for col in tcols],
                               'tap index': [[] for col in tcols]})
     fcol = np.where(elem_fail.columns == 'fail')[0][0]
@@ -414,7 +440,20 @@ def time_hist_element_pressure_failure_check(elem, bldg, zone_flag, tcols):
                                 # Find the intersection:
                                 iline = pline.intersection(elem.hasGeometry['1D Geometry']['local'])
                                 if isinstance(iline, Point):
-                                    pass
+                                    xl, yl = elem.hasGeometry['1D Geometry']['local'].xy
+                                    dist1 = Point(xl[0], yl[0]).distance(iline)
+                                    dist2 = Point(xl[1], yl[1]).distance(iline)
+                                    if dist1 < dist2:
+                                        # Create failure region using iline point and closest element point:
+                                        new_poly = Polygon([(iline.x, iline.y, min(zp)), (xl[0], yl[0], min(zp)), (xl[0], yl[0], max(zp)), (iline.x, iline.y, max(zp)), (iline.x, iline.y, min(zp))])
+                                    else:
+                                        new_poly = Polygon([(iline.x, iline.y, min(zp)), (xl[1], yl[1], min(zp)), (xl[1], yl[1], max(zp)), (iline.x, iline.y, max(zp)), (iline.x, iline.y, min(zp))])
+                                    region_list.append(new_poly)
+                                elif isinstance(iline, MultiPoint):
+                                    new_poly = Polygon(
+                                        [(iline[0].x, iline[0].y, min(zp)), (iline[1].x, iline[1].y, min(zp)), (iline[1].x, iline[1].y, max(zp)),
+                                         (iline[0].x, iline[0].y, max(zp)), (iline[0].x, iline[0].y, min(zp))])
+                                    region_list.append(new_poly)
                                 else:
                                     try:
                                         x_iline = iline.xy[0]
@@ -881,8 +920,8 @@ def facade_wind_fault_tree(bldg):
 lon = -85.676188
 lat = 30.190142
 test = Parcel('12345', 4, 'financial', 2000, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
-#test.hasElement['Roof'][0].hasShape['flat'] = True
-#test.hasElement['Roof'][0].hasPitch = 0
+test.hasElement['Roof'][0].hasShape['flat'] = True
+test.hasElement['Roof'][0].hasPitch = 0
 wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
 exposure = 'B'
 unit = 'english'
@@ -892,8 +931,9 @@ wind_direction = 0
 cc_flag, mwfrs_flag = True, True
 #test.hasGeometry['Height'] = 9*4
 #test.hasGeometry['Height'] = 52.5
-#populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
-generate_pressure_loading(test, basic_wind_speed, wind_direction, tpu_flag=True, csv_flag=False)
+populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
+generate_pressure_loading(test, basic_wind_speed, wind_direction, tpu_flag=True, csv_flag=True)
+find_peak_pressure_response(test, zone_flag=True, time_flag=True)
 # # Code for data model CQ:
 # # Set positive and negative capacities per wall element:
 # gcpi = 0.18
