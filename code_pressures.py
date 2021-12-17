@@ -293,7 +293,6 @@ class PressureCalc:
         """
         # Pressure calc: will need to code in a procedure to determine both +/- cases for GCpi
         if is_cc:
-            print(q)
             if tpu_flag:
                 p = q * gcp
             else:
