@@ -4,7 +4,7 @@ import pandas as pd
 from shapely.geometry import Polygon, Point, LineString
 from shapely.ops import nearest_points, snap
 from scipy.spatial import Voronoi, voronoi_plot_2d
-from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
+from time_history_tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from create_fragility import get_wind_speed
 from parcel import Parcel
 from bldg_code import ASCE7
@@ -27,10 +27,22 @@ def populate_code_capacities(bldg, cc_flag, mwfrs_flag, exposure):
         #asce7.assign_rmwfrs_pressures(test, asce7.hasEdition, exposure, wind_speed)
 
 
-def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_flag):
-    # Populate envelope pressures:
+def generate_pressure_loading(bldg, basic_wind_speed, wind_direction, tpu_flag, csv_flag):
+    """
+    A function to apply DAD or code-informed pressures onto the building envelope.
+    Updates bldg Roof object and/or subelements with pressures and tap information.
+    Updates facade elements with pressure and tap information.
+
+    :param bldg: The building that is going to be pressurized.
+    :param basic_wind_speed: Input basic wind speed (open terrain at 33 ft), in mph
+    :param wind_direction: The real-life wind direction, relative to cardinal directions.
+    :param tpu_flag: True if DAD pressure loading is to be applied.
+    :param csv_flag: True if a .csv of the pressure time history is available.
+    """
+    # 1) Populate envelope pressures:
     if tpu_flag:
         if csv_flag:
+            # First see if we have a .csv available with pressure output:
             df_tpu_pressures = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/SampleTHPressureOutput.csv')
             pt_locs = []
             for row in range(0, len(df_tpu_pressures['Real Life Location'])):
@@ -47,27 +59,29 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_fl
             tpu_wdir = 0
             key = 'local'
             # Find TPU wind pressures:
-            df_tpu_pressures = calc_tpu_pressures(bldg, key, tpu_wdir, wind_speed)
+            df_tpu_pressures = calc_tpu_pressures(bldg, key, tpu_wdir, basic_wind_speed)
+            df_tpu_pressures.to_csv('D:/Users/Karen/Documents/Github/DPBWE/TPU_ZERO_DEG_CS.csv')
         # Save the pressure loading to the Building object:
         bldg.hasDemand['wind pressure']['external'] = df_tpu_pressures
-        # Map pressures to specific elements on building envelope:
-        # Start with facade components:
+        # 2) Map pressures to specific elements on building envelope:
+        # 2a) Start with facade components: Find their indices
         roof_indices = df_tpu_pressures.loc[df_tpu_pressures['Surface Number'] == 5].index
         tcols = [col for col in df_tpu_pressures.columns if 'pt' in col]
         df_facade = df_tpu_pressures.drop(roof_indices).drop(tcols, axis=1)
-        # Add tap polygon geometries:
+        # 2b) Create tributary geometries for pressure taps:
         df_facade = get_facade_mesh(bldg, df_facade)
-        # Add empty DataFrames to facade elements:
+        # Add empty DataFrames to facade elements for placeholding, we are going to add pressure taps:
         for wall in bldg.adjacentElement['Walls']:
             wall.hasDemand['wind pressure']['external'] = []
         # Set up plotting:
         # fig = plt.figure()
         # ax = plt.axes(projection='3d')
-        no_map = []
+        # 2c) Map facade pressure taps to available exterior walls:
+        no_map = []  # Empty list to hold any unmapped taps (due to numerical error)
         for idx in df_facade.index:
             map_flag = False
             ptap_loc = df_facade['Real Life Location'][idx]
-            # We are going to use line geometies to map pressure tap trib areas to walls:
+            # Use line geometries to map pressure tap trib areas to walls:
             xtap, ytap = df_facade['Tap Polygon'][idx].exterior.xy
             tap_line = LineString([(min(xtap), min(ytap)), (max(xtap), max(ytap))])
             #bound_tap_poly = Polygon([(max(xtap), max(ytap)), (min(xtap), max(ytap)), (min(xtap), min(ytap)), (max(xtap), min(ytap))])
@@ -120,6 +134,7 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_fl
         #         zw.append(w[2])
         #     ax.plot(xw, yw, zw, 'k')
         # plt.show()
+        # 2e) Now do the mapping for the roof: (set-up placeholders and indices)
         # Set up empty DataFrames for roof or roof_subelements:
         r_indices = []
         for row in df_facade.index:
@@ -131,18 +146,18 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_fl
         for r in roof_indices:
             r_indices.append(r)
         df_roof = df_tpu_pressures.iloc[r_indices].drop(tcols, axis=1)
-        # Map pressures onto roof elements:
+        # 2f) Get pressure tap tributary areas (voronoi diagram):
         # Assign the entire roof DataFrame to main roof element:
         bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'] = df_roof
-        # First get the voronoi diagram (pressure tap tributary areas):
         get_voronoi(bldg)
+        # 2g) Map pressure taps to roof or roof subelements:
         if len(bldg.adjacentElement['Roof'][0].hasSubElement['cover']) == 0:
             # Assign the entire roof DataFrame to main roof element:
             bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'] = df_roof
         else:
             for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
                 subelem.hasDemand['wind pressure']['external'] = []
-            # Map pressures to roof subelements
+            # Here the mapping is done completely in the x-y plane (flat roofs):
             no_map_roof = []
             for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
                 map_flag = False
@@ -166,7 +181,7 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_fl
                 if not map_flag:
                     no_map_roof.append(df_roof.loc[idx])
             #print(len(no_map_roof))
-        # Generate minimal DataFrames for each element:
+        # 2h) Pull pressure tap information for each element according to stored indices:
         for wall in bldg.adjacentElement['Walls']:
             wall.hasDemand['wind pressure']['external'] = df_facade.loc[wall.hasDemand['wind pressure']['external']]
         if len(bldg.adjacentElement['Roof'][0].hasSubElement['cover']) == 0:
@@ -177,6 +192,7 @@ def generate_pressure_loading(bldg, wind_speed, wind_direction, tpu_flag, csv_fl
 
 
 def pressure_ftree(bldg, zone_flag, time_flag):
+    # Goal is to find when maximum damage occurs:
     if time_flag:
         tcols = [col for col in bldg.hasDemand['wind pressure']['external'].columns if 'pt' in col]
     else:
@@ -865,30 +881,31 @@ def facade_wind_fault_tree(bldg):
 lon = -85.676188
 lat = 30.190142
 test = Parcel('12345', 4, 'financial', 2000, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
-test.hasElement['Roof'][0].hasShape['flat'] = True
-test.hasElement['Roof'][0].hasPitch = 0
+#test.hasElement['Roof'][0].hasShape['flat'] = True
+#test.hasElement['Roof'][0].hasPitch = 0
 wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
 exposure = 'B'
 unit = 'english'
-wind_speed = 123.342
+basic_wind_speed = 123.342  # 126?
 #wind_speed = get_wind_speed(test, wind_speed_file_path, exposure, unit)
 wind_direction = 0
 cc_flag, mwfrs_flag = True, True
 #test.hasGeometry['Height'] = 9*4
 #test.hasGeometry['Height'] = 52.5
 #populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
-generate_pressure_loading(test, wind_speed, wind_direction, tpu_flag=True, csv_flag=False)
-# Set positive and negative capacities per wall element:
-gcpi = 0.18
-rho = 1.225
-avg_factor = (1/1.52)**2
-for wall in test.adjacentElement['Walls']:
-    wall.hasCapacity['wind pressure']['external']['positive'] = 400*0.020885
-    wall.hasCapacity['wind pressure']['external']['negative'] = -600 * 0.020885
-    wall.hasDemand['wind pressure']['internal'] = (0.5*rho*((wind_speed/2.237)**2)*gcpi)* 0.020885
-    wall.hasDemand['wind pressure']['external'] = wall.hasDemand['wind pressure']['external']['Pressure']
-print(wall.hasDemand['wind pressure']['internal'])
-facade_wind_fault_tree(test)
-ftree_initial(test)
+generate_pressure_loading(test, basic_wind_speed, wind_direction, tpu_flag=True, csv_flag=False)
+# # Code for data model CQ:
+# # Set positive and negative capacities per wall element:
+# gcpi = 0.18
+# rho = 1.225
+# avg_factor = (1/1.52)**2
+# for wall in test.adjacentElement['Walls']:
+#     wall.hasCapacity['wind pressure']['external']['positive'] = 400*0.020885
+#     wall.hasCapacity['wind pressure']['external']['negative'] = -600 * 0.020885
+#     wall.hasDemand['wind pressure']['internal'] = (0.5*rho*((wind_speed/2.237)**2)*gcpi)* 0.020885
+#     wall.hasDemand['wind pressure']['external'] = wall.hasDemand['wind pressure']['external']['Pressure']
+# print(wall.hasDemand['wind pressure']['internal'])
+# facade_wind_fault_tree(test)
+# ftree_initial(test)
 #get_voronoi(test)
 #pressure_ftree(test, zone_flag=True, time_flag=True)
