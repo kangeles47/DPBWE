@@ -612,7 +612,7 @@ class ASCE7(BldgCode):
                 area_eff = h_story*h_story/3  # From ASCE 7 - span*span/3
             else:
                 print('Need to specify effective wind area for this type of C&C element')
-            psim = pressures.wcc_pressure(wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat=2, hpr=True, h_ocean=True, encl_class='Enclosed', tpu_flag=False)
+            psim = pressures.wcc_pressure(wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat=2, hpr=True, h_ocean=True, encl_class='Enclosed', tpu_flag=True)
         # If applicable, use similitude parameters to get pressures:
         if sim_flag:
             # Step 1: Determine which "family" of building codes will be needed (if necessary):
