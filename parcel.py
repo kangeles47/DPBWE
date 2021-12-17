@@ -129,7 +129,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     self.hasGeometry['3D Geometry'][key].append(bsurf_poly)
                     self.hasGeometry['Facade'][key].append(bsurf_poly)
         # Generate a set of building elements (with default attributes) for the parcel:
-        self.parcel_elements(self, zone_flag=False)
+        self.parcel_elements(self, zone_flag=True)
         # Update the Building's Elements:
         self.update_elements()
         # Populate instance attributes informed by national survey data:
