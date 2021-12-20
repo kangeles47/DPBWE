@@ -128,16 +128,19 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     # Save the polygon to the building geometry:
                     self.hasGeometry['3D Geometry'][key].append(bsurf_poly)
                     self.hasGeometry['Facade'][key].append(bsurf_poly)
+        # Set up building level code-informed attributes:
+        code_informed = bldg_code.FBC(self, loading_flag=False)
+        code_informed.bldg_attributes(self)
         # Generate a set of building elements (with default attributes) for the parcel:
-        self.parcel_elements(self, zone_flag=True)
+        self.parcel_elements(self, zone_flag=False)
         # Update the Building's Elements:
         self.update_elements()
         # Populate instance attributes informed by national survey data:
         survey_data.run(self, ref_bldg_flag=False, parcel_flag=True)  # populate the component-level attributes using survey data
         if survey_data.isSurvey == 'CBECS':
             # Populate code-informed component-level information
-            code_informed = bldg_code.FBC(self, loading_flag=False)
-            code_informed.bldg_attributes(self)
+            # code_informed = bldg_code.FBC(self, loading_flag=False)
+            # code_informed.bldg_attributes(self)
             code_informed.roof_attributes(code_informed.hasEdition, self)
         else:
             pass
@@ -245,7 +248,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         theta = degrees(atan2((spts[1][0] - spts[2][0]), (spts[1][1] - spts[2][1])))
         self.hasOrientation = theta
         # Rotate the the building footprint to create the TPU axis:
-        rotated_b = affinity.rotate(Polygon(new_point_list), theta, origin='centroid')
+        rotated_b = affinity.rotate(parcel.hasGeometry['Footprint']['local'], theta, origin='centroid')
         self.hasGeometry['Footprint']['rotated'] = rotated_b
         rx, ry = rotated_b.exterior.xy
         # Find the footprint's orientation using a minimum rectangle and its local geometry:
