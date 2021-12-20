@@ -51,5 +51,6 @@ site.update_zones()
 site.update_interfaces()
 site.update_elements()
 # Find building-specific debris vulnerability:
+wind_direction = 360-45
 wind_speed = None  # Need to figure out what wind speed this is
 run_debris(test, site, length_unit, wind_direction, wind_speed)
