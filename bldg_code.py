@@ -604,7 +604,7 @@ class ASCE7(BldgCode):
         pressures = PressureCalc()
         if h_story == 9 and pitch <= 10:  # [ft]
             ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-            file_path = 'D:/Users/Karen/Docuements/Github/DPBWE/Similitude Parameters/Wall_CC/RBLDG1/'
+            file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Similitude Parameters/Wall_CC/RBLDG1/'
             sim_flag = True
         else:
             sim_flag = False
@@ -779,7 +779,7 @@ class ASCE7(BldgCode):
         pressures = PressureCalc()
         if h_bldg == 9 and pitch <= 10:  # [ft]
             ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-            file_path = 'D:/Users/Karen/Docuements/Github/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
+            file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
             sim_flag = True
         else:
             sim_flag = False
@@ -805,13 +805,13 @@ class ASCE7(BldgCode):
                 if pitch <= 10:
                     use_case = 1
                     ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-                    file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
+                    file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
             else:
                 if (
                         edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and pitch <= 7:  # Still including this logic for non-Parcel models
                     use_case = 1
                     ref_exposure, ref_hstory, ref_hbldg, ref_pitch, ref_speed, ref_cat, hpr, h_ocean, encl_class = pressures.ref_bldg()
-                    file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
+                    file_path = 'C:/Users/Karen/PycharmProjects/DPBWE/Similitude Parameters/Roof_CC/RBLDG1/'
                 elif (edition == 'ASCE 7-02' or edition == 'ASCE 7-05' or edition == 'ASCE 7-10') and 7 < pitch <= 27:
                     use_case = 2
                     print('Roof use case currently not supported')

@@ -152,7 +152,7 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
     def assign_footprint(self, parcel, num_stories):
         # Access file with region's building footprint information:
         if parcel.hasLocation['State'] == 'FL' and parcel.hasLocation['County'] == 'Bay':
-            jFile = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/Geojson/BayCounty.geojson'
+            jFile = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Geojson/BayCounty.geojson'
         else:
             print('Footprints for this region currently not supported')
 
