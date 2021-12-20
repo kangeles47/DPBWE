@@ -159,7 +159,7 @@ class SurveyData:
             print('CBECS square footage code not determined')
 
         # Read in the .csv file:
-        path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/CBECS/CBECS'
+        path = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/CBECS/CBECS'
         CBECS_data = pd.read_csv(path + str(data_yr) + '.csv')
 
         if data_yr != 2012:
