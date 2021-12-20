@@ -277,38 +277,38 @@ def get_horiz_impact_vel(wind_speed, c, tachikawa_num, gravity, horiz_fdist):
     return horiz_impact_vel
 
 
-# Testing the workflow:
-# Step 1: Generate Building data models for each building in a site:
-site = Site()
-df = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/BC_CParcels.csv')
-for row in range(0, len(df['Parcel Id'])):
-    new_bldg = Building()
-    pid, num_stories, occupancy = df['Parcel Id'][row], df['Stories'][row], df['Use Code'][row]
-    yr_built, address, area = df['Year Built'][row], df['Address'][row], df['Square Footage'][row]
-    lon, lat, length_unit = df['Longitude'][row], df['Latitude'][row], 'ft'
-    if 'PANAMA CITY BEACH' in address or 'MEXICO BEACH' in address:
-        pass
-    else:
-        new_bldg.add_parcel_data(pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit, loc_flag=True)
-        # Add roof element and data:
-        new_roof = Roof()
-        new_roof.hasCover = df['Roof Cover'][row]
-        new_roof.hasType = df['Roof Cover'][row]
-        new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
-        new_bldg.hasStory[-1].update_elements()
-        new_bldg.update_zones()
-        new_bldg.update_elements()
-        new_bldg.update_interfaces()
-        site.hasBuilding.append(new_bldg)
-        # Pull case study building:
-        if new_bldg.hasID == '13209-055-000':
-            bldg = new_bldg
-        else:
-            pass
-site.update_zones()
-site.update_elements()
-site.update_interfaces()
-# Step 2: Run through the debris workflow:
-wind_speed = np.arange(70, 200, 10)
-wind_direction = 0
-run_debris(bldg, site, length_unit, wind_direction, wind_speed)
+# # Testing the workflow:
+# # Step 1: Generate Building data models for each building in a site:
+# site = Site()
+# df = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/BC_CParcels.csv')
+# for row in range(0, len(df['Parcel Id'])):
+#     new_bldg = Building()
+#     pid, num_stories, occupancy = df['Parcel Id'][row], df['Stories'][row], df['Use Code'][row]
+#     yr_built, address, area = df['Year Built'][row], df['Address'][row], df['Square Footage'][row]
+#     lon, lat, length_unit = df['Longitude'][row], df['Latitude'][row], 'ft'
+#     if 'PANAMA CITY BEACH' in address or 'MEXICO BEACH' in address:
+#         pass
+#     else:
+#         new_bldg.add_parcel_data(pid, num_stories, occupancy, yr_built, address, area, lon, lat, length_unit, loc_flag=True)
+#         # Add roof element and data:
+#         new_roof = Roof()
+#         new_roof.hasCover = df['Roof Cover'][row]
+#         new_roof.hasType = df['Roof Cover'][row]
+#         new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
+#         new_bldg.hasStory[-1].update_elements()
+#         new_bldg.update_zones()
+#         new_bldg.update_elements()
+#         new_bldg.update_interfaces()
+#         site.hasBuilding.append(new_bldg)
+#         # Pull case study building:
+#         if new_bldg.hasID == '13209-055-000':
+#             bldg = new_bldg
+#         else:
+#             pass
+# site.update_zones()
+# site.update_elements()
+# site.update_interfaces()
+# # Step 2: Run through the debris workflow:
+# wind_speed = np.arange(70, 200, 10)
+# wind_direction = 0
+# run_debris(bldg, site, length_unit, wind_direction, wind_speed)
