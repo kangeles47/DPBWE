@@ -7,6 +7,7 @@ from scipy.spatial import Voronoi, voronoi_plot_2d
 from time_history_tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from create_fragility import get_wind_speed
 from parcel import Parcel
+from OBDM.zone import Site
 from bldg_code import ASCE7
 from OBDM.element import Roof
 
@@ -932,25 +933,6 @@ def facade_wind_fault_tree(bldg):
     ax.legend(labels=['breached', 'not breached'])
     plt.show()
 
-# Asset Description
-# Parcel Models
-lon = -85.676188
-lat = 30.190142
-test = Parcel('12345', 4, 'financial', 2000, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
-test.hasElement['Roof'][0].hasShape['flat'] = True
-test.hasElement['Roof'][0].hasPitch = 0
-wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
-exposure = 'B'
-unit = 'english'
-basic_wind_speed = 123.342  # 126?
-#wind_speed = get_wind_speed(test, wind_speed_file_path, exposure, unit)
-wind_direction = 0
-cc_flag, mwfrs_flag = True, True
-#test.hasGeometry['Height'] = 9*4
-#test.hasGeometry['Height'] = 52.5
-populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
-generate_pressure_loading(test, basic_wind_speed, wind_direction, tpu_flag=True, csv_flag=True)
-find_peak_pressure_response(test, zone_flag=True, time_flag=True)
 # # Code for data model CQ:
 # # Set positive and negative capacities per wall element:
 # gcpi = 0.18
