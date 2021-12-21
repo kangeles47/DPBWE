@@ -214,16 +214,22 @@ class SurveyData:
             roof_weights.append(CBECS_data.loc[CBECS_data[rtype_tag] == option, wght_tag].sum())
 
         # Choose wall and roof types:
-        try:
-            wall_choice = int(random.choices(wall_options,wall_weights)[0])
-        except ValueError:
-            # Try again:
-            wall_choice = int(random.choices(wall_options, wall_weights)[0])
-        try:
-            roof_choice = int(random.choices(roof_options,roof_weights)[0])
-        except ValueError:
-            # Try again:
-            roof_choice = int(random.choices(roof_options, roof_weights)[0])
+        if len(wall_weights) > 0:
+            try:
+                wall_choice = int(random.choices(wall_options,wall_weights)[0])
+            except ValueError:
+                # Try again:
+                wall_choice = int(random.choices(wall_options, wall_weights)[0])
+        else:
+            wall_choice = 0
+        if len(roof_weights) > 0:
+            try:
+                roof_choice = int(random.choices(roof_options,roof_weights)[0])
+            except ValueError:
+                # Try again:
+                roof_choice = int(random.choices(roof_options, roof_weights)[0])
+        else:
+            roof_choice = 0
         # Conduct the semantic translations from the respective CBECS dataset
         # Wall type descriptions:
         if data_yr == 1989:
@@ -460,6 +466,13 @@ class SurveyData:
                     pass
                 elif parcel.hasOccupancy == 'Midrise apartment':
                     pass
+                else:
+                    # Use typical commercial floor-to-floor height:
+                    for i in range(0, len(parcel.hasStory)):
+                        parcel.hasStory[i].hasGeometry['Height'] = 4.0 * 3.28084  # [ft]
+                        parcel.hasStory[i].hasElevation = [4 * i * 3.28084, 4 * (i + 1) * 3.28084]
+                    # Building height:
+                    parcel.hasGeometry['Height'] = len(parcel.hasStory) * 4 * 3.28084  # [ft]
             elif parcel.hasYearBuilt <= 1980:
                 pass
             else:
@@ -470,3 +483,5 @@ class SurveyData:
             for i in range(0, len(parcel.hasStory)):
                 parcel.hasStory[i].hasGeometry['Height'] = 4.0 * 3.28084  # [ft]
                 parcel.hasStory[i].hasElevation = [4 * i * 3.28084, 4 * (i + 1) * 3.28084]
+            # Building height:
+            parcel.hasGeometry['Height'] = len(parcel.hasStory) * 4 * 3.28084  # [ft]
