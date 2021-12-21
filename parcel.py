@@ -128,9 +128,6 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     # Save the polygon to the building geometry:
                     self.hasGeometry['3D Geometry'][key].append(bsurf_poly)
                     self.hasGeometry['Facade'][key].append(bsurf_poly)
-        # Set up building level code-informed attributes:
-        code_informed = bldg_code.FBC(self, loading_flag=False)
-        code_informed.bldg_attributes(self)
         # Generate a set of building elements (with default attributes) for the parcel:
         self.parcel_elements(self, zone_flag=False)
         # Update the Building's Elements:
@@ -139,8 +136,8 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
         survey_data.run(self, ref_bldg_flag=False, parcel_flag=True)  # populate the component-level attributes using survey data
         if survey_data.isSurvey == 'CBECS':
             # Populate code-informed component-level information
-            # code_informed = bldg_code.FBC(self, loading_flag=False)
-            # code_informed.bldg_attributes(self)
+            code_informed = bldg_code.FBC(self, loading_flag=False)
+            code_informed.bldg_attributes(self)
             code_informed.roof_attributes(code_informed.hasEdition, self)
         else:
             pass
