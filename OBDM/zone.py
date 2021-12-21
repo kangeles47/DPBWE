@@ -411,7 +411,7 @@ class Building(Zone):
             # Tag the building as "commercial" or "not commercial"
         comm_occupancies = ['PROFESS', 'HOTEL', 'MOTEL', 'FINANCIAL', 'COMMERCIAL', 'HOSP', 'MIXED',
                             'MUNICIPAL', 'OFFICE', 'CONDO', 'COUNT', 'FEDERAL', 'STORE', 'REST', 'COMMON',
-                            'PRIVATE', 'SCH', 'SUPERMAR', 'CAMPS', 'COMMUNITY', 'COMM', 'BANK', 'SHOP']  # example occupancies
+                            'PRIVATE', 'SCH', 'SUPERMAR', 'CAMPS', 'COMMUNITY', 'COMM', 'BANK', 'SHOP', 'CAR']  # example occupancies
         for substring in self.hasOccupancy.upper().split():
             if any([occ in substring for occ in comm_occupancies]):
                 self.isComm = True
