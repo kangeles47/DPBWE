@@ -419,7 +419,7 @@ class SurveyData:
     def doe_ref_bldg(self, parcel, window_flag):
         if parcel.isComm:
             # Identify the vintage of reference buildings needed:
-            if 1980 < parcel.hasYearBuilt < 2016:
+            if 1980 < parcel.hasYearBuilt < 2018:
                 # Use the building occupancy to identify the appropriate subset of reference buildings:
                 if 'office' in parcel.hasOccupancy.lower() or 'financial' in parcel.hasOccupancy.lower():
                     # All reference buildings have the same floor-to-floor height:
