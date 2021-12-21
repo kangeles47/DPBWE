@@ -186,7 +186,7 @@ class Zone:
                             unique_elem = set(elem_list)
                             self.containsElement.update({k: list(unique_elem)})
                     else:
-                        if k in story.containsElement:
+                        if k in story.containsElement and k != 'Roof':
                             self.containsElement.update({k: story.containsElement[k]})
                 # Update adjacentElement attribute (exterior walls):
                 if 'Walls' in self.adjacentElement:
@@ -211,7 +211,7 @@ class Zone:
                 #print('Bottom floor already added as an adjacent element for this building')
             else:
                 try:
-                    self.adjacentElement.update({'Floor': self.hasStory[0].adjacentElement['Floor'][0]})
+                    self.adjacentElement['Floor'].append(self.hasStory[0].adjacentElement['Floor'][0])
                 except IndexError:
                     pass
         elif isinstance(self, Site):
@@ -411,7 +411,7 @@ class Building(Zone):
             # Tag the building as "commercial" or "not commercial"
         comm_occupancies = ['PROFESS', 'HOTEL', 'MOTEL', 'FINANCIAL', 'COMMERCIAL', 'HOSP', 'MIXED',
                             'MUNICIPAL', 'OFFICE', 'CONDO', 'COUNT', 'FEDERAL', 'STORE', 'REST', 'COMMON',
-                            'PRIVATE', 'SCH', 'SUPERMAR', 'CAMPS', 'COMMUNITY']  # example occupancies
+                            'PRIVATE', 'SCH', 'SUPERMAR', 'CAMPS', 'COMMUNITY', 'COMM', 'BANK', 'SHOP']  # example occupancies
         for substring in self.hasOccupancy.upper().split():
             if any([occ in substring for occ in comm_occupancies]):
                 self.isComm = True
