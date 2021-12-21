@@ -474,14 +474,14 @@ class SurveyData:
                     # Building height:
                     parcel.hasGeometry['Height'] = len(parcel.hasStory) * 4 * 3.28084  # [ft]
             elif parcel.hasYearBuilt <= 1980:
-                pass
-            else:
                 # Use typical commercial floor-to-floor height:
                 for i in range(0, len(parcel.hasStory)):
                     parcel.hasStory[i].hasGeometry['Height'] = 4.0 * 3.28084  # [ft]
                     parcel.hasStory[i].hasElevation = [4 * i * 3.28084, 4 * (i + 1) * 3.28084]
                 # Building height:
                 parcel.hasGeometry['Height'] = len(parcel.hasStory) * 4 * 3.28084  # [ft]
+            else:
+                pass
         else:
             print('Non-engineered residential buildings not yet supported: using dummy data')
             # All reference buildings have the same floor-to-floor height:
