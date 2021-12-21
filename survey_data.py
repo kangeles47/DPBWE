@@ -59,7 +59,7 @@ class SurveyData:
         # (3) Conduct a random choice to assign attributes to the parcel
 
         # Find the dataset year, corresponding year identifier, and value for "Year Constructed" tag:
-        if 1989 >= parcel.hasYearBuilt > 1986:
+        if 1989 >= parcel.hasYearBuilt:
             data_yr = 1989
             yr_id = '4'
             # Value for Year Constructed tag:
@@ -83,7 +83,7 @@ class SurveyData:
                 value_yrconc = 1
             else:
                 print('CBECS year constructed code not supported')
-        elif 2003 >= parcel.hasYearBuilt > 1999:
+        elif 2003 >= parcel.hasYearBuilt >= 1999:
             data_yr = 2003
             yr_id = '8'
             # Value for Year Constructed Tag
@@ -145,9 +145,9 @@ class SurveyData:
             value_area = 4
         elif 25000 < parcel.hasGeometry['Total Floor Area'] <= 50000:
             value_area = 5
-        elif 50000 < parcel.hasGeometry['Total Floor Area'] <= 10000:
+        elif 50000 < parcel.hasGeometry['Total Floor Area'] <= 100000:
             value_area = 6
-        elif 100000 < parcel.hasGeometry['Total Floor Area'] <= 20000:
+        elif 100000 < parcel.hasGeometry['Total Floor Area'] <= 200000:
             value_area = 7
         elif 200000 < parcel.hasGeometry['Total Floor Area'] <= 500000:
             value_area = 8
@@ -476,7 +476,12 @@ class SurveyData:
             elif parcel.hasYearBuilt <= 1980:
                 pass
             else:
-                pass
+                # Use typical commercial floor-to-floor height:
+                for i in range(0, len(parcel.hasStory)):
+                    parcel.hasStory[i].hasGeometry['Height'] = 4.0 * 3.28084  # [ft]
+                    parcel.hasStory[i].hasElevation = [4 * i * 3.28084, 4 * (i + 1) * 3.28084]
+                # Building height:
+                parcel.hasGeometry['Height'] = len(parcel.hasStory) * 4 * 3.28084  # [ft]
         else:
             print('Non-engineered residential buildings not yet supported: using dummy data')
             # All reference buildings have the same floor-to-floor height:
