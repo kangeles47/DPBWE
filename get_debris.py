@@ -170,7 +170,8 @@ def get_debris_class(debris_type, debris_name):
     """
     # Three debris classes to choose from: sheet/plate, compact, and rod-like:
     # Define global types:
-    sheet_type = ['TILE', 'SHINGLE', 'SLATE', 'BUR', 'BUILT-UP', 'SHAKE', 'PLY', 'SPM', 'POLY', 'METAL', 'SHNGL']
+    sheet_type = ['TILE', 'SHINGLE', 'SLATE', 'BUR', 'BUILT-UP', 'SHAKE', 'PLY', 'SPM', 'POLY', 'METAL',
+                  'SHNGL', 'STAND', 'MODULAR MT', 'ENG SHINGL', 'COMP SHNGL']
     rod_type = ['WOOD', 'JOIST', 'OWSJ', 'TRUSS']  # global list of structural types with frame members
     if debris_type == 'roof cover':
         if 'GRAVEL' in debris_name.upper():
@@ -201,7 +202,7 @@ def get_debris_mass(debris_class, debris_name, length_unit):
     # Load debris mass data (in the future, extend to regional manufacturers):
     df = read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Debris/Typical_Debris_Masses.csv')
     if debris_class == 'sheet':
-        if 'ASPHALT' in debris_name.upper():
+        if 'ASPHALT' in debris_name.upper() or 'ENG' in debris_name.upper():
             df_sub = df['DEBRIS NAME'].str.contains('ASPHALT')
             # Search for any special cases:
             scase = ['ARCH', 'LAM', 'DIM']
@@ -225,7 +226,9 @@ def get_debris_mass(debris_class, debris_name, length_unit):
             elif 'MOD METAL' in debris_name.upper() or 'MODULAR MT' in debris_name.upper():
                 df_sub = df.loc[df['DEBRIS NAME'] == 'METAL ROOFING - ALUMINUM OR STEEL - PANEL']
             elif 'BUILT' in debris_name.upper() and 'GRAVEL' not in debris_name.upper():
-                df_sub = df.loc[df['DEBRIS NAME']=='BUILT-UP ROOF MEMBRANE 3-PLY SMOOTH-SURFACED']
+                df_sub = df.loc[df['DEBRIS NAME'] =='BUILT-UP ROOF MEMBRANE 3-PLY SMOOTH-SURFACED']
+            elif 'STAND' in debris_name.upper():
+                df_sub = df.loc[df['DEBRIS NAME'] == 'STANDING SEAM METAL 0.032 IN. ALUMINUM PANEL WIDTH: 12 INCHES']
             if length_unit == 'ft':
                 debris_area = df_sub['TYPICAL AREA FT2']
                 debris_mass = df_sub['MASS PER AREA LB/FT2']
