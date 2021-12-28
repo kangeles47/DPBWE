@@ -1,14 +1,15 @@
-DEBRIS NAME,TYPICAL AREA FT2,TYPICAL AREA M2,MASS PER AREA LB/FT2,MASS PER AREA KG/M2,REFERENCES,ACCESS DATE,NOTES,
-ASPHALT SHINGLES (3-TAB OR STRIP),3,0.279,1.95,9.52,https://roofonline.com/weight-of-roofing-materials/,6/9/2021,,
-ASPHALT SHINGLES (ARCHITECTURAL DIMENSIONAL LAMINATE), ,,3.05,14.89,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,,
-BUILT-UP ROOF MEMBRANE 3-PLY GRAVEL-SURFACED,,,6,29.3,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,,
-BUILT-UP ROOF MEMBRANE 3-PLY SMOOTH-SURFACED,,,2.33,11.38,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,,
-STANDING SEAM METAL 0.032 IN. ALUMINUM PANEL WIDTH: 12 INCHES,,,0.692,3.38,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,,
-STANDING SEAM METAL 24-GAUGE STEEL PANEL WIDTH: 12 INCHES,,,1.49,7.27,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,,
-STEEL ROOF PANELS 26-GAUGE CORRUGATED,,,1.13,5.52,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,,
-STEEL ROOF DECK 18 GAUGE CORREGATED,,,2.9,14.16,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,,
-ROLL ROOFING,,,1.1,5.4,https://www.engineeringtoolbox.com/roofing-materials-weight-d_1498.html,10/18/2021,,
-COMPOSITE SHINGLE,3,0.279,2.7,13.2,https://www.engineeringtoolbox.com/roofing-materials-weight-d_1498.html; https://www.iko.com/na/pro/building-professional-tools/roofing-101/iko-shingle-dimensions/,10/18/2021,"Since composites are often variants of more traditional asphalt shingle systems, use same typical area",
-METAL ROOFING - ALUMINUM OR STEEL - PANEL,30,2.78709,1.2,5.9,https://www.engineeringtoolbox.com/roofing-materials-weight-d_1498.html; https://www.hunker.com/13414570/what-lengths-does-metal-roofing-come-in; https://homeguides.sfgate.com/calculating-steel-sheets-roof-98210.html ,10/18/2021,Choose 10 ft length panel with 36 in width (median of values reported in two website sources),
-WOOD SHINGLE OR SHAKE,,,2.4,11.7,https://www.engineeringtoolbox.com/roofing-materials-weight-d_1498.html,10/18/2021,,
-PLYWOOD SHEATHING 5/16 IN.,,,1,4.9,https://www.engineeringtoolbox.com/roofing-materials-weight-d_1498.html,10/18/2021,,
+DEBRIS NAME,TYPICAL AREA FT2,TYPICAL AREA M2,MASS PER AREA LB/FT2,MASS PER AREA KG/M2,REFERENCES,ACCESS DATE,NOTES
+ASPHALT SHINGLES (3-TAB OR STRIP),3,0.279,1.95,9.52,https://roofonline.com/weight-of-roofing-materials/,6/9/2021,None
+ASPHALT SHINGLES (ARCHITECTURAL DIMENSIONAL LAMINATE),3,0.279,3.05,14.89,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,None
+BUILT-UP ROOF MEMBRANE 3-PLY GRAVEL-SURFACED,3,0.279,6,29.3,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,"Areas depend on amount of breach on flat roofs, choose area size of asphalt shingles"
+BUILT-UP ROOF MEMBRANE 3-PLY SMOOTH-SURFACED,3,0.279,2.33,11.38,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,"Areas depend on amount of breach on flat roofs, choose area size of asphalt shingles"
+STANDING SEAM METAL 0.032 IN. ALUMINUM PANEL WIDTH: 12 INCHES,4,0.371612,0.692,3.38,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,Minimum panel length is 4 ft (source: https://www.pac-clad.com/products/metal-roofing/redi-roof/)
+STANDING SEAM METAL 24-GAUGE STEEL PANEL WIDTH: 12 INCHES,4,0.371612,1.49,7.27,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,Minimum panel length is 4 ft (source: https://www.pac-clad.com/products/metal-roofing/redi-roof/)
+STEEL ROOF PANELS 26-GAUGE CORRUGATED,,,1.13,5.52,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,None
+STEEL ROOF DECK 18 GAUGE CORREGATED,,,2.9,14.16,https://roofonline.com/weight-of-roofing-materials/,10/18/2021,None
+ROLL ROOFING,,,1.1,5.4,https://www.engineeringtoolbox.com/roofing-materials-weight-d_1498.html,10/18/2021,None
+COMPOSITE SHINGLE,3,0.279,2.7,13.2,https://www.engineeringtoolbox.com/roofing-materials-weight-d_1498.html; https://www.iko.com/na/pro/building-professional-tools/roofing-101/iko-shingle-dimensions/,10/18/2021,"Since composites are often variants of more traditional asphalt shingle systems, use same typical area"
+METAL ROOFING - ALUMINUM OR STEEL - PANEL,30,2.78709,1.2,5.9,https://www.engineeringtoolbox.com/roofing-materials-weight-d_1498.html; https://www.hunker.com/13414570/what-lengths-does-metal-roofing-come-in; https://homeguides.sfgate.com/calculating-steel-sheets-roof-98210.html ,10/18/2021,Choose 10 ft length panel with 36 in width (median of values reported in two website sources)
+WOOD SHINGLE OR SHAKE,1.5,0.139355,2.4,11.7,https://www.engineeringtoolbox.com/roofing-materials-weight-d_1498.html,10/18/2021,"Wood roof shingles, typical length is 16"", 18"", 24""; min/max widths are 8""/13"". Choose 18""x12"" for typical area. (source: https://inspectapedia.com/roof/Wood_Roof_Installation_Specifications.php#:~:text=Wood%20roof%20shingles%20are%20typically,width%20in%20some%20building%20codes)."
+PLYWOOD SHEATHING 5/16 IN.,32,2.9729,1,4.9,https://www.engineeringtoolbox.com/roofing-materials-weight-d_1498.html,10/18/2021,Sheathing boards are typical 4' x 8' (source: https://www.lowes.com/pl/Plywood-sheathing-Lumber-composites-Building-supplies/2811032282438)
+TPO ROOF MEMBRANE 60-MIL FULLY-ADHERED (MEMBRANE ONLY),3,0.279,0.29,1.4,https://roofonline.com/weights-measures/weight-of-roofing-materials/,12/22/2021,"Areas depend on amount of breach on flat roofs, choose area size of asphalt shingles"
