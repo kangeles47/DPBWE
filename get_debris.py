@@ -1,7 +1,9 @@
 from pandas import read_csv, DataFrame
 from scipy.stats import norm, uniform
 from geopy import distance
-from shapely.geometry import Polygon, Point
+from shapely.geometry import Polygon, Point, LineString
+from shapely.ops import split
+from shapely.affinity import rotate
 from OBDM.zone import Site, Building
 from OBDM.element import Roof
 import numpy as np
@@ -84,7 +86,7 @@ def get_site_debris(site, length_unit):
         site.hasDebris[key] = DataFrame(dtype_dict)
 
 
-def get_source_bldgs(bldg, site, wind_direction, query_dist, length_unit):
+def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
     """
     A function that defines the potential source region for the given Building location and wind direction.
     A function that then loops through the given Site object to identify Buildings within the potential source region.
@@ -93,32 +95,94 @@ def get_source_bldgs(bldg, site, wind_direction, query_dist, length_unit):
     :param site: A Site object containing Building objects with location and debris information (e.g., roof cover)
     :return: site_source: A Site object with Building objects within the specified potential source region (see Site.hasBuilding)
     """
-    # Convert length unit:
-
-    # Step 1: Define a maximum debris source region using the wind direction:
-    wdirs = np.arange(wind_direction-45, wind_direction+45, 5)
-    pt_list = [bldg.hasLocation['Geodesic']]
-    for dir in wdirs:
-        if bldg.hasGeometry['Length Unit'] == 'ft':
-            new_point = distance.distance(miles=1).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir)
-            pt_list.append(Point(new_point[1], new_point[0]))
-        elif bldg.hasGeometry['Length Unit'] == 'm':
-            new_point = distance.distance(kilometers=1.61).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir)
-            pt_list.append(Point(new_point[1], new_point[0]))
-    # Create a Polygon object for the debris source region:
-    debris_region = Polygon(pt_list)
-    xpoly, ypoly = debris_region.exterior.xy
+    # Step 1: Extract trajectory information for each unique debris type:
+    df = pd.read_csv('C:/Users/Karen/Desktop/DebrisTypicalDistances.csv')  # Distances in [ft]
+    df_source = pd.DataFrame(columns=df.columns)
+    # Find the wind speed's nearest multiple of five:
+    nearest_five = 5 * round(wind_speed / 5)
+    for key in site.hasDebris:
+        for d in site.hasDebris[key]['debris name']:
+            idx = df.loc[(df['debris name'] == d) & (df['wind speed'] == nearest_five)].index[0]
+            df_source = df_source.append(df.iloc[idx], ignore_index=True)
+    # Step 2: Find the maximum probable debris source distance (mean + std_dev):
+    max_idx = df_source.loc[df_source['alongwind_mean'] == max(df_source['alongwind_mean'])].index[0]
+    max_dist = df_source['alongwind_mean'][max_idx] + df_source['alongwind_std_dev'][max_idx]
+    # Step 3: Find potential source buildings using the wind direction and max probable distance:
     ax, fig = plt.subplots()
-    plt.plot(xpoly, ypoly)
-    # Step 2: Find potential source buildings and add to new Site object:
+    if crs == 'geographic':
+        wdirs = np.arange(wind_direction-90, wind_direction+90, 5)
+        pt_list = [bldg.hasLocation['Geodesic']]
+        for dir in wdirs:
+            if length_unit == 'ft':
+                new_point = distance.distance(miles=max_dist/5280).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir)
+                pt_list.append(Point(new_point[1], new_point[0]))
+            elif length_unit == 'm':
+                new_point = distance.distance(kilometers=max_dist/3281).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir)
+                pt_list.append(Point(new_point[1], new_point[0]))
+        # Create a Polygon object for the debris source region:
+        debris_region = Polygon(pt_list)
+        # Pull the reference building's footprint geometry for plotting:
+        xr, yr = bldg.hasGeometry['Footprint']['geodesic'].exterior.xy
+    elif crs == 'reference cartesian':
+        # Convert max_dist if necessary:
+        if length_unit == 'ft':
+            pass
+        elif length_unit == 'm':
+            max_dist = max_dist/3.281
+        # Use the reference building's footprint as origin:
+        origin = bldg.hasGeometry['Footprint']['local'].centroid
+        # Create a circle geometry that we will then segment to find debris region:
+        buffer_poly = origin.buffer(max_dist)
+        # Create intersecting line:
+        new_pt1 = Point(origin.x + max_dist, origin.y)
+        new_pt2 = Point(origin.x - max_dist, origin.y)
+        iline = LineString([new_pt1, new_pt2])
+        # Rotate line according to wind direction:
+        iline = rotate(iline, -1*wind_direction+180)
+        # Split the circle using the intersecting line:
+        spolys = split(buffer_poly, iline)
+        # Grab the half corresponding to wind direction's query area:
+        if 0 < wind_direction < 180:
+            if spolys[0].centroid.x > origin.x:
+                debris_region = spolys[0]
+            else:
+                debris_region = spolys[1]
+        elif 180 < wind_direction < 360:
+            if spolys[0].centroid.x < origin.x:
+                debris_region = spolys[0]
+            else:
+                debris_region = spolys[1]
+        elif wind_direction == 0:
+            if spolys[0].centroid.y > origin.y:
+                debris_region = spolys[0]
+            else:
+                debris_region = spolys[1]
+        elif wind_direction == 180:
+            if spolys[0].centroid.y < origin.y:
+                debris_region = spolys[0]
+            else:
+                debris_region = spolys[1]
+        # Pull the reference building's footprint geometry for plotting:
+        xr, yr = bldg.hasGeometry['Footprint']['local'].exterior.xy
+    # Plot the debris region:
+    xpoly, ypoly = debris_region.exterior.xy
+    plt.plot(xpoly, ypoly, 'b', linewidth=2)
+    # Step 4: Find potential source buildings and add to new Site object:
     site_source = Site()
     for i in site.hasBuilding:
-        if debris_region.contains(i.hasLocation['Geodesic']):
+        if crs == 'geographic':
+            bldg_loc = i.hasGeometry['Footprint']['geodesic']
+        elif crs == 'reference cartesian':
+            bldg_loc = i.hasGeometry['Footprint']['reference cartesian']
+        if debris_region.contains(bldg_loc) or debris_region.intersects(bldg_loc):
             # Add this potential source bldg to new Site object:
             site_source.hasBuilding.append(i)
-            plt.scatter(i.hasLocation['Geodesic'].x, i.hasLocation['Geodesic'].y)
+            xi, yi = bldg_loc.exterior.xy
+            plt.plot(xi, yi, 'k')
         else:
             pass
+    # Plot the reference building's footprint:
+    plt.plot(xr, yr, 'r')
     plt.show()
     return site_source
 
