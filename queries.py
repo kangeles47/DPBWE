@@ -30,9 +30,9 @@ def get_bldgs_at_dist(site, ref_bldg, dist, unit, plot_flag):
     # Create an empty list to hold any qualifying bldg:
     bldg_list = []
     for bldg in site.hasBuilding:
-        bldg_location = bldg.hasLocation['Geodesic']  # Shapely Point object
+        bldg_footprint = bldg.hasGeometry['Footprint']['geodesic']  # Shapely Point object
         # Check if the building is within the specified distance:
-        if bldg_location.within(query_area):
+        if bldg_footprint.within(query_area) or bldg_footprint.intersects(query_area):
             bldg_list.append(bldg)
             if plot_flag:
                 # Plot the bldg's footprint:
@@ -225,16 +225,17 @@ def get_wall_dir(wall, geom_rep):
     else:
         print('Please define rotated Cartesian geometry')
 
-# parcel_data = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/Parcels/ResSub.csv')
+
+# parcel_data = pd.read_csv('C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Parcels/ResSub.csv')
 # bldg_list = []
 # lon = -85.676188
 # lat = 30.190142
-# test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat)
+# test = Parcel('12345', 4, 'Financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
 # # Define the site area:
 # angles = np.linspace(0, 360, 100)
 # pt_list = []
 # unit = 'mi'
-# dist = 0.25
+# dist = 0.124274
 # ref_pt = test.hasLocation['Geodesic']  # Shapely Point object
 # for angle in angles:
 #     if unit == 'mi':
@@ -244,14 +245,13 @@ def get_wall_dir(wall, geom_rep):
 #     pt_list.append((new_pt[1], new_pt[0]))
 # site_poly = Polygon(pt_list)  # Shapely Polygon
 # # Access file with region's building footprint information:
-# jFile = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/Geojson/BayCounty.geojson'
+# jFile = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Geojson/BayCounty.geojson'
 # data = gpd.read_file(jFile)
 # poly_list = []
 # for row in range(0, len(data['geometry'])):
 #     # Check if point is within the polygon in this row:
 #     poly = data['geometry'][row]
-#     bldg_pt = poly.centroid
-#     if bldg_pt.within(site_poly):
+#     if poly.within(site_poly) or poly.intersects(site_poly):
 #         poly_list.append(poly)
 #     else:
 #         pass
