@@ -5,13 +5,15 @@ from shapely.geometry import Polygon, Point
 from scipy import spatial
 from geopy import distance
 from math import sqrt, sin, atan2, degrees, pi
+import numpy as np
 from parcel import Parcel
 from OBDM.zone import Site, Building
 from bldg_code import ASCE7
 from OBDM.element import Roof
 from fault_tree import populate_code_capacities, generate_pressure_loading, find_peak_pressure_response
-from get_debris import run_debris
+from get_debris import run_debris, get_site_debris, get_trajectory
 from survey_data import SurveyData
+from queries import get_bldgs_at_dist
 
 
 def assign_footprint(parcel, num_stories):
@@ -115,12 +117,12 @@ def assign_footprint(parcel, num_stories):
 
 # Asset Description
 # Parcel Models
-lon = -85.676188
-lat = 30.190142
-test = Parcel('12345', 4, 'financial', 2000, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
-test.hasElement['Roof'][0].hasShape['flat'] = True
-test.hasElement['Roof'][0].hasPitch = 0
-wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
+#lon = -85.676188
+#lat = 30.190142
+#test = Parcel('12345', 4, 'financial', 2000, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
+#test.hasElement['Roof'][0].hasShape['flat'] = True
+#test.hasElement['Roof'][0].hasPitch = 0
+#wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
 exposure = 'B'
 unit = 'english'
 basic_wind_speed = 123.342  # 126?
@@ -138,14 +140,6 @@ site = Site()
 plot_flag=False
 length_unit='ft'
 for p in df.index:
-    pid = df['Parcel Id'][p]
-    num_stories = df['Stories'][p]
-    occupancy = df['OccType'][p]
-    yr_built = df['Year Built'][p]
-    address = df['Address'][p]
-    area = df['Square Footage'][p]
-    lon = df['Longitude'][p]
-    lat = df['Latitude'][p]
     new_bldg = Building()
     new_bldg.add_parcel_data(df['Parcel Id'][p], df['Stories'][p], df['Use Code'][p], df['Year Built'][p],
                              df['Address'][p], df['Square Footage'][p], df['Longitude'][p], df['Latitude'][p],
@@ -162,12 +156,37 @@ for p in df.index:
     survey_data = SurveyData()
     survey_data.doe_ref_bldg(new_bldg, window_flag=False)
     # Get building footprint:
-    assign_footprint(new_bldg, num_stories)
+    assign_footprint(new_bldg, df['Stories'][p])
     site.hasBuilding.append(new_bldg)
 site.update_zones()
 site.update_interfaces()
 site.update_elements()
+# Plot the the site that is 150 meters from the building:
+#dist = .150
+#unit = 'km'
+#plot_flag = True
+#get_bldgs_at_dist(site, test, dist, unit, plot_flag)
 # Find building-specific debris vulnerability:
 wind_direction = 360-45
-wind_speed = None  # Need to figure out what wind speed this is
-run_debris(test, site, length_unit, wind_direction, wind_speed)
+wind_speed_arr = np.arange(70, 200, 5)  # Need to figure out what wind speed this is
+# Grab all the debris types in this site:
+get_site_debris(site, length_unit)
+# Step 3: Calculate the trajectory of each debris type:
+traj_dict = {'wind speed': [], 'debris name': [], 'alongwind_mean': [], 'alongwind_std_dev': [],
+             'acrosswind_mean': [], 'acrosswind_std_dev': []}
+for speed in wind_speed_arr:
+    for key in site.hasDebris:
+        for row in range(0, len(site.hasDebris[key])):
+            model_input = site.hasDebris[key].iloc[row]
+            alongwind_dist, acrosswind_dist = get_trajectory(model_input, speed, length_unit, mcs_flag=True)
+            traj_dict['alongwind_mean'].append(np.mean(alongwind_dist))
+            traj_dict['acrosswind_mean'].append(np.mean(acrosswind_dist))
+            traj_dict['alongwind_std_dev'].append(np.std(alongwind_dist))
+            traj_dict['acrosswind_std_dev'].append(np.std(alongwind_dist))
+            traj_dict['wind speed'].append(speed)
+            traj_dict['debris name'].append(site.hasDebris[key]['debris name'][row])
+df_debris = pd.DataFrame(traj_dict)
+df_debris.to_csv('C:/Users/Karen/Desktop/DebrisTypicalDistances.csv', index=False)
+#run_debris(test, site, length_unit, wind_direction, wind_speed_arr)
+# Find potential source buildings:
+
