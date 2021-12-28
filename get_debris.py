@@ -212,7 +212,7 @@ def get_trajectory(model_input, wind_speed, length_unit, mcs_flag):
     # Populate coefficients and flight time RV:
     c, c1, c2, c3, flight_time = model_input['c'], model_input['c1'], model_input['c2'], model_input['c3'], model_input['flight time']
     if mcs_flag:
-        samples = 1000
+        samples = 5000
     else:
         samples = 1
     # Calculate the alongwind and acrosswind distance:
@@ -342,7 +342,7 @@ def get_traj_params(debris_class):
     param_dict = {'c': None, 'c1': None, 'c2': None, 'c3': None, 'flight time': None}
     # Find flight time and coefficients for the debris class:
     if debris_class == 'sheet':
-        param_dict['flight time'] = uniform(1, 2.5-1)  # This will be a uniform distribution
+        param_dict['flight time'] = uniform(0, 2.5-1)  # This will be a uniform distribution
         param_dict['c'] = 0.911
         param_dict['c1'] = -0.148
         param_dict['c2'] = 0.024
