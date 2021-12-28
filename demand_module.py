@@ -11,7 +11,7 @@ from OBDM.zone import Site, Building
 from bldg_code import ASCE7
 from OBDM.element import Roof
 from fault_tree import populate_code_capacities, generate_pressure_loading, find_peak_pressure_response
-from get_debris import run_debris, get_site_debris, get_trajectory
+from get_debris import run_debris, get_site_debris, get_trajectory, get_source_bldgs
 from survey_data import SurveyData
 from queries import get_bldgs_at_dist
 
@@ -115,11 +115,37 @@ def assign_footprint(parcel, num_stories):
     rotated_b = affinity.rotate(parcel.hasGeometry['Footprint']['local'], theta, origin='centroid')
     parcel.hasGeometry['Footprint']['rotated'] = rotated_b
 
+
+def get_ref_bldg_crs(ref_bldg, bldg, length_unit):
+    # Use the reference building's footprint centroid as origin:
+    origin = ref_bldg.hasGeometry['Footprint']['geodesic'].centroid
+    # Pull other building footprint - geographic coordinates:
+    xb, yb = bldg.hasGeometry['Footprint']['geodesic'].exterior.xy
+    new_pts = []
+    for i in range(0, len(xb)):
+        # Find the new (x,y) pairs for each longitude-latitude:
+        if length_unit == 'ft':
+            # Find the distance between x, y at origin and x, y for each point:
+            xdist = distance.distance((origin.y, origin.x), (origin.y, xb[i])).miles * 5280  # [ft]
+            ydist = distance.distance((origin.y, origin.x), (yb[i], origin.x)).miles * 5280  # [ft]
+        else:
+            pass
+        if xb[i] < origin.x:
+            xdist = -1 * xdist
+        else:
+            pass
+        if yb[i] < origin.y:
+            ydist = -1 * ydist
+        else:
+            pass
+        new_pts.append(Point(xdist, ydist))
+    bldg.hasGeometry['Footprint']['reference cartesian'] = Polygon(new_pts)
+
 # Asset Description
 # Parcel Models
-#lon = -85.676188
-#lat = 30.190142
-#test = Parcel('12345', 4, 'financial', 2000, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
+lon = -85.676188
+lat = 30.190142
+test = Parcel('12345', 4, 'financial', 2000, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
 #test.hasElement['Roof'][0].hasShape['flat'] = True
 #test.hasElement['Roof'][0].hasPitch = 0
 #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
@@ -157,6 +183,7 @@ for p in df.index:
     survey_data.doe_ref_bldg(new_bldg, window_flag=False)
     # Get building footprint:
     assign_footprint(new_bldg, df['Stories'][p])
+    get_ref_bldg_crs(test, new_bldg, length_unit)
     site.hasBuilding.append(new_bldg)
 site.update_zones()
 site.update_interfaces()
@@ -189,5 +216,5 @@ get_site_debris(site, length_unit)
 # df_debris.to_csv('C:/Users/Karen/Desktop/DebrisTypicalDistances.csv', index=False)
 #run_debris(test, site, length_unit, wind_direction, wind_speed_arr)
 # Find potential source buildings:
-crs = 'geographic'
-
+crs = 'reference cartesian'
+site_source = get_source_bldgs(test, site, wind_direction, basic_wind_speed, crs, length_unit)
