@@ -152,10 +152,10 @@ test = Parcel('12345', 4, 'financial', 2000, '1002 23RD ST W PANAMA CITY 32405',
 exposure = 'B'
 unit = 'english'
 basic_wind_speed = 123.342  # 126?
-wind_direction = 0
+#tpu_wind_direction = 0
 cc_flag, mwfrs_flag = True, True
 # populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
-# generate_pressure_loading(test, basic_wind_speed, wind_direction, tpu_flag=True, csv_flag=True)
+# generate_pressure_loading(test, basic_wind_speed, tpu_wind_direction, tpu_flag=True, csv_flag=True)
 # find_peak_pressure_response(test, zone_flag=True, time_flag=True)
 #test.hasGeometry['Height'] = 9*4
 #test.hasGeometry['Height'] = 52.5
@@ -199,21 +199,21 @@ wind_speed_arr = np.arange(70, 200, 5)  # Need to figure out what wind speed thi
 # Grab all the debris types in this site:
 get_site_debris(site, length_unit)
 # Step 3: Calculate the trajectory of each debris type:
-# traj_dict = {'wind speed': [], 'debris name': [], 'alongwind_mean': [], 'alongwind_std_dev': [],
-#              'acrosswind_mean': [], 'acrosswind_std_dev': []}
-# for speed in wind_speed_arr:
-#     for key in site.hasDebris:
-#         for row in range(0, len(site.hasDebris[key])):
-#             model_input = site.hasDebris[key].iloc[row]
-#             alongwind_dist, acrosswind_dist = get_trajectory(model_input, speed, length_unit, mcs_flag=True)
-#             traj_dict['alongwind_mean'].append(np.mean(alongwind_dist))
-#             traj_dict['acrosswind_mean'].append(np.mean(acrosswind_dist))
-#             traj_dict['alongwind_std_dev'].append(np.std(alongwind_dist))
-#             traj_dict['acrosswind_std_dev'].append(np.std(alongwind_dist))
-#             traj_dict['wind speed'].append(speed)
-#             traj_dict['debris name'].append(site.hasDebris[key]['debris name'][row])
-# df_debris = pd.DataFrame(traj_dict)
-# df_debris.to_csv('C:/Users/Karen/Desktop/DebrisTypicalDistances.csv', index=False)
+traj_dict = {'wind speed': [], 'debris name': [], 'alongwind_mean': [], 'alongwind_std_dev': [],
+             'acrosswind_mean': [], 'acrosswind_std_dev': []}
+for speed in wind_speed_arr:
+    for key in site.hasDebris:
+        for row in range(0, len(site.hasDebris[key])):
+            model_input = site.hasDebris[key].iloc[row]
+            alongwind_dist, acrosswind_dist = get_trajectory(model_input, speed, length_unit, mcs_flag=True)
+            traj_dict['alongwind_mean'].append(np.mean(alongwind_dist))
+            traj_dict['acrosswind_mean'].append(np.mean(acrosswind_dist))
+            traj_dict['alongwind_std_dev'].append(np.std(alongwind_dist))
+            traj_dict['acrosswind_std_dev'].append(np.std(alongwind_dist))
+            traj_dict['wind speed'].append(speed)
+            traj_dict['debris name'].append(site.hasDebris[key]['debris name'][row])
+df_debris = pd.DataFrame(traj_dict)
+df_debris.to_csv('C:/Users/Karen/Desktop/DebrisTypicalDistances.csv', index=False)
 #run_debris(test, site, length_unit, wind_direction, wind_speed_arr)
 # Find potential source buildings:
 crs = 'reference cartesian'
