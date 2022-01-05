@@ -1,16 +1,17 @@
 import pandas as pd
 import geopandas as gpd
 from shapely import affinity
-from shapely.geometry import Polygon, Point
+from shapely.geometry import Polygon, Point, LineString
 from scipy import spatial
-from scipy.stats import uniform
+import matplotlib.pyplot as plt
 from geopy import distance
 from math import sqrt, sin, atan2, degrees, pi
 import numpy as np
 from parcel import Parcel
+import bldg_code
 from OBDM.zone import Site, Building
-from bldg_code import ASCE7
-from OBDM.element import Roof
+from OBDM.element import Roof, Floor, Wall, Ceiling
+from OBDM.interface import Interface
 from fault_tree import populate_code_capacities, generate_pressure_loading, find_peak_pressure_response
 from get_debris import run_debris, get_site_debris, get_trajectory, get_source_bldgs
 from survey_data import SurveyData
@@ -142,11 +143,132 @@ def get_ref_bldg_crs(ref_bldg, bldg, length_unit):
         new_pts.append(Point(xdist, ydist))
     bldg.hasGeometry['Footprint']['reference cartesian'] = Polygon(new_pts)
 
+
+def augmented_elements_wall(bldg, num_wall_elems, wall_height):
+    x, y = bldg.hasGeometry['Footprint']['local'].exterior.xy
+    lines = []
+    for i in range(0, len(x) - 1):
+        new_line = LineString([(x[i], y[i]), (x[i + 1], y[i + 1])])
+        lines.append(new_line)
+        plt.plot([x[i], x[i + 1]], [y[i], y[i + 1]])
+    new_pt_list = []
+    for j in range(0, len(lines)):
+        length = lines[j].length/num_wall_elems[j]
+        for k in range(1, num_wall_elems[j]+1):
+            # Interpolate new point:
+            idist = length*k
+            new_pt = lines[j].interpolate(idist)
+            new_pt_list.append(new_pt)
+    bldg.hasGeometry['Footprint']['augmented local'] = Polygon(new_pt)
+    # Create building elements:
+    for story in range(0, len(bldg.hasStory)):
+        # Create an empty list to hold all elements:
+        element_dict = {'Floor': [], 'Walls': [], 'Ceiling': [], 'Roof': []}
+        # Generate floor and ceiling instance(s):
+        if story == 0:
+            new_floor1 = Floor()
+            new_floor1.hasElevation = bldg.hasStory[story].hasElevation[0]
+            new_floor1.hasGeometry['2D Geometry'] = bldg.hasGeometry['Footprint']['local']
+            new_floor1.hasGeometry['Area'] = new_floor1.hasGeometry['2D Geometry'].area
+            element_dict['Floor'].append(new_floor1)
+        else:
+            # Reference the prior story's top floor:
+            floor1 = bldg.hasStory[story - 1].hasElement['Floor'][1]
+            floor1.hasGeometry['2D Geometry'] = bldg.hasGeometry['Footprint']['local']
+            new_floor1.hasGeometry['Area'] = new_floor1.hasGeometry['2D Geometry'].area
+            element_dict['Floor'].append(floor1)
+        # Top floor:
+        if story == len(bldg.hasStory) - 1:
+            new_roof = Roof()
+            # Add two-dimensional geometry:
+            for key in ['local', 'geodesic']:
+                new_roof.hasGeometry['2D Geometry'][key] = bldg.hasGeometry['Footprint'][key]
+                # Add three-dimensional geometry:
+                xroof, yroof = new_roof.hasGeometry['2D Geometry'][key].exterior.xy
+                rpt_list = []
+                for x in range(0, len(xroof)):
+                    new_pt = Point(xroof[x], yroof[x], bldg.hasGeometry['Height'])
+                    rpt_list.append(new_pt)
+                new_roof.hasGeometry['3D Geometry'][key] = Polygon(rpt_list)
+            # Add roof to the story:
+            new_roof.hasGeometry['Area'] = new_roof.hasGeometry['2D Geometry']['local'].area
+            bldg.hasStory[story].adjacentElement.update({'Roof': [new_roof]})
+            element_dict['Roof'].append(new_roof)
+        else:
+            new_floor2 = Floor()
+            new_floor2.hasElevation = bldg.hasStory[story].hasElevation[1]
+            new_floor2.hasGeometry['2D Geometry'] = bldg.hasGeometry['Footprint']['local']
+            new_floor2.hasGeometry['Area'] = new_floor2.hasGeometry['2D Geometry'].area
+            # new_floor_list.append(new_floor2)
+            element_dict['Floor'].append(new_floor2)
+        # Create a new ceiling for the floor:
+        new_ceiling = Ceiling()
+        # Add the ceiling to element_dict:
+        element_dict['Ceiling'].append(new_ceiling)
+        # Parcel models: Use ASCE 7 C&C zones to create a preliminary set of wall elements
+        # Loop through zone_pts and assign geometries to wall elements:
+        new_wall_list = []
+        xf, yf = bldg.hasGeometry['Footprint']['local'].exterior.xy
+        for pt in range(0, len(xf) - 1):
+            # Create a new Wall Instance:
+            ext_wall = Wall()
+            ext_wall.isExterior = True
+            ext_wall.inLoadPath = True
+            ext_wall.hasGeometry['Height'] = bldg.hasStory[story].hasGeometry['Height']
+            ext_wall.hasGeometry['1D Geometry']['local'] = LineString([(xf[pt], yf[pt]), (xf[pt + 1], yf[
+                pt + 1])])  # Line segment with start/end coordinates of wall (respetive to building origin)
+            ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry']['local'].length
+            ext_wall.hasGeometry['Area'] = ext_wall.hasGeometry['Height'] * ext_wall.hasGeometry['Length']
+            # Add local 3D geometry:
+            zbottom = bldg.hasStory[story].hasGeometry['Height'] * story
+            ztop = bldg.hasStory[story].hasGeometry['Height'] * (story + 1)
+            xline, yline = ext_wall.hasGeometry['1D Geometry']['local'].xy
+            wall_xyz_poly = Polygon([Point(xline[0], yline[0], zbottom), Point(xline[1], yline[1], zbottom),
+                                     Point(xline[1], yline[1], ztop), Point(xline[0], yline[0], ztop),
+                                     Point(xline[0], yline[0], zbottom)])
+            ext_wall.hasGeometry['3D Geometry']['local'] = wall_xyz_poly
+            # Add rotated geometry:
+            new_rline = affinity.rotate(ext_wall.hasGeometry['1D Geometry']['local'], self.hasOrientation,
+                                        origin=bldg.hasGeometry['Footprint']['local'].centroid)
+            ext_wall.hasGeometry['1D Geometry']['rotated'] = new_rline
+            bldg.get_wall_dir(ext_wall, 'rotated')
+            new_wall_list.append(ext_wall)
+        # Add all walls to element_dict:
+        element_dict['Walls'] = new_wall_list
+        # Each wall shares interfaces with the walls before and after it:
+        for w in range(0, len(new_wall_list) - 1):
+            # Create new Interface instance
+            new_interface = Interface([new_wall_list[w], new_wall_list[w + 1]])
+            bldg.hasStory[story].hasInterface.append(new_interface)
+        # Add all elements to the story's "hasElement" attribute:
+        bldg.hasStory[story].containsElement.update({'Ceiling': element_dict['Ceiling']})
+        bldg.hasStory[story].adjacentElement.update({'Floor': element_dict['Floor']})
+        bldg.hasStory[story].adjacentElement.update({'Walls': element_dict['Walls']})
+        # Update hasElement attribute for the story:
+        bldg.hasStory[story].hasElement.update(element_dict)
+
 # Asset Description
 # Parcel Models
 lon = -85.676188
 lat = 30.190142
 test = Parcel('12345', 4, 'financial', 2000, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
+num_wall_elems = [4, 9, 17, 9, 4, 9, 17, 9]
+wall_height = test.hasGeometry['Height']/8
+# Create augmented elements:
+augmented_elements_wall(test, num_wall_elems, wall_height)
+# Update the Building's Elements:
+test.update_elements()
+# Populate code-informed component-level information
+code_informed = bldg_code.FBC(test, loading_flag=False)
+code_informed.bldg_attributes(test)
+code_informed.roof_attributes(code_informed.hasEdition, test)
+# Update roof cover sub-elements (if-applicable):
+if len(test.adjacentElement['Roof'][0].hasSubElement['cover']) > 0:
+    for elem in test.adjacentElement['Roof'][0].hasSubElement['cover']:
+        elem.hasCover = test.adjacentElement['Roof'][0].hasCover
+        elem.hasPitch = test.adjacentElement['Roof'][0].hasPitch
+else:
+    pass
 #test.hasElement['Roof'][0].hasShape['flat'] = True
 #test.hasElement['Roof'][0].hasPitch = 0
 #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
