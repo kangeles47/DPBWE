@@ -9,6 +9,8 @@ from OBDM.element import Roof
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
+
 # Create decision trees to characterize missile environment and consequent debris trajectories
     # Might want to include here consideration of roof assembly condition (age)
     # Typical debris types: roof covers, roof sheathing, frame/joist elements (e.g., timber)
@@ -108,6 +110,8 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
     max_idx = df_source.loc[df_source['alongwind_mean'] == max(df_source['alongwind_mean'])].index[0]
     max_dist = df_source['alongwind_mean'][max_idx] + df_source['alongwind_std_dev'][max_idx]
     # Step 3: Find potential source buildings using the wind direction and max probable distance:
+    rcParams['font.family'] = "Times New Roman"
+    rcParams.update({'font.size': 18})
     ax, fig = plt.subplots()
     if crs == 'geographic':
         wdirs = np.arange(wind_direction-90, wind_direction+90, 5)
@@ -166,7 +170,7 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
         xr, yr = bldg.hasGeometry['Footprint']['local'].exterior.xy
     # Plot the debris region:
     xpoly, ypoly = debris_region.exterior.xy
-    plt.plot(xpoly, ypoly, 'b', linewidth=2)
+    plt.plot(np.array(xpoly)/3.281, np.array(ypoly)/3.281, 'b', linewidth=2)
     # Step 4: Find potential source buildings and add to new Site object:
     site_source = Site()
     for i in site.hasBuilding:
@@ -178,11 +182,13 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
             # Add this potential source bldg to new Site object:
             site_source.hasBuilding.append(i)
             xi, yi = bldg_loc.exterior.xy
-            plt.plot(xi, yi, 'k')
+            plt.plot(np.array(xi)/3.281, np.array(yi)/3.281, 'k')
         else:
             pass
     # Plot the reference building's footprint:
-    plt.plot(xr, yr, 'r')
+    plt.plot(np.array(xr)/3.281, np.array(yr)/3.281, 'r')
+    plt.xlabel('x [m]')
+    plt.ylabel('y [m]')
     plt.show()
     return site_source
 
@@ -342,7 +348,7 @@ def get_traj_params(debris_class):
     param_dict = {'c': None, 'c1': None, 'c2': None, 'c3': None, 'flight time': None}
     # Find flight time and coefficients for the debris class:
     if debris_class == 'sheet':
-        param_dict['flight time'] = uniform(0, 2.5-1)  # This will be a uniform distribution
+        param_dict['flight time'] = uniform(1, 1.5)  # This will be a uniform distribution
         param_dict['c'] = 0.911
         param_dict['c1'] = -0.148
         param_dict['c2'] = 0.024

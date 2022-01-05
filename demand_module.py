@@ -3,6 +3,7 @@ import geopandas as gpd
 from shapely import affinity
 from shapely.geometry import Polygon, Point
 from scipy import spatial
+from scipy.stats import uniform
 from geopy import distance
 from math import sqrt, sin, atan2, degrees, pi
 import numpy as np
@@ -194,27 +195,34 @@ site.update_elements()
 #plot_flag = True
 #get_bldgs_at_dist(site, test, dist, unit, plot_flag)
 # Find building-specific debris vulnerability:
-wind_direction = 360-45
+#wind_direction = 360-45
 wind_speed_arr = np.arange(70, 200, 5)  # Need to figure out what wind speed this is
 # Grab all the debris types in this site:
 get_site_debris(site, length_unit)
 # Step 3: Calculate the trajectory of each debris type:
-traj_dict = {'wind speed': [], 'debris name': [], 'alongwind_mean': [], 'alongwind_std_dev': [],
-             'acrosswind_mean': [], 'acrosswind_std_dev': []}
-for speed in wind_speed_arr:
-    for key in site.hasDebris:
-        for row in range(0, len(site.hasDebris[key])):
-            model_input = site.hasDebris[key].iloc[row]
-            alongwind_dist, acrosswind_dist = get_trajectory(model_input, speed, length_unit, mcs_flag=True)
-            traj_dict['alongwind_mean'].append(np.mean(alongwind_dist))
-            traj_dict['acrosswind_mean'].append(np.mean(acrosswind_dist))
-            traj_dict['alongwind_std_dev'].append(np.std(alongwind_dist))
-            traj_dict['acrosswind_std_dev'].append(np.std(alongwind_dist))
-            traj_dict['wind speed'].append(speed)
-            traj_dict['debris name'].append(site.hasDebris[key]['debris name'][row])
-df_debris = pd.DataFrame(traj_dict)
-df_debris.to_csv('C:/Users/Karen/Desktop/DebrisTypicalDistances.csv', index=False)
+# traj_dict = {'wind speed': [], 'debris name': [], 'alongwind_mean': [], 'alongwind_std_dev': [],
+#              'acrosswind_mean': [], 'acrosswind_std_dev': []}
+# for speed in wind_speed_arr:
+#     for key in site.hasDebris:
+#         for row in range(0, len(site.hasDebris[key])):
+#             model_input = site.hasDebris[key].iloc[row]
+#             if 'POLY TPO' in site.hasDebris[key]['debris name'][row]:
+#                 model_input['flight time'] = uniform(0, 1)
+#             else:
+#                 pass
+#             alongwind_dist, acrosswind_dist = get_trajectory(model_input, speed, length_unit, mcs_flag=True)
+#             traj_dict['alongwind_mean'].append(np.mean(alongwind_dist))
+#             traj_dict['acrosswind_mean'].append(np.mean(acrosswind_dist))
+#             traj_dict['alongwind_std_dev'].append(np.std(alongwind_dist))
+#             traj_dict['acrosswind_std_dev'].append(np.std(alongwind_dist))
+#             traj_dict['wind speed'].append(speed)
+#             traj_dict['debris name'].append(site.hasDebris[key]['debris name'][row])
+# df_debris = pd.DataFrame(traj_dict)
+# df_debris.to_csv('C:/Users/Karen/Desktop/DebrisTypicalDistances.csv', index=False)
 #run_debris(test, site, length_unit, wind_direction, wind_speed_arr)
 # Find potential source buildings:
 crs = 'reference cartesian'
 site_source = get_source_bldgs(test, site, wind_direction, basic_wind_speed, crs, length_unit)
+for b in site_source.hasBuilding:
+    print(b.hasLocation['Address'])
+    print(b.hasID)
