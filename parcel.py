@@ -128,26 +128,26 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     # Save the polygon to the building geometry:
                     self.hasGeometry['3D Geometry'][key].append(bsurf_poly)
                     self.hasGeometry['Facade'][key].append(bsurf_poly)
-        # Generate a set of building elements (with default attributes) for the parcel:
-        self.parcel_elements(self, zone_flag=False)
-        # Update the Building's Elements:
-        self.update_elements()
-        # Populate instance attributes informed by national survey data:
-        survey_data.run(self, ref_bldg_flag=False, parcel_flag=True)  # populate the component-level attributes using survey data
-        if survey_data.isSurvey == 'CBECS':
-            # Populate code-informed component-level information
-            code_informed = bldg_code.FBC(self, loading_flag=False)
-            code_informed.bldg_attributes(self)
-            code_informed.roof_attributes(code_informed.hasEdition, self)
-        else:
-            pass
-        # Update roof cover sub-elements (if-applicable):
-        if len(self.adjacentElement['Roof'][0].hasSubElement['cover']) > 0:
-            for elem in self.adjacentElement['Roof'][0].hasSubElement['cover']:
-                elem.hasCover = self.adjacentElement['Roof'][0].hasCover
-                elem.hasPitch = self.adjacentElement['Roof'][0].hasPitch
-        else:
-            pass
+        # # Generate a set of building elements (with default attributes) for the parcel:
+        # self.parcel_elements(self, zone_flag=False)
+        # # Update the Building's Elements:
+        # self.update_elements()
+        # # Populate instance attributes informed by national survey data:
+        # survey_data.run(self, ref_bldg_flag=False, parcel_flag=True)  # populate component attributes using survey data
+        # if survey_data.isSurvey == 'CBECS':
+        #     # Populate code-informed component-level information
+        #     code_informed = bldg_code.FBC(self, loading_flag=False)
+        #     code_informed.bldg_attributes(self)
+        #     code_informed.roof_attributes(code_informed.hasEdition, self)
+        # else:
+        #     pass
+        # # Update roof cover sub-elements (if-applicable):
+        # if len(self.adjacentElement['Roof'][0].hasSubElement['cover']) > 0:
+        #     for elem in self.adjacentElement['Roof'][0].hasSubElement['cover']:
+        #         elem.hasCover = self.adjacentElement['Roof'][0].hasCover
+        #         elem.hasPitch = self.adjacentElement['Roof'][0].hasPitch
+        # else:
+        #     pass
 
     def assign_footprint(self, parcel, num_stories):
         # Access file with region's building footprint information:
