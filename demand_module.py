@@ -4,13 +4,15 @@ from shapely import affinity
 from shapely.geometry import Polygon, Point, LineString
 from scipy import spatial
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
 from geopy import distance
 from math import sqrt, sin, atan2, degrees, pi
 import numpy as np
 from parcel import Parcel
-import bldg_code
+from bldg_code import ASCE7
 from OBDM.zone import Site, Building
 from OBDM.element import Roof, Floor, Wall, Ceiling
+from code_pressures import PressureCalc
 from OBDM.interface import Interface
 from fault_tree import populate_code_capacities, generate_pressure_loading, find_peak_pressure_response
 from get_debris import run_debris, get_site_debris, get_trajectory, get_source_bldgs
@@ -144,13 +146,15 @@ def get_ref_bldg_crs(ref_bldg, bldg, length_unit):
     bldg.hasGeometry['Footprint']['reference cartesian'] = Polygon(new_pts)
 
 
-def augmented_elements_wall(bldg, num_wall_elems, wall_height):
+def augmented_elements_wall(bldg, num_wall_elems, story_wall_elev, plot_flag):
+    rcParams['font.family'] = "Times New Roman"
+    rcParams.update({'font.size': 18})
     x, y = bldg.hasGeometry['Footprint']['local'].exterior.xy
     lines = []
     for i in range(0, len(x) - 1):
         new_line = LineString([(x[i], y[i]), (x[i + 1], y[i + 1])])
         lines.append(new_line)
-        plt.plot([x[i], x[i + 1]], [y[i], y[i + 1]])
+        plt.plot(np.array([x[i], x[i + 1]])/3.281, np.array([y[i], y[i + 1]])/3.281, 'k')
     new_pt_list = []
     for j in range(0, len(lines)):
         length = lines[j].length/num_wall_elems[j]
@@ -159,8 +163,17 @@ def augmented_elements_wall(bldg, num_wall_elems, wall_height):
             idist = length*k
             new_pt = lines[j].interpolate(idist)
             new_pt_list.append(new_pt)
-    bldg.hasGeometry['Footprint']['augmented local'] = Polygon(new_pt)
+            plt.scatter(new_pt.x/3.281, new_pt.y/3.281, color='b')
+    plt.xlabel('x [m]')
+    plt.ylabel('y [m]')
+    plt.show()
+    bldg.hasGeometry['Footprint']['augmented local'] = Polygon(new_pt_list)
     # Create building elements:
+    if plot_flag:
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
+    else:
+        pass
     for story in range(0, len(bldg.hasStory)):
         # Create an empty list to hold all elements:
         element_dict = {'Floor': [], 'Walls': [], 'Ceiling': [], 'Roof': []}
@@ -205,63 +218,102 @@ def augmented_elements_wall(bldg, num_wall_elems, wall_height):
         new_ceiling = Ceiling()
         # Add the ceiling to element_dict:
         element_dict['Ceiling'].append(new_ceiling)
-        # Parcel models: Use ASCE 7 C&C zones to create a preliminary set of wall elements
-        # Loop through zone_pts and assign geometries to wall elements:
+        # Create wall elements for the story:
         new_wall_list = []
-        xf, yf = bldg.hasGeometry['Footprint']['local'].exterior.xy
-        for pt in range(0, len(xf) - 1):
-            # Create a new Wall Instance:
-            ext_wall = Wall()
-            ext_wall.isExterior = True
-            ext_wall.inLoadPath = True
-            ext_wall.hasGeometry['Height'] = bldg.hasStory[story].hasGeometry['Height']
-            ext_wall.hasGeometry['1D Geometry']['local'] = LineString([(xf[pt], yf[pt]), (xf[pt + 1], yf[
-                pt + 1])])  # Line segment with start/end coordinates of wall (respetive to building origin)
-            ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry']['local'].length
-            ext_wall.hasGeometry['Area'] = ext_wall.hasGeometry['Height'] * ext_wall.hasGeometry['Length']
-            # Add local 3D geometry:
-            zbottom = bldg.hasStory[story].hasGeometry['Height'] * story
-            ztop = bldg.hasStory[story].hasGeometry['Height'] * (story + 1)
-            xline, yline = ext_wall.hasGeometry['1D Geometry']['local'].xy
-            wall_xyz_poly = Polygon([Point(xline[0], yline[0], zbottom), Point(xline[1], yline[1], zbottom),
-                                     Point(xline[1], yline[1], ztop), Point(xline[0], yline[0], ztop),
-                                     Point(xline[0], yline[0], zbottom)])
-            ext_wall.hasGeometry['3D Geometry']['local'] = wall_xyz_poly
-            # Add rotated geometry:
-            new_rline = affinity.rotate(ext_wall.hasGeometry['1D Geometry']['local'], self.hasOrientation,
-                                        origin=bldg.hasGeometry['Footprint']['local'].centroid)
-            ext_wall.hasGeometry['1D Geometry']['rotated'] = new_rline
-            bldg.get_wall_dir(ext_wall, 'rotated')
-            new_wall_list.append(ext_wall)
+        wall_lengths = []
+        xf, yf = bldg.hasGeometry['Footprint']['augmented local'].exterior.xy
+        for e in range(0, len(story_wall_elev[story])-1):
+            for pt in range(0, len(xf) - 1):
+                # Create a new Wall Instance:
+                ext_wall = Wall()
+                ext_wall.isExterior = True
+                ext_wall.inLoadPath = True
+                ext_wall.hasGeometry['Height'] = story_wall_elev[story][e+1] - story_wall_elev[story][e]
+                ext_wall.hasGeometry['1D Geometry']['local'] = LineString([(xf[pt], yf[pt]), (xf[pt + 1], yf[
+                    pt + 1])])  # Line segment with start/end coordinates of wall (respetive to building origin)
+                ext_wall.hasGeometry['Length'] = ext_wall.hasGeometry['1D Geometry']['local'].length
+                ext_wall.hasGeometry['Area'] = ext_wall.hasGeometry['Height'] * ext_wall.hasGeometry['Length']
+                # Add local 3D geometry:
+                zbottom = story_wall_elev[story][e]
+                ztop = story_wall_elev[story][e+1]
+                xline, yline = ext_wall.hasGeometry['1D Geometry']['local'].xy
+                wall_xyz_poly = Polygon([Point(xline[0], yline[0], zbottom), Point(xline[1], yline[1], zbottom),
+                                         Point(xline[1], yline[1], ztop), Point(xline[0], yline[0], ztop),
+                                         Point(xline[0], yline[0], zbottom)])
+                ext_wall.hasGeometry['3D Geometry']['local'] = wall_xyz_poly
+                # Add rotated geometry:
+                new_rline = affinity.rotate(ext_wall.hasGeometry['1D Geometry']['local'], bldg.hasOrientation,
+                                            origin=bldg.hasGeometry['Footprint']['local'].centroid)
+                ext_wall.hasGeometry['1D Geometry']['rotated'] = new_rline
+                bldg.get_wall_dir(ext_wall, 'rotated')
+                new_wall_list.append(ext_wall)
+                wall_lengths.append(ext_wall.hasGeometry['Length'])
+                if plot_flag:
+                    xw, yw, zw = [], [], []
+                    wall_coords = list(ext_wall.hasGeometry['3D Geometry']['local'].exterior.coords)
+                    for c in wall_coords:
+                        xw.append(c[0])
+                        yw.append(c[1])
+                        zw.append(c[2])
+                    plt.plot(np.array(xw)/3.281, np.array(yw)/3.281, np.array(zw)/3.281, 'k')
         # Add all walls to element_dict:
         element_dict['Walls'] = new_wall_list
         # Each wall shares interfaces with the walls before and after it:
-        for w in range(0, len(new_wall_list) - 1):
-            # Create new Interface instance
-            new_interface = Interface([new_wall_list[w], new_wall_list[w + 1]])
-            bldg.hasStory[story].hasInterface.append(new_interface)
+        # for w in range(0, len(new_wall_list) - 1):
+        #     # Create new Interface instance
+        #     new_interface = Interface([new_wall_list[w], new_wall_list[w + 1]])
+        #     bldg.hasStory[story].hasInterface.append(new_interface)
         # Add all elements to the story's "hasElement" attribute:
         bldg.hasStory[story].containsElement.update({'Ceiling': element_dict['Ceiling']})
         bldg.hasStory[story].adjacentElement.update({'Floor': element_dict['Floor']})
         bldg.hasStory[story].adjacentElement.update({'Walls': element_dict['Walls']})
         # Update hasElement attribute for the story:
         bldg.hasStory[story].hasElement.update(element_dict)
+    if plot_flag:
+        # Make the panes transparent:
+        ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # Make the grids transparent:
+        ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # Plot labels
+        ax.set_xlabel('x [m]', fontsize=16, labelpad=10)
+        ax.set_ylabel('y [m]', fontsize=16, labelpad=10)
+        ax.set_zlabel('z [m]', fontsize=16, labelpad=10)
+        ax.set_zlim3d(0, 16)
+        ax.set_xticks(np.arange(-20, 25, 5))
+        ax.set_yticks(np.arange(-20, 25, 5))
+        ax.set_zticks(np.arange(0, 20, 4))
+        ax.xaxis.set_tick_params(labelsize=16)
+        ax.yaxis.set_tick_params(labelsize=16)
+        ax.zaxis.set_tick_params(labelsize=16)
+        plt.show()
 
 # Asset Description
 # Parcel Models
 lon = -85.676188
 lat = 30.190142
-test = Parcel('12345', 4, 'financial', 2000, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
+test = Parcel('12345', 4, 'financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
 num_wall_elems = [4, 9, 17, 9, 4, 9, 17, 9]
 wall_height = test.hasGeometry['Height']/8
+story_wall_elev = []
+for story in test.hasStory:
+    story_wall_elev.append([story.hasElevation[0], story.hasElevation[0]+wall_height, story.hasElevation[1]])
 # Create augmented elements:
-augmented_elements_wall(test, num_wall_elems, wall_height)
+augmented_elements_wall(test, num_wall_elems, story_wall_elev, plot_flag=False)
 # Update the Building's Elements:
 test.update_elements()
-# Populate code-informed component-level information
-code_informed = bldg_code.FBC(test, loading_flag=False)
-code_informed.bldg_attributes(test)
-code_informed.roof_attributes(code_informed.hasEdition, test)
+# Add roof information:
+test.hasElement['Roof'][0].hasShape['flat'] = True
+test.hasElement['Roof'][0].hasPitch = 0
+test.hasElement['Roof'][0].hasCover = 'BUILT-UP'
+test.hasElement['Roof'][0].hasType = 'BUILT-UP'
+# Populate code-informed capacities
+#code_informed = bldg_code.FBC(test, loading_flag=False)
+#code_informed.bldg_attributes(test)
+#code_informed.roof_attributes(code_informed.hasEdition, test)
 # Update roof cover sub-elements (if-applicable):
 if len(test.adjacentElement['Roof'][0].hasSubElement['cover']) > 0:
     for elem in test.adjacentElement['Roof'][0].hasSubElement['cover']:
@@ -269,19 +321,55 @@ if len(test.adjacentElement['Roof'][0].hasSubElement['cover']) > 0:
         elem.hasPitch = test.adjacentElement['Roof'][0].hasPitch
 else:
     pass
-#test.hasElement['Roof'][0].hasShape['flat'] = True
-#test.hasElement['Roof'][0].hasPitch = 0
-#wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
+# Code-informed capacities:
+# 1) Find zone locations:
+asce7 = ASCE7(test, loading_flag=True)
+a = asce7.get_cc_zone_width(test)
+roof_flag = True
+zone_pts, roof_polys = asce7.find_cc_zone_points(test, a, roof_flag, asce7.hasEdition)
+# 2) Calculate zone pressures:
+pressure_calc = PressureCalc()
+design_wind_speed = 100
 exposure = 'B'
+edition = asce7.hasEdition
+h_bldg = test.hasGeometry['Height']
+pitch = test.hasElement['Roof'][0].hasPitch
+area_eff = wall_height*wall_height/3
+cat = 2
+hpr = True
+h_ocean = True
+encl_class = 'Enclosed'
+tpu_flag = True
+wcc = pressure_calc.wcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class, tpu_flag)
+# 3) Map pressures to elements:
+for wall in test.hasElement['Walls']:
+    wall.hasType = 'GLASS THRM; COMMON BRK'
+    for row in range(0, len(zone_pts.index)):
+        zone_line = LineString([zone_pts['LinePoint1'][row], zone_pts['LinePoint2'][row]])
+        if wall.hasGeometry['1D Geometry']['local'].within(zone_line) or wall.hasGeometry['1D Geometry']['local'].intersects(zone_line):
+            zone4_1 = LineString([zone_pts['LinePoint1'][row], zone_pts['NewZoneStart'][row]])
+            zone4_2 = LineString([zone_pts['NewZoneEnd'][row], zone_pts['LinePoint2'][row]])
+            zone5 = LineString([zone_pts['NewZoneStart'][row], zone_pts['NewZoneEnd'][row]])
+            if wall.hasGeometry['1D Geometry']['local'].within(zone4_1) or wall.hasGeometry['1D Geometry']['local'].within(zone4_2):
+                wall.hasCapacity['wind pressure']['external']['positive'] = wcc[0]
+                wall.hasCapacity['wind pressure']['external']['negative'] = wcc[2]
+            elif wall.hasGeometry['1D Geometry']['local'].within(zone5):
+                wall.hasCapacity['wind pressure']['external']['positive'] = wcc[1]
+                wall.hasCapacity['wind pressure']['external']['negative'] = wcc[3]
+            else:
+                # Wall is in both zones: choose worse case:
+                wall.hasCapacity['wind pressure']['external']['positive'] = max(wcc)
+                wall.hasCapacity['wind pressure']['external']['negative'] = min(wcc)
+        else:
+            pass
+# Populate the building's Hurricane Michael loading demand:
 unit = 'english'
-basic_wind_speed = 123.342  # 126?
+michael_wind_speed = 123.342  # 126?
+#wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
 #tpu_wind_direction = 0
-cc_flag, mwfrs_flag = True, True
-# populate_code_capacities(test, cc_flag, mwfrs_flag, exposure)
+#cc_flag, mwfrs_flag = True, True
 # generate_pressure_loading(test, basic_wind_speed, tpu_wind_direction, tpu_flag=True, csv_flag=True)
 # find_peak_pressure_response(test, zone_flag=True, time_flag=True)
-#test.hasGeometry['Height'] = 9*4
-#test.hasGeometry['Height'] = 52.5
 # Read in parcel data from surrounding buildings:
 df = pd.read_csv('C:/Users/Karen/Desktop/Parcel_data.csv')
 # Create data models for each building:
@@ -317,7 +405,7 @@ site.update_elements()
 #plot_flag = True
 #get_bldgs_at_dist(site, test, dist, unit, plot_flag)
 # Find building-specific debris vulnerability:
-#wind_direction = 360-45
+wind_direction = 360-45
 wind_speed_arr = np.arange(70, 200, 5)  # Need to figure out what wind speed this is
 # Grab all the debris types in this site:
 get_site_debris(site, length_unit)
