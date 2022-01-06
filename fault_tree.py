@@ -22,7 +22,7 @@ def populate_code_capacities(bldg, cc_flag, mwfrs_flag, exposure):
         roof_flag = True
         zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
         asce7.assign_wcc_pressures(bldg, zone_pts, asce7.hasEdition, exposure, wind_speed)
-        asce7.assign_rcc_pressures(test, roof_polys, asce7.hasEdition, exposure, wind_speed)
+        asce7.assign_rcc_pressures(bldg, roof_polys, asce7.hasEdition, exposure, wind_speed)
     if mwfrs_flag:
         pass
         #asce7.assign_rmwfrs_pressures(test, asce7.hasEdition, exposure, wind_speed)
