@@ -114,14 +114,16 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
         div = 1
     # Find probable debris trajectories based on the given intensity:
     # Find exposure region for each debris type:
-    traj_list = []
+    along_traj_list = []
+    across_traj_list = []  # For wind direction-specific queries
     debris_name = []
     for key in site.hasDebris:
         for d in site.hasDebris[key]['debris name']:
             debris_name.append(d)
             if wind_speed in df['wind speed'].unique():
                 idx = df.loc[(df['debris name'] == d) & (df['wind speed'] == wind_speed)].index[0]
-                traj_list.append(df.iloc[idx]['alongwind_mean'] + df.iloc[idx]['alongwind_std_dev'])
+                along_traj_list.append(df.iloc[idx]['alongwind_mean'] + df.iloc[idx]['alongwind_std_dev'])
+                across_traj_list.append(df.iloc[idx]['acrosswind_mean'] + df.iloc[idx]['acrosswind_std_dev'])
             else:
                 # Interpolate the alongwind distance:
                 # Find the wind speed's nearest multiple of five:
@@ -130,30 +132,38 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
                     idx_upper = df.loc[(df['debris name'] == d) & (df['wind speed'] == nearest_five)].index[0]
                     idx_lower = df.loc[(df['debris name'] == d) & (df['wind speed'] == nearest_five-5)].index[0]
                     xi = np.array([nearest_five-5, nearest_five])
+                    # Repeat for acrosswind:
                 else:
                     idx_upper = df.loc[(df['debris name'] == d) & (df['wind speed'] == nearest_five + 5)].index[0]
                     idx_lower = df.loc[(df['debris name'] == d) & (df['wind speed'] == nearest_five)].index[0]
                     xi = np.array([nearest_five, nearest_five + 5])
-                yi = np.array([df.iloc[idx_lower]['alongwind_mean'] + df.iloc[idx_lower]['alongwind_std_dev'],
+                along_yi = np.array([df.iloc[idx_lower]['alongwind_mean'] + df.iloc[idx_lower]['alongwind_std_dev'],
                                df.iloc[idx_upper]['alongwind_mean'] + df.iloc[idx_upper]['alongwind_std_dev']])
-                f = interp1d(xi, yi)
-                traj_list.append(f(wind_speed))
+                # Repeat for acrosswind:
+                across_yi = np.array([df.iloc[idx_lower]['acrosswind_mean'] + df.iloc[idx_lower]['acrosswind_std_dev'],
+                               df.iloc[idx_upper]['acrosswind_mean'] + df.iloc[idx_upper]['acrosswind_std_dev']])
+                along_f = interp1d(xi, along_yi)
+                along_traj_list.append(along_f(wind_speed))
+                # Acrosswind:
+                across_f = interp1d(xi, across_yi)
+                across_traj_list.append(across_f(wind_speed))
     if crs == 'reference cartesian':
-        # Plot the building footprint:
-        xo, yo = bldg.hasGeometry['Footprint']['local'].exterior.xy
-        ax.plot(np.array(xo)/div, np.array(yo)/div, 'r')
+        # Plot the target building's footprint:
+        xt, yt = bldg.hasGeometry['Footprint']['local'].exterior.xy
+        ax.plot(np.array(xt)/div, np.array(yt)/div, 'r')
         # Use the reference building's footprint as origin:
         origin = bldg.hasGeometry['Footprint']['local'].centroid
         # Collect debris regions:
         debris_region = []
-        for i in range(0, len(traj_list)):
-            if traj_list[i] != 0:
-                buffer_poly = origin.buffer(traj_list[i])
+        for i in range(0, len(along_traj_list)):
+            if along_traj_list[i] != 0:
+                buffer_poly = origin.buffer(along_traj_list[i])
                 debris_region.append(buffer_poly)
                 xb, yb = buffer_poly.exterior.xy
             else:
                 debris_region.append(None)
-            ax.plot(np.array(xb)/div, np.array(yb)/div, linestyle_list[i], label=debris_name[i])
+            idx_ltype = df_linestyle.loc[df_linestyle['debris name']==debris_name[i], 'linestyle'].index[0]
+            ax.plot(np.array(xb)/div, np.array(yb)/div, df_linestyle['linestyle'][idx_ltype], label=debris_name[i])
         plt.legend(fontsize=14)
         plt.show()
     # Add debris data to site's data model:
@@ -161,96 +171,71 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
     df_region = site.hasDebris['roof cover']
     # Find source buildings:
     fig2, ax2 = plt.subplots()
-    site_source = Site()
-    for bldg in site.hasBuilding:
+    bldg_list = []
+    for b in site.hasBuilding:
         # Find the debris region based on the bldg's debris type:
-        idx_region = df_region.loc[df_region['debris name']==bldg.hasElement['Roof'][0].hasType].index[0]
+        idx_region = df_region.loc[df_region['debris name']==b.hasElement['Roof'][0].hasType].index[0]
+        idx_ltype = df_linestyle.loc[df_linestyle['debris name'] == b.hasElement['Roof'][0].hasType, 'linestyle'].index[0]
         if df_region['debris region'][idx_region] is None:
             pass
         else:
             # Find query geometry:
             if crs == 'reference cartesian':
-                bldg_geometry = bldg.hasGeometry['Footprint'][crs]
+                bldg_geometry = b.hasGeometry['Footprint'][crs]
             else:
                 pass
             # Check if the bldg is within or intersects the debris type's region:
             if bldg_geometry.within(df_region['debris region'][idx_region]) or bldg_geometry.intersects(df_region['debris region'][idx_region]):
-                site_source.hasBuilding.append(bldg)
+                bldg_list.append(bldg)
                 xs, ys = bldg_geometry.exterior.xy
-                ax2.plot(np.array(xs)/div, np.array(ys)/div)
+                ax2.plot(np.array(xs)/div, np.array(ys)/div, df_linestyle['linestyle'][idx_ltype])
             else:
                 pass
         # Plot debris regions and target building footprint:
-        ax.plot(np.array(xo) / div, np.array(yo) / div, 'r')
+        ax.plot(np.array(xt) / div, np.array(yt) / div, 'r')
         plt.show()
+    # Create site object and add source buildings based on wind intensity (and wind direction)
+    site_source = Site()
     if wind_direction is None:
-        pass
+        site_source.hasBuilding = bldg_list
     else:
-        # Find the wind speed's nearest multiple of five:
-        nearest_five = 5 * round(wind_speed / 5)
-        for key in site.hasDebris:
-            for d in site.hasDebris[key]['debris name']:
-                idx = df.loc[(df['debris name'] == d) & (df['wind speed'] == nearest_five)].index[0]
-                df_source = df_source.append(df.iloc[idx], ignore_index=True)
-        # Step 2: Find the maximum probable debris source distance (mean + std_dev):
-        max_idx = df_source.loc[df_source['alongwind_mean'] == max(df_source['alongwind_mean'])].index[0]
-        max_dist = df_source['alongwind_mean'][max_idx] + df_source['alongwind_std_dev'][max_idx]
-        # Step 3: Find potential source buildings using the wind direction and max probable distance:
-        if crs == 'geographic':
-            wdirs = np.arange(wind_direction-90, wind_direction+90, 5)
-            pt_list = [bldg.hasLocation['Geodesic']]
-            for dir in wdirs:
-                if length_unit == 'ft':
-                    new_point = distance.distance(miles=max_dist/5280).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir)
-                    pt_list.append(Point(new_point[1], new_point[0]))
-                elif length_unit == 'm':
-                    new_point = distance.distance(kilometers=max_dist/3281).destination((bldg.hasLocation['Geodesic'].y, bldg.hasLocation['Geodesic'].x), dir)
-                    pt_list.append(Point(new_point[1], new_point[0]))
-            # Create a Polygon object for the debris source region:
-            debris_region = Polygon(pt_list)
-            # Pull the reference building's footprint geometry for plotting:
-            xr, yr = bldg.hasGeometry['Footprint']['geodesic'].exterior.xy
-        elif crs == 'reference cartesian':
-            # Convert max_dist if necessary:
-            if length_unit == 'ft':
-                pass
-            elif length_unit == 'm':
-                max_dist = max_dist/3.281
-            # Use the reference building's footprint as origin:
-            origin = bldg.hasGeometry['Footprint']['local'].centroid
-            # Create a circle geometry that we will then segment to find debris region:
-            buffer_poly = origin.buffer(max_dist)
-            # Create intersecting line:
-            new_pt1 = Point(origin.x + max_dist, origin.y)
-            new_pt2 = Point(origin.x - max_dist, origin.y)
-            iline = LineString([new_pt1, new_pt2])
-            # Rotate line according to wind direction:
-            iline = rotate(iline, -1*wind_direction+180)
+        # Filter the identified buildings by wind direction:
+        # Step 1: Find the maximum probable alongwind distance in region (mean + std_dev):
+        max_dist = max(along_traj_list)
+        # Step 2: Find the upwind debris region:
+        new_pt1 = Point(origin.x + max_dist, origin.y)
+        new_pt2 = Point(origin.x - max_dist, origin.y)
+        iline = LineString([new_pt1, new_pt2])
+        # Rotate line according to wind direction to separate up/downwind regions:
+        iline = rotate(iline, -1 * wind_direction + 180)
+        for j in range(0, len(df_region['debris name'])):
             # Split the circle using the intersecting line:
-            spolys = split(buffer_poly, iline)
-            # Grab the half corresponding to wind direction's query area:
+            spolys = split(df_region['debris region'][j], iline)
+            # Grab the half corresponding to the upwind region:
             if 0 < wind_direction < 180:
                 if spolys[0].centroid.x > origin.x:
-                    debris_region = spolys[0]
+                    upwind_region = spolys[0]
                 else:
-                    debris_region = spolys[1]
+                    upwind_region = spolys[1]
             elif 180 < wind_direction < 360:
                 if spolys[0].centroid.x < origin.x:
-                    debris_region = spolys[0]
+                    upwind_region = spolys[0]
                 else:
-                    debris_region = spolys[1]
+                    upwind_region = spolys[1]
             elif wind_direction == 0:
                 if spolys[0].centroid.y > origin.y:
-                    debris_region = spolys[0]
+                    upwind_region = spolys[0]
                 else:
-                    debris_region = spolys[1]
+                    upwind_region = spolys[1]
             elif wind_direction == 180:
                 if spolys[0].centroid.y < origin.y:
-                    debris_region = spolys[0]
+                    upwind_region = spolys[0]
                 else:
-                    debris_region = spolys[1]
-            # Pull the reference building's footprint geometry for plotting:
-            xr, yr = bldg.hasGeometry['Footprint']['local'].exterior.xy
+                    upwind_region = spolys[1]
+            # Step 3: Using the acrosswind distance, create a rectangle to find width of upwind region:
+
+        # Pull the reference building's footprint geometry for plotting:
+        xr, yr = bldg.hasGeometry['Footprint']['local'].exterior.xy
     # Plot the debris region:
     xpoly, ypoly = debris_region.exterior.xy
     plt.plot(np.array(xpoly)/3.281, np.array(ypoly)/3.281, 'b', linewidth=2)
