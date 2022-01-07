@@ -3,6 +3,7 @@ import geopandas as gpd
 from shapely import affinity
 from shapely.geometry import Polygon, Point, LineString
 from scipy import spatial
+from scipy.stats import uniform
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from geopy import distance
@@ -327,50 +328,57 @@ asce7 = ASCE7(test, loading_flag=True)
 a = asce7.get_cc_zone_width(test)
 roof_flag = True
 zone_pts, roof_polys = asce7.find_cc_zone_points(test, a, roof_flag, asce7.hasEdition)
+# Create sub-elements for roof structure:
+for poly in roof_polys:
+    new_subelement = Roof()
+    new_subelement.hasGeometry['2D Geometry']['local'] = poly
+    new_subelement.hasCover = test.adjacentElement['Roof'][0].hasCover
+    new_subelement.hasType = test.adjacentElement['Roof'][0].hasType
+    new_subelement.hasPitch = test.adjacentElement['Roof'][0].hasPitch
 # 2) Calculate zone pressures:
-pressure_calc = PressureCalc()
-design_wind_speed = 100
-exposure = 'B'
-edition = asce7.hasEdition
-h_bldg = test.hasGeometry['Height']
-pitch = test.hasElement['Roof'][0].hasPitch
-area_eff = wall_height*wall_height/3
-cat = 2
-hpr = True
-h_ocean = True
-encl_class = 'Enclosed'
-tpu_flag = True
-wcc = pressure_calc.wcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class, tpu_flag)
-# 3) Map pressures to elements:
-for wall in test.hasElement['Walls']:
-    wall.hasType = 'GLASS THRM; COMMON BRK'
-    for row in range(0, len(zone_pts.index)):
-        zone_line = LineString([zone_pts['LinePoint1'][row], zone_pts['LinePoint2'][row]])
-        if wall.hasGeometry['1D Geometry']['local'].within(zone_line) or wall.hasGeometry['1D Geometry']['local'].intersects(zone_line):
-            zone4_1 = LineString([zone_pts['LinePoint1'][row], zone_pts['NewZoneStart'][row]])
-            zone4_2 = LineString([zone_pts['NewZoneEnd'][row], zone_pts['LinePoint2'][row]])
-            zone5 = LineString([zone_pts['NewZoneStart'][row], zone_pts['NewZoneEnd'][row]])
-            if wall.hasGeometry['1D Geometry']['local'].within(zone4_1) or wall.hasGeometry['1D Geometry']['local'].within(zone4_2):
-                wall.hasCapacity['wind pressure']['external']['positive'] = wcc[0]
-                wall.hasCapacity['wind pressure']['external']['negative'] = wcc[2]
-            elif wall.hasGeometry['1D Geometry']['local'].within(zone5):
-                wall.hasCapacity['wind pressure']['external']['positive'] = wcc[1]
-                wall.hasCapacity['wind pressure']['external']['negative'] = wcc[3]
-            else:
-                # Wall is in both zones: choose worse case:
-                wall.hasCapacity['wind pressure']['external']['positive'] = max(wcc)
-                wall.hasCapacity['wind pressure']['external']['negative'] = min(wcc)
-        else:
-            pass
-# Populate the building's Hurricane Michael loading demand:
-unit = 'english'
-michael_wind_speed = 123.342  # 126?
-#wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
-#tpu_wind_direction = 0
-#cc_flag, mwfrs_flag = True, True
-# generate_pressure_loading(test, basic_wind_speed, tpu_wind_direction, tpu_flag=True, csv_flag=True)
-# find_peak_pressure_response(test, zone_flag=True, time_flag=True)
-# Read in parcel data from surrounding buildings:
+# pressure_calc = PressureCalc()
+# design_wind_speed = 100
+# exposure = 'B'
+# edition = asce7.hasEdition
+# h_bldg = test.hasGeometry['Height']
+# pitch = test.hasElement['Roof'][0].hasPitch
+# area_eff = wall_height*wall_height/3
+# cat = 2
+# hpr = True
+# h_ocean = True
+# encl_class = 'Enclosed'
+# tpu_flag = True
+# wcc = pressure_calc.wcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class, tpu_flag)
+# # 3) Map pressures to elements:
+# for wall in test.hasElement['Walls']:
+#     wall.hasType = 'GLASS THRM; COMMON BRK'
+#     for row in range(0, len(zone_pts.index)):
+#         zone_line = LineString([zone_pts['LinePoint1'][row], zone_pts['LinePoint2'][row]])
+#         if wall.hasGeometry['1D Geometry']['local'].within(zone_line) or wall.hasGeometry['1D Geometry']['local'].intersects(zone_line):
+#             zone4_1 = LineString([zone_pts['LinePoint1'][row], zone_pts['NewZoneStart'][row]])
+#             zone4_2 = LineString([zone_pts['NewZoneEnd'][row], zone_pts['LinePoint2'][row]])
+#             zone5 = LineString([zone_pts['NewZoneStart'][row], zone_pts['NewZoneEnd'][row]])
+#             if wall.hasGeometry['1D Geometry']['local'].within(zone4_1) or wall.hasGeometry['1D Geometry']['local'].within(zone4_2):
+#                 wall.hasCapacity['wind pressure']['external']['positive'] = wcc[0]
+#                 wall.hasCapacity['wind pressure']['external']['negative'] = wcc[2]
+#             elif wall.hasGeometry['1D Geometry']['local'].within(zone5):
+#                 wall.hasCapacity['wind pressure']['external']['positive'] = wcc[1]
+#                 wall.hasCapacity['wind pressure']['external']['negative'] = wcc[3]
+#             else:
+#                 # Wall is in both zones: choose worse case:
+#                 wall.hasCapacity['wind pressure']['external']['positive'] = max(wcc)
+#                 wall.hasCapacity['wind pressure']['external']['negative'] = min(wcc)
+#         else:
+#             pass
+# # Populate the building's Hurricane Michael loading demand:
+# unit = 'english'
+michael_wind_speed = 123.342  # 126? data model paper: 123.342
+# # #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
+# # tpu_wind_direction = 0
+# # #cc_flag, mwfrs_flag = True, True
+# # generate_pressure_loading(test, michael_wind_speed, tpu_wind_direction, tpu_flag=True, csv_flag=True)
+# # find_peak_pressure_response(test, zone_flag=True, time_flag=True)
+# # Read in parcel data from surrounding buildings:
 df = pd.read_csv('C:/Users/Karen/Desktop/Parcel_data.csv')
 # Create data models for each building:
 site = Site()
@@ -405,9 +413,10 @@ site.update_elements()
 #plot_flag = True
 #get_bldgs_at_dist(site, test, dist, unit, plot_flag)
 # Find building-specific debris vulnerability:
-wind_direction = 360-45
-wind_speed_arr = np.arange(70, 200, 5)  # Need to figure out what wind speed this is
+#wind_direction = 360-45
+#wind_speed_arr = np.arange(70, 200, 5)  # Need to figure out what wind speed this is
 # Grab all the debris types in this site:
+length_unit = 'ft'
 get_site_debris(site, length_unit)
 # Step 3: Calculate the trajectory of each debris type:
 # traj_dict = {'wind speed': [], 'debris name': [], 'alongwind_mean': [], 'alongwind_std_dev': [],
@@ -432,7 +441,8 @@ get_site_debris(site, length_unit)
 #run_debris(test, site, length_unit, wind_direction, wind_speed_arr)
 # Find potential source buildings:
 crs = 'reference cartesian'
-site_source = get_source_bldgs(test, site, wind_direction, basic_wind_speed, crs, length_unit)
+wind_direction = None
+site_source = get_source_bldgs(test, site, wind_direction, michael_wind_speed, crs, length_unit)
 for b in site_source.hasBuilding:
     print(b.hasLocation['Address'])
     print(b.hasID)
