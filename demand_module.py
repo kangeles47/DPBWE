@@ -441,7 +441,7 @@ get_site_debris(site, length_unit)
 #run_debris(test, site, length_unit, wind_direction, wind_speed_arr)
 # Find potential source buildings:
 crs = 'reference cartesian'
-wind_direction = None
+wind_direction = 315
 site_source = get_source_bldgs(test, site, wind_direction, michael_wind_speed, crs, length_unit)
 for b in site_source.hasBuilding:
     print(b.hasLocation['Address'])
