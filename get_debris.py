@@ -100,8 +100,10 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
     """
     # Step 1: Extract trajectory information for each unique debris type:
     df = pd.read_csv('C:/Users/Karen/Desktop/DebrisTypicalDistances.csv')  # Distances in [ft]
-    linestyle_list = ['-', '--', ':', '-.', '+', '^', 's', '*', '8']
-    df_linestyle = pd.DataFrame({'debris name': df['debris name'].unique(), 'linestyle': linestyle_list[0: len(df['debris name'].unique())]})
+    linestyle_list = ['-', '--', '8-', ':', '-.', '+-', '^-', 's-', '*-']
+    color_list = ['c', 'g', 'saddlebrown', 'orange', 'm', 'b', 'blueviolet', 'darkgray', 'violet']
+    df_linestyle = pd.DataFrame({'debris name': df['debris name'].unique(), 'linestyle': linestyle_list[0: len(df['debris name'].unique())],
+                                 'color': color_list[0: len(df['debris name'].unique())]})
     df_source = pd.DataFrame(columns=df.columns)
     # Set up plotting:
     rcParams['font.family'] = "Times New Roman"
@@ -163,11 +165,15 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
             else:
                 debris_region.append(None)
             idx_ltype = df_linestyle.loc[df_linestyle['debris name']==debris_name[i], 'linestyle'].index[0]
-            ax.plot(np.array(xb)/div, np.array(yb)/div, df_linestyle['linestyle'][idx_ltype], label=debris_name[i])
+            ax.plot(np.array(xb)/div, np.array(yb)/div, df_linestyle['linestyle'][idx_ltype], label=debris_name[i], color=df_linestyle['color'][idx_ltype])
+        ax.set_xlabel('x [m]')
+        ax.set_ylabel('y [m]')
         plt.legend(fontsize=14)
         plt.show()
     # Add debris data to site's data model:
     site.hasDebris['roof cover']['debris region'] = debris_region
+    site.hasDebris['roof cover']['alongwind_dist'] = along_traj_list
+    site.hasDebris['roof cover']['acrosswind_dist'] = across_traj_list
     df_region = site.hasDebris['roof cover']
     # Find source buildings:
     fig2, ax2 = plt.subplots()
@@ -175,7 +181,6 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
     for b in site.hasBuilding:
         # Find the debris region based on the bldg's debris type:
         idx_region = df_region.loc[df_region['debris name']==b.hasElement['Roof'][0].hasType].index[0]
-        idx_ltype = df_linestyle.loc[df_linestyle['debris name'] == b.hasElement['Roof'][0].hasType, 'linestyle'].index[0]
         if df_region['debris region'][idx_region] is None:
             pass
         else:
@@ -186,78 +191,127 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
                 pass
             # Check if the bldg is within or intersects the debris type's region:
             if bldg_geometry.within(df_region['debris region'][idx_region]) or bldg_geometry.intersects(df_region['debris region'][idx_region]):
-                bldg_list.append(bldg)
+                bldg_list.append(b)
                 xs, ys = bldg_geometry.exterior.xy
-                ax2.plot(np.array(xs)/div, np.array(ys)/div, df_linestyle['linestyle'][idx_ltype])
+                ax2.plot(np.array(xs)/div, np.array(ys)/div, 'k')
+                print(b.hasLocation['Address'] + '   ' + b.hasElement['Roof'][0].hasType)
             else:
                 pass
-        # Plot debris regions and target building footprint:
-        ax.plot(np.array(xt) / div, np.array(yt) / div, 'r')
-        plt.show()
+    # Plot debris regions and target building footprint:
+    ax2.plot(np.array(xt) / div, np.array(yt) / div, 'r')
+    for region in df_region['debris region'].index.to_list():
+        if df_region['debris region'][region] is None:
+            pass
+        else:
+            idx_ltype = df_linestyle.loc[df_linestyle['debris name'] == df_region['debris name'][region], 'linestyle'].index[0]
+            xregion, yregion = df_region['debris region'][region].exterior.xy
+            ax2.plot(np.array(xregion)/div, np.array(yregion)/div, df_linestyle['linestyle'][idx_ltype], label=df_region['debris name'][region], color=df_linestyle['color'][idx_ltype])
+    if div != 1:
+        ax2.set_xlabel('x [m]')
+        ax2.set_ylabel('y [m]')
+    else:
+        ax2.set_xlabel('x [ft]')
+        ax2.set_ylabel('y [ft]')
+    plt.legend(fontsize=14)
+    plt.show()
     # Create site object and add source buildings based on wind intensity (and wind direction)
     site_source = Site()
     if wind_direction is None:
         site_source.hasBuilding = bldg_list
     else:
         # Filter the identified buildings by wind direction:
+        fig3, ax3 = plt.subplots()
         # Step 1: Find the maximum probable alongwind distance in region (mean + std_dev):
-        max_dist = max(along_traj_list)
+        max_dist = max(along_traj_list) + 5
         # Step 2: Find the upwind debris region:
         new_pt1 = Point(origin.x + max_dist, origin.y)
         new_pt2 = Point(origin.x - max_dist, origin.y)
         iline = LineString([new_pt1, new_pt2])
         # Rotate line according to wind direction to separate up/downwind regions:
         iline = rotate(iline, -1 * wind_direction + 180)
+        dir_region_list = []
         for j in range(0, len(df_region['debris name'])):
-            # Split the circle using the intersecting line:
-            spolys = split(df_region['debris region'][j], iline)
-            # Grab the half corresponding to the upwind region:
-            if 0 < wind_direction < 180:
-                if spolys[0].centroid.x > origin.x:
-                    upwind_region = spolys[0]
+            if df_region['debris region'][j] is None:
+                dir_region_list.append(None)
+            else:
+                # Split the circle using the intersecting line:
+                spolys = split(df_region['debris region'][j], iline)
+                # Grab the half corresponding to the upwind region:
+                if 0 < wind_direction < 180:
+                    if spolys[0].centroid.x > origin.x:
+                        upwind_region = spolys[0]
+                    else:
+                        upwind_region = spolys[1]
+                elif 180 < wind_direction < 360:
+                    if spolys[0].centroid.x < origin.x:
+                        upwind_region = spolys[0]
+                    else:
+                        upwind_region = spolys[1]
+                elif wind_direction == 0:
+                    if spolys[0].centroid.y > origin.y:
+                        upwind_region = spolys[0]
+                    else:
+                        upwind_region = spolys[1]
+                elif wind_direction == 180:
+                    if spolys[0].centroid.y < origin.y:
+                        upwind_region = spolys[0]
+                    else:
+                        upwind_region = spolys[1]
+                # Step 3: Using the acrosswind distance, create a rectangle to find width of upwind region:
+                new_rpt1 = Point(origin.x - df_region['acrosswind_dist'][j], origin.y)
+                new_rpt2 = Point(origin.x + df_region['acrosswind_dist'][j], origin.y)
+                new_rpt3 = Point(origin.x + df_region['acrosswind_dist'][j], origin.y + df_region['alongwind_dist'][j])
+                new_rpt4 = Point(origin.x - df_region['acrosswind_dist'][j], origin.y + df_region['alongwind_dist'][j])
+                new_rect = Polygon([new_rpt1, new_rpt2, new_rpt3, new_rpt4])
+                # Rotate the rectangle:
+                new_rect = rotate(new_rect, -1*wind_direction, origin=origin)
+                # Now find the debris region:
+                dir_debris_region = new_rect.intersection(upwind_region)
+                dir_region_list.append(dir_debris_region)
+        df_region['directional debris region'] = dir_region_list
+        # Loop through intensity-derived source buildings to find directional source buildings:
+        dir_bldg_list = []
+        for k in bldg_list:
+            if crs == 'reference cartesian':
+                bldg_geometry = k.hasGeometry['Footprint'][crs]
+            else:
+                pass
+            # Find the index for the debris type:
+            idx_region = df_region.loc[df_region['debris name'] == k.hasElement['Roof'][0].hasType].index[0]
+            if df_region['directional debris region'][idx_region] is None:
+                pass
+            else:
+                if bldg_geometry.within(df_region['directional debris region'][idx_region]) or bldg_geometry.intersects(df_region['directional debris region'][idx_region]):
+                    dir_bldg_list.append(k)
+                    xk, yk = bldg_geometry.exterior.xy
+                    ax3.plot(np.array(xk)/div, np.array(yk)/div, 'k')
                 else:
-                    upwind_region = spolys[1]
-            elif 180 < wind_direction < 360:
-                if spolys[0].centroid.x < origin.x:
-                    upwind_region = spolys[0]
-                else:
-                    upwind_region = spolys[1]
-            elif wind_direction == 0:
-                if spolys[0].centroid.y > origin.y:
-                    upwind_region = spolys[0]
-                else:
-                    upwind_region = spolys[1]
-            elif wind_direction == 180:
-                if spolys[0].centroid.y < origin.y:
-                    upwind_region = spolys[0]
-                else:
-                    upwind_region = spolys[1]
-            # Step 3: Using the acrosswind distance, create a rectangle to find width of upwind region:
-
-        # Pull the reference building's footprint geometry for plotting:
-        xr, yr = bldg.hasGeometry['Footprint']['local'].exterior.xy
-    # Plot the debris region:
-    xpoly, ypoly = debris_region.exterior.xy
-    plt.plot(np.array(xpoly)/3.281, np.array(ypoly)/3.281, 'b', linewidth=2)
-    # Step 4: Find potential source buildings and add to new Site object:
-    site_source = Site()
-    for i in site.hasBuilding:
-        if crs == 'geographic':
-            bldg_loc = i.hasGeometry['Footprint']['geodesic']
-        elif crs == 'reference cartesian':
-            bldg_loc = i.hasGeometry['Footprint']['reference cartesian']
-        if debris_region.contains(bldg_loc) or debris_region.intersects(bldg_loc):
-            # Add this potential source bldg to new Site object:
-            site_source.hasBuilding.append(i)
-            xi, yi = bldg_loc.exterior.xy
-            plt.plot(np.array(xi)/div, np.array(yi)/div, 'k')
+                    pass
+        # Add queried buildings to site_source:
+        site_source.hasBuilding = dir_bldg_list
+        # Plot directional debris regions:
+        for r in df_region['directional debris region'].index.to_list():
+            if df_region['directional debris region'][r] is None:
+                pass
+            else:
+                idx_ltype = df_linestyle.loc[df_linestyle['debris name'] == df_region['debris name'][r], 'linestyle'].index[0]
+                xrdir, yrdir = df_region['directional debris region'][r].exterior.xy
+                ax3.plot(np.array(xrdir)/div, np.array(yrdir)/div, df_linestyle['linestyle'][idx_ltype], label=df_region['debris name'][r], color=df_linestyle['color'][idx_ltype])
+        if div != 1:
+            ax3.set_xlabel('x [m]')
+            ax3.set_ylabel('y [m]')
         else:
-            pass
-    # Plot the reference building's footprint:
-    plt.plot(np.array(xr)/div, np.array(yr)/div, 'r')
-    plt.xlabel('x [m]')
-    plt.ylabel('y [m]')
-    plt.show()
+            ax3.set_xlabel('x [ft]')
+            ax3.set_ylabel('y [ft]')
+        # Plot the target building's footprint:
+        ax3.plot(np.array(xt) / div, np.array(yt) / div, 'r')
+        ax3.set_xticks([-100, -50, 0, 50, 100])
+        ax3.set_yticks([-100, -50, 0, 50, 100, 150])
+        plt.legend(fontsize=14)
+        plt.show()
+    # Update site_source elements and zones:
+    site_source.update_elements()
+    site_source.update_zones()
     return site_source
 
 
@@ -392,7 +446,7 @@ def get_debris_mass(debris_class, debris_name, length_unit):
             elif 'BUILT' in debris_name.upper() and 'GRAVEL' not in debris_name.upper():
                 df_sub = df.loc[df['DEBRIS NAME'] =='BUILT-UP ROOF MEMBRANE 3-PLY SMOOTH-SURFACED']
             elif 'STAND' in debris_name.upper():
-                df_sub = df.loc[df['DEBRIS NAME'] == 'STANDING SEAM METAL 0.032 IN. ALUMINUM PANEL WIDTH: 12 INCHES']
+                df_sub = df.loc[df['DEBRIS NAME'] == 'STANDING SEAM METAL 24-GAUGE STEEL PANEL WIDTH: 12 INCHES']
             elif 'TPO' in debris_name.upper():
                 df_sub = df.loc[df['DEBRIS NAME'] == 'TPO ROOF MEMBRANE 60-MIL FULLY-ADHERED (MEMBRANE ONLY)']
             else:
