@@ -380,6 +380,19 @@ for wall in test.hasElement['Walls']:
                 ax.plot(np.array(xw)/3.281, np.array(yw)/3.281, np.array(zw)/3.281, 'r')
         else:
             pass
+# Uncomment to create planar overview of capacity mapping:
+# fig, ax = plt.subplots()
+# for wall in test.hasStory[0].adjacentElement['Walls']:
+#     xl, yl = wall.hasGeometry['1D Geometry']['local'].xy
+#     ax.scatter(np.array(xl)/3.281, np.array(yl)/3.281, s=8, color='blue')
+#     if wall.hasCapacity['wind pressure']['external']['negative'] == wcc[3]:
+#         ax.plot(np.array(xl)/3.281, np.array(yl)/3.281, 'k', label='Zone 5')
+#     else:
+#         ax.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'r', label='Zone 4')
+# ax.set_xticks(np.arange(-20, 25, 10))
+# ax.set_yticks(np.arange(-20, 25, 10))
+# ax.set_ylabel('y [m]')
+# ax.set_xlabel('x [m]')
 # # Populate the building's Hurricane Michael loading demand:
 # unit = 'english'
 michael_wind_speed = 123.342  # 126? data model paper: 123.342
