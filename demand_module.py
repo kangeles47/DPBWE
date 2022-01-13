@@ -336,40 +336,50 @@ for poly in roof_polys:
     new_subelement.hasType = test.adjacentElement['Roof'][0].hasType
     new_subelement.hasPitch = test.adjacentElement['Roof'][0].hasPitch
 # 2) Calculate zone pressures:
-# pressure_calc = PressureCalc()
-# design_wind_speed = 100
-# exposure = 'B'
-# edition = asce7.hasEdition
-# h_bldg = test.hasGeometry['Height']
-# pitch = test.hasElement['Roof'][0].hasPitch
-# area_eff = wall_height*wall_height/3
-# cat = 2
-# hpr = True
-# h_ocean = True
-# encl_class = 'Enclosed'
-# tpu_flag = True
-# wcc = pressure_calc.wcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class, tpu_flag)
-# # 3) Map pressures to elements:
-# for wall in test.hasElement['Walls']:
-#     wall.hasType = 'GLASS THRM; COMMON BRK'
-#     for row in range(0, len(zone_pts.index)):
-#         zone_line = LineString([zone_pts['LinePoint1'][row], zone_pts['LinePoint2'][row]])
-#         if wall.hasGeometry['1D Geometry']['local'].within(zone_line) or wall.hasGeometry['1D Geometry']['local'].intersects(zone_line):
-#             zone4_1 = LineString([zone_pts['LinePoint1'][row], zone_pts['NewZoneStart'][row]])
-#             zone4_2 = LineString([zone_pts['NewZoneEnd'][row], zone_pts['LinePoint2'][row]])
-#             zone5 = LineString([zone_pts['NewZoneStart'][row], zone_pts['NewZoneEnd'][row]])
-#             if wall.hasGeometry['1D Geometry']['local'].within(zone4_1) or wall.hasGeometry['1D Geometry']['local'].within(zone4_2):
-#                 wall.hasCapacity['wind pressure']['external']['positive'] = wcc[0]
-#                 wall.hasCapacity['wind pressure']['external']['negative'] = wcc[2]
-#             elif wall.hasGeometry['1D Geometry']['local'].within(zone5):
-#                 wall.hasCapacity['wind pressure']['external']['positive'] = wcc[1]
-#                 wall.hasCapacity['wind pressure']['external']['negative'] = wcc[3]
-#             else:
-#                 # Wall is in both zones: choose worse case:
-#                 wall.hasCapacity['wind pressure']['external']['positive'] = max(wcc)
-#                 wall.hasCapacity['wind pressure']['external']['negative'] = min(wcc)
-#         else:
-#             pass
+pressure_calc = PressureCalc()
+design_wind_speed = 100
+exposure = 'B'
+edition = asce7.hasEdition
+h_bldg = test.hasGeometry['Height']
+pitch = test.hasElement['Roof'][0].hasPitch
+area_eff = wall_height*wall_height/3
+cat = 2
+hpr = True
+h_ocean = True
+encl_class = 'Enclosed'
+tpu_flag = True
+wcc = pressure_calc.wcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class, tpu_flag)
+# 3) Map pressures to elements:
+# Figure to show zones and component mapping:
+fig = plt.figure()
+ax = plt.axes(projection='3d')
+for wall in test.hasElement['Walls']:
+    wall.hasType = 'GLASS THRM; COMMON BRK'
+    for row in range(0, len(zone_pts.index)):
+        xl, yl = LineString([zone_pts['LinePoint1'][row], zone_pts['LinePoint2'][row]]).xy
+        zone_box = Polygon([(max(xl), max(yl)), (min(xl), max(yl)), (min(xl), min(yl)), (max(xl), min(yl))])
+        if wall.hasGeometry['1D Geometry']['local'].within(zone_box) or wall.hasGeometry['1D Geometry']['local'].intersects(zone_box):
+            x5, y5 = LineString([zone_pts['NewZoneStart'][row], zone_pts['NewZoneEnd'][row]]).xy
+            zone5_box = Polygon([(max(x5), max(y5)), (min(x5), max(y5)), (min(x5), min(y5)), (max(x5), min(y5))])
+            # Aside: pull wall 3d geometry for plotting:
+            xw, yw, zw = [], [], []
+            wall_coords = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
+            for c in wall_coords:
+                xw.append(c[0])
+                yw.append(c[1])
+                zw.append(c[2])
+            # Figure out is this wall is in Zone 4 or 5 or both and designate capacity:
+            if wall.hasGeometry['1D Geometry']['local'].within(zone5_box) or wall.hasGeometry['1D Geometry']['local'].intersects(zone5_box):
+                wall.hasCapacity['wind pressure']['external']['positive'] = wcc[1]
+                wall.hasCapacity['wind pressure']['external']['negative'] = wcc[3]
+                ax.plot(np.array(xw) / 3.281, np.array(yw) / 3.281, np.array(zw) / 3.281, 'k')
+            else:
+                # The element is in Zone 4:
+                wall.hasCapacity['wind pressure']['external']['positive'] = wcc[0]
+                wall.hasCapacity['wind pressure']['external']['negative'] = wcc[2]
+                ax.plot(np.array(xw)/3.281, np.array(yw)/3.281, np.array(zw)/3.281, 'r')
+        else:
+            pass
 # # Populate the building's Hurricane Michael loading demand:
 # unit = 'english'
 michael_wind_speed = 123.342  # 126? data model paper: 123.342
