@@ -114,7 +114,7 @@ def assign_footprint(parcel, num_stories):
     # Rotate the footprint to create a "rotated cartesian" axis:
     rect = parcel.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
     spts = list(rect.exterior.coords)
-    theta = degrees(atan2((spts[1][0] - spts[2][0]), (spts[1][1] - spts[2][1])))
+    theta = degrees(atan2((spts[2][1] - spts[1][1]), (spts[2][0] - spts[1][0])))  # input (y, x)
     parcel.hasOrientation = theta
     # Rotate the the building footprint to create the TPU axis:
     rotated_b = affinity.rotate(parcel.hasGeometry['Footprint']['local'], theta, origin='centroid')
@@ -457,7 +457,7 @@ get_site_debris(site, length_unit)
 #run_debris(test, site, length_unit, wind_direction, wind_speed_arr)
 # Find potential source buildings:
 crs = 'reference cartesian'
-wind_direction = 45
+wind_direction = 315
 michael_wind_speed = 123.342  # 126? data model paper: 123.342
 site_source = get_source_bldgs(test, site, wind_direction, michael_wind_speed, crs, length_unit)
 
