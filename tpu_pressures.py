@@ -445,7 +445,7 @@ def get_TPU_surfaces(bldg, key, match_flag, num_surf, side_lines, hb_ratio, db_r
 
 def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, match_flag, h_bldg, rect_surf_dict, bldg):
     # Read in pressure data file:
-    tpu_file = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/TPU/' + model_file
+    tpu_file = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/TPU/' + model_file
     tpu_data = loadmat(tpu_file)
     # Export Location_of_measured_points into a DataFrame for easier manipulation:
     df = pd.DataFrame(tpu_data['Location_of_measured_points'], index=['x', 'y', 'Point Number', 'Surface Number'])
@@ -1141,7 +1141,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         bldg.hasDemand['wind pressure']['external']['surfaces'].append(roof_poly)
         bldg.hasDemand['wind pressure']['external']['values'].append(df_roof_pressures)
         df_bldg_pressures = df_bldg_pressures.append(df_roof_pressures, ignore_index=True)
-        #df_bldg_pressures = ptap_adjust(df_bldg_pressures, bldg)
+        df_bldg_pressures = ptap_adjust(df_bldg_pressures, bldg)
         # Plot the projected pressure taps:
         xf, yf, zf = [], [], []
         for k in df_bldg_pressures.index.to_list():
