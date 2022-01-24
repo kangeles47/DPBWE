@@ -19,6 +19,7 @@ from fault_tree import populate_code_capacities, generate_pressure_loading, find
 from get_debris import run_debris, get_site_debris, get_trajectory, get_source_bldgs
 from survey_data import SurveyData
 from queries import get_bldgs_at_dist
+from bdm_tpu_pressures import map_tpu_ptaps, convert_to_tpu_wdir
 
 
 def assign_footprint(parcel, num_stories):
@@ -401,33 +402,37 @@ site = Site()
 plot_flag=False
 length_unit='ft'
 for p in df.index:
-    new_bldg = Building()
-    new_bldg.add_parcel_data(df['Parcel Id'][p], df['Stories'][p], df['Use Code'][p], df['Year Built'][p],
-                             df['Address'][p], df['Square Footage'][p], df['Longitude'][p], df['Latitude'][p],
-                             'ft', loc_flag=True)
-    # Add roof element and data:
-    new_roof = Roof()
-    new_roof.hasCover = df['Roof Cover'][p]
-    new_roof.hasType = df['Roof Cover'][p]
-    new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
-    new_bldg.hasStory[-1].update_elements()
-    new_bldg.update_zones()
-    new_bldg.update_elements()
-    # Add height information:
-    survey_data = SurveyData()
-    survey_data.doe_ref_bldg(new_bldg, window_flag=False)
-    # Get building footprint:
-    assign_footprint(new_bldg, df['Stories'][p])
-    get_ref_bldg_crs(test, new_bldg, length_unit)
-    site.hasBuilding.append(new_bldg)
+    if df['Parcel Id'][p] == '13209-060-000' or df['Parcel Id'][p] == '13209-040-000':
+        new_bldg = Building()
+        new_bldg.add_parcel_data(df['Parcel Id'][p], df['Stories'][p], df['Use Code'][p], df['Year Built'][p],
+                                 df['Address'][p], df['Square Footage'][p], df['Longitude'][p], df['Latitude'][p],
+                                 'ft', loc_flag=True)
+        # Add roof element and data:
+        new_roof = Roof()
+        new_roof.hasCover = df['Roof Cover'][p]
+        new_roof.hasType = df['Roof Cover'][p]
+        new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
+        new_bldg.hasStory[-1].update_elements()
+        new_bldg.update_zones()
+        new_bldg.update_elements()
+        # Add height information:
+        survey_data = SurveyData()
+        survey_data.doe_ref_bldg(new_bldg, window_flag=False)
+        # Get building footprint:
+        assign_footprint(new_bldg, df['Stories'][p])
+        get_ref_bldg_crs(test, new_bldg, length_unit)
+        site.hasBuilding.append(new_bldg)
+    else:
+        pass
 site.update_zones()
 site.update_interfaces()
 site.update_elements()
-# Plot the the site that is 150 meters from the building:
-#dist = .150
-#unit = 'km'
-#plot_flag = True
-#get_bldgs_at_dist(site, test, dist, unit, plot_flag)
+# Debugging tpu code: model building identification:
+wind_speed = 100
+wind_direction = 215
+for b in site.hasBuilding:
+    tpu_wdir = convert_to_tpu_wdir(wind_direction, b)
+    map_tpu_ptaps(b, tpu_wdir, wind_speed, high_value_flag=False)
 # Find building-specific debris vulnerability:
 #wind_direction = 360-45
 #wind_speed_arr = np.arange(70, 200, 5)  # Need to figure out what wind speed this is

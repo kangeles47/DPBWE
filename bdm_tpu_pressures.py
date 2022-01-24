@@ -11,7 +11,7 @@ from code_pressures import PressureCalc
 
 def map_tpu_ptaps(bldg, tpu_wdir, wind_speed, high_value_flag):
     # Create new key-value pairs in the data model:
-    bldg.hasGeometry['TPU_surfaces'] = {'geodesic': [], 'local': []}
+    bldg.hasGeometry['TPU_surfaces'] = {'local': []}
     # Step 1: Determine the building's TPU use case:
     eave_length = 0
     h_bldg = bldg.hasGeometry['Height']
