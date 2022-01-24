@@ -1250,8 +1250,8 @@ def convert_to_tpu_wdir(wind_direction, bldg):
     rect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle  # local coords only for now
     xrect, yrect = rect.exterior.xy
     # Find out the building's orientation:
-    xdist = xrect[3] - xrect[2]
-    ydist = yrect[3] - yrect[2]
+    xdist = xrect[2] - xrect[1]
+    ydist = yrect[2] - yrect[1]
     theta = degrees(atan2(ydist, xdist))
     bldg.hasOrientation = theta
     # Find the tpu wind direction according to building orientation and IRL wind direction:
