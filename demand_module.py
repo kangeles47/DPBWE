@@ -24,7 +24,7 @@ from queries import get_bldgs_at_dist
 def assign_footprint(parcel, num_stories):
     # Access file with region's building footprint information:
     if parcel.hasLocation['State'] == 'FL' and parcel.hasLocation['County'] == 'Bay':
-        jFile = 'C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Geojson/BayCounty.geojson'
+        jFile = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/Geojson/BayCounty.geojson'
     else:
         print('Footprints for this region currently not supported')
 
@@ -393,14 +393,7 @@ for wall in test.hasElement['Walls']:
 # ax.set_yticks(np.arange(-20, 25, 10))
 # ax.set_ylabel('y [m]')
 # ax.set_xlabel('x [m]')
-# # Populate the building's Hurricane Michael loading demand:
-# unit = 'english'
-michael_wind_speed = 123.342  # 126? data model paper: 123.342
-# # #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
-tpu_wind_direction = 0
-# # #cc_flag, mwfrs_flag = True, True
-generate_pressure_loading(test, michael_wind_speed, tpu_wind_direction, tpu_flag=True, csv_flag=False)
-# # find_peak_pressure_response(test, zone_flag=True, time_flag=True)
+
 # # Read in parcel data from surrounding buildings:
 df = pd.read_csv('C:/Users/Karen/Desktop/Parcel_data.csv')
 # Create data models for each building:
@@ -460,12 +453,16 @@ get_site_debris(site, length_unit)
 #             traj_dict['wind speed'].append(speed)
 #             traj_dict['debris name'].append(site.hasDebris[key]['debris name'][row])
 # df_debris = pd.DataFrame(traj_dict)
-# df_debris.to_csv('C:/Users/Karen/Desktop/DebrisTypicalDistances.csv', index=False)
+# df_debris.to_csv('D:/Users/Karen/Documents/Github/Typical_Debris_Distances.csv', index=False)
 #run_debris(test, site, length_unit, wind_direction, wind_speed_arr)
 # Find potential source buildings:
 crs = 'reference cartesian'
 wind_direction = 45
+michael_wind_speed = 123.342  # 126? data model paper: 123.342
 site_source = get_source_bldgs(test, site, wind_direction, michael_wind_speed, crs, length_unit)
-for b in site_source.hasBuilding:
-    print(b.hasLocation['Address'])
-    print(b.hasID)
+
+# # Populate the building's Hurricane Michael loading demand:
+# unit = 'english'
+# # #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
+tpu_wind_direction = 0
+generate_pressure_loading(test, michael_wind_speed, tpu_wind_direction, tpu_flag=True, csv_flag=False)
