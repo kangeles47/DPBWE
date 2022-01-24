@@ -99,7 +99,7 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
     :return: site_source: A Site object with Building objects within the specified potential source region (see Site.hasBuilding)
     """
     # Step 1: Extract trajectory information for each unique debris type:
-    df = pd.read_csv('C:/Users/Karen/Desktop/DebrisTypicalDistances.csv')  # Distances in [ft]
+    df = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Debris/Typical_Debris_Distances.csv')  # Distances in [ft]
     linestyle_list = ['-', '--', '8-', ':', '-.', '+-', '^-', 's-', '*-']
     color_list = ['c', 'g', 'saddlebrown', 'orange', 'm', 'b', 'blueviolet', 'darkgray', 'violet']
     df_linestyle = pd.DataFrame({'debris name': df['debris name'].unique(), 'linestyle': linestyle_list[0: len(df['debris name'].unique())],
@@ -416,7 +416,7 @@ def get_debris_mass(debris_class, debris_name, length_unit):
     :return: debris_mass: Float, the typical debris mass (derived from open data sources)
     """
     # Load debris mass data (in the future, extend to regional manufacturers):
-    df = read_csv('C:/Users/Karen/PycharmProjects/DPBWE/Datasets/Debris/Typical_Debris_Masses.csv')
+    df = read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Debris/Typical_Debris_Masses.csv')
     df.astype({'TYPICAL AREA FT2': 'float64', 'MASS PER AREA LB/FT2': 'float64', 'TYPICAL AREA M2': 'float64',
                'MASS PER AREA KG/M2': 'float64'})
     if debris_class == 'sheet':
