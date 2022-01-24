@@ -397,9 +397,9 @@ for wall in test.hasElement['Walls']:
 # unit = 'english'
 michael_wind_speed = 123.342  # 126? data model paper: 123.342
 # # #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
-# # tpu_wind_direction = 0
+tpu_wind_direction = 0
 # # #cc_flag, mwfrs_flag = True, True
-# # generate_pressure_loading(test, michael_wind_speed, tpu_wind_direction, tpu_flag=True, csv_flag=True)
+generate_pressure_loading(test, michael_wind_speed, tpu_wind_direction, tpu_flag=True, csv_flag=False)
 # # find_peak_pressure_response(test, zone_flag=True, time_flag=True)
 # # Read in parcel data from surrounding buildings:
 df = pd.read_csv('C:/Users/Karen/Desktop/Parcel_data.csv')
