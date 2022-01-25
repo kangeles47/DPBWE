@@ -965,10 +965,12 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             ax4.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, 'k', linewidth=2)
         plt.show()
         # Last part: Mapping pressures onto the true 3D geometry:
-        if high_value_flag:
+        if not high_value_flag:
+            df_bldg_cps = df_simple_map
+        else:
             df_simple_map['Surface Match'] = False  # Start by assuming there is not a perfect match with actual geometry
-            df_bldg_pressures = pd.DataFrame(columns=df_simple_map.columns)  # Create master DataFrame for entire building
-            df_roof_pressures = pd.DataFrame(columns = df_simple_map.columns)
+            df_bldg_cps = pd.DataFrame(columns=df_simple_map.columns)  # Create master DataFrame for entire building
+            df_roof_cps = pd.DataFrame(columns=df_simple_map.columns)
             # Set up plotting:
             fig5 = plt.figure()
             ax5 = plt.axes(projection='3d')
@@ -981,7 +983,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                     roof_flag = True
                 else:
                     roof_flag = False
-                    df_surf_pressures = pd.DataFrame(columns=df_simple_map.columns)
+                    df_surf_cps = pd.DataFrame(columns=df_simple_map.columns)
                 # Pull the surface geometry:
                 xb, yb = bsurf.exterior.xy
                 b1 = Point(xb[0], yb[0])
@@ -1026,9 +1028,9 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                                 df_simple_map.iat[tap_idx, surf_match_col] = True
                                 tap_info = df_simple_map.iloc[tap_idx]
                                 if key != 5:
-                                    df_surf_pressures = df_surf_pressures.append(tap_info, ignore_index=True)
+                                    df_surf_cps = df_surf_cps.append(tap_info, ignore_index=True)
                                 else:
-                                    df_roof_pressures = df_roof_pressures.append(tap_info, ignore_index=True)
+                                    df_roof_cps = df_roof_cps.append(tap_info, ignore_index=True)
                             else:
                                 pass
                     elif b1.within(range_poly) or b2.within(range_poly):
@@ -1112,17 +1114,17 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                                     proj_tap_dict[k].append(new_dict[k][row])
                         df_tap_info = pd.DataFrame(new_dict)
                         # Add this information to the surface's DataFrame:
-                        df_surf_pressures = df_surf_pressures.append(df_tap_info, ignore_index=True)
+                        df_surf_cps = df_surf_cps.append(df_tap_info, ignore_index=True)
                     else:
                         # Grab any edge roof points:
-                        for tap in df_surf_pressures.index.to_list():
-                            tap_pt = df_surf_pressures['Real Life Location'][tap]
+                        for tap in df_surf_cps.index.to_list():
+                            tap_pt = df_surf_cps['Real Life Location'][tap]
                             if round(tap_pt.z, 4) == round(bldg.hasGeometry['Height'], 4):
                                 roof_taps = df_simple_map.loc[df_simple_map['Surface Number'] == 5]
                                 for rtap in roof_taps.index.to_list():
                                     if round(roof_taps['Real Life Location'][rtap].x, 4) == round(tap_pt.x,4) and round(roof_taps['Real Life Location'][rtap].y,4) == round(tap_pt.y,4):
                                         rtap_info = df_simple_map.iloc[rtap]
-                                        df_roof_pressures = df_roof_pressures.append(rtap_info, ignore_index=True)
+                                        df_roof_cps = df_roof_cps.append(rtap_info, ignore_index=True)
                                     else:
                                         pass
                             else:
@@ -1133,23 +1135,23 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                 if roof_flag:
                     roof_poly = bsurf
                 else:
-                    bldg.hasDemand['wind pressure']['external']['surfaces'].append(bsurf)
-                    bldg.hasDemand['wind pressure']['external']['values'].append(df_surf_pressures)
+                    #bldg.hasDemand['wind pressure']['external']['surfaces'].append(bsurf)
+                    #bldg.hasDemand['wind pressure']['external']['values'].append(df_surf_cps)
                     # Add the surface pressure tap data to the master DataFrame:
-                    df_bldg_pressures = df_bldg_pressures.append(df_surf_pressures, ignore_index=True)
+                    df_bldg_cps = df_bldg_cps.append(df_surf_cps, ignore_index=True)
             # Save the roof surface and data:
-            bldg.hasDemand['wind pressure']['external']['surfaces'].append(roof_poly)
-            bldg.hasDemand['wind pressure']['external']['values'].append(df_roof_pressures)
-            df_bldg_pressures = df_bldg_pressures.append(df_roof_pressures, ignore_index=True)
-            df_bldg_pressures = ptap_adjust(df_bldg_pressures, bldg)
+            #bldg.hasDemand['wind pressure']['external']['surfaces'].append(roof_poly)
+            #bldg.hasDemand['wind pressure']['external']['values'].append(df_roof_cps)
+            df_bldg_cps = df_bldg_cps.append(df_roof_cps, ignore_index=True)
+            df_bldg_cps = ptap_adjust(df_bldg_cps, bldg)
             # Plot the projected pressure taps:
             xf, yf, zf = [], [], []
-            for k in df_bldg_pressures.index.to_list():
-                xf.append(df_bldg_pressures['Real Life Location'][k].x)
-                yf.append(df_bldg_pressures['Real Life Location'][k].y)
-                zf.append(df_bldg_pressures['Real Life Location'][k].z)
+            for k in df_bldg_cps.index.to_list():
+                xf.append(df_bldg_cps['Real Life Location'][k].x)
+                yf.append(df_bldg_cps['Real Life Location'][k].y)
+                zf.append(df_bldg_cps['Real Life Location'][k].z)
             img = ax5.scatter3D(np.array([xf]) / 3.281, np.array([yf]) / 3.281, np.array([zf]) / 3.281,
-                                c=df_bldg_pressures['Pressure'] / 0.020885, cmap=plt.get_cmap('copper', 5))
+                                c=df_bldg_cps['Mean Cp'], cmap=plt.get_cmap('copper', 5))
             fig5.colorbar(img)
             ax5.set_xlim(left=-20, right=20)
             ax5.set_ylim3d(bottom=-20, top=20)
@@ -1171,18 +1173,18 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             ax5.yaxis.set_tick_params(labelsize=14)
             ax5.zaxis.set_tick_params(labelsize=14)
             plt.show()
-    return df_bldg_pressures
+    return df_bldg_cps
 
 
-def ptap_adjust(df_bldg_pressures, bldg):
+def ptap_adjust(df_bldg_cps, bldg):
     # Use the building footprint to ensure pressure taps are intersecting:
     xf, yf = bldg.hasGeometry['Footprint']['local'].exterior.xy
     # Gather all unique x, y pairs for a given elevation:
     xys = []
-    for i in df_bldg_pressures.index.to_list():
-        if df_bldg_pressures['Real Life Location'][i].z != bldg.hasGeometry['Height']:
-            xtap = df_bldg_pressures['Real Life Location'][i].x
-            ytap = df_bldg_pressures['Real Life Location'][i].y
+    for i in df_bldg_cps.index.to_list():
+        if df_bldg_cps['Real Life Location'][i].z != bldg.hasGeometry['Height']:
+            xtap = df_bldg_cps['Real Life Location'][i].x
+            ytap = df_bldg_cps['Real Life Location'][i].y
             if (xtap, ytap) in xys:
                 pass
             else:
@@ -1216,23 +1218,24 @@ def ptap_adjust(df_bldg_pressures, bldg):
                     pass
     # Update (x,y) for each pressure tap on the perimeter:
     # Find Real life location column:
-    for col in range(0, len(df_bldg_pressures.columns)):
-        if df_bldg_pressures.columns[col] == 'Real Life Location':
+    for col in range(0, len(df_bldg_cps.columns)):
+        if df_bldg_cps.columns[col] == 'Real Life Location':
             col_idx = col
             break
         else:
             pass
-    for p in df_bldg_pressures.index.to_list():
-        ptap_loc = df_bldg_pressures['Real Life Location'][p]
+    for p in df_bldg_cps.index.to_list():
+        ptap_loc = df_bldg_cps['Real Life Location'][p]
         # Find the index of this pressure tap's (x, y) pair:
         try:
             xy_idx = xys.index((ptap_loc.x, ptap_loc.y))
             new_pt = new_xys[xy_idx]
             new_ptap_loc = Point(new_pt.x, new_pt.y, ptap_loc.z)
-            df_bldg_pressures.iat[p, col_idx] = new_ptap_loc
+            df_bldg_cps.iat[p, col_idx] = new_ptap_loc
         except ValueError:  # Roof interior pressure taps
             pass
-    return df_bldg_pressures
+    return df_bldg_cps
+
 
 def create_zcoords(footprint, zcoord):
     # Input footprint polygon (either local or geodesic) and elevation:
@@ -1249,11 +1252,42 @@ def convert_to_tpu_wdir(wind_direction, bldg):
     # TPU wind direction is dependent on (1) real-life wind direction AND (2) building's orientation:
     rect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle  # local coords only for now
     xrect, yrect = rect.exterior.xy
-    # Find out the building's orientation:
-    xdist = xrect[2] - xrect[1]
-    ydist = yrect[2] - yrect[1]
-    theta = degrees(atan2(ydist, xdist))
-    bldg.hasOrientation = theta
+    # Figure out TPU direction of the building:
+    side_lines = {'lines': [], 'length': [], 'TPU direction': [], 'TPU line': [], 'real life direction': []}
+    # First inventory all lines of the rectangular building geometry:
+    max_length = 0  # Initialize dummy variable
+    for ind in range(0, len(xrect) - 1):
+        # Figure out if the line is dominantly in x or y:
+        if abs(xrect[ind] - xrect[ind + 1]) > abs(yrect[ind] - yrect[ind + 1]):
+            side_lines['real life direction'].append('x')
+        else:
+            side_lines['real life direction'].append('y')
+        new_line = LineString([(xrect[ind], yrect[ind]), (xrect[ind + 1], yrect[ind + 1])])
+        side_lines['lines'].append(new_line)
+        side_lines['length'].append(new_line.length)
+        # Update the maximum length if needed:
+        if new_line.length > max_length:
+            max_length = new_line.length
+        else:
+            pass
+    # With the line geometry and their lengths, can now find the TPU direction of each line:
+    for line in range(0, len(side_lines['lines'])):
+        # For each line, figure out if line is in the TPU x-direction (longer length):
+        if side_lines['lines'][line].length == max_length:
+            line_direction = 'x'
+        else:
+            line_direction = 'y'
+        # Record line directions:
+        side_lines['TPU direction'].append(line_direction)
+    if side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'y':
+        # Find out the building's orientation:
+        xdist = xrect[3] - xrect[2]
+        ydist = yrect[3] - yrect[2]
+        theta = degrees(atan2(ydist, xdist))
+    elif side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'x':
+        xdist = xrect[1] - xrect[0]
+        ydist = yrect[1] - yrect[0]
+        theta = degrees(atan2(ydist, xdist))
     # Find the tpu wind direction according to building orientation and IRL wind direction:
     tpu_wdir = wind_direction*-1 + 270 + -1*(theta)
     return tpu_wdir
