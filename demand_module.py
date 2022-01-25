@@ -411,6 +411,7 @@ for p in df.index:
         new_roof = Roof()
         new_roof.hasCover = df['Roof Cover'][p]
         new_roof.hasType = df['Roof Cover'][p]
+        new_roof.hasShape['flat'] = True
         new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
         new_bldg.hasStory[-1].update_elements()
         new_bldg.update_zones()
@@ -429,9 +430,9 @@ site.update_interfaces()
 site.update_elements()
 # Debugging tpu code: model building identification:
 wind_speed = 100
-wind_direction = 215
+wind_direction = 315
 for b in site.hasBuilding:
-    tpu_wdir = convert_to_tpu_wdir(wind_direction, b)
+    tpu_wdir = 45
     map_tpu_ptaps(b, tpu_wdir, wind_speed, high_value_flag=False)
 # Find building-specific debris vulnerability:
 #wind_direction = 360-45
