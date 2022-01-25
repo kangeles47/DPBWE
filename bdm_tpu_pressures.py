@@ -22,6 +22,25 @@ def map_tpu_ptaps(bldg, tpu_wdir, wind_speed, high_value_flag):
 
 
 def find_tpu_use_case(bldg, tpu_wdir, eave_length):
+    """
+    A function to identify the TPU use case for the given building.
+    Function also returns various parameters (e.g., aspect ratios) pertinent to transformation of model building to
+    full-scale geometries.
+
+    :param bldg: A Building object with (at minimum): building height, building footprint in cartesian coordinates,
+                roof geometry information (shape)
+    :param tpu_wdir: The wind direction, following TPU convention.
+    :param eave_length: The eave length. Enter 0 if none.
+    :return: match_flag: Boolean: True if the input building's geometry exactly matches the model building geometry
+    :return: num_surf: The number of surfaces corresponding to the model building geometry
+    :return: side_lines:
+    :return: model_file:
+    :return: hb_ratio:
+    :return: db_ratio:
+    :return: rect:
+    :return: surf_dict:
+    :return: ref_surf_dict:
+    """
     # This function determines the appropriate TPU use case for the given building.
     # Various tags are populated to identify the correct .mat file with TPU data
     # Given a building, determine its corresponding use case:
@@ -114,9 +133,11 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
             diff_hbs = model_hbs - hb
             closest_hb = min(abs(diff_hbs))
             hb_index = np.where(diff_hbs == closest_hb)
-            if not hb_index[0]:
+            try:
+                hb_ratio = model_hbs[hb_index[0]][0]
+            except IndexError:
                 hb_index = np.where(diff_hbs == closest_hb * -1)
-            hb_ratio = model_hbs[hb_index[0]][0]
+                hb_ratio = model_hbs[hb_index[0]][0]
             # Assign the appropriate model height
             height_model = model_hbs[hb_index[0]] * breadth_model
         # Populate the height tag needed to access the correct data file:
@@ -146,9 +167,11 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
                 diff_dbs = model_dbs - db
                 closest_db = min(abs(diff_dbs))
                 db_index = np.where(diff_dbs == closest_db)
-                if not db_index[0]:
+                try:
+                    db_ratio = model_dbs[db_index[0]][0]
+                except IndexError:
                     db_index = np.where(diff_dbs == closest_db * -1)
-                db_ratio = model_dbs[db_index[0]][0]
+                    db_ratio = model_dbs[db_index[0]][0]
                 # Assign the appropriate model height
                 depth_model = model_dbs[db_index[0]] * breadth_model
             # Populate the height tag needed to access the correct data file:
@@ -289,7 +312,7 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
                     # Plot the surfaces for the entire building:
                     ax.plot(np.array(bsurf_xs) / 3.281, np.array(bsurf_ys) / 3.281, np.array(bsurf_zs) / 3.281, linestyle='dashed', color='gray')
         # Plot the building geometry:
-        for poly in bldg.hasGeometry['3D Geometry'][key]:
+        for poly in bldg.hasGeometry['3D Geometry']['local']:
             x_bpoly, y_bpoly, z_bpoly = [], [], []
             for bpt in list(poly.exterior.coords):
                 x_bpoly.append(bpt[0])
