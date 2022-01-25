@@ -431,6 +431,8 @@ site.update_elements()
 # Debugging tpu code: model building identification:
 wind_speed = 100
 wind_direction = 315
+# tpu_wdir = 45
+# map_tpu_ptaps(test, tpu_wdir, wind_speed, high_value_flag=False)
 for b in site.hasBuilding:
     tpu_wdir = 45
     map_tpu_ptaps(b, tpu_wdir, wind_speed, high_value_flag=False)
