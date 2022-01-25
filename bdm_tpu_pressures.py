@@ -227,6 +227,7 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
 def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict, rect_surf_dict):
     # Convert TPU model building geometries into full-scale:
     # Create the TPU footprint geometry from the real-life building's equivalent rectangle:
+    # 1) Quantify the model building's full scale breadth, depth, and height:
     if num_surf == 5:
         if match_flag:
             # The real-life building's geometry can be used directly:
@@ -238,29 +239,28 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
             bfull = min(side_lines['length'])
             hfull = hb_ratio * bfull
             dfull = db_ratio * bfull
-    # Set up placeholder for footprint polygon:
+    # 2) Create full-scale building footprint for model building using line geometries from reference building's
+    # rectangular footprint:
     tpu_poly_pts = []
     for line in range(0, len(side_lines['lines'])):
         if side_lines['TPU direction'][line] == 'y':
-            # y-direction in TPU corresponds to building breadth
-            # Leave alone since breadth is fixed to real-life building geometry
-            pass
+            pass  # breadth is fixed
         else:
-            # x-direction in TPU corresponds to building depth:
-            # Create two new lines using this line's centroid:
-            ref_pt = side_lines['lines'][line].centroid
+            # x-direction in TPU = building depth:
+            ref_pt = side_lines['lines'][line].centroid  # line centroid
             line_pts = list(side_lines['lines'][line].coords)
+            # Create two new lines to project full-scale depth:
             new_line1 = LineString([ref_pt, Point(line_pts[0])])
             new_line2 = LineString([ref_pt, Point(line_pts[1])])
             # Distribute half of dfull to each line segment:
             new_point1 = new_line1.interpolate(dfull / 2)
             new_point2 = new_line2.interpolate(dfull / 2)
-            # Combine the two new points into one LineString:
-            tpu_line = LineString([new_point1, new_point2])
-            # Save points for footprint polygon:
+            # Create new line corresponding to full scale depth:
+            #tpu_line = LineString([new_point1, new_point2])
+            # Save points for model building's full-scale footprint:
             tpu_poly_pts.append((new_point1.x, new_point1.y))
             tpu_poly_pts.append((new_point2.x, new_point2.y))
-    # Convert footprint points into 3D:
+    # 3) Create model building's full-scale geometry (surfaces):
     new_zpts = []  # Placeholder for x, y, z points
     tpu_polys = []  # Placeholder for surface polygons
     if num_surf == 5:
@@ -348,28 +348,7 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
             pass
     else:
         pass
-    # Plotting: Footprints
-    fig_ex = plt.figure()
-    ax_ex = plt.axes()
-    rfx, rfy = roof_surf.exterior.xy
-    #ax_ex.plot(np.array(rfx)/3.281, np.array(rfy)/3.281, linestyle='dashed', color='gray')
-    xrect, yrect = rect.exterior.xy
-    #ax_ex.plot(np.array(xrect) / 3.281, np.array(yrect) / 3.281, linestyle='dashed', color='gray')
-    # Create general surface geometries:
-    xs = [dfull/2, dfull/2, -dfull/2, -dfull/2, dfull/2]
-    ys = [-bfull/2, bfull/2, bfull/2, -bfull/2, -bfull/2]
-    ax_ex.plot(np.array(xs)/3.281, np.array(ys)/3.281, linestyle = 'dashed', color='gray')
-    ax_ex.plot(0, 0, 'o', color='gray')
-    xbldg, ybldg = bldg.hasGeometry['Footprint']['local'].exterior.xy
-    ax_ex.plot(np.array(xbldg) / 3.281, np.array(ybldg) / 3.281, 'k')
-    ax_ex.plot(bldg.hasGeometry['Footprint']['local'].centroid.x/3.281, bldg.hasGeometry['Footprint']['local'].centroid.y/3.281, 'ko')
-    ax_ex.xaxis.set_tick_params(labelsize=20)
-    ax_ex.yaxis.set_tick_params(labelsize=20)
-    ax_ex.set_xlabel('x [m]', fontsize=20)
-    ax_ex.set_ylabel('y [m]', fontsize=20)
-    plt.show()
-    # Next step: Determine the surface numberings:
-    # First need to establish which polygons correspond to specific TPU surface numbers:
+    # 4 ) Determine surface numberings following TPU convention:
     if side_lines['TPU direction'][1] == 'x':
         # Polygon order:
         # When TPU and global axes are both running in general E-W direction:
@@ -432,7 +411,7 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
         #ax2.plot(poly_xs, poly_ys, poly_zs, color='0.50', linestyle=(0, (1, 1)), label='Surface' + str(i))
     ax2.legend(loc='best')
     # Plot the building 3D Geometry:
-    for poly in bldg.hasGeometry['3D Geometry'][key]:
+    for poly in bldg.hasGeometry['3D Geometry']['local']:
         x_bpoly, y_bpoly, z_bpoly = [], [], []
         for bpt in list(poly.exterior.coords):
             x_bpoly.append(bpt[0])
