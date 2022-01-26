@@ -433,7 +433,8 @@ wind_speed = 100
 wind_direction = 315
 for b in site.hasBuilding:
     tpu_wdir = convert_to_tpu_wdir(wind_direction, b)
-    map_tpu_ptaps(b, tpu_wdir, wind_speed, high_value_flag=False)
+    df_bldg_cps = map_tpu_ptaps(b, tpu_wdir, high_value_flag=False)
+    a = 0
 # Find building-specific debris vulnerability:
 #wind_direction = 360-45
 #wind_speed_arr = np.arange(70, 200, 5)  # Need to figure out what wind speed this is

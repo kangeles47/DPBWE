@@ -9,7 +9,7 @@ import pandas as pd
 from code_pressures import PressureCalc
 
 
-def map_tpu_ptaps(bldg, tpu_wdir, wind_speed, high_value_flag):
+def map_tpu_ptaps(bldg, tpu_wdir, high_value_flag):
     # Create new key-value pairs in the data model:
     bldg.hasGeometry['TPU_surfaces'] = {'local': []}
     # Step 1: Determine the building's TPU use case:
@@ -17,7 +17,7 @@ def map_tpu_ptaps(bldg, tpu_wdir, wind_speed, high_value_flag):
     h_bldg = bldg.hasGeometry['Height']
     match_flag, num_surf, side_lines, model_file, hb_ratio, db_ratio, rect, surf_dict, rect_surf_dict = find_tpu_use_case(bldg, tpu_wdir, eave_length)
     bfull, hfull, dfull, rect_surf_dict = get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict, rect_surf_dict)
-    df_simple_map = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, match_flag, h_bldg, rect_surf_dict, bldg, high_value_flag)
+    df_simple_map = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, match_flag, h_bldg, rect_surf_dict, bldg, high_value_flag)
     return df_simple_map
 
 
@@ -453,7 +453,7 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
     return bfull, hfull, dfull, rect_surf_dict
 
 
-def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, wind_speed, match_flag, h_bldg, rect_surf_dict, bldg, high_value_flag):
+def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, match_flag, h_bldg, rect_surf_dict, bldg, high_value_flag):
     # 1) Read in pressure data file and add to a DataFrame:
     tpu_file = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/TPU/' + model_file
     tpu_data = loadmat(tpu_file)
