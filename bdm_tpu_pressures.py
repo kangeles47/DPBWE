@@ -723,7 +723,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                         rect = bldg.hasGeometry['Footprint'][
                             'local'].minimum_rotated_rectangle  # local coords only for now
                         xrect, yrect = rect.exterior.xy
-                        if side_lines['real life direction'] == 'y':
+                        if side_lines['real life direction'][1] == 'y':
                             # Find out the building's orientation:
                             xdist = xrect[3] - xrect[2]
                             ydist = yrect[3] - yrect[2]
@@ -885,13 +885,17 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                         else:
                             idx = np.where(y_unique == current_pt.y)[0] - 1  # Exception: Surf 2 and 4 || to N-S direction
                         if 90 < tpu_wdir <= 270 and snum == 5:
-                            # Shift all points to the corner of the wisurface:
+                            # Shift all points to the corner of the windward surface:
                             df_simple_map.iat[pt, rl_loc] = Point(current_pt.x - dist * cos(theta),
                                                                      current_pt.y - dist * sin(theta), current_pt.z)
                         else:
                             # Shift all points to the corner of the windward surface:
-                            df_simple_map.iat[pt, rl_loc] = Point(current_pt.x + dist * cos(theta),
-                                                                     current_pt.y + dist * sin(theta), current_pt.z)
+                            if side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'y':
+                                df_simple_map.iat[pt, rl_loc] = Point(current_pt.x + dist * cos(theta),
+                                                                         current_pt.y + dist * sin(theta), current_pt.z)
+                            elif side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'x':
+                                df_simple_map.iat[pt, rl_loc] = Point(current_pt.x - dist * cos(theta),
+                                                                      current_pt.y - dist * sin(theta), current_pt.z)
                         if snum != 5:
                             if current_pt.x == xmodel[min_idx] and current_pt.y == ymodel[min_idx]:
                                 pass
@@ -914,7 +918,12 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                                 # Note: Point lines are parallel to surface 2 and 4
                                 # Use origin pts and multiplier to define new coordinate pairs:
                                 if tpu_wdir <= 90:
-                                    df_simple_map.iat[pt_idx, rl_loc] = Point(origin_pt.x - (new_space * multiplier * cos(theta)), origin_pt.y - (new_space * multiplier * sin(theta)), origin_pt.z)
+                                    if side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'y':
+                                        df_simple_map.iat[pt_idx, rl_loc] = Point(origin_pt.x - (new_space * multiplier * cos(theta)), origin_pt.y - (new_space * multiplier * sin(theta)), origin_pt.z)
+                                    elif side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'x':
+                                        df_simple_map.iat[pt_idx, rl_loc] = Point(
+                                            origin_pt.x + (new_space * multiplier * cos(theta)),
+                                            origin_pt.y + (new_space * multiplier * sin(theta)), origin_pt.z)
                                 elif 90 < tpu_wdir <= 270:
                                     df_simple_map.iat[pt_idx, rl_loc] = Point(
                                         origin_pt.x + (new_space * multiplier * cos(theta)),
