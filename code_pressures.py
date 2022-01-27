@@ -35,7 +35,7 @@ class PressureCalc:
         # Determine components and cladding pressure for building facade components:
         is_cc = True
         # All components and cladding calculations require qh:
-        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag)
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean)
         # Get GCps and calculate the pressure for each zone:
         wpos = [True, True, False, False]
         wzone = [4, 5, 4, 5]
@@ -44,7 +44,7 @@ class PressureCalc:
             # Find the GCp
             gcp = PressureCalc.get_wcc_gcp(self, area_eff, wpos[ind], wzone[ind], edition)
             # Reduce GCp for walls if roof pitch is <= 10 degrees:
-            if pitch <= 10:  # and not tpu_flag
+            if pitch <= 10:
                 gcp = 0.9 * gcp
             else:
                 pass
@@ -83,7 +83,7 @@ class PressureCalc:
         # Determine components and cladding pressure for building roof components:
         is_cc = True
         # All components and cladding calculations require qh:
-        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag)
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean)
         # Get GCps and calculate the pressure for each zone:
         if h_bldg > 60:
             if edition == 'ASCE 7-88' or edition == 'ASCE 7-93':
@@ -135,7 +135,7 @@ class PressureCalc:
         # Determine the velocity pressure:
         is_cc = False
         # Roof uplift pressures require qh:
-        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag)
+        qh, alpha = PressureCalc.qz_calc(self, h_bldg, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean)
         print(qh)
         # Get the gust effect or gust response factor:
         g = PressureCalc.get_g(self, edition, exposure, is_cc, alpha, h_bldg)
@@ -314,7 +314,7 @@ class PressureCalc:
 
         return p
 
-    def qz_calc(self, z, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean, tpu_flag):
+    def qz_calc(self, z, wind_speed, exposure, edition, is_cc, cat, hpr, h_ocean):
         """
         Orchestrates the velocity pressure calculation.
 
