@@ -294,23 +294,13 @@ def augmented_elements_wall(bldg, num_wall_elems, story_wall_elev, plot_flag):
         plt.show()
 
 
-def get_cc_min_capacity(bldg, exposure, design_wind_speed, roof_flag, wall_flag):
+def get_cc_min_capacity(bldg, exposure, roof_flag, wall_flag):
     # 1) find C&C zones:
     asce7 = ASCE7(bldg, loading_flag=True)
     a = asce7.get_cc_zone_width(bldg)
     zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
-    if len(bldg.hasElement['Roof'][0].hasSubElement['cover']) == 0:
-        # Create sub-elements for roof structure:
-        for poly in roof_polys:
-            new_subelement = Roof()
-            new_subelement.hasGeometry['2D Geometry']['local'] = poly
-            new_subelement.hasCover = bldg.adjacentElement['Roof'][0].hasCover
-            new_subelement.hasType = bldg.adjacentElement['Roof'][0].hasType
-            new_subelement.hasPitch = bldg.adjacentElement['Roof'][0].hasPitch
-            bldg.adjacentElement['Roof'][0].hasSubElement['cover'].append(new_subelement)
-    else:
-        pass
     # 2) Calculate zone pressures:
+    design_wind_speed = asce7.get_code_wind_speed(bldg)
     pressure_calc = PressureCalc()
     edition = asce7.hasEdition
     h_bldg = bldg.hasGeometry['Height']
@@ -329,47 +319,40 @@ def get_cc_min_capacity(bldg, exposure, design_wind_speed, roof_flag, wall_flag)
         area_eff = 10
         rcc = pressure_calc.rcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean,
                                      encl_class, tpu_flag)
-        
-    return zone_pts, roof_polys, rcc, wcc
-
-
-def map_rcc(bldg, rcc, roof_polys):
-    # Assign zone pressures to each Roof C&C Element:
-    elem = bldg.hasElement['Roof'][0]
-    for subelem in elem:
-        if len(roof_polys.keys()) == 3:
-            # Three roof zones to check:
-            elem_coords = list(elem.hasGeometry['2D Geometry']['local'].exterior.coords)
-            # Check if element is in Zone 1:
-            if elem.hasGeometry['2D Geometry']['local'].within(roof_polys['Zone 1'][0]) or elem_coords == list(
-                    roof_polys['Zone 1'][0].exterior.coords):
-                if rcc[0:2] == rcc[3:5]:  # ASCE 7-88/93: no positive roof pressure cases
-                    elem.hasCapacity['wind pressure']['total'] = {'negative': rcc[3]}
-                else:
-                    elem.hasCapacity['wind pressure']['total'] = {'positive': rcc[0], 'negative': rcc[3]}
-            else:
-                # Check if element is in Zone 2:
-                zone2_flag = False
-                for zone2poly in roof_polys['Zone 2']:
-                    if elem.hasGeometry['2D Geometry']['local'].within(zone2poly) or elem_coords == list(
-                            zone2poly.exterior.coords):
-                        if rcc[0:2] == rcc[3:5]:  # ASCE 7-88/93: no positive roof pressure cases
-                            elem.hasCapacity['wind pressure']['total'] = {'negative': rcc[4]}
-                        else:
-                            elem.hasCapacity['wind pressure']['total'] = {'positive': rcc[1], 'negative': rcc[4]}
-                        zone2_flag = True
+        # Go ahead and map to roof C&C pressures to new set of roof subelements:
+        if len(bldg.hasElement['Roof'][0].hasSubElement['cover']) == 0:
+            # Create sub-elements for roof structure:
+            for key in roof_polys:
+                for poly in roof_polys[key]:
+                    new_subelement = Roof()
+                    new_subelement.hasGeometry['2D Geometry']['local'] = poly
+                    new_subelement.hasCover = bldg.adjacentElement['Roof'][0].hasCover
+                    new_subelement.hasType = bldg.adjacentElement['Roof'][0].hasType
+                    new_subelement.hasPitch = bldg.adjacentElement['Roof'][0].hasPitch
+                    if asce7.hasEdition == 'ASCE 7-88' or asce7.hasEdition == 93:
+                        if key == 'Zone 1':
+                            new_subelement.hasCapacity['wind pressure']['external']['negative'] = rcc[0]
+                        elif key == 'Zone 2':
+                            new_subelement.hasCapacity['wind pressure']['external']['negative'] = rcc[1]
+                        elif key == 'Zone 3':
+                            new_subelement.hasCapacity['wind pressure']['external']['negative'] = rcc[2]
+                        # Add minimum positive wind pressure for C&C:
+                        new_subelement.hasCapacity['wind pressure']['external']['positive'] = 10
                     else:
-                        pass
-                if zone2_flag:
-                    pass
-                else:
-                    # The element is in Zone 3:
-                    if rcc[0:2] == rcc[3:5]:  # ASCE 7-88/93: no positive roof pressure cases
-                        elem.hasCapacity['wind pressure']['total'] = {'negative': rcc[5]}
-                    else:
-                        elem.hasCapacity['wind pressure']['total'] = {'positive': rcc[2], 'negative': rcc[5]}
+                        if key == 'Zone 1':
+                            new_subelement.hasCapacity['wind pressure']['external']['positive'] = rcc[0]
+                            new_subelement.hasCapacity['wind pressure']['external']['negative'] = rcc[3]
+                        elif key == 'Zone 2':
+                            new_subelement.hasCapacity['wind pressure']['external']['positive'] = rcc[1]
+                            new_subelement.hasCapacity['wind pressure']['external']['negative'] = rcc[4]
+                        elif key == 'Zone 3':
+                            new_subelement.hasCapacity['wind pressure']['external']['positive'] = rcc[2]
+                            new_subelement.hasCapacity['wind pressure']['external']['negative'] = rcc[5]
+                    bldg.adjacentElement['Roof'][0].hasSubElement['cover'].append(new_subelement)
         else:
             pass
+        
+    return zone_pts, roof_polys, rcc, wcc
 
 # Asset Description
 # Parcel Models
@@ -383,6 +366,8 @@ for story in test.hasStory:
     story_wall_elev.append([story.hasElevation[0], story.hasElevation[0]+wall_height, story.hasElevation[1]])
 # Create augmented elements:
 augmented_elements_wall(test, num_wall_elems, story_wall_elev, plot_flag=False)
+for wall in test.hasElement['Walls']:
+    wall.hasType = 'GLASS THRM; COMMON BRK'
 # Update the Building's Elements:
 test.update_elements()
 # Add roof information:
@@ -393,11 +378,10 @@ test.hasElement['Roof'][0].hasType = 'BUILT-UP'
 
 # Code-informed capacities:
 # 1) Find zone locations and calculate zone pressures (minimum capacities):
-design_wind_speed = 100
 exposure = 'B'
 roof_flag = True
 wall_flag = True
-zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(test, exposure, design_wind_speed, roof_flag, wall_flag)
+zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(test, exposure, roof_flag, wall_flag)
 # Try populate_code_capacities
 # 2) Map pressures to elements:
 # Figure to show zones and component mapping:
@@ -405,7 +389,6 @@ fig = plt.figure()
 ax = plt.axes(projection='3d')
 # Wall C&C first:
 for wall in test.hasElement['Walls']:
-    wall.hasType = 'GLASS THRM; COMMON BRK'
     for row in range(0, len(zone_pts.index)):
         xl, yl = LineString([zone_pts['LinePoint1'][row], zone_pts['LinePoint2'][row]]).xy
         zone_box = Polygon([(max(xl), max(yl)), (min(xl), max(yl)), (min(xl), min(yl)), (max(xl), min(yl))])
@@ -431,8 +414,6 @@ for wall in test.hasElement['Walls']:
                 ax.plot(np.array(xw)/3.281, np.array(yw)/3.281, np.array(zw)/3.281, 'r')
         else:
             pass
-# Roof C&C next:
-map_rcc(test, rcc, zone_pts, roof_polys)
 # Uncomment to create planar overview of wall capacity mapping:
 # fig, ax = plt.subplots()
 # for wall in test.hasStory[0].adjacentElement['Walls']:
@@ -513,10 +494,16 @@ crs = 'reference cartesian'
 wind_direction = 315
 michael_wind_speed = 123.342  # 126? data model paper: 123.342
 site_source = get_source_bldgs(test, site, wind_direction, michael_wind_speed, crs, length_unit)
-for b in site.hasBuilding:
+for b in site_source.hasBuilding:
+    # Populate C&C minimum capacities (roof only):
+    exposure = 'B'
+    roof_flag = True
+    wall_flag = False
+    zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(b, exposure, roof_flag, wall_flag)
+    # Get DAD pressure coefficients:
     tpu_wdir = convert_to_tpu_wdir(wind_direction, b)
     df_bldg_cps = map_tpu_ptaps(b, tpu_wdir, high_value_flag=False)
 # # Populate the building's Hurricane Michael loading demand:
 # unit = 'english'
 # # #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
-generate_pressure_loading(test, michael_wind_speed, tpu_wind_direction, tpu_flag=True, csv_flag=False)
+#generate_pressure_loading(test, michael_wind_speed, tpu_wind_direction, tpu_flag=True, csv_flag=False)
