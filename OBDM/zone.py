@@ -353,9 +353,7 @@ class Building(Zone):
         self.hasImportanceFactor = None
         edp_dict = {'peak interstory drift ratio': None, 'peak absolute velocity': None,
                     'peak absolute acceleration': None, 'wind speed': None,
-                    'wind pressure': {'external': {'surfaces': [], 'values': []},
-                                      'internal': {'surfaces': [], 'values': []},
-                                      'total': {'surfaces': [], 'values': []}}, 'debris impact': None,
+                    'wind pressure': {'external': None, 'internal': None, 'total': None}, 'debris impact': None,
                     'axial force': None, 'shear force': None, 'bending moment': None, 'peak flexural stress': None,
                     'peak shear stress': None, 'peak flexural strain': None, 'curvature': None, 'rotation': None,
                     'elongation': None}
