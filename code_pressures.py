@@ -348,18 +348,12 @@ class PressureCalc:
             qz = 0.00256 * kz * kzt * imp * wind_speed ** 2
         elif edition == 'ASCE 7-98' or edition == 'ASCE 7-02' or edition == 'ASCE 7-05':
             kzt = 1.0
-            if tpu_flag:
-                kd = 1.0
-            else:
-                kd = 0.85
+            kd = 0.85
             imp = PressureCalc.get_i(self, wind_speed, hpr, h_ocean, cat, edition)
             qz = 0.00256 * kz * kzt * kd * imp * wind_speed ** 2
         elif edition == 'ASCE 7-10' or edition == 'ASCE 7-16':
             kzt = 1.0
-            if tpu_flag:
-                kd = 1.0
-            else:
-                kd = 0.85
+            kd = 0.85
             qz = 0.00256 * kz * kzt * kd * wind_speed ** 2
         return qz, alpha
 
