@@ -1183,6 +1183,8 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             ax5.yaxis.set_tick_params(labelsize=14)
             ax5.zaxis.set_tick_params(labelsize=14)
             plt.show()
+        # Final step: Get tap tributary areas:
+        get_tap_trib_areas(bldg, df_bldg_cps, roof_flag=True, facade_flag=True)
     return df_bldg_cps
 
 
@@ -1419,6 +1421,16 @@ def map_ptaps_to_components(bldg, df_facade):
     else:
         for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
             subelem.hasDemand['wind pressure']['external'] = df_roof.loc[subelem.hasDemand['wind pressure']['external']]
+    # End of voronoi mesh code:
+    # Mapping to specific elements:
+    for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
+        try:
+            xpoly, ypoly = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[idx][
+                'Tap Polygon'].exterior.xy
+            plt.plot(xpoly, ypoly, 'r')
+        except AttributeError:
+            bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'] = \
+                bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].drop(idx)
 
 
 def get_tap_trib_areas(bldg, df_bldg_cps, roof_flag, facade_flag):
@@ -1432,7 +1444,7 @@ def get_tap_trib_areas(bldg, df_bldg_cps, roof_flag, facade_flag):
     :param roof_flag: Boolean, True if trib areas for roof object is the only one needed.
     """
     # 1) Save Cps to Building object if necessary:
-    if bldg.hasDemand['wind pressure']['external'] != df_bldg_cps:
+    if bldg.hasDemand['wind pressure']['external'] is None:
         bldg.hasDemand['wind pressure']['external'] = df_bldg_cps
     else:
         pass
@@ -1442,28 +1454,19 @@ def get_tap_trib_areas(bldg, df_bldg_cps, roof_flag, facade_flag):
         roof_indices = df_bldg_cps.loc[df_bldg_cps['Surface Number'] == 5].index
     elif max(df_bldg_cps['Surface Number']) == 6:
         pass
-    # Get additional roof-level pressure taps:
-    df_facade = df_bldg_cps.drop(roof_indices)
     if roof_flag:
-        r_indices = []
-        for row in df_facade.index:
-            ptap_z = df_facade.iloc[row]['Real Life Location'].z
-            if round(ptap_z, 4) == round(bldg.hasGeometry['Height'], 4) and df_facade.iloc[row]['Surface Number'] is None:
-                r_indices.append(row)
-            else:
-                pass
-        for r in roof_indices:
-            r_indices.append(r)
-        df_roof = df_bldg_cps.iloc[r_indices]
-        # Assign the entire roof DataFrame to main roof element:
-        bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'] = df_roof
+        df_roof = df_bldg_cps.iloc[roof_indices]
         # Use voronoi diagram to get 2D pressure tap tributary areas:
-        get_roof_2d_mesh(bldg)
+        df_roof = get_roof_2d_mesh(bldg, df_roof)
     else:
-        pass
+        df_roof = None
     # 3) Find tributary areas: Facade
     if facade_flag:
+        df_facade = df_bldg_cps.drop(roof_indices)
         df_facade = get_facade_mesh(bldg, df_facade)
+    else:
+        df_facade = None
+    return df_roof, df_facade
 
 
 def get_facade_mesh(bldg, df_facade):
@@ -1474,7 +1477,6 @@ def get_facade_mesh(bldg, df_facade):
     for idx in df_facade.index:
         ptap_loc = df_facade['Real Life Location'][idx]
         zlist.append(round(ptap_loc.z, 6))
-        #zlist.append(round(ptap_loc.z, 6))
         if ptap_loc.z == 0:
             perim_points.append(ptap_loc)
             xp.append(ptap_loc.x)
@@ -1571,24 +1573,13 @@ def get_facade_mesh(bldg, df_facade):
     return df_facade
 
 
-def get_roof_2d_mesh(bldg):
+def get_roof_2d_mesh(bldg, df_roof):
     # Get the voronoi discretization of pressure tap areas - element specific:
     # Start with roof elements and their pressure taps:
     coord_list = []
-    for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
-        ptap_loc = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[idx]['Real Life Location']
+    for idx in df_roof.index:
+        ptap_loc = df_roof.loc[idx]['Real Life Location']
         coord_list.append((ptap_loc.x, ptap_loc.y))
-    # if len(bldg.adjacentElement['Roof'][0].hasSubElement['cover']) == 0:
-    #     # Find polygons for the entire roof surface:
-    #     for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
-    #         ptap_loc = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[idx]['Real Life Location']
-    #         coord_list.append((ptap_loc.x, ptap_loc.y))
-    # else:
-    #     for elem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
-    #         # Use pressure tap locations as input coordinate list:
-    #         for idx in elem.hasDemand['wind pressure']['external'].index:
-    #             ptap_loc = elem.hasDemand['wind pressure']['external'].loc[idx]['Real Life Location']
-    #             coord_list.append((ptap_loc.x, ptap_loc.y))
     # Buffer out the roof geometry to ensure perimeter points get a closed geometry:
     bpoly = bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'].buffer(distance=20)
     for c in bpoly.exterior.coords:
@@ -1620,8 +1611,8 @@ def get_roof_2d_mesh(bldg):
     # Loop through each pressure tap and add its corresponding polygon:
     tap_poly_list = []
     no_poly_idx = []
-    for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
-        ptap_loc = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[idx]['Real Life Location']
+    for idx in df_roof.index:
+        ptap_loc = df_roof.loc[idx]['Real Life Location']
         poly_flag = False
         for poly in poly_list:
             if isinstance(poly, Polygon):
@@ -1633,7 +1624,7 @@ def get_roof_2d_mesh(bldg):
             # Save the polygon:
             tap_poly_list.append(None)
             no_poly_idx.append(idx)
-    bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external']['Tap Polygon'] = tap_poly_list
+    df_roof.insert(len(df_roof.columns), 'Tap Polygon', tap_poly_list, False)
     # Find which polygons were not mapped:
     no_map_poly = []
     for poly in poly_list:
@@ -1643,20 +1634,14 @@ def get_roof_2d_mesh(bldg):
             else:
                 no_map_poly.append(poly)
     # Buffer points without polygons to find corresponding geometry:
-    df_sub = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[no_poly_idx]
+    df_sub = df_roof.loc[no_poly_idx]
     for idx in df_sub.index:
         ptap_loc = df_sub.loc[idx]['Real Life Location']
         bpt = Point(ptap_loc.x, ptap_loc.y).buffer(distance=3)
         for no_map in no_map_poly:
             if bpt.intersects(no_map):
-                bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].at[idx, 'Tap Polygon'] = no_map
+                df_roof.at[idx, 'Tap Polygon'] = no_map
                 break
         else:
             pass
-    for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
-        try:
-            xpoly, ypoly = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[idx]['Tap Polygon'].exterior.xy
-            plt.plot(xpoly, ypoly, 'r')
-        except AttributeError:
-            bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'] = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].drop(idx)
-    plt.show()
+    return df_roof
