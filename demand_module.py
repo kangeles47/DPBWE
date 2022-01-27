@@ -10,7 +10,7 @@ from geopy import distance
 from math import sqrt, sin, atan2, degrees, pi
 import numpy as np
 from parcel import Parcel
-from bldg_code import ASCE7
+from bldg_code import ASCE7, FBC
 from OBDM.zone import Site, Building
 from OBDM.element import Roof, Floor, Wall, Ceiling
 from code_pressures import PressureCalc
@@ -315,6 +315,8 @@ def get_cc_min_capacity(bldg, exposure, roof_flag, wall_flag):
         area_eff = wall_height * wall_height / 3
         wcc = pressure_calc.wcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean,
                                      encl_class, tpu_flag)
+    else:
+        wcc = None
     if roof_flag:
         area_eff = 10
         rcc = pressure_calc.rcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean,
@@ -351,6 +353,8 @@ def get_cc_min_capacity(bldg, exposure, roof_flag, wall_flag):
                     bldg.adjacentElement['Roof'][0].hasSubElement['cover'].append(new_subelement)
         else:
             pass
+    else:
+        rcc = None
         
     return zone_pts, roof_polys, rcc, wcc
 
@@ -445,6 +449,10 @@ for p in df.index:
         new_roof.hasCover = df['Roof Cover'][p]
         new_roof.hasType = df['Roof Cover'][p]
         new_roof.hasShape['flat'] = True
+        if df['Roof Permit Year'][p] is not 'NONE':
+            new_roof.hasYearBuilt = int(df['Roof Permit Year'][p])
+        else:
+            new_roof.hasYearBuilt = int(df['Year Built'][p])
         new_bldg.hasStory[-1].adjacentElement['Roof'] = [new_roof]
         new_bldg.hasStory[-1].update_elements()
         new_bldg.update_zones()
@@ -462,13 +470,11 @@ site.update_zones()
 site.update_interfaces()
 site.update_elements()
 
-# Find building-specific debris vulnerability:
-#wind_direction = 360-45
-#wind_speed_arr = np.arange(70, 200, 5)  # Need to figure out what wind speed this is
 # Grab all the debris types in this site:
 length_unit = 'ft'
 get_site_debris(site, length_unit)
 # Step 3: Calculate the trajectory of each debris type:
+#wind_speed_arr = np.arange(70, 200, 5)
 # traj_dict = {'wind speed': [], 'debris name': [], 'alongwind_mean': [], 'alongwind_std_dev': [],
 #              'acrosswind_mean': [], 'acrosswind_std_dev': []}
 # for speed in wind_speed_arr:
@@ -495,10 +501,19 @@ wind_direction = 315
 michael_wind_speed = 123.342  # 126? data model paper: 123.342
 site_source = get_source_bldgs(test, site, wind_direction, michael_wind_speed, crs, length_unit)
 for b in site_source.hasBuilding:
-    # Populate C&C minimum capacities (roof only):
+    # First add missing data --> roof pitch:
+    code_informed = FBC(b, loading_flag=False)
+    code_informed.roof_attributes(code_informed.hasEdition, b)
+    # These buildings will be analyzed as simple models so populate simple footprint if needed:
+    b.hasGeometry['Footprint']['local'] = b.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
+    # Populate C&C minimum capacities (roof only) -->   NOTE: YEAR BUILT IS 1989 WOULD HAVE TO CODE UP GCP USE CASE, MAYBE SWITCH TO 1995
     exposure = 'B'
     roof_flag = True
     wall_flag = False
+    if b.hasYearBuilt < b.hasElement['Roof'][0].hasYearBuilt:
+        b.hasYearBuilt = b.hasElement['Roof'][0].hasYearBuilt
+    else:
+        pass
     zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(b, exposure, roof_flag, wall_flag)
     # Get DAD pressure coefficients:
     tpu_wdir = convert_to_tpu_wdir(wind_direction, b)
