@@ -418,6 +418,11 @@ for wall in test.hasElement['Walls']:
                 ax.plot(np.array(xw)/3.281, np.array(yw)/3.281, np.array(zw)/3.281, 'r')
         else:
             pass
+# Get wind pressure coefficients (loading):
+wind_direction = 315
+# Get DAD pressure coefficients:
+tpu_wdir = convert_to_tpu_wdir(wind_direction, test)
+df_bldg_cps = map_tpu_ptaps(test, tpu_wdir, high_value_flag=True)
 # Uncomment to create planar overview of wall capacity mapping:
 # fig, ax = plt.subplots()
 # for wall in test.hasStory[0].adjacentElement['Walls']:
