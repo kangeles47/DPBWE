@@ -1070,31 +1070,32 @@ class ASCE7(BldgCode):
         # Find the parcel's basic or ultimate wind speed based on its location and year of construction:
         if self.hasEdition == 'ASCE 7-88' or self.hasEdition == 'ASCE 7-93':
             if bldg.hasLocation['State'] == 'FL':
-                if bldg.hasLocation['County'] == 'Bay':
+                if bldg.hasLocation['County'].upper() == 'BAY':
                     code_wind_speed = 100  # [mph], fastest mile, basic wind speed
                 else:
                     pass
         elif self.hasEdition == 'ASCE 7-95' or self.hasEdition == 'ASCE 7-98' or self.hasEdition == 'ASCE 7-02' or self.hasEdition == 'ASCE 7-05':
             if bldg.hasLocation['State'] == 'FL':
-                if bldg.hasLocation['County'] == 'Bay':
+                if bldg.hasLocation['County'].upper() == 'BAY':
                     code_wind_speed = 130  # [mph], 3-s gust, referred to as nominal in 7-98
                 else:
                     pass
         elif self.hasEdition == 'ASCE 7-10' or self.hasEdition == 'ASCE 7-16':
             cat = self.get_asce7_cat(bldg.hasOccupancy, bldg.isComm)
             if bldg.hasLocation['State'] == 'FL':
-                if bldg.hasLocation['County'] == 'Bay':
-                    if cat == 1:
-                        code_wind_speed = 125  # [mph], 3-s gust
-                    elif cat == 2:
-                        code_wind_speed = 136
-                    elif cat == 3:
-                        code_wind_speed = 146
-                    else:
-                        if self.hasEdition == 'ASCE 7-10':
-                            code_wind_speed = 146
+                if bldg.hasLocation['County'].upper() == 'BAY':
+                    if bldg.hasLocation['City'].upper() == 'PANAMA CITY':
+                        if cat == 1:
+                            code_wind_speed = 123  # [mph], 3-s gust
+                        elif cat == 2:
+                            code_wind_speed = 134
+                        elif cat == 3:
+                            code_wind_speed = 143
                         else:
-                            code_wind_speed = 149
+                            if self.hasEdition == 'ASCE 7-10':
+                                code_wind_speed = 143
+                            else:
+                                code_wind_speed = 147
                 else:
                     pass
         return code_wind_speed
