@@ -149,7 +149,7 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
             try:
                 hb_ratio = model_hbs[hb_index[0]]
             except IndexError:
-                hb_index = np.where(diff_hbs == closest_hb * -1)
+                hb_index = np.where(diff_hbs == closest_hb * -1)[0]
                 hb_ratio = model_hbs[hb_index[0]]
             # Assign the appropriate model height
             height_model = model_hbs[hb_index[0]] * breadth_model
@@ -183,7 +183,7 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
                 try:
                     db_ratio = model_dbs[db_index[0]]
                 except IndexError:
-                    db_index = np.where(diff_dbs == closest_db * -1)
+                    db_index = np.where(diff_dbs == closest_db * -1)[0]
                     db_ratio = model_dbs[db_index[0]]
                 # Assign the appropriate model height
                 depth_model = model_dbs[db_index[0]] * breadth_model
@@ -1328,86 +1328,92 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull,
     # Set up placeholders to save contour plot coefficients:
     contour_values = {'x': [], 'y': [], 'Surface Number': [], 'Mean Cp': []}
     # Step 4a: To create Cp values for entire surface, need to first define points at surface boundaries and add data
-    for surf in surf_dict:
-        # Grab max and min values for x, y, respectively (pressure tap locations)
-        min_x = min(df['x'])
-        max_x = max(df['x'])
-        min_y = min(df['y'])
-        max_y = max(df['y'])
-        # Need the indices of our four extreme points in original data to extract their Cp values
-        # Idea here: simply extend Cp values to the extremes of the geometry (actual values may be higher/lower)
-        xs = [min_x, min_x, max_x, max_x]
-        ys = [min_y, max_y, min_y, max_y]
-        ind_list = []
-        for j in range(0, len(xs)):
-            ind_list.append(df.loc[((df['x'] == xs[j]) & (df['y'] == ys[j])), 'Point Number'].index.to_list()[0])
-        # Assign boundary geometry based off of full-scale dim
-        px = [-dfull / 2, dfull / 2, dfull / 2, -dfull / 2]
-        py = [-bfull / 2, -bfull / 2, bfull / 2, bfull / 2]
-        surf_num_list = [5, 5, 6, 6]
-        boundary_cps = [df['Mean Cp'][ind_list[0]], df['Mean Cp'][ind_list[2]],
-                        df['Mean Cp'][ind_list[3]], df['Mean Cp'][ind_list[1]]]
-        # Add in new locations and filler Cp data:
-        for pt in range(0, len(px)):
-            df = df.append({'x': px[pt], 'y': py[pt], 'Point Number': df['Point Number'].iloc[-1] + 1,
-                            'Surface Number': surf_num_list[p], 'Mean Cp': boundary_cps[pt]}, ignore_index=True)
-        # Up to this point, code designates the four points marking quadrilateral geometry
-        # Determine remaining boundary geometries (points within line segments) and assign pressure coefficients:
-        xcoords = df.loc[df['Surface Number'] == surf, 'x']
-        ycoords = df.loc[df['Surface Number'] == surf, 'y']
-        mcps = df.loc[df['Surface Number'] == surf, 'Mean Cp']
-        index_list = xcoords.index.to_list()
-        # Loop through xcoords and create horizontal boundaries
-        for x in index_list:
-            if xcoords[x] == min_x:  # recall that this is original min_x
-                # Add new point to DataFrame and use current point's mean Cp:
-                df = df.append({'x': min(df.loc[df['Surface Number'] == surf, 'x']), 'y': ycoords[x],
-                                'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 1 * surf,
-                                'Mean Cp': mcps[x]}, ignore_index=True)
-            elif xcoords[x] == max_x:
-                df = df.append({'x': max(df.loc[df['Surface Number'] == surf, 'x']), 'y': ycoords[x],
-                                'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 1 * surf,
-                                'Mean Cp': mcps[x]}, ignore_index=True)
-        # Loop through ycoords and create vertical boundaries:
-        for y in index_list:
-            if ycoords[y] == min_y:  # recall that this is original min_x
-                # Add new point to DataFrame and use current point's mean Cp:
-                df = df.append({'x': xcoords[y], 'y': min(df.loc[df['Surface Number'] == surf, 'y']),
-                                'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 1 * surf,
-                                'Mean Cp': mcps[y]}, ignore_index=True)
-            elif ycoords[y] == max_y:
-                df = df.append({'x': xcoords[y], 'y': max(df.loc[df['Surface Number'] == surf, 'y']),
-                                'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 1 * surf,
-                                'Mean Cp': mcps[y]}, ignore_index=True)
-        # Step 3b: Create contours of pressure coefficients:
-        # Create x and y meshgrids:
-        xvals = np.linspace(min(df.loc[df['Surface Number'] == surf, 'x']),
-                            max(df.loc[df['Surface Number'] == surf, 'x']), 10)
-        yvals = np.linspace(min(df.loc[df['Surface Number'] == surf, 'y']),
-                            max(df.loc[df['Surface Number'] == surf, 'y']), 10)
-        x, y = np.meshgrid(xvals, yvals)
-        # Extract the mean pressure coefficients for each pressure tap location:
-        surf_cps = df.loc[df['Surface Number'] == surf, 'Mean Cp']
-        # Determine the corresponding "z" (i.e., Cp) values:
-        points = np.column_stack((df.loc[df['Surface Number'] == surf, 'x'], df.loc[df['Surface Number'] == surf, 'y']))
-        zvals = griddata(points, surf_cps, (x, y), method='cubic')
-        # Save the (x, y) coordinate pairs and their corresponding Cp according to surface number:
-        for col in range(0, len(xvals)):
-            for row in range(0, len(yvals)):
-                # Record x and y-values:
-                contour_values['x'].append(xvals[col])
-                contour_values['y'].append(yvals[row])
-                # Record the surface number:
-                contour_values['Surface Number'].append(surf)
-                # Grab the Cp value corresponding to this (x,y) pair:
-                contour_values['Mean Cp'].append(zvals[row][col])
-        # Uncomment to produce 2D contour plots:
-        cp = plt.contourf(x, y, zvals)
-        plt.colorbar()
-        plt.show()
+    # Grab max and min values for x, y, respectively (pressure tap locations)
+    min_x = min(df['x'])
+    max_x = max(df['x'])
+    min_y = min(df['y'])
+    max_y = max(df['y'])
+    # Need the indices of our four extreme points in original data to extract their Cp values
+    # Idea here: simply extend Cp values to the extremes of the geometry (actual values may be higher/lower)
+    xs = [min_x, min_x, max_x, max_x]
+    ys = [min_y, max_y, min_y, max_y]
+    ind_list = []
+    for j in range(0, len(xs)):
+        ind_list.append(df.loc[((df['x'] == xs[j]) & (df['y'] == ys[j])), 'Point Number'].index.to_list()[0])
+    # Assign boundary geometry based off of full-scale dim
+    px = [-dfull / 2, dfull / 2, dfull / 2, -dfull / 2]
+    py = [-bfull / 2, -bfull / 2, bfull / 2, bfull / 2]
+    surf_num_list = [5, 5, 6, 6]
+    boundary_cps = [df['Mean Cp'][ind_list[0]], df['Mean Cp'][ind_list[2]],
+                    df['Mean Cp'][ind_list[3]], df['Mean Cp'][ind_list[1]]]
+    # Add in new locations and filler Cp data:
+    for pt in range(0, len(px)):
+        df = df.append({'x': px[pt], 'y': py[pt], 'Point Number': df['Point Number'].iloc[-1] + 1,
+                        'Surface Number': surf_num_list[pt], 'Mean Cp': boundary_cps[pt]}, ignore_index=True)
+    # Up to this point, code designates the four points marking quadrilateral geometry
+    # Determine remaining boundary geometries (points within line segments) and assign pressure coefficients:
+    max_surf5_y = df.loc[df['Surface Number']==5, 'y'].max()
+    index_list = df.index.to_list()
+    # Loop through xcoords and create horizontal boundaries
+    for x in index_list:
+        if df['x'][x] == min_x:  # recall that this is original min_x
+            if df['y'][x] > max_surf5_y:
+                snum = 6
+            else:
+                snum = 5
+            # Add new point to DataFrame and use current point's mean Cp:
+            df = df.append({'x': min_x, 'y': df['y'][x],
+                            'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': snum,
+                            'Mean Cp': df['Mean Cp'][x]}, ignore_index=True)
+        elif df['x'][x] == max_x:
+            if df['y'][x] > max_surf5_y:
+                snum = 6
+            else:
+                snum = 5
+            df = df.append({'x': max_x, 'y': df['y'][x],
+                            'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': snum,
+                            'Mean Cp': df['Mean Cp'][x]}, ignore_index=True)
+    # Loop through ycoords and create vertical boundaries:
+    for y in index_list:
+        if df['y'][y] == min_y:  # recall that this is original min_x
+            # Add new point to DataFrame and use current point's mean Cp:
+            df = df.append({'x': df['x'][y], 'y': min_y,
+                            'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 5,
+                            'Mean Cp': df['Mean Cp'][y]}, ignore_index=True)
+        elif df['y'][y] == max_y:
+            df = df.append({'x': df['x'][y], 'y': max_y,
+                            'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 6,
+                            'Mean Cp': df['Mean Cp'][y]}, ignore_index=True)
+    # Step 3b: Create contours of pressure coefficients:
+    # Create x and y meshgrids:
+    xvals = np.linspace(min_x, max_x, 10)
+    yvals = np.linspace(min_y, max_y, 10)
+    x, y = np.meshgrid(xvals, yvals)
+    # Extract the mean pressure coefficients for each pressure tap location:
+    surf_cps = df['Mean Cp']
+    # Determine the corresponding "z" (i.e., Cp) values:
+    points = np.column_stack((df['x'], df['y']))
+    zvals = griddata(points, surf_cps, (x, y), method='cubic')
+    # Save the (x, y) coordinate pairs and their corresponding Cp according to surface number:
+    for col in range(0, len(xvals)):
+        for row in range(0, len(yvals)):
+            # Record x and y-values:
+            contour_values['x'].append(xvals[col])
+            contour_values['y'].append(yvals[row])
+            # Record the surface number:
+            if yvals[row] > 0:
+                contour_values['Surface Number'].append(6)
+            else:
+                contour_values['Surface Number'].append(5)
+            # Grab the Cp value corresponding to this (x,y) pair:
+            contour_values['Mean Cp'].append(zvals[row][col])
+    # Uncomment to produce 2D contour plots:
+    cp = plt.contourf(x, y, zvals)
+    plt.colorbar()
+    plt.show()
     # Create a new DataFrame with new set of (x, y) and Cps:
     df_contour = pd.DataFrame(contour_values)
-    # Step 3b: Coordinate transformation (for tpu_wdir > 90)
+    # 6): Coordinate transformation (for tpu_wdir > 90)
     if tpu_wdir > 90:
         # Find index for column we are modifying:
         for col in range(0, len(df_contour.columns)):
