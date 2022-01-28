@@ -103,7 +103,7 @@ class TX(BldgCode):
         roof_cover = parcel.hasElement['Roof'][0].hasCover
         if isinstance(roof_cover, str):
             if ('ASPHALT' in roof_cover or 'ENG' in roof_cover):
-                parcel.hasElement['Roof'][0].hasPitch = (2/12)*100  # Minimum pitch for asphalt roof covers
+                parcel.hasElement['Roof'][0].hasPitch = math.degrees(math.atan2(2, 12))  # Minimum pitch for asphalt roof covers
 
 
 class FBC(BldgCode):
@@ -137,7 +137,7 @@ class FBC(BldgCode):
                 parcel.hasElement['Roof'][0].hasPitch = 0  #'flat'  # roof slopes under 2:12
                 parcel.hasElement['Roof'][0].hasShape['flat'] = True
             if ('ASPHALT' in roof_cover or 'ENG' in roof_cover) and ('FBC' in edition or 'CABO' in edition or 'SBC' in edition):
-                parcel.hasElement['Roof'][0].hasPitch = (2/12)*100  # Minimum pitch for asphalt roof covers
+                parcel.hasElement['Roof'][0].hasPitch = math.degrees(math.atan2(2, 12)) # Minimum pitch for asphalt roof covers
             if edition == '2001 FBC' and parcel.isComm and parcel.hasYearBuilt < 2003:
                 # Assign qualitative descriptions of roof pitch given roof cover type from survey data:
                 if 'METAL SURFACING' in roof_cover:
@@ -154,7 +154,7 @@ class FBC(BldgCode):
                     parcel.hasElement['Roof'][0].hasShape['flat'] = True
                 elif 'WOOD' in roof_cover or 'TILE' in roof_cover or 'SHINGLES' in roof_cover or 'SHNGL' in roof_cover:
                     parcel.hasElement['Roof'][0].hasPitch = 'shallow or steeper'  # roof slopes 2:12 and greater
-                    parcel.hasElement['Roof'][0].hasPitch = 2/12
+                    parcel.hasElement['Roof'][0].hasPitch = math.degrees(math.atan2(2, 12))
                 else:
                     parcel.hasElement['Roof'][0].hasPitch = 'unknown'
         else:
@@ -166,12 +166,12 @@ class FBC(BldgCode):
                     roof_weights = [211, 0, 244, 78]
                     parcel.hasElement['Roof'][0].hasType = random.choices(roof_matls, roof_weights)
                 elif parcel.hasElement['Roof'][0].hasPitch == 'shallow':
-                    parcel.hasElement['Roof'][0].hasPitch = 2/12
+                    parcel.hasElement['Roof'][0].hasPitch = math.degrees(math.atan2(2, 12))
                     roof_matls = ['SHINGLES (NOT WOOD)','METAL SURFACING', 'WOODEN MATERIALS']
                     roof_weights = [234, 244, 0]
                     parcel.hasElement['Roof'][0].hasType = random.choices(roof_matls, roof_weights)
                 elif parcel.hasElement['Roof'][0].hasPitch == 'steeper':
-                    parcel.hasElement['Roof'][0].hasPitch = 4/12
+                    parcel.hasElement['Roof'][0].hasPitch = math.degrees(math.atan2(4, 12))
                     roof_matls = ['SHINGLES (NOT WOOD)', 'SLATE OR TILE', 'WOODEN MATERIALS']
                     roof_weights = [234, 66, 0]
                     parcel.hasElement['Roof'][0].hasType = random.choices(roof_matls, roof_weights)
