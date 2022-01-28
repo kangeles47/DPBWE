@@ -421,8 +421,8 @@ for wall in test.hasElement['Walls']:
 # Get wind pressure coefficients (loading):
 wind_direction = 315
 # Get DAD pressure coefficients:
-tpu_wdir = convert_to_tpu_wdir(wind_direction, test)
-df_bldg_cps = map_tpu_ptaps(test, tpu_wdir, high_value_flag=True)
+# tpu_wdir = convert_to_tpu_wdir(wind_direction, test)
+# df_bldg_cps = map_tpu_ptaps(test, tpu_wdir, high_value_flag=True)
 # Uncomment to create planar overview of wall capacity mapping:
 # fig, ax = plt.subplots()
 # for wall in test.hasStory[0].adjacentElement['Walls']:
@@ -453,7 +453,11 @@ for p in df.index:
         new_roof = Roof()
         new_roof.hasCover = df['Roof Cover'][p]
         new_roof.hasType = df['Roof Cover'][p]
-        new_roof.hasShape['flat'] = True
+        if 'ENG' in df['Roof Cover'][p] or 'COMP' in df['Roof Cover'][p]:
+            new_roof.hasShape['gable'] = True
+            new_roof.hasPitch = degrees(atan2(2,12))
+        else:
+            new_roof.hasShape['flat'] = True
         if df['Roof Permit Year'][p] is not 'NONE':
             new_roof.hasYearBuilt = int(df['Roof Permit Year'][p])
         else:
@@ -506,20 +510,20 @@ wind_direction = 315
 michael_wind_speed = 123.342  # 126? data model paper: 123.342
 site_source = get_source_bldgs(test, site, wind_direction, michael_wind_speed, crs, length_unit)
 for b in site_source.hasBuilding:
-    # First add missing data --> roof pitch:
-    code_informed = FBC(b, loading_flag=False)
-    code_informed.roof_attributes(code_informed.hasEdition, b)
-    # These buildings will be analyzed as simple models so populate simple footprint if needed:
-    b.hasGeometry['Footprint']['local'] = b.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
-    # Populate C&C minimum capacities (roof only) -->   NOTE: YEAR BUILT IS 1989 WOULD HAVE TO CODE UP GCP USE CASE, MAYBE SWITCH TO 1995
-    exposure = 'B'
-    roof_flag = True
-    wall_flag = False
-    if b.hasYearBuilt < b.hasElement['Roof'][0].hasYearBuilt:
-        b.hasYearBuilt = b.hasElement['Roof'][0].hasYearBuilt
-    else:
-        pass
-    zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(b, exposure, roof_flag, wall_flag)
+    # # First add missing data --> roof pitch:
+    # code_informed = FBC(b, loading_flag=False)
+    # code_informed.roof_attributes(code_informed.hasEdition, b)
+    # # These buildings will be analyzed as simple models so populate simple footprint if needed:
+    # b.hasGeometry['Footprint']['local'] = b.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
+    # # Populate C&C minimum capacities (roof only) -->   NOTE: YEAR BUILT IS 1989 WOULD HAVE TO CODE UP GCP USE CASE, MAYBE SWITCH TO 1995
+    # exposure = 'B'
+    # roof_flag = True
+    # wall_flag = False
+    # if b.hasYearBuilt < b.hasElement['Roof'][0].hasYearBuilt:
+    #     b.hasYearBuilt = b.hasElement['Roof'][0].hasYearBuilt
+    # else:
+    #     pass
+    # zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(b, exposure, roof_flag, wall_flag)
     # Get DAD pressure coefficients:
     tpu_wdir = convert_to_tpu_wdir(wind_direction, b)
     df_bldg_cps = map_tpu_ptaps(b, tpu_wdir, high_value_flag=False)
