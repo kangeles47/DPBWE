@@ -115,6 +115,7 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
     hb = bldg.hasGeometry['Height'] / min(side_lines['length'])
     db = max(side_lines['length']) / min(side_lines['length'])
     # Step 3: Use the building's aspect ratios to determine its corresponding TPU model building
+    # Note: For gable roof cases --> height is h0: the height at base of roof
     # Determine the use case and the corresponding number of surfaces:
     if eave_length == 0:
         breadth_model = 160  # [mm]
@@ -138,12 +139,12 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
             model_hbs = np.array([1 / 4, 2 / 4, 3 / 4, 1])
             diff_hbs = model_hbs - hb
             closest_hb = min(abs(diff_hbs))
-            hb_index = np.where(diff_hbs == closest_hb)
+            hb_index = np.where(diff_hbs == closest_hb)[0]
             try:
-                hb_ratio = model_hbs[hb_index[0]][0]
+                hb_ratio = model_hbs[hb_index[0]]
             except IndexError:
                 hb_index = np.where(diff_hbs == closest_hb * -1)
-                hb_ratio = model_hbs[hb_index[0]][0]
+                hb_ratio = model_hbs[hb_index[0]]
             # Assign the appropriate model height
             height_model = model_hbs[hb_index[0]] * breadth_model
         # Populate the height tag needed to access the correct data file:
@@ -172,12 +173,12 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
                 model_dbs = np.array([1, 3 / 2, 5 / 2])
                 diff_dbs = model_dbs - db
                 closest_db = min(abs(diff_dbs))
-                db_index = np.where(diff_dbs == closest_db)
+                db_index = np.where(diff_dbs == closest_db)[0]
                 try:
-                    db_ratio = model_dbs[db_index[0]][0]
+                    db_ratio = model_dbs[db_index[0]]
                 except IndexError:
                     db_index = np.where(diff_dbs == closest_db * -1)
-                    db_ratio = model_dbs[db_index[0]][0]
+                    db_ratio = model_dbs[db_index[0]]
                 # Assign the appropriate model height
                 depth_model = model_dbs[db_index[0]] * breadth_model
             # Populate the height tag needed to access the correct data file:
@@ -192,25 +193,37 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
                 num_surf = 5
                 surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None}
                 rtag = '00'
-            else:
+            elif bldg.adjacentElement['Roof'][0].hasShape['gable']:
                 num_surf = 6
                 surf_dict = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None}
-                if bldg.adjacentElement['Roof'].hasPitch == 4.8:
+                if bldg.adjacentElement['Roof'][0].hasPitch == 4.8:
                     rtag = '05'
-                elif bldg.adjacentElement['Roof'].hasPitch == 9.4:
+                elif bldg.adjacentElement['Roof'][0].hasPitch == 9.4:
                     rtag = '10'
-                elif bldg.adjacentElement['Roof'].hasPitch == 14:
+                elif bldg.adjacentElement['Roof'][0].hasPitch == 14:
                     rtag = '14'
-                elif bldg.adjacentElement['Roof'].hasPitch == 18.4:
+                elif bldg.adjacentElement['Roof'][0].hasPitch == 18.4:
                     rtag = '18'
-                elif bldg.adjacentElement['Roof'].hasPitch == 21.8:
+                elif bldg.adjacentElement['Roof'][0].hasPitch == 21.8:
                     rtag = '22'
-                elif bldg.adjacentElement['Roof'].hasPitch == 26.7:
+                elif bldg.adjacentElement['Roof'][0].hasPitch == 26.7:
                     rtag = '27'
-                elif bldg.adjacentElement['Roof'].hasPitch == 30:
+                elif bldg.adjacentElement['Roof'][0].hasPitch == 30:
                     rtag = '30'
-                elif bldg.adjacentElement['Roof'].hasPitch == 45:
+                elif bldg.adjacentElement['Roof'][0].hasPitch == 45:
                     rtag = '45'
+                else:
+                    # Find the closest roof pitch use case:
+                    model_rpitches = np.array([4.8, 9.4, 14, 18.4, 21.8, 26.7, 30, 45])
+                    diff_rpitches = model_rpitches - bldg.adjacentElement['Roof'][0].hasPitch
+                    closest_rpitch = min(abs(diff_rpitches))
+                    rtag_list = ['05', '10', '14', '18', '22', '27', '30', '45']
+                    # Assign the appropriate roof pitch:
+                    try:
+                        rpitch_index = np.where(abs(diff_rpitches) == closest_rpitch)[0][0]
+                    except IndexError:
+                        rpitch_index = np.where(diff_rpitches == closest_rpitch * -1)[0][0]
+                    rtag = rtag_list[rpitch_index]
             # Initialize string to access the correct model building file:
             model_file = 'Cp_ts_g' + dtag + htag + rtag + wdir_tag
         elif bldg.adjacentElement['Roof'][0].hasShape['hip']:  # Note: most common hip roof pitches 4:12-6:12
@@ -234,17 +247,16 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
     # Convert TPU model building geometries into full-scale:
     # Create the TPU footprint geometry from the real-life building's equivalent rectangle:
     # 1) Quantify the model building's full scale breadth, depth, and height:
-    if num_surf == 5:
-        if match_flag:
-            # The real-life building's geometry can be used directly:
-            bfull = min(side_lines['length'])
-            hfull = bldg.hasGeometry['Height']
-            dfull = max(side_lines['length'])
-        else:
-            # Use the real-life building's breadth to create the full-scale geometry:
-            bfull = min(side_lines['length'])
-            hfull = hb_ratio * bfull
-            dfull = db_ratio * bfull
+    if match_flag:
+        # The real-life building's geometry can be used directly:
+        bfull = min(side_lines['length'])
+        hfull = bldg.hasGeometry['Height']
+        dfull = max(side_lines['length'])
+    else:
+        # Use the real-life building's breadth to create the full-scale geometry:
+        bfull = min(side_lines['length'])
+        hfull = hb_ratio * bfull
+        dfull = db_ratio * bfull
     # 2) Create full-scale building footprint for model building using line geometries from reference building's
     # rectangular footprint:
     tpu_poly_pts = []
