@@ -1,6 +1,7 @@
 import numpy as np
 from math import atan2, degrees, cos, sin, sqrt
 from shapely.geometry import Point, Polygon, LineString
+from shapely.ops import split
 from shapely import affinity
 from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
@@ -17,8 +18,11 @@ def map_tpu_ptaps(bldg, tpu_wdir, high_value_flag):
     eave_length = 0
     h_bldg = bldg.hasGeometry['Height']
     match_flag, num_surf, side_lines, model_file, hb_ratio, db_ratio, rect, surf_dict, rect_surf_dict = find_tpu_use_case(bldg, tpu_wdir, eave_length)
-    bfull, hfull, dfull, rect_surf_dict = get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict, rect_surf_dict)
-    df_simple_map = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, match_flag, h_bldg, rect_surf_dict, bldg, high_value_flag)
+    if num_surf == 5:
+        bfull, hfull, dfull, rect_surf_dict = get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, surf_dict, rect_surf_dict)
+        df_simple_map = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, match_flag, h_bldg, rect_surf_dict, bldg, high_value_flag)
+    elif num_surf == 6:
+        bfull, hfull, dfull, rect_surf_dict = get_tpu_gable_roof(bldg, match_flag, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, high_value_flag)
     return df_simple_map
 
 
@@ -464,6 +468,98 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
     # Step 5: Save the surfaces to the building description:
     bldg.hasGeometry['TPU_surfaces']['local'] = surf_dict
     return bfull, hfull, dfull, rect_surf_dict
+
+
+def get_tpu_gable_rsurfaces(bldg, match_flag, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, high_value_flag):
+    # Convert TPU model building geometries into full-scale:
+    # Create the TPU footprint geometry from the real-life building's equivalent rectangle:
+    # 1) Quantify the model building's full scale breadth, depth, and height:
+    if match_flag:
+        # The real-life building's geometry can be used directly:
+        bfull = min(side_lines['length'])
+        hfull = bldg.hasGeometry['Height']
+        dfull = max(side_lines['length'])
+    else:
+        # Use the real-life building's breadth to create the full-scale geometry:
+        bfull = min(side_lines['length'])
+        hfull = hb_ratio * bfull
+        dfull = db_ratio * bfull
+    # 2) Create full-scale building footprint for model building using line geometries from reference building's
+    # rectangular footprint:
+    tpu_footprint_pts = []
+    split_line_pts = []
+    for line in range(0, len(side_lines['lines'])):
+        if side_lines['TPU direction'][line] == 'y':
+            pass  # breadth is fixed
+        else:
+            # x-direction in TPU = building depth:
+            ref_pt = side_lines['lines'][line].centroid  # line centroid
+            split_line_pts.append(ref_pt)
+            line_pts = list(side_lines['lines'][line].coords)
+            # Create two new lines to project full-scale depth:
+            new_line1 = LineString([ref_pt, Point(line_pts[0])])
+            new_line2 = LineString([ref_pt, Point(line_pts[1])])
+            # Distribute half of dfull to each line segment:
+            new_point1 = new_line1.interpolate(dfull / 2)
+            new_point2 = new_line2.interpolate(dfull / 2)
+            # Create new line corresponding to full scale depth:
+            #tpu_line = LineString([new_point1, new_point2])
+            # Save points for model building's full-scale footprint:
+            tpu_footprint_pts.append((new_point1.x, new_point1.y))
+            tpu_footprint_pts.append((new_point2.x, new_point2.y))
+    # 3) Create 2D surfaces for surface 5 and 6 (roof):
+    tpu_roof_polys = split(Polygon(tpu_footprint_pts), LineString(split_line_pts))
+    # 4) Figure out which polygon corresponds to surface 5 and 6, respectively:
+    surf_dict = {5: None, 6: None}
+    if side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'y':
+        if tpu_wdir <= 180:
+            if tpu_roof_polys[0].centroid.y < tpu_roof_polys[1].centroid.y:
+                surf_dict[5] = tpu_roof_polys[0]
+                surf_dict[6] = tpu_roof_polys[1]
+            else:
+                surf_dict[5] = tpu_roof_polys[1]
+                surf_dict[6] = tpu_roof_polys[0]
+        elif 180 < tpu_wdir <= 360:
+            if tpu_roof_polys[0].centroid.y > tpu_roof_polys[1].centroid.y:
+                surf_dict[5] = tpu_roof_polys[0]
+                surf_dict[6] = tpu_roof_polys[1]
+            else:
+                surf_dict[5] = tpu_roof_polys[1]
+                surf_dict[6] = tpu_roof_polys[0]
+    elif side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'x':
+        if tpu_wdir <= 180:
+            if tpu_roof_polys[0].centroid.x < tpu_roof_polys[1].centroid.x:
+                surf_dict[5] = tpu_roof_polys[0]
+                surf_dict[6] = tpu_roof_polys[1]
+            else:
+                surf_dict[5] = tpu_roof_polys[1]
+                surf_dict[6] = tpu_roof_polys[0]
+        elif 180 < tpu_wdir <= 360:
+            if tpu_roof_polys[0].centroid.x > tpu_roof_polys[1].centroid.x:
+                surf_dict[5] = tpu_roof_polys[0]
+                surf_dict[6] = tpu_roof_polys[1]
+            else:
+                surf_dict[5] = tpu_roof_polys[1]
+                surf_dict[6] = tpu_roof_polys[0]
+    # Plot the result:
+    fig, ax = plt.subplots()
+    for key in surf_dict:
+        xs, ys = surf_dict[key].exterior.xy
+        ax.plot(np.array(xs)/3.281, np.array(ys)/3.281, label='Surface ' + str(key))
+        # Convert to 3D coordinates?
+        if not high_value_flag:
+            surf_dict[key] = Polygon(create_zcoords(surf_dict[key], hfull))
+        else:
+            pass
+    xr, yr = rect.exterior.xy
+    ax.plot(np.array(xr)/3.281, np.array(yr)/3.281, label='Actual building rectangle')
+    ax.legend()
+    ax.set_xlabel('x [m]', fontsize=16)
+    ax.set_ylabel('y [m]', fontsize=16)
+    plt.show()
+    # 5) : Save the surfaces to the building description:
+    bldg.hasGeometry['TPU_surfaces']['local'] = surf_dict
+    return bfull, hfull, dfull, surf_dict
 
 
 def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, match_flag, h_bldg, rect_surf_dict, bldg, high_value_flag):
