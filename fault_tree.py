@@ -4,6 +4,8 @@ import pandas as pd
 from shapely.geometry import Polygon, Point, LineString, MultiPoint, MultiLineString
 from shapely.ops import nearest_points, snap
 from scipy.spatial import Voronoi, voronoi_plot_2d
+from scipy.stats import norm
+from math import sqrt
 from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from create_fragility import get_wind_speed
 from parcel import Parcel
@@ -558,7 +560,17 @@ def time_hist_element_pressure_failure_check(elem, bldg, zone_flag, tcols):
     elem.hasFailure['wind pressure'] = elem_fail.loc[elem_fail['fail'] == True]
 
 
-def ftree_initial(bldg):
+def wind_pressure_ftree(bldg, wind_speed):
+    # For each building:
+    # 1) Map pressure taps to components
+    # 2) Sample component capacities:
+    # 3) Sample pressure coefficient and calculate wind pressure:
+    # 4) Check capacity versus demand
+    df_bldg_cps = bldg.hasDemand['wind pressure']['external']
+    # Sample from gaussian distribution with mean = mean cp and std dev = 0.3
+    df_bldg_cps['Sample Cp'] = df_bldg_cps['Mean Cp'].apply(lambda x: norm.rvs(x, 0.3))
+    # Quantify pressures:
+    
     # Loop through building envelope components and check for breach:
     fail_elements = []
     fail_ptaps = []
