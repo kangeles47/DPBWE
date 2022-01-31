@@ -14,12 +14,11 @@ from bldg_code import ASCE7, FBC
 from OBDM.zone import Site, Building
 from OBDM.element import Roof, Floor, Wall, Ceiling
 from code_pressures import PressureCalc
-from OBDM.interface import Interface
-from fault_tree import populate_code_capacities, generate_pressure_loading, find_peak_pressure_response
 from get_debris import run_debris, get_site_debris, get_trajectory, get_source_bldgs
 from survey_data import SurveyData
 from queries import get_bldgs_at_dist
 from bdm_tpu_pressures import map_tpu_ptaps, convert_to_tpu_wdir
+from fault_tree import wind_pressure_ftree
 
 
 def assign_footprint(parcel, num_stories):
@@ -514,7 +513,7 @@ for b in site_source.hasBuilding:
     tpu_wdir = convert_to_tpu_wdir(wind_direction, b)
     df_bldg_cps = map_tpu_ptaps(b, tpu_wdir, high_value_flag)  # taps and trib areas
 # 5) Fault tree analysis
-
+df_fail = wind_pressure_ftree(target_bldg, michael_wind_speed)
 # # Populate the building's Hurricane Michael loading demand:
 # unit = 'english'
 # # #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
