@@ -1655,7 +1655,7 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull,
         else:
             print('High value roof mapping not available at this time')
         # Final step: Get tap tributary areas:
-        get_tap_trib_areas(bldg, df_bldg_cps, roof_flag=True, facade_flag=True)
+        df_bldg_cps = get_tap_trib_areas(bldg, df_bldg_cps, roof_flag=True, facade_flag=False)
     return df_bldg_cps
 
 
@@ -1776,57 +1776,115 @@ def convert_to_tpu_wdir(wind_direction, bldg):
     return tpu_wdir
 
 
-def map_ptaps_to_components(bldg, df_facade):
-    # 2c) Map facade pressure taps to available exterior walls:
-    no_map = []  # Empty list to hold any unmapped taps (due to numerical error)
-    for idx in df_facade.index:
-        map_flag = False
-        ptap_loc = df_facade['Real Life Location'][idx]
-        # Use line geometries to map pressure tap trib areas to walls:
-        xtap, ytap = df_facade['Tap Polygon'][idx].exterior.xy
-        tap_line = LineString([(min(xtap), min(ytap)), (max(xtap), max(ytap))])
-        # bound_tap_poly = Polygon([(max(xtap), max(ytap)), (min(xtap), max(ytap)), (min(xtap), min(ytap)), (max(xtap), min(ytap))])
-        for story in bldg.hasStory:
-            if story.hasElevation[0] <= ptap_loc.z <= story.hasElevation[1]:
-                for wall in story.adjacentElement['Walls']:
-                    wall_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
-                    xw, yw, zw = [], [], []
-                    for w in wall_pts:
-                        xw.append(w[0])
-                        yw.append(w[1])
-                        zw.append(w[2])
-                    bound_poly = Polygon(
-                        [(max(xw), max(yw)), (min(xw), max(yw)), (min(xw), min(yw)), (max(xw), min(yw))])
-                    if tap_line.within(bound_poly) or tap_line.intersects(bound_poly):
-                        if min(zw) <= ptap_loc.z <= max(zw):
-                            wall.hasDemand['wind pressure']['external'].append(idx)
-                            # wall.hasDemand['wind pressure']['external'] = wall.hasDemand['wind pressure']['external'].append(df_tpu_pressures.iloc[idx], ignore_index=True)
-                            map_flag = True
-                            break
-                        else:
-                            print('Point within boundary but not wall height')
+def map_ptaps_to_components(bldg, df_bldg_cps, roof_flag, facade_flag):
+    # 1) Find roof indices (for data segmentation):
+    if max(df_bldg_cps['Surface Number']) == 5:
+        roof_indices = df_bldg_cps.loc[df_bldg_cps['Surface Number'] == 5].index
+    elif max(df_bldg_cps['Surface Number']) == 6:
+        roof_indices = df_bldg_cps.loc[(df_bldg_cps['Surface Number'] == 5) | (df_bldg_cps['Surface Number'] == 6)].index
+    # 2) Map roof pressure taps to roof sub-elements (this is conducted in the x-y plane):
+    if not roof_flag:
+        pass
+    else:
+        for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
+            subelem.hasDemand['wind pressure']['external']['intersecting area'] = []
+            subelem.hasDemand['wind pressure']['external']['tap number'] = []
+        no_map_roof = []
+        for idx in roof_indices:
+            rtap_poly = df_bldg_cps['Tap Polygon'][idx]
+            for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
+                if rtap_poly.within(subelem.hasGeometry['2D Geometry']['local']) or rtap_poly.intersects(
+                        subelem.hasGeometry['2D Geometry']['local']):
+                    # Save the tap location and intersecting region:
+                    subelem.hasDemand['wind pressure']['external']['tap number'].append(idx)
+                    if rtap_poly.within(subelem.hasGeometry['2D Geometry']['local']):
+                        subelem.hasDemand['wind pressure']['external']['intersecting area'].append(rtap_poly)
                     else:
-                        pass
-            else:
-                pass
-        if not map_flag:
-            no_map.append(idx)
-            # ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z, 'r')
+                        iarea = subelem.hasGeometry['2D Geometry']['local'].intersection(rtap_poly)
+                        subelem.hasDemand['wind pressure']['external']['intersecting area'].append(iarea)
+                else:
+                    pass
+            # Each pressure tap should be mapped, so if it is not try buffering the polygon:
+            # if not map_flag:
+            #     # Try buffering the polygon:
+            #     bpoly = rtap_poly.buffer(distance=3)
+            #     for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
+            #         if bpoly.intersects(subelem.hasGeometry['2D Geometry']['local']):
+            #             subelem.hasDemand['wind pressure']['external'].append(idx)
+            #             map_flag = True
+            #         else:
+            #             pass
+            # if not map_flag:
+            #     no_map_roof.append(df_roof.loc[idx])
+        # print(len(no_map_roof))
+    # 3) Map pressure taps to exterior walls:
+    if not facade_flag:
+        pass
+    else:
+        # Set up placeholders:
+        for wall in bldg.adjacentElement['Walls']:
+            wall.hasDemand['wind pressure']['external']['intersecting area'] = []
+            wall.hasDemand['wind pressure']['external']['tap number'] = []
+        # Get facade pressure taps:
+        df_facade = df_bldg_cps.drop(roof_indices)
+        no_map = []  # Empty list to hold any unmapped taps (due to numerical error)
+        # Mapping: use tap line geometries to map to walls
+        for idx in df_facade.index:
+            map_flag = False
+            tap_pts = df_facade['Tap Polygon'][idx].exterior.coords
+            xt, yt, zt = [], [], []
+            for t in tap_pts:
+                xt.append(t[0])
+                yt.append(t[1])
+                zt.append(t[2])
+            tap_line = LineString([(min(xt), min(yt)), (max(xt), max(yt))])
+            # bound_tap_poly = Polygon([(max(xtap), max(ytap)), (min(xtap), max(ytap)), (min(xtap), min(ytap)), (max(xtap), min(ytap))])
+            for story in bldg.hasStory:
+                if story.hasElevation[0] <= min(zt) <= story.hasElevation[1] or story.hasElevation[0] <= max(zt) <= story.hasElevation[1]:
+                    for wall in story.adjacentElement['Walls']:
+                        wall_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
+                        xw, yw, zw = [], [], []
+                        for w in wall_pts:
+                            xw.append(w[0])
+                            yw.append(w[1])
+                            zw.append(w[2])
+                        bound_poly = Polygon(
+                            [(max(xw), max(yw)), (min(xw), max(yw)), (min(xw), min(yw)), (max(xw), min(yw))])
+                        if tap_line.within(bound_poly) or tap_line.intersects(bound_poly):
+                            if min(zw) <= min(zt) <= max(zw) or min(zw) <= max(zt) <= max(zw):
+                                wall.hasDemand['wind pressure']['external']['tap number'].append(idx)
+                                if min(zw) <= min(zt) <= max(zw):
+                                    z_intersect = [min(zw), min(zt)]
+                                else:
+                                    z_intersect = [min(zt), max(zw)]
+                                # wall.hasDemand['wind pressure']['external'] = wall.hasDemand['wind pressure']['external'].append(df_tpu_pressures.iloc[idx], ignore_index=True)
+                                map_flag = True
+                                # Find the intersecting area:
+
+                            else:
+                                pass  # Point within x-y boundary but not wall height (z)
+                        else:
+                            pass
+                else:
+                    pass
+            if not map_flag:
+                no_map.append(idx)
+                # ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z, 'r')
     # Plotting:
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
-    for story in bldg.hasStory:
-        for wall in story.adjacentElement['Walls']:
-            wall_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
-            xw, yw, zw = [], [], []
-            for w in wall_pts:
-                xw.append(w[0])
-                yw.append(w[1])
-                zw.append(w[2])
-            ax.plot(xw, yw, zw)
-            for idx in wall.hasDemand['wind pressure']['external']:
-                ptap_loc = df_facade['Real Life Location'][idx]
-                ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z)
+    # fig = plt.figure()
+    # ax = plt.axes(projection='3d')
+    # for story in bldg.hasStory:
+    #     for wall in story.adjacentElement['Walls']:
+    #         wall_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
+    #         xw, yw, zw = [], [], []
+    #         for w in wall_pts:
+    #             xw.append(w[0])
+    #             yw.append(w[1])
+    #             zw.append(w[2])
+    #         ax.plot(xw, yw, zw)
+    #         for idx in wall.hasDemand['wind pressure']['external']:
+    #             ptap_loc = df_facade['Real Life Location'][idx]
+    #             ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z)
     # for wall in bldg.adjacentElement['Walls']:
     #     wall_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
     #     xw, yw, zw = [], [], []
@@ -1836,72 +1894,6 @@ def map_ptaps_to_components(bldg, df_facade):
     #         zw.append(w[2])
     #     ax.plot(xw, yw, zw, 'k')
     # plt.show()
-    # 2e) Now do the mapping for the roof: (set-up placeholders and indices)
-    # Set up empty DataFrames for roof or roof_subelements:
-    r_indices = []
-    for row in df_facade.index:
-        ptap_z = df_facade.iloc[row]['Real Life Location'].z
-        if round(ptap_z, 4) == round(bldg.hasGeometry['Height'], 4):
-            r_indices.append(row)
-        else:
-            pass
-    for r in roof_indices:
-        r_indices.append(r)
-    df_roof = df_bldg_cps.iloc[r_indices]
-    # 2f) Get pressure tap tributary areas (voronoi diagram):
-    # Assign the entire roof DataFrame to main roof element:
-    bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'] = df_roof
-    get_roof_2d_mesh(bldg)
-    # 2g) Map pressure taps to roof or roof subelements:
-    if len(bldg.adjacentElement['Roof'][0].hasSubElement['cover']) == 0:
-        # Assign the entire roof DataFrame to main roof element:
-        bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'] = df_roof
-    else:
-        for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
-            subelem.hasDemand['wind pressure']['external'] = []
-        # Here the mapping is done completely in the x-y plane (flat roofs):
-        no_map_roof = []
-        for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
-            map_flag = False
-            rtap_poly = df_roof['Tap Polygon'][idx]
-            for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
-                if rtap_poly.within(subelem.hasGeometry['2D Geometry']['local']) or rtap_poly.intersects(
-                        subelem.hasGeometry['2D Geometry']['local']):
-                    subelem.hasDemand['wind pressure']['external'].append(idx)
-                    # subelem.hasDemand['wind pressure']['external'] = subelem.hasDemand['wind pressure']['external'].append(df_roof.loc[idx], ignore_index=True)
-                    map_flag = True
-                else:
-                    pass
-            if not map_flag:
-                # Try buffering the polygon:
-                bpoly = rtap_poly.buffer(distance=3)
-                for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
-                    if bpoly.intersects(subelem.hasGeometry['2D Geometry']['local']):
-                        subelem.hasDemand['wind pressure']['external'].append(idx)
-                        map_flag = True
-                    else:
-                        pass
-            if not map_flag:
-                no_map_roof.append(df_roof.loc[idx])
-        # print(len(no_map_roof))
-    # 2h) Pull pressure tap information for each element according to stored indices:
-    for wall in bldg.adjacentElement['Walls']:
-        wall.hasDemand['wind pressure']['external'] = df_facade.loc[wall.hasDemand['wind pressure']['external']]
-    if len(bldg.adjacentElement['Roof'][0].hasSubElement['cover']) == 0:
-        pass
-    else:
-        for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
-            subelem.hasDemand['wind pressure']['external'] = df_roof.loc[subelem.hasDemand['wind pressure']['external']]
-    # End of voronoi mesh code:
-    # Mapping to specific elements:
-    for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
-        try:
-            xpoly, ypoly = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[idx][
-                'Tap Polygon'].exterior.xy
-            plt.plot(xpoly, ypoly, 'r')
-        except AttributeError:
-            bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'] = \
-                bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].drop(idx)
 
 
 def get_tap_trib_areas(bldg, df_bldg_cps, roof_flag, facade_flag):
@@ -1937,7 +1929,18 @@ def get_tap_trib_areas(bldg, df_bldg_cps, roof_flag, facade_flag):
         df_facade = get_facade_mesh(bldg, df_facade)
     else:
         df_facade = None
-    return df_roof, df_facade
+    # Figure out what df_bldg_cps will be comprised of:
+    if df_roof is None:
+        df_bldg_cps = df_facade
+    elif df_facade is None:
+        df_bldg_cps = df_roof
+    else:
+        # Put both dataframes back together:
+        if min(df_roof.index.to_list) < min(df_facade.index.to_list):
+            df_bldg_cps = pd.concat([df_roof, df_facade])
+        else:
+            df_bldg_cps = pd.concat([df_facade, df_roof])
+    return df_bldg_cps
 
 
 def get_facade_mesh(bldg, df_facade):
