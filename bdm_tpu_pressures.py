@@ -1293,7 +1293,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             ax5.zaxis.set_tick_params(labelsize=14)
             plt.show()
         # Final step: Get tap tributary areas:
-        get_tap_trib_areas(bldg, df_bldg_cps, roof_flag=True, facade_flag=True)
+        df_bldg_cps = get_tap_trib_areas(bldg, df_bldg_cps, roof_flag=True, facade_flag=True)
     return df_bldg_cps
 
 
@@ -1768,8 +1768,12 @@ def convert_to_tpu_wdir(wind_direction, bldg):
         ydist = yrect[3] - yrect[2]
         theta = degrees(atan2(ydist, xdist))
     elif side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'x':
-        xdist = xrect[1] - xrect[0]
-        ydist = yrect[1] - yrect[0]
+        if len(xrect) != 5:
+            xdist = xrect[1] - xrect[0]
+            ydist = yrect[1] - yrect[0]
+        else:
+            xdist = xrect[3] - xrect[2]
+            ydist = yrect[3] - yrect[2]
         theta = degrees(atan2(ydist, xdist))
     # Find the tpu wind direction according to building orientation and IRL wind direction:
     tpu_wdir = wind_direction*-1 + 270 + -1*(theta)
@@ -1787,9 +1791,7 @@ def map_ptaps_to_components(bldg, df_bldg_cps, roof_flag, facade_flag):
         pass
     else:
         for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
-            subelem.hasDemand['wind pressure']['external']['intersecting area'] = []
-            subelem.hasDemand['wind pressure']['external']['tap number'] = []
-        no_map_roof = []
+            subelem.hasDemand['wind pressure']['external'] = {'intersecting area': [], 'tap number': []}
         for idx in roof_indices:
             rtap_poly = df_bldg_cps['Tap Polygon'][idx]
             for subelem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
@@ -1823,8 +1825,7 @@ def map_ptaps_to_components(bldg, df_bldg_cps, roof_flag, facade_flag):
     else:
         # Set up placeholders:
         for wall in bldg.adjacentElement['Walls']:
-            wall.hasDemand['wind pressure']['external']['intersecting area'] = []
-            wall.hasDemand['wind pressure']['external']['tap number'] = []
+            wall.hasDemand['wind pressure']['external'] = {'intersecting area': [], 'tap number': []}
         # Get facade pressure taps:
         df_facade = df_bldg_cps.drop(roof_indices)
         no_map = []  # Empty list to hold any unmapped taps (due to numerical error)
@@ -1936,7 +1937,7 @@ def get_tap_trib_areas(bldg, df_bldg_cps, roof_flag, facade_flag):
         df_bldg_cps = df_roof
     else:
         # Put both dataframes back together:
-        if min(df_roof.index.to_list) < min(df_facade.index.to_list):
+        if min(df_roof.index.to_list()) < min(df_facade.index.to_list()):
             df_bldg_cps = pd.concat([df_roof, df_facade])
         else:
             df_bldg_cps = pd.concat([df_facade, df_roof])
