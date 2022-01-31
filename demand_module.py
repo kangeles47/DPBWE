@@ -358,41 +358,40 @@ def get_cc_min_capacity(bldg, exposure, roof_flag, wall_flag):
         
     return zone_pts, roof_polys, rcc, wcc
 
-# Asset Description
+# 1a) Asset Description: target_bldg Building Parcel Model
 # Parcel Models
 lon = -85.676188
 lat = 30.190142
-test = Parcel('12345', 4, 'financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
+target_bldg = Parcel('12345', 4, 'financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
 num_wall_elems = [4, 9, 17, 9, 4, 9, 17, 9]
-wall_height = test.hasGeometry['Height']/8
+wall_height = target_bldg.hasGeometry['Height']/8
 story_wall_elev = []
-for story in test.hasStory:
+for story in target_bldg.hasStory:
     story_wall_elev.append([story.hasElevation[0], story.hasElevation[0]+wall_height, story.hasElevation[1]])
 # Create augmented elements:
-augmented_elements_wall(test, num_wall_elems, story_wall_elev, plot_flag=False)
-for wall in test.hasElement['Walls']:
+augmented_elements_wall(target_bldg, num_wall_elems, story_wall_elev, plot_flag=False)
+for wall in target_bldg.hasElement['Walls']:
     wall.hasType = 'GLASS THRM; COMMON BRK'
 # Update the Building's Elements:
-test.update_elements()
+target_bldg.update_elements()
 # Add roof information:
-test.hasElement['Roof'][0].hasShape['flat'] = True
-test.hasElement['Roof'][0].hasPitch = 0
-test.hasElement['Roof'][0].hasCover = 'BUILT-UP'
-test.hasElement['Roof'][0].hasType = 'BUILT-UP'
+target_bldg.hasElement['Roof'][0].hasShape['flat'] = True
+target_bldg.hasElement['Roof'][0].hasPitch = 0
+target_bldg.hasElement['Roof'][0].hasCover = 'BUILT-UP'
+target_bldg.hasElement['Roof'][0].hasType = 'BUILT-UP'
 
-# Code-informed capacities:
-# 1) Find zone locations and calculate zone pressures (minimum capacities):
+# 1b) Asset Description: Minimum code-informed capacities:
+# Find zone locations and calculate zone pressures:
 exposure = 'B'
 roof_flag = True
 wall_flag = True
-zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(test, exposure, roof_flag, wall_flag)
-# Try populate_code_capacities
-# 2) Map pressures to elements:
+zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(target_bldg, exposure, roof_flag, wall_flag)  # includes roof mapping
+# Map capacities to wall elements:
 # Figure to show zones and component mapping:
 fig = plt.figure()
 ax = plt.axes(projection='3d')
 # Wall C&C first:
-for wall in test.hasElement['Walls']:
+for wall in target_bldg.hasElement['Walls']:
     for row in range(0, len(zone_pts.index)):
         xl, yl = LineString([zone_pts['LinePoint1'][row], zone_pts['LinePoint2'][row]]).xy
         zone_box = Polygon([(max(xl), max(yl)), (min(xl), max(yl)), (min(xl), min(yl)), (max(xl), min(yl))])
@@ -418,28 +417,14 @@ for wall in test.hasElement['Walls']:
                 ax.plot(np.array(xw)/3.281, np.array(yw)/3.281, np.array(zw)/3.281, 'r')
         else:
             pass
-# Get wind pressure coefficients (loading):
+# 1c) Asset Description: DAD pressure coefficients (wind loading):
 wind_direction = 315
-# Get DAD pressure coefficients:
-# tpu_wdir = convert_to_tpu_wdir(wind_direction, test)
-# df_bldg_cps = map_tpu_ptaps(test, tpu_wdir, high_value_flag=True)
-# Uncomment to create planar overview of wall capacity mapping:
-# fig, ax = plt.subplots()
-# for wall in test.hasStory[0].adjacentElement['Walls']:
-#     xl, yl = wall.hasGeometry['1D Geometry']['local'].xy
-#     ax.scatter(np.array(xl)/3.281, np.array(yl)/3.281, s=8, color='blue')
-#     if wall.hasCapacity['wind pressure']['external']['negative'] == wcc[3]:
-#         ax.plot(np.array(xl)/3.281, np.array(yl)/3.281, 'k', label='Zone 5')
-#     else:
-#         ax.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'r', label='Zone 4')
-# ax.set_xticks(np.arange(-20, 25, 10))
-# ax.set_yticks(np.arange(-20, 25, 10))
-# ax.set_ylabel('y [m]')
-# ax.set_xlabel('x [m]')
-
-# # Read in parcel data from surrounding buildings:
-df = pd.read_csv('C:/Users/Karen/Desktop/Parcel_data.csv')
-# Create data models for each building:
+tpu_wdir = convert_to_tpu_wdir(wind_direction, target_bldg)
+df_target_bldg_cps = map_tpu_ptaps(target_bldg, tpu_wdir, high_value_flag=True)
+target_bldg.hasDemand['wind pressure']['external'] = df_target_bldg_cps  # Add coefficients/trib areas to data model
+# 2) Asset Descriptions: Source Building Parcel Models
+df = pd.read_csv('C:/Users/Karen/Desktop/Parcel_data.csv')  # Parcel data
+# Create data models for each potential source building:
 site = Site()
 plot_flag=False
 length_unit='ft'
@@ -471,17 +456,16 @@ for p in df.index:
         survey_data.doe_ref_bldg(new_bldg, window_flag=False)
         # Get building footprint:
         assign_footprint(new_bldg, df['Stories'][p])
-        get_ref_bldg_crs(test, new_bldg, length_unit)
+        get_ref_bldg_crs(target_bldg, new_bldg, length_unit)
         site.hasBuilding.append(new_bldg)
     else:
         pass
 site.update_zones()
 site.update_interfaces()
 site.update_elements()
-
-# Grab all the debris types in this site:
+# 3) Probable wind-borne debris sources and source region:
 length_unit = 'ft'
-get_site_debris(site, length_unit)
+get_site_debris(site, length_unit)  # Grab all the debris types in this site
 # Step 3: Calculate the trajectory of each debris type:
 #wind_speed_arr = np.arange(70, 200, 5)
 # traj_dict = {'wind speed': [], 'debris name': [], 'alongwind_mean': [], 'alongwind_std_dev': [],
@@ -503,38 +487,35 @@ get_site_debris(site, length_unit)
 #             traj_dict['debris name'].append(site.hasDebris[key]['debris name'][row])
 # df_debris = pd.DataFrame(traj_dict)
 # df_debris.to_csv('D:/Users/Karen/Documents/Github/Typical_Debris_Distances.csv', index=False)
-#run_debris(test, site, length_unit, wind_direction, wind_speed_arr)
+#run_debris(target_bldg, site, length_unit, wind_direction, wind_speed_arr)
 # Find potential source buildings:
 crs = 'reference cartesian'
 wind_direction = 315
 michael_wind_speed = 123.342  # 126? data model paper: 123.342
-site_source = get_source_bldgs(test, site, wind_direction, michael_wind_speed, crs, length_unit)
+site_source = get_source_bldgs(target_bldg, site, wind_direction, michael_wind_speed, crs, length_unit)
+# 4) Asset Description: Probable Source Buildings
+# Here we add minimum component capacities and wind pressure coefficients to source buildings
 for b in site_source.hasBuilding:
-    # # First add missing data --> roof pitch:
-    # code_informed = FBC(b, loading_flag=False)
-    # code_informed.roof_attributes(code_informed.hasEdition, b)
-    # # These buildings will be analyzed as simple models so populate simple footprint if needed:
-    # b.hasGeometry['Footprint']['local'] = b.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
-    # # Populate C&C minimum capacities (roof only) -->   NOTE: YEAR BUILT IS 1989 WOULD HAVE TO CODE UP GCP USE CASE, MAYBE SWITCH TO 1995
-    # exposure = 'B'
-    # roof_flag = True
-    # wall_flag = False
-    # if b.hasYearBuilt < b.hasElement['Roof'][0].hasYearBuilt:
-    #     b.hasYearBuilt = b.hasElement['Roof'][0].hasYearBuilt
-    # else:
-    #     pass
-    # zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(b, exposure, roof_flag, wall_flag)
-    # Get DAD pressure coefficients:
+    # 4a) Adjust building/roof geometries based on value of property:
     high_value_flag = False
     if not high_value_flag:
-        new_bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'] = new_bldg.hasGeometry['Footprint'][
-            'local'].minimum_rotated_rectangle
+        b.hasGeometry['Footprint']['local'] = b.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
+        b.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'] = b.hasGeometry['Footprint']['local']
     else:
-        new_bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'] = new_bldg.hasGeometry['Footprint'][
-            'local'].minimum_rotated_rectangle
+        b.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'] = b.hasGeometry['Footprint']['local']
+    # 4b) Populate C&C minimum capacities: Roof
+    code_informed = FBC(b, loading_flag=False)
+    code_informed.roof_attributes(code_informed.hasEdition, b)  # Add missing data --> roof pitch:
+    exposure = 'B'
+    roof_flag = True
+    wall_flag = False
+    zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(b, exposure, roof_flag, wall_flag)
+    # 4c) Get DAD pressure coefficients:
     tpu_wdir = convert_to_tpu_wdir(wind_direction, b)
-    df_bldg_cps = map_tpu_ptaps(b, tpu_wdir, high_value_flag)
+    df_bldg_cps = map_tpu_ptaps(b, tpu_wdir, high_value_flag)  # taps and trib areas
+# 5) Fault tree analysis
+
 # # Populate the building's Hurricane Michael loading demand:
 # unit = 'english'
 # # #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
-#generate_pressure_loading(test, michael_wind_speed, tpu_wind_direction, tpu_flag=True, csv_flag=False)
+#generate_pressure_loading(target_bldg, michael_wind_speed, tpu_wind_direction, tpu_flag=True, csv_flag=False)
