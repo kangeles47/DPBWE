@@ -471,6 +471,7 @@ for p in df.index:
         survey_data.doe_ref_bldg(new_bldg, window_flag=False)
         # Get building footprint:
         assign_footprint(new_bldg, df['Stories'][p])
+        new_bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'] = new_bldg.hasGeometry['Footprint']['local']
         get_ref_bldg_crs(test, new_bldg, length_unit)
         site.hasBuilding.append(new_bldg)
     else:
