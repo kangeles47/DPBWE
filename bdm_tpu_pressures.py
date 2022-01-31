@@ -1375,7 +1375,7 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull,
                             'Mean Cp': df['Mean Cp'][x]}, ignore_index=True)
     # Loop through ycoords and create vertical boundaries:
     for y in index_list:
-        if df['y'][y] == min_y:  # recall that this is original min_x
+        if df['y'][y] == min_y:
             # Add new point to DataFrame and use current point's mean Cp:
             df = df.append({'x': df['x'][y], 'y': min_y,
                             'Point Number': df['Point Number'].iloc[-1] + 1, 'Surface Number': 5,
@@ -1539,104 +1539,84 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull,
             pass
         else:
             # In order to wrap the model building geometry to the equivalent rectangle geometry:
-            # 1) Translate Surface 1 and 3 planes to the full depth
-            # 2) Re-space the coordinates in Surfaces 2, 4, and 5
-            for snum in surf_dict:
-                # Setting up variables:
-                # Pull up the coordinate pairs for the equivalent rectangle and the model bldg geometry (only need x,y):
-                xrect, yrect = rect_surf_dict[snum].exterior.xy  # equiv. rect (x,y) pairs
-                xmodel, ymodel = surf_dict[snum].exterior.xy  # model bldg (x,y) pairs
-                # Determine if this surface has unique x, y values or if it is exception case
-                if len(set(xrect)) > 1:
-                    xflag = True
-                    min_rect_idx = xrect.index(min(xrect))  # first index for minimum x in equiv rect surface description
-                    min_idx = xmodel.index(min(xmodel))  # first index for minimum x for model bldg description
+            # Re-space the coordinates in Surfaces 5 and 6
+            # Pull up the coordinate pairs for the equivalent rectangle and the model bldg geometry (only need x,y):
+            xrect, yrect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle.exterior.xy  # equiv. rect (x,y) pairs
+            xmodel, ymodel = upoly.exterior.xy  # model bldg (x,y) pairs
+            # Determine if this surface has unique x, y values or if it is exception case
+            if len(set(xrect)) > 1:
+                xflag = True
+                min_rect_idx = xrect.index(min(xrect))  # first index for minimum x in equiv rect surface description
+                min_idx = xmodel.index(min(xmodel))  # first index for minimum x for model bldg description
+            else:
+                xflag = False  # Exception: all x values are the same
+                min_rect_idx = yrect.index(min(yrect))  # first index for minimum x in equiv rect surface description
+                min_idx = ymodel.index(min(ymodel))  # first index for minimum x for model bldg description
+            # Calculate the difference in x, y between coordinates:
+            xdiff = xrect[min_rect_idx] - xmodel[min_idx]
+            ydiff = yrect[min_rect_idx] - ymodel[min_idx]
+            # Pull this surface's points from the DataFrame:
+            surf_pts = df_simple_map['Real Life Location']
+            # To conduct the re-spacing, points are first shifted to the edge of the surface:
+            dist = sqrt(xdiff**2 + ydiff**2)  # distance between model and equiv. rectangle surface corners
+            if side_lines['length'][depth_idx] < dfull:
+                dist = -1*dist
+            else:
+                pass
+            # Determine the model bldg and equiv rect spacing:
+            # Note: xvals previously defined for creating mesh in contour plot: use to determine spacing
+            new_space = side_lines['length'][depth_idx] / (len(xvals) - 1)  # new spacing
+            # To conduct the re-spacing, will need to project cosine and since components for x, y:
+            theta = atan2(ydiff, xdiff)  # Angle of the line
+            # Pull all x and y values for the surface in order to determine multipliers for spacing
+            xpt, ypt = [], []
+            for spt in surf_pts:
+                xpt.append(spt.x)
+                ypt.append(spt.y)
+            x_unique = np.unique(xpt)
+            y_unique = np.unique(ypt)
+            # Update the coordinates for each point in the surface:
+            for pt in surf_pts.index.to_list():
+                current_pt = df_simple_map['Real Life Location'][pt]
+                # Find the index of the current x or y value - used for spacing multipliers:
+                if xflag:
+                    idx = np.where(x_unique == current_pt.x)[0] - 1
                 else:
-                    xflag = False  # Exception: all x values are the same
-                    min_rect_idx = yrect.index(min(yrect))  # first index for minimum x in equiv rect surface description
-                    min_idx = ymodel.index(min(ymodel))  # first index for minimum x for model bldg description
-                # Calculate the difference in x, y between coordinates:
-                xdiff = xrect[min_rect_idx] - xmodel[min_idx]
-                ydiff = yrect[min_rect_idx] - ymodel[min_idx]
-                # Pull this surface's points from the DataFrame:
-                surf_pts = df_simple_map.loc[df_simple_map['Surface Number'] == snum, 'Real Life Location']
-                # Go through surfaces:
-                if snum == 1 or snum == 3:
-                    # Translate all points for this surface:
-                    for pt in surf_pts.index.to_list():
-                        current_pt = df_simple_map['Real Life Location'][pt]
-                        df_simple_map.iat[pt, rl_loc] = Point(current_pt.x + xdiff, current_pt.y + ydiff, current_pt.z)
+                    idx = np.where(y_unique == current_pt.y)[0] - 1  # Exception: Surf 2 and 4 || to N-S direction
+                if 90 < tpu_wdir <= 270:
+                    # Shift all points to the corner of the windward surface:
+                    df_simple_map.iat[pt, rl_loc] = Point(current_pt.x - dist * cos(theta),
+                                                          current_pt.y - dist * sin(theta), current_pt.z)
                 else:
-                    # To conduct the re-spacing, points are first shifted to the edge of the surface:
-                    dist = sqrt(xdiff**2 + ydiff**2)  # distance between model and equiv. rectangle surface corners
-                    if side_lines['length'][depth_idx] < dfull:
-                        dist = -1*dist
-                    else:
-                        pass
-                    # Determine the model bldg and equiv rect spacing:
-                    # Note: xvals previously defined for creating mesh in contour plot: use to determine spacing
-                    new_space = side_lines['length'][depth_idx] / (len(xvals) - 1)  # new spacing
-                    # To conduct the re-spacing, will need to project cosine and since components for x, y:
-                    theta = atan2(ydiff, xdiff)  # Angle of the line
-                    # Pull all x and y values for the surface in order to determine multipliers for spacing
-                    xpt, ypt = [], []
-                    for spt in surf_pts:
-                        xpt.append(spt.x)
-                        ypt.append(spt.y)
-                    x_unique = np.unique(xpt)
-                    y_unique = np.unique(ypt)
-                    # Update the coordinates for each point in the surface:
-                    for pt in surf_pts.index.to_list():
-                        current_pt = df_simple_map['Real Life Location'][pt]
-                        # Find the index of the current x or y value - used for spacing multipliers:
-                        if xflag:
-                            idx = np.where(x_unique == current_pt.x)[0] - 1
-                        else:
-                            idx = np.where(y_unique == current_pt.y)[0] - 1  # Exception: Surf 2 and 4 || to N-S direction
-                        if 90 < tpu_wdir <= 270 and snum == 5:
-                            # Shift all points to the corner of the windward surface:
-                            df_simple_map.iat[pt, rl_loc] = Point(current_pt.x - dist * cos(theta),
-                                                                     current_pt.y - dist * sin(theta), current_pt.z)
-                        else:
-                            # Shift all points to the corner of the windward surface:
+                    # Shift all points to the corner of the windward surface:
+                    if side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'y':
+                        df_simple_map.iat[pt, rl_loc] = Point(current_pt.x + dist * cos(theta),
+                                                              current_pt.y + dist * sin(theta), current_pt.z)
+                    elif side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'x':
+                        df_simple_map.iat[pt, rl_loc] = Point(current_pt.x - dist * cos(theta),
+                                                              current_pt.y - dist * sin(theta), current_pt.z)
+
+                # Finish new spacing for roof coordinates
+                # Note: Roof coordinates run in the direction of Surfaces 1 and 3
+                point_indices = surf_pts.index.to_list()
+                origin_idx = point_indices[0:len(xvals)]  # Starting points for new spacing (these are at edge)
+                for idx in origin_idx:
+                    origin_pt = df_simple_map['Real Life Location'][idx]
+                    for multiplier in range(1, len(xvals)):  # Note: origin_idx already where they need to be
+                        pt_idx = idx + len(xvals)*multiplier
+                        # Note: Point lines are parallel to surface 2 and 4
+                        # Use origin pts and multiplier to define new coordinate pairs:
+                        if tpu_wdir <= 90:
                             if side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'y':
-                                df_simple_map.iat[pt, rl_loc] = Point(current_pt.x + dist * cos(theta),
-                                                                         current_pt.y + dist * sin(theta), current_pt.z)
+                                df_simple_map.iat[pt_idx, rl_loc] = Point(origin_pt.x - (new_space * multiplier * cos(theta)), origin_pt.y - (new_space * multiplier * sin(theta)), origin_pt.z)
                             elif side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'x':
-                                df_simple_map.iat[pt, rl_loc] = Point(current_pt.x - dist * cos(theta),
-                                                                      current_pt.y - dist * sin(theta), current_pt.z)
-                        if snum != 5:
-                            if current_pt.x == xmodel[min_idx] and current_pt.y == ymodel[min_idx]:
-                                pass
-                            else:
-                                # Shift the point again to create the new spacing:
-                                df_simple_map.iat[pt, rl_loc] = Point(xrect[min_rect_idx] - new_space * idx * cos(theta), yrect[min_rect_idx] - new_space * idx * sin(theta), current_pt.z)
-                        else:
-                            pass
-                    if snum != 5:
-                        pass
-                    else:
-                        # Finish new spacing for roof coordinates
-                        # Note: Roof coordinates run in the direction of Surfaces 1 and 3
-                        point_indices = surf_pts.index.to_list()
-                        origin_idx = point_indices[0:len(xvals)]  # Starting points for new spacing (these are at edge)
-                        for idx in origin_idx:
-                            origin_pt = df_simple_map['Real Life Location'][idx]
-                            for multiplier in range(1, len(xvals)):  # Note: origin_idx already where they need to be
-                                pt_idx = idx + len(xvals)*multiplier
-                                # Note: Point lines are parallel to surface 2 and 4
-                                # Use origin pts and multiplier to define new coordinate pairs:
-                                if tpu_wdir <= 90:
-                                    if side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'y':
-                                        df_simple_map.iat[pt_idx, rl_loc] = Point(origin_pt.x - (new_space * multiplier * cos(theta)), origin_pt.y - (new_space * multiplier * sin(theta)), origin_pt.z)
-                                    elif side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'x':
-                                        df_simple_map.iat[pt_idx, rl_loc] = Point(
-                                            origin_pt.x + (new_space * multiplier * cos(theta)),
-                                            origin_pt.y + (new_space * multiplier * sin(theta)), origin_pt.z)
-                                elif 90 < tpu_wdir <= 270:
-                                    df_simple_map.iat[pt_idx, rl_loc] = Point(
-                                        origin_pt.x + (new_space * multiplier * cos(theta)),
-                                        origin_pt.y + (new_space * multiplier * sin(theta)), origin_pt.z)
+                                df_simple_map.iat[pt_idx, rl_loc] = Point(
+                                    origin_pt.x + (new_space * multiplier * cos(theta)),
+                                    origin_pt.y + (new_space * multiplier * sin(theta)), origin_pt.z)
+                        elif 90 < tpu_wdir <= 270:
+                            df_simple_map.iat[pt_idx, rl_loc] = Point(
+                                origin_pt.x + (new_space * multiplier * cos(theta)),
+                                origin_pt.y + (new_space * multiplier * sin(theta)), origin_pt.z)
         # Plot the new pressure tap locations and their Cps:
         fig4 = plt.figure()
         ax4 = plt.axes(projection='3d')
@@ -1664,233 +1644,17 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull,
         ax4.xaxis.set_tick_params(labelsize=16)
         ax4.yaxis.set_tick_params(labelsize=16)
         ax4.zaxis.set_tick_params(labelsize=16)
-        # Plot the surface geometries for verification
-        for key in rect_surf_dict:
-            xsurf, ysurf, zsurf = [], [], []
-            for p in list(rect_surf_dict[key].exterior.coords):
-                xsurf.append(p[0])
-                ysurf.append(p[1])
-                zsurf.append(p[2])
-            ax4.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, linestyle='dashed', color='gray', linewidth=2)
-            # Plot the building 3D Geometry:
-        for poly in bldg.hasGeometry['3D Geometry']['local']:
-            x_bpoly, y_bpoly, z_bpoly = [], [], []
-            for bpt in list(poly.exterior.coords):
-                x_bpoly.append(bpt[0])
-                y_bpoly.append(bpt[1])
-                z_bpoly.append(bpt[2])
-                # Plot the building geometry:
-            ax4.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, 'k', linewidth=2)
+        # Plot the building's equivalent rectangle roof for verification:
+        ax4.plot(np.array(xr) / 3.281, np.array(yr) / 3.281, np.ones(len(xr))*bldg.hasGeometry['Height'] / 3.281, linestyle='dashed', color='gray', linewidth=2)
+        # Plot the building's actual planar roof geometry:
+        xb, yb = bldg.hasGeometry['Footprint']['local'].exterior.xy
+        ax4.plot(np.array(xb)/3.281, np.array(yb)/3.281, np.ones(len(xb))*bldg.hasGeometry['Height']/3.281, 'k', linewidth=2)
         plt.show()
         # Last part: Mapping pressures onto the true 3D geometry:
         if not high_value_flag:
             df_bldg_cps = df_simple_map
         else:
-            df_simple_map['Surface Match'] = False  # Start by assuming there is not a perfect match with actual geometry
-            df_bldg_cps = pd.DataFrame(columns=df_simple_map.columns)  # Create master DataFrame for entire building
-            df_roof_cps = pd.DataFrame(columns=df_simple_map.columns)
-            # Set up plotting:
-            fig5 = plt.figure()
-            ax5 = plt.axes(projection='3d')
-            # Use the actual constructed building's 3D geometry to define boundaries for the points:
-            # First figure out what surface is directly in line with the 3D building geometry:
-            for bsurf in bldg.hasGeometry['3D Geometry']['local'][1:]:
-                # Skip the surface corresponding to the ground floor:
-                # Create a DataFrame to save pressure tap data for this surface:
-                if bsurf.exterior.coords[0][2] == bldg.hasGeometry['Height']:
-                    roof_flag = True
-                else:
-                    roof_flag = False
-                    df_surf_cps = pd.DataFrame(columns=df_simple_map.columns)
-                # Pull the surface geometry:
-                xb, yb = bsurf.exterior.xy
-                b1 = Point(xb[0], yb[0])
-                b2 = Point(xb[2], yb[2])
-                # Plot the surface geometry:
-                xsurf, ysurf, zsurf = [], [], []
-                for surf_pt in list(bsurf.exterior.coords):
-                    xsurf.append(surf_pt[0])
-                    ysurf.append(surf_pt[1])
-                    zsurf.append(surf_pt[2])
-                ax5.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, 'k', linewidth=2)
-                rsurf_list = []
-                for key in rect_surf_dict:
-                    xr, yr = rect_surf_dict[key].exterior.xy
-                    if key != 5:
-                        range_poly = Polygon([(xr[0], yr[0]), (xr[0], yr[2]), (xr[2], yr[2]), (xr[2], yr[0])])
-                    else:
-                        range_poly = rect_surf_dict[key]
-                    if b1.within(range_poly) and b2.within(range_poly):
-                        if key != 5:
-                            # Create a polygon to define the range of x,y values for the building's surface:
-                            surf_range_poly = Polygon([(xb[0], yb[0]), (xb[0], yb[2]), (xb[2], yb[2]), (xb[2], yb[0])])
-                        else:
-                            xroof, yroof = bldg.hasGeometry['3D Geometry']['local'][0].exterior.xy
-                            roof_pts = []
-                            for i in range(0, len(xroof)):
-                                roof_pts.append(Point(xroof[i], yroof[i]))
-                            surf_range_poly = Polygon(roof_pts)
-                        # Pull column indexes:
-                        # Find index for column we are modifying:
-                        for m in range(0, len(df_simple_map.columns)):
-                            if df_simple_map.columns[m] == 'Surface Match':
-                                surf_match_col = m
-                                break
-                            else:
-                                pass
-                        # Pull the corresponding pressure taps:
-                        tap_indices = df_simple_map[df_simple_map['Surface Number'] == key].index.to_list()
-                        for tap_idx in tap_indices:
-                            ref_pt = Point(df_simple_map['Real Life Location'][tap_idx].x, df_simple_map['Real Life Location'][tap_idx].y)
-                            if ref_pt.within(surf_range_poly):
-                                df_simple_map.iat[tap_idx, surf_match_col] = True
-                                tap_info = df_simple_map.iloc[tap_idx]
-                                if key != 5:
-                                    df_surf_cps = df_surf_cps.append(tap_info, ignore_index=True)
-                                else:
-                                    df_roof_cps = df_roof_cps.append(tap_info, ignore_index=True)
-                            else:
-                                pass
-                    elif b1.within(range_poly) or b2.within(range_poly):
-                        rsurf_list.append(key)
-                    else:
-                        pass
-                if not roof_flag:
-                    if len(rsurf_list) > 1:
-                        # Define surface line geometries:
-                        bsurf_line = LineString([b1, b2])  # Line geometry of incompatible surface
-                        rx1, ry1 = rect_surf_dict[rsurf_list[0]].exterior.xy
-                        rx2, ry2 = rect_surf_dict[rsurf_list[1]].exterior.xy
-                        rline1 = LineString([(rx1[0], ry1[0]), (rx1[2], ry1[2])])
-                        rline2 = LineString([(rx2[0], ry2[0]), (rx2[2], ry2[2])])
-                        # Find the shared point between the two surfaces:
-                        if rline1.coords[0] == rline2.coords[0] or rline1.coords[0] == rline2.coords[1]:
-                            origin_pt = rline1.coords[0]
-                        else:
-                            origin_pt = rline1.coords[1]
-                        # Grab the points for each surface on the model building geometry:
-                        surf_pts = df_simple_map[(df_simple_map['Surface Number'] == rsurf_list[0]) | (df_simple_map['Surface Number'] == rsurf_list[1])]
-                        # Use a dictionary to keep track of data for this surface:
-                        new_dict = {}
-                        for col in df_simple_map.columns:
-                            new_dict[col] = []
-                        # Loop through the surface points
-                        # Two things that need to be done here:
-                        # (1) For each tap, project the point onto the desired surface and determine if intersection occurs
-                        #   (a) Need a perpendicular line from the tap's surface to desired surface at tap location
-                        #   (b) Equivalent line is line || to the adjacent surface at the tap location
-                        for p in surf_pts.index.to_list():
-                            # Calculate the distance between this tap location and the origin_pt:
-                            xd = surf_pts['Real Life Location'][p].x - origin_pt[0]
-                            yd = surf_pts['Real Life Location'][p].y - origin_pt[1]
-                            pt_dist = sqrt(xd**2 + yd**2)
-                            # Create the parallel line:
-                            if surf_pts['Surface Number'][p] == rsurf_list[0]:
-                                pline = rline2.parallel_offset(pt_dist, side='Left')
-                            else:
-                                pline = rline1.parallel_offset(pt_dist, side='Left')
-                            # Determine if intersection occurs with desired surface:
-                            int_flag = pline.intersects(bsurf_line)
-                            if int_flag:
-                                int_pt = pline.intersection(bsurf_line)
-                                # Save this point's information:
-                                for key in new_dict:
-                                    if key == 'Real Life Location':
-                                        new_dict[key].append(Point(int_pt.x, int_pt.y, surf_pts['Real Life Location'][p].z))
-                                    else:
-                                        new_dict[key].append(surf_pts[key][p])
-                            else:
-                                pass
-                        # Create a new dictionary to hold the final pressure tap locations and pressures:
-                        proj_tap_dict = {}
-                        for key in new_dict:
-                            proj_tap_dict[key] = []
-                        # Loop through projected points, check if there is a duplicate point (from other surface)
-                        # In case of duplicate point, choose the larger pressure:
-                        for row in range(0, len(new_dict['Real Life Location'])):
-                            new_pt = new_dict['Real Life Location'][row]
-                            # Check for a duplicate point:
-                            if new_dict['Real Life Location'].count(new_pt) > 1:
-                                # Find the duplicate point:
-                                try:
-                                    dup_idx = new_dict['Real Life Location'][row:].index(new_pt) + row  # Use remaining part of list
-                                    # Choose the larger pressure:
-                                    if abs(new_dict['Pressure'][row]) > abs(new_dict['Pressure'][dup_idx]):
-                                        pmax = new_dict['Pressure'][row]
-                                    else:
-                                        pmax = new_dict['Pressure'][dup_idx]
-                                    # Add the tap information to the final dictionary:
-                                    for k in proj_tap_dict:
-                                        if k == 'Pressure':
-                                            proj_tap_dict[k].append(pmax)
-                                        else:
-                                            proj_tap_dict[k].append(new_dict[k][row])
-                                except:
-                                    pass  # Case when duplicate point has already been taken care of earlier in the loop
-                            else:
-                                for k in proj_tap_dict:
-                                    proj_tap_dict[k].append(new_dict[k][row])
-                        df_tap_info = pd.DataFrame(new_dict)
-                        # Add this information to the surface's DataFrame:
-                        df_surf_cps = df_surf_cps.append(df_tap_info, ignore_index=True)
-                    else:
-                        # Grab any edge roof points:
-                        for tap in df_surf_cps.index.to_list():
-                            tap_pt = df_surf_cps['Real Life Location'][tap]
-                            if round(tap_pt.z, 4) == round(bldg.hasGeometry['Height'], 4):
-                                roof_taps = df_simple_map.loc[df_simple_map['Surface Number'] == 5]
-                                for rtap in roof_taps.index.to_list():
-                                    if round(roof_taps['Real Life Location'][rtap].x, 4) == round(tap_pt.x,4) and round(roof_taps['Real Life Location'][rtap].y,4) == round(tap_pt.y,4):
-                                        rtap_info = df_simple_map.iloc[rtap]
-                                        df_roof_cps = df_roof_cps.append(rtap_info, ignore_index=True)
-                                    else:
-                                        pass
-                            else:
-                                pass
-                else:
-                    pass
-                # Load the surface and its corresponding DataFrame into the building's data model:
-                if roof_flag:
-                    roof_poly = bsurf
-                else:
-                    #bldg.hasDemand['wind pressure']['external']['surfaces'].append(bsurf)
-                    #bldg.hasDemand['wind pressure']['external']['values'].append(df_surf_cps)
-                    # Add the surface pressure tap data to the master DataFrame:
-                    df_bldg_cps = df_bldg_cps.append(df_surf_cps, ignore_index=True)
-            # Save the roof surface and data:
-            #bldg.hasDemand['wind pressure']['external']['surfaces'].append(roof_poly)
-            #bldg.hasDemand['wind pressure']['external']['values'].append(df_roof_cps)
-            df_bldg_cps = df_bldg_cps.append(df_roof_cps, ignore_index=True)
-            df_bldg_cps = ptap_adjust(df_bldg_cps, bldg)
-            # Plot the projected pressure taps:
-            xf, yf, zf = [], [], []
-            for k in df_bldg_cps.index.to_list():
-                xf.append(df_bldg_cps['Real Life Location'][k].x)
-                yf.append(df_bldg_cps['Real Life Location'][k].y)
-                zf.append(df_bldg_cps['Real Life Location'][k].z)
-            img = ax5.scatter3D(np.array([xf]) / 3.281, np.array([yf]) / 3.281, np.array([zf]) / 3.281,
-                                c=df_bldg_cps['Mean Cp'], cmap=plt.get_cmap('copper', 5))
-            fig5.colorbar(img)
-            ax5.set_xlim(left=-20, right=20)
-            ax5.set_ylim3d(bottom=-20, top=20)
-            # Make the panes transparent:
-            ax5.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-            ax5.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-            ax5.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-            # Make the grids transparent:
-            ax5.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-            ax5.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-            ax5.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-            # Plot labels
-            ax5.set_xlabel('x [m]', fontsize=14, labelpad=10)
-            ax5.set_ylabel('y [m]', fontsize=14, labelpad=10)
-            ax5.set_zlabel('z [m]', fontsize=14, labelpad=10)
-            # Set label styles:
-            ax5.set_zticks(np.arange(0, 20, 4))
-            ax5.xaxis.set_tick_params(labelsize=14)
-            ax5.yaxis.set_tick_params(labelsize=14)
-            ax5.zaxis.set_tick_params(labelsize=14)
-            plt.show()
+            print('High value roof mapping not available at this time')
         # Final step: Get tap tributary areas:
         get_tap_trib_areas(bldg, df_bldg_cps, roof_flag=True, facade_flag=True)
     return df_bldg_cps
@@ -2161,7 +1925,7 @@ def get_tap_trib_areas(bldg, df_bldg_cps, roof_flag, facade_flag):
     if max(df_bldg_cps['Surface Number']) == 5:
         roof_indices = df_bldg_cps.loc[df_bldg_cps['Surface Number'] == 5].index
     elif max(df_bldg_cps['Surface Number']) == 6:
-        pass
+        roof_indices = df_bldg_cps.loc[(df_bldg_cps['Surface Number'] == 5) | (df_bldg_cps['Surface Number'] == 6)].index
     if roof_flag:
         df_roof = df_bldg_cps.iloc[roof_indices]
         # Use voronoi diagram to get 2D pressure tap tributary areas:
