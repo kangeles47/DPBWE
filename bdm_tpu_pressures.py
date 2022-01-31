@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from scipy.spatial import Voronoi
 import pandas as pd
-from code_pressures import PressureCalc
 
 
 def map_tpu_ptaps(bldg, tpu_wdir, high_value_flag):
