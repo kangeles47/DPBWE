@@ -17,7 +17,7 @@ from code_pressures import PressureCalc
 from get_debris import run_debris, get_site_debris, get_trajectory, get_source_bldgs
 from survey_data import SurveyData
 from queries import get_bldgs_at_dist
-from bdm_tpu_pressures import map_tpu_ptaps, convert_to_tpu_wdir
+from bdm_tpu_pressures import map_tpu_ptaps, convert_to_tpu_wdir, map_ptaps_to_components
 from fault_tree import wind_pressure_ftree
 
 
@@ -421,6 +421,8 @@ wind_direction = 315
 tpu_wdir = convert_to_tpu_wdir(wind_direction, target_bldg)
 df_target_bldg_cps = map_tpu_ptaps(target_bldg, tpu_wdir, high_value_flag=True)
 target_bldg.hasDemand['wind pressure']['external'] = df_target_bldg_cps  # Add coefficients/trib areas to data model
+# Map pressure coefficients to building components:
+map_ptaps_to_components(target_bldg, df_target_bldg_cps, roof_flag=True, facade_flag=False)
 # 2) Asset Descriptions: Source Building Parcel Models
 df = pd.read_csv('C:/Users/Karen/Desktop/Parcel_data.csv')  # Parcel data
 # Create data models for each potential source building:
