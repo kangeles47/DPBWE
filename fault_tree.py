@@ -5,13 +5,10 @@ from shapely.geometry import Polygon, Point, LineString, MultiPoint, MultiLineSt
 from shapely.ops import nearest_points, snap
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from scipy.stats import norm
-from math import sqrt
 from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
-from create_fragility import get_wind_speed
-from parcel import Parcel
-from OBDM.zone import Site
 from bldg_code import ASCE7
 from OBDM.element import Roof
+from code_pressures import PressureCalc
 
 
 def populate_code_capacities(bldg, cc_flag, mwfrs_flag, exposure):
@@ -564,43 +561,44 @@ def wind_pressure_ftree(bldg, wind_speed):
     # For each building:
     # 1) Map pressure taps to components
     # 2) Sample component capacities:
-    # 3) Sample pressure coefficient and calculate wind pressure:
     # 4) Check capacity versus demand
+
+    # 1) Sample pressure coefficients and calculate wind pressure:
     df_bldg_cps = bldg.hasDemand['wind pressure']['external']
     # Sample from gaussian distribution with mean = mean cp and std dev = 0.3
     df_bldg_cps['Sample Cp'] = df_bldg_cps['Mean Cp'].apply(lambda x: norm.rvs(x, 0.3))
     # Quantify pressures:
-    
-    # Loop through building envelope components and check for breach:
+    pressure_calc = PressureCalc()
+    df_bldg_cps['Pressure'] = df_bldg_cps['Sample Cp'].apply(lambda j: pressure_calc.get_tpu_pressure(wind_speed, j, 'B', bldg.hasGeometry['Height'], 'mph'))
+    # 2) Loop through building envelope components, sample capacities, and check for breach:
     fail_elements = []
-    fail_ptaps = []
-    fail_pairs = []
+    fail_regions = []
     for key in bldg.adjacentElement:
         if key == 'Floor':
             pass
         elif key == 'Roof':
             if len(bldg.adjacentElement[key][0].hasSubElement['cover']) > 0:
                 for elem in bldg.adjacentElement[key][0].hasSubElement['cover']:
-                    try:
-                        for row in elem.hasDemand['wind pressure']['external'].index:
-                            pressure_demand = elem.hasDemand['wind pressure']['external'].iloc[row]['Pressure']
-                            if pressure_demand < 0 and pressure_demand < elem.hasCapacity['wind pressure']['total']['negative']:
-                                elem.hasFailure['wind pressure'] = True
-                                fail_ptaps.append(elem.hasDemand['wind pressure']['external'].iloc[row])
-                                fail_pairs.append((pressure_demand, elem.hasCapacity['wind pressure']['total']['negative']))
-                            elif pressure_demand > 0 and pressure_demand > elem.hasCapacity['wind pressure']['total']['positive']:
-                                elem.hasFailure['wind pressure'] = True
-                                fail_ptaps.append(elem.hasDemand['wind pressure']['external'].iloc[row])
-                                fail_pairs.append(
-                                    (pressure_demand, elem.hasCapacity['wind pressure']['total']['positive']))
-                    except TypeError:
-                        # Demand is a single value:
-                        if elem.hasDemand['wind pressure']['external'] >= elem.hasCapacity['wind pressure']['external']:
-                            pass
-                    if elem.hasFailure['wind pressure']:
-                        fail_elements.append(elem)
+                    # Query tap numbers, pressures, and intersecting areas:
+                    tap_nums = elem.hasDemand['wind pressure']['external']['tap number']
+                    tap_pressures = df_bldg_cps['Pressure'][tap_nums]
+                    tap_areas = elem.hasDemand['wind pressure']['external']['intersecting area']
+                    if type(tap_areas) == list:
+                        tap_areas = np.array(tap_areas)
                     else:
                         pass
+                    #elem_loading = sum(tap_pressures*tap_areas)/elem.hasGeometry['2D Geometry']['local'].area
+                    # Sample component capacity:
+                    elem_capacity = elem.hasCapacity['wind pressure']['external']['positive']
+                    idx = 0
+                    for p in tap_pressures.index.to_list():
+                        if elem_capacity < tap_pressures.loc[p]:
+                            fail_regions.append(tap_areas[idx])
+                            elem.hasFailure['wind pressure'] = True
+                            fail_elements.append(elem)
+                        else:
+                            pass
+                        idx += 1
             else:
                 pass
         elif key == 'Walls':
