@@ -5,6 +5,7 @@ from shapely.geometry import Polygon, Point, LineString, MultiPoint, MultiLineSt
 from shapely.ops import nearest_points, snap
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from scipy.stats import norm
+from math import exp, sqrt
 from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from bldg_code import ASCE7
 from OBDM.element import Roof
@@ -622,6 +623,14 @@ def wind_pressure_ftree(bldg, wind_speed):
     # Return a DataFrame with all failed elements and regions:
     df_fail = pd.DataFrame({'fail elements': fail_elements, 'fail regions': fail_regions})
     return df_fail
+
+
+def get_wbd(df_fail, wind_speed, impact_resistance, tachikawa_num, c, debris_mass, momentum_flag):
+    for i in df_fail.index.to_list():
+        x = 0
+        debris_hvelocity = wind_speed*(1-exp(-1*sqrt(2*c*tachikawa_num*x)))
+        if momentum_flag:
+            min_debris_area = impact_resistance*debris_mass*debris_hvelocity
 
 
 def get_voronoi(bldg):
