@@ -22,7 +22,7 @@ def map_tpu_ptaps(bldg, tpu_wdir, high_value_flag):
         df_simple_map = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, match_flag, h_bldg, rect_surf_dict, bldg, high_value_flag)
     elif num_surf == 6:
         bfull, hfull, dfull, surf_dict = get_tpu_gable_rsurfaces(bldg, match_flag, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, high_value_flag)
-        df_roof_cps = map_gable_roof_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, match_flag,
+        df_simple_map = map_gable_roof_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, match_flag,
                                 h_bldg, rect_surf_dict, bldg, high_value_flag)
     return df_simple_map
 
@@ -1768,12 +1768,8 @@ def convert_to_tpu_wdir(wind_direction, bldg):
         ydist = yrect[3] - yrect[2]
         theta = degrees(atan2(ydist, xdist))
     elif side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'x':
-        if len(xrect) != 5:
-            xdist = xrect[1] - xrect[0]
-            ydist = yrect[1] - yrect[0]
-        else:
-            xdist = xrect[3] - xrect[2]
-            ydist = yrect[3] - yrect[2]
+        xdist = xrect[1] - xrect[0]
+        ydist = yrect[1] - yrect[0]
         theta = degrees(atan2(ydist, xdist))
     # Find the tpu wind direction according to building orientation and IRL wind direction:
     tpu_wdir = wind_direction*-1 + 270 + -1*(theta)
