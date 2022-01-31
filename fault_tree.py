@@ -559,10 +559,6 @@ def time_hist_element_pressure_failure_check(elem, bldg, zone_flag, tcols):
 
 def wind_pressure_ftree(bldg, wind_speed):
     # For each building:
-    # 1) Map pressure taps to components
-    # 2) Sample component capacities:
-    # 4) Check capacity versus demand
-
     # 1) Sample pressure coefficients and calculate wind pressure:
     df_bldg_cps = bldg.hasDemand['wind pressure']['external']
     # Sample from gaussian distribution with mean = mean cp and std dev = 0.3
@@ -603,35 +599,29 @@ def wind_pressure_ftree(bldg, wind_speed):
                 pass
         elif key == 'Walls':
             for elem in bldg.adjacentElement[key]:
-                try:
-                    for row in elem.hasDemand['wind pressure']['external'].index:
-                        pressure_demand = elem.hasDemand['wind pressure']['external'].iloc[row]['Pressure']
-                        if pressure_demand < 0 and pressure_demand < elem.hasCapacity['wind pressure']['total']['negative']:
-                            elem.hasFailure['wind pressure'] = True
-                        elif pressure_demand > 0 and pressure_demand > elem.hasCapacity['wind pressure']['total']['positive']:
-                            elem.hasFailure['wind pressure'] = True
-                except TypeError:
-                    # Demand is a single value:
-                    if elem.hasDemand['wind pressure']['external'] >= elem.hasCapacity['wind pressure']['external']:
-                        pass
-                if elem.hasFailure['wind pressure']:
-                    fail_elements.append(elem)
+                # Query tap numbers, pressures, and intersecting areas:
+                tap_nums = elem.hasDemand['wind pressure']['external']['tap number']
+                tap_pressures = df_bldg_cps['Pressure'][tap_nums]
+                tap_areas = elem.hasDemand['wind pressure']['external']['intersecting area']
+                if type(tap_areas) == list:
+                    tap_areas = np.array(tap_areas)
                 else:
                     pass
-    # Plotting:
-    # Roof damage:
-    for fail_elem in fail_elements:
-        xf, yf = fail_elem.hasGeometry['2D Geometry']['local'].exterior.xy
-        plt.plot(xf, yf, 'k')
-    for tap in range(0, len(fail_ptaps)):
-        tloc = fail_ptaps[tap]['Real Life Location']
-        try:
-            plt.scatter(tloc.x, tloc.y, color='red')
-        except AttributeError:
-            pass
-    plt.title('Roof pressure taps - damaged')
-    plt.show()
-    d = 0
+                #elem_loading = sum(tap_pressures*tap_areas)/elem.hasGeometry['2D Geometry']['local'].area
+                # Sample component capacity:
+                elem_capacity = elem.hasCapacity['wind pressure']['external']['positive']
+                idx = 0
+                for p in tap_pressures.index.to_list():
+                    if elem_capacity < tap_pressures.loc[p]:
+                        fail_regions.append(tap_areas[idx])
+                        elem.hasFailure['wind pressure'] = True
+                        fail_elements.append(elem)
+                    else:
+                        pass
+                    idx += 1
+    # Return a DataFrame with all failed elements and regions:
+    df_fail = pd.DataFrame({'fail elements': fail_elements, 'fail regions': fail_regions})
+    return df_fail
 
 
 def get_voronoi(bldg):
