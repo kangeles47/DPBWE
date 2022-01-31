@@ -471,7 +471,6 @@ for p in df.index:
         survey_data.doe_ref_bldg(new_bldg, window_flag=False)
         # Get building footprint:
         assign_footprint(new_bldg, df['Stories'][p])
-        new_bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'] = new_bldg.hasGeometry['Footprint']['local']
         get_ref_bldg_crs(test, new_bldg, length_unit)
         site.hasBuilding.append(new_bldg)
     else:
@@ -526,8 +525,15 @@ for b in site_source.hasBuilding:
     #     pass
     # zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(b, exposure, roof_flag, wall_flag)
     # Get DAD pressure coefficients:
+    high_value_flag = False
+    if not high_value_flag:
+        new_bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'] = new_bldg.hasGeometry['Footprint'][
+            'local'].minimum_rotated_rectangle
+    else:
+        new_bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'] = new_bldg.hasGeometry['Footprint'][
+            'local'].minimum_rotated_rectangle
     tpu_wdir = convert_to_tpu_wdir(wind_direction, b)
-    df_bldg_cps = map_tpu_ptaps(b, tpu_wdir, high_value_flag=False)
+    df_bldg_cps = map_tpu_ptaps(b, tpu_wdir, high_value_flag)
 # # Populate the building's Hurricane Michael loading demand:
 # unit = 'english'
 # # #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
