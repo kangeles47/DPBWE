@@ -1544,7 +1544,6 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, bfull, hfull, dfull, side_line
         hscale = h_bldg / hfull
         bscale = 1
         dscale = max(side_lines['length'])/dfull
-        scaled_pts = []
         # Scale roof taps to actual constructed building's dimensions (rectangular representation):
         df_simple_map['Real Life Location'] = df_simple_map['Real Life Location'].apply(lambda x: affinity.scale(x, xfact=bscale, yfact=dscale, zfact=hscale, origin=(0, 0, 0)))
         # Plot the new pressure tap locations and their Cps:
