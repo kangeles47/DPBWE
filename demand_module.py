@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from geopy import distance
 from math import sqrt, sin, atan2, degrees, pi
+from copy import copy
 import numpy as np
 from parcel import Parcel
 from bldg_code import ASCE7, FBC
@@ -293,11 +294,19 @@ def augmented_elements_wall(bldg, num_wall_elems, story_wall_elev, plot_flag):
         plt.show()
 
 
-def get_cc_min_capacity(bldg, exposure, roof_flag, wall_flag):
+def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag):
     # 1) find C&C zones:
     asce7 = ASCE7(bldg, loading_flag=True)
-    a = asce7.get_cc_zone_width(bldg)
-    zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
+    if high_value_flag:
+        a = asce7.get_cc_zone_width(bldg)
+        zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
+    else:
+        original_footprint = Polygon(list(bldg.hasGeometry['Footprint']['local'].exterior.coords))
+        bldg.hasGeometry['Footprint']['local'] = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
+        a = asce7.get_cc_zone_width(bldg)
+        zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
+        # Update building with original footprint:
+        bldg.hasGeometry['Footprint']['local'] = original_footprint
     # 2) Calculate zone pressures:
     design_wind_speed = asce7.get_code_wind_speed(bldg)
     pressure_calc = PressureCalc()
@@ -384,7 +393,8 @@ target_bldg.hasElement['Roof'][0].hasType = 'BUILT-UP'
 exposure = 'B'
 roof_flag = True
 wall_flag = True
-zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(target_bldg, exposure, roof_flag, wall_flag)  # includes roof mapping
+high_value_flag=True
+zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(target_bldg, exposure, high_value_flag, roof_flag, wall_flag)  # includes roof mapping
 # Map capacities to wall elements:
 # Figure to show zones and component mapping:
 fig = plt.figure()
@@ -419,7 +429,7 @@ for wall in target_bldg.hasElement['Walls']:
 # 1c) Asset Description: DAD pressure coefficients (wind loading):
 wind_direction = 315
 tpu_wdir = convert_to_tpu_wdir(wind_direction, target_bldg)
-df_target_bldg_cps = map_tpu_ptaps(target_bldg, tpu_wdir, high_value_flag=True)
+df_target_bldg_cps = map_tpu_ptaps(target_bldg, tpu_wdir, high_value_flag)
 target_bldg.hasDemand['wind pressure']['external'] = df_target_bldg_cps  # Add coefficients/trib areas to data model
 # Map pressure coefficients to building components:
 map_ptaps_to_components(target_bldg, df_target_bldg_cps, roof_flag=True, facade_flag=False)
@@ -496,24 +506,22 @@ michael_wind_speed = 123.342  # 126? data model paper: 123.342
 site_source = get_source_bldgs(target_bldg, site, wind_direction, michael_wind_speed, crs, length_unit)
 # 4) Asset Description: Probable Source Buildings
 # Here we add minimum component capacities and wind pressure coefficients to source buildings
-for b in site_source.hasBuilding:
-    # 4a) Adjust building/roof geometries based on value of property:
+for source_bldg in site_source.hasBuilding:
+    # 4a) Specify the value of the property:
     high_value_flag = False
-    if not high_value_flag:
-        b.hasGeometry['Footprint']['local'] = b.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
-        b.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'] = b.hasGeometry['Footprint']['local']
-    else:
-        b.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'] = b.hasGeometry['Footprint']['local']
     # 4b) Populate C&C minimum capacities: Roof
-    code_informed = FBC(b, loading_flag=False)
-    code_informed.roof_attributes(code_informed.hasEdition, b)  # Add missing data --> roof pitch:
+    code_informed = FBC(source_bldg, loading_flag=False)
+    code_informed.roof_attributes(code_informed.hasEdition, source_bldg)  # Add missing data --> roof pitch:
     exposure = 'B'
     roof_flag = True
     wall_flag = False
-    zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(b, exposure, roof_flag, wall_flag)
+    zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(source_bldg, exposure, high_value_flag, roof_flag, wall_flag)
     # 4c) Get DAD pressure coefficients:
-    tpu_wdir = convert_to_tpu_wdir(wind_direction, b)
-    df_bldg_cps = map_tpu_ptaps(b, tpu_wdir, high_value_flag)  # taps and trib areas
+    tpu_wdir = convert_to_tpu_wdir(wind_direction, source_bldg)
+    df_source_bldg_cps = map_tpu_ptaps(source_bldg, tpu_wdir, high_value_flag)  # taps and trib areas
+    source_bldg.hasDemand['wind pressure']['external'] = df_source_bldg_cps
+    # Map pressure coefficients to building components:
+    map_ptaps_to_components(source_bldg, df_source_bldg_cps, roof_flag=True, facade_flag=False)
 # 5) Fault tree analysis
 df_fail = wind_pressure_ftree(target_bldg, michael_wind_speed)
 # # Populate the building's Hurricane Michael loading demand:
