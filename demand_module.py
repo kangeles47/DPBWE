@@ -370,7 +370,7 @@ def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag):
 # Parcel Models
 lon = -85.676188
 lat = 30.190142
-target_bldg = Parcel('12345', 4, 'financial', 1989, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)
+target_bldg = Parcel('12345', 4, 'financial', 1996, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)  # 1989
 num_wall_elems = [4, 9, 17, 9, 4, 9, 17, 9]
 wall_height = target_bldg.hasGeometry['Height']/8
 story_wall_elev = []
@@ -433,6 +433,9 @@ df_target_bldg_cps = map_tpu_ptaps(target_bldg, tpu_wdir, high_value_flag)
 target_bldg.hasDemand['wind pressure']['external'] = df_target_bldg_cps  # Add coefficients/trib areas to data model
 # Map pressure coefficients to building components:
 map_ptaps_to_components(target_bldg, df_target_bldg_cps, roof_flag=True, facade_flag=False)
+# Pressure fault tree:
+michael_wind_speed = 123.342  # 126? data model paper: 123.342
+df_fail = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=False)
 # 2) Asset Descriptions: Source Building Parcel Models
 df = pd.read_csv('C:/Users/Karen/Desktop/Parcel_data.csv')  # Parcel data
 # Create data models for each potential source building:
@@ -502,7 +505,6 @@ get_site_debris(site, length_unit)  # Grab all the debris types in this site
 # Find potential source buildings:
 crs = 'reference cartesian'
 wind_direction = 315
-michael_wind_speed = 123.342  # 126? data model paper: 123.342
 site_source = get_source_bldgs(target_bldg, site, wind_direction, michael_wind_speed, crs, length_unit)
 # 4) Asset Description: Probable Source Buildings
 # Here we add minimum component capacities and wind pressure coefficients to source buildings
@@ -523,7 +525,7 @@ for source_bldg in site_source.hasBuilding:
     # Map pressure coefficients to building components:
     map_ptaps_to_components(source_bldg, df_source_bldg_cps, roof_flag=True, facade_flag=False)
 # 5) Fault tree analysis
-df_fail = wind_pressure_ftree(target_bldg, michael_wind_speed)
+df_fail = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=False)
 # # Populate the building's Hurricane Michael loading demand:
 # unit = 'english'
 # # #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
