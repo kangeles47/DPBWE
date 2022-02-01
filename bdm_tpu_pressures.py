@@ -3,6 +3,7 @@ from math import atan2, degrees, cos, sin, sqrt
 from shapely.geometry import Point, Polygon, LineString
 from shapely.ops import split
 from shapely import affinity
+from shapely.errors import TopologicalError
 from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
@@ -22,8 +23,8 @@ def map_tpu_ptaps(bldg, tpu_wdir, high_value_flag):
         df_simple_map = map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, match_flag, h_bldg, rect_surf_dict, bldg, high_value_flag)
     elif num_surf == 6:
         bfull, hfull, dfull, surf_dict = get_tpu_gable_rsurfaces(bldg, match_flag, side_lines, hb_ratio, db_ratio, rect, tpu_wdir, high_value_flag)
-        df_simple_map = map_gable_roof_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, match_flag,
-                                h_bldg, rect_surf_dict, bldg, high_value_flag)
+        df_simple_map = map_gable_roof_tap_data(tpu_wdir, model_file, bfull, hfull, dfull, side_lines, surf_dict, match_flag,
+                                h_bldg, rect, bldg, high_value_flag)
     return df_simple_map
 
 
@@ -91,7 +92,7 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
     rect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle  # local coords only for now
     xrect, yrect = rect.exterior.xy
     # Determine the lengths of rectangle's sides using line segments:
-    side_lines = {'lines': [], 'length': [], 'TPU direction': [], 'TPU line': [], 'real life direction': []}
+    side_lines = {'lines': [], 'length': [], 'TPU direction': [], 'real life direction': []}
     max_length = 0  # Initialize dummy variable
     for ind in range(0, len(xrect) - 1):
         # First figure out if the line is dominantly in x or y:
@@ -116,6 +117,25 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
             line_direction = 'y'
         # Record line directions:
         side_lines['TPU direction'].append(line_direction)
+    # Re-arrange points if needed:
+    if side_lines['real life direction'][1] == 'y' and side_lines['TPU direction'][1] == 'x':
+        # Re-arrange points to satisfy code for companion use case:
+        pts_list = list(rect.exterior.coords)
+        new_pts_list = []
+        new_side_lines = {'lines': [], 'length': [], 'TPU direction': [], 'real life direction': []}
+        for j in range(0, len(side_lines['lines'])):
+            if j < len(side_lines['lines'])-1:
+                new_pts_list.append(pts_list[j+1])
+                for key in new_side_lines:
+                    new_side_lines[key].append(side_lines[key][j+1])
+            else:
+                new_pts_list.append(pts_list[0])
+                for key in new_side_lines:
+                    new_side_lines[key].append(side_lines[key][0])
+        side_lines = new_side_lines
+        rect = Polygon(new_pts_list)
+    else:
+        pass
     # Calculate aspect ratios:
     hb = bldg.hasGeometry['Height'] / min(side_lines['length'])
     db = max(side_lines['length']) / min(side_lines['length'])
@@ -495,21 +515,28 @@ def get_tpu_gable_rsurfaces(bldg, match_flag, side_lines, hb_ratio, db_ratio, re
             split_line_pts.append(ref_pt)
         else:
             # x-direction in TPU = building depth:
-            ref_pt = side_lines['lines'][line].centroid  # line centroid
-            line_pts = list(side_lines['lines'][line].coords)
-            # Create two new lines to project full-scale depth:
-            new_line1 = LineString([ref_pt, Point(line_pts[0])])
-            new_line2 = LineString([ref_pt, Point(line_pts[1])])
-            # Distribute half of dfull to each line segment:
-            new_point1 = new_line1.interpolate(dfull / 2)
-            new_point2 = new_line2.interpolate(dfull / 2)
+            scale_factor = dfull/max(side_lines['length'])
+            scale_line = affinity.scale(side_lines['lines'][line], xfact=scale_factor, yfact=scale_factor)
+            line_pts_list = list(scale_line.coords)
+            # ref_pt = side_lines['lines'][line].centroid  # line centroid
+            # line_pts = list(side_lines['lines'][line].coords)
+            # # Create two new lines to project full-scale depth:
+            # new_line1 = LineString([ref_pt, Point(line_pts[0])])
+            # new_line2 = LineString([ref_pt, Point(line_pts[1])])
+            # # Distribute half of dfull to each line segment:
+            # if new_line1.length < dfull/2:
+            #     new_point1 = new_line1.interpolate(dfull / 2)
+            #     new_point2 = new_line2.interpolate(dfull / 2)
+            # else:
+            #     new_point1 = new_line1.interpolate(dfull / 2)
+            #     new_point2 = new_line2.interpolate(dfull / 2)
             # Create new line corresponding to full scale depth:
             #tpu_line = LineString([new_point1, new_point2])
             # Save points for model building's full-scale footprint:
-            tpu_footprint_pts.append((new_point1.x, new_point1.y))
-            tpu_footprint_pts.append((new_point2.x, new_point2.y))
+            tpu_footprint_pts.append(line_pts_list[0])
+            tpu_footprint_pts.append(line_pts_list[1])
     # 3) Create 2D surfaces for surface 5 and 6 (roof):
-    tpu_roof_polys = split(Polygon(tpu_footprint_pts), LineString(split_line_pts))
+    tpu_roof_polys = split(Polygon(tpu_footprint_pts), affinity.scale(LineString(split_line_pts), xfact=1.5, yfact=1.5))
     # 4) Figure out which polygon corresponds to surface 5 and 6, respectively:
     surf_dict = {5: None, 6: None}
     if side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'y':
@@ -1293,11 +1320,11 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             ax5.zaxis.set_tick_params(labelsize=14)
             plt.show()
         # Final step: Get tap tributary areas:
-        df_bldg_cps = get_tap_trib_areas(bldg, df_bldg_cps, roof_flag=True, facade_flag=True)
+        df_bldg_cps = get_tap_trib_areas(bldg, df_bldg_cps, high_value_flag, roof_flag=True, facade_flag=True)
     return df_bldg_cps
 
 
-def map_gable_roof_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines, surf_dict, match_flag, h_bldg, rect_surf_dict, bldg, high_value_flag):
+def map_gable_roof_tap_data(tpu_wdir, model_file, bfull, hfull, dfull, side_lines, surf_dict, match_flag, h_bldg, rect, bldg, high_value_flag):
     # 1) Read in pressure data file and add to a DataFrame:
     tpu_file = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/TPU/' + model_file
     tpu_data = loadmat(tpu_file)
@@ -1447,7 +1474,7 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull,
             pass
         elif side_lines['TPU direction'][1] == 'y':
             # Building orientation is determined using surface 1 geometry:
-            rect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle  # local coords only for now
+            #rect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle  # local coords only for now
             xrect, yrect = rect.exterior.xy
             if side_lines['real life direction'][1] == 'y':
                 # Find out the building's orientation:
@@ -1513,109 +1540,13 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull,
     if match_flag:
         pass
     else:
-        # Pull necessary columns indices:
-        # Find index for column we are modifying:
-        for r in range(0, len(df_simple_map.columns)):
-            if df_simple_map.columns[r] == 'Real Life Location':
-                rl_loc = r
-                break
-            else:
-                pass
-        # First check if there is a difference between the actual vs. model building height:
-        if hfull == h_bldg:
-            pass
-        else:
-            # Quantify the difference between the model bldg height and actual height:
-            hscale = h_bldg/hfull
-            # Add or subtract the height difference to each coordinate:
-            for pt in range(0, len(df_simple_map['Real Life Location'])):
-                tap_loc = df_simple_map['Real Life Location'][pt]
-                df_simple_map.iat[pt, rl_loc] = Point(tap_loc.x, tap_loc.y, tap_loc.z*hscale)
-        # Check difference in depth:
-        # Note: No need to check for breadth since these are an exact match
-        depth_idx = side_lines['TPU direction'].index('x')
-        if dfull == side_lines['length'][depth_idx]:
-            pass
-        else:
-            # In order to wrap the model building geometry to the equivalent rectangle geometry:
-            # Re-space the coordinates in Surfaces 5 and 6
-            # Pull up the coordinate pairs for the equivalent rectangle and the model bldg geometry (only need x,y):
-            xrect, yrect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle.exterior.xy  # equiv. rect (x,y) pairs
-            xmodel, ymodel = upoly.exterior.xy  # model bldg (x,y) pairs
-            # Determine if this surface has unique x, y values or if it is exception case
-            if len(set(xrect)) > 1:
-                xflag = True
-                min_rect_idx = xrect.index(min(xrect))  # first index for minimum x in equiv rect surface description
-                min_idx = xmodel.index(min(xmodel))  # first index for minimum x for model bldg description
-            else:
-                xflag = False  # Exception: all x values are the same
-                min_rect_idx = yrect.index(min(yrect))  # first index for minimum x in equiv rect surface description
-                min_idx = ymodel.index(min(ymodel))  # first index for minimum x for model bldg description
-            # Calculate the difference in x, y between coordinates:
-            xdiff = xrect[min_rect_idx] - xmodel[min_idx]
-            ydiff = yrect[min_rect_idx] - ymodel[min_idx]
-            # Pull this surface's points from the DataFrame:
-            surf_pts = df_simple_map['Real Life Location']
-            # To conduct the re-spacing, points are first shifted to the edge of the surface:
-            dist = sqrt(xdiff**2 + ydiff**2)  # distance between model and equiv. rectangle surface corners
-            if side_lines['length'][depth_idx] < dfull:
-                dist = -1*dist
-            else:
-                pass
-            # Determine the model bldg and equiv rect spacing:
-            # Note: xvals previously defined for creating mesh in contour plot: use to determine spacing
-            new_space = side_lines['length'][depth_idx] / (len(xvals) - 1)  # new spacing
-            # To conduct the re-spacing, will need to project cosine and since components for x, y:
-            theta = atan2(ydiff, xdiff)  # Angle of the line
-            # Pull all x and y values for the surface in order to determine multipliers for spacing
-            xpt, ypt = [], []
-            for spt in surf_pts:
-                xpt.append(spt.x)
-                ypt.append(spt.y)
-            x_unique = np.unique(xpt)
-            y_unique = np.unique(ypt)
-            # Update the coordinates for each point in the surface:
-            for pt in surf_pts.index.to_list():
-                current_pt = df_simple_map['Real Life Location'][pt]
-                # Find the index of the current x or y value - used for spacing multipliers:
-                if xflag:
-                    idx = np.where(x_unique == current_pt.x)[0] - 1
-                else:
-                    idx = np.where(y_unique == current_pt.y)[0] - 1  # Exception: Surf 2 and 4 || to N-S direction
-                if 90 < tpu_wdir <= 270:
-                    # Shift all points to the corner of the windward surface:
-                    df_simple_map.iat[pt, rl_loc] = Point(current_pt.x - dist * cos(theta),
-                                                          current_pt.y - dist * sin(theta), current_pt.z)
-                else:
-                    # Shift all points to the corner of the windward surface:
-                    if side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'y':
-                        df_simple_map.iat[pt, rl_loc] = Point(current_pt.x + dist * cos(theta),
-                                                              current_pt.y + dist * sin(theta), current_pt.z)
-                    elif side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'x':
-                        df_simple_map.iat[pt, rl_loc] = Point(current_pt.x - dist * cos(theta),
-                                                              current_pt.y - dist * sin(theta), current_pt.z)
-
-                # Finish new spacing for roof coordinates
-                # Note: Roof coordinates run in the direction of Surfaces 1 and 3
-                point_indices = surf_pts.index.to_list()
-                origin_idx = point_indices[0:len(xvals)]  # Starting points for new spacing (these are at edge)
-                for idx in origin_idx:
-                    origin_pt = df_simple_map['Real Life Location'][idx]
-                    for multiplier in range(1, len(xvals)):  # Note: origin_idx already where they need to be
-                        pt_idx = idx + len(xvals)*multiplier
-                        # Note: Point lines are parallel to surface 2 and 4
-                        # Use origin pts and multiplier to define new coordinate pairs:
-                        if tpu_wdir <= 90:
-                            if side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'y':
-                                df_simple_map.iat[pt_idx, rl_loc] = Point(origin_pt.x - (new_space * multiplier * cos(theta)), origin_pt.y - (new_space * multiplier * sin(theta)), origin_pt.z)
-                            elif side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'x':
-                                df_simple_map.iat[pt_idx, rl_loc] = Point(
-                                    origin_pt.x + (new_space * multiplier * cos(theta)),
-                                    origin_pt.y + (new_space * multiplier * sin(theta)), origin_pt.z)
-                        elif 90 < tpu_wdir <= 270:
-                            df_simple_map.iat[pt_idx, rl_loc] = Point(
-                                origin_pt.x + (new_space * multiplier * cos(theta)),
-                                origin_pt.y + (new_space * multiplier * sin(theta)), origin_pt.z)
+        # Set up scale factors:
+        hscale = h_bldg / hfull
+        bscale = 1
+        dscale = max(side_lines['length'])/dfull
+        scaled_pts = []
+        # Scale roof taps to actual constructed building's dimensions (rectangular representation):
+        df_simple_map['Real Life Location'] = df_simple_map['Real Life Location'].apply(lambda x: affinity.scale(x, xfact=bscale, yfact=dscale, zfact=hscale, origin=(0, 0, 0)))
         # Plot the new pressure tap locations and their Cps:
         fig4 = plt.figure()
         ax4 = plt.axes(projection='3d')
@@ -1655,7 +1586,7 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull,
         else:
             print('High value roof mapping not available at this time')
         # Final step: Get tap tributary areas:
-        df_bldg_cps = get_tap_trib_areas(bldg, df_bldg_cps, roof_flag=True, facade_flag=False)
+        df_bldg_cps = get_tap_trib_areas(bldg, df_bldg_cps, high_value_flag, roof_flag=True, facade_flag=False)
     return df_bldg_cps
 
 
@@ -1736,7 +1667,7 @@ def convert_to_tpu_wdir(wind_direction, bldg):
     rect = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle  # local coords only for now
     xrect, yrect = rect.exterior.xy
     # Figure out TPU direction of the building:
-    side_lines = {'lines': [], 'length': [], 'TPU direction': [], 'TPU line': [], 'real life direction': []}
+    side_lines = {'lines': [], 'length': [], 'TPU direction': [], 'real life direction': []}
     # First inventory all lines of the rectangular building geometry:
     max_length = 0  # Initialize dummy variable
     for ind in range(0, len(xrect) - 1):
@@ -1766,11 +1697,13 @@ def convert_to_tpu_wdir(wind_direction, bldg):
         # Find out the building's orientation:
         xdist = xrect[3] - xrect[2]
         ydist = yrect[3] - yrect[2]
-        theta = degrees(atan2(ydist, xdist))
     elif side_lines['TPU direction'][1] == 'y' and side_lines['real life direction'][1] == 'x':
         xdist = xrect[1] - xrect[0]
         ydist = yrect[1] - yrect[0]
-        theta = degrees(atan2(ydist, xdist))
+    elif side_lines['TPU direction'][1] == 'x' and side_lines['real life direction'][1] == 'y':
+        xdist = xrect[2] - xrect[1]
+        ydist = yrect[2] - yrect[1]
+    theta = degrees(atan2(ydist, xdist))
     # Find the tpu wind direction according to building orientation and IRL wind direction:
     tpu_wdir = wind_direction*-1 + 270 + -1*(theta)
     return tpu_wdir
@@ -1798,7 +1731,23 @@ def map_ptaps_to_components(bldg, df_bldg_cps, roof_flag, facade_flag):
                     if rtap_poly.within(subelem.hasGeometry['2D Geometry']['local']):
                         subelem.hasDemand['wind pressure']['external']['intersecting area'].append(rtap_poly)
                     else:
-                        iarea = subelem.hasGeometry['2D Geometry']['local'].intersection(rtap_poly)
+                        try:
+                            iarea = subelem.hasGeometry['2D Geometry']['local'].intersection(rtap_poly)
+                        except TopologicalError:
+                            # Get rid of any duplicate points:
+                            xe, ye = subelem.hasGeometry['2D Geometry']['local'].exterior.xy
+                            new_pts = []
+                            for e in range(0, len(xe)):
+                                round_x = round(xe[e], 6)
+                                round_y = round(ye[e],6)
+                                if (round_x, round_y) not in new_pts:
+                                    new_pts.append((round_x, round_y))
+                                else:
+                                    pass
+                            # Update sublement geometry:
+                            subelem.hasGeometry['2D Geometry']['local'] = Polygon(new_pts)
+                            iarea = subelem.hasGeometry['2D Geometry']['local'].intersection(rtap_poly)
+                        # Save intersecting area
                         subelem.hasDemand['wind pressure']['external']['intersecting area'].append(iarea)
                 else:
                     pass
@@ -1893,7 +1842,7 @@ def map_ptaps_to_components(bldg, df_bldg_cps, roof_flag, facade_flag):
     # plt.show()
 
 
-def get_tap_trib_areas(bldg, df_bldg_cps, roof_flag, facade_flag):
+def get_tap_trib_areas(bldg, df_bldg_cps, high_value_flag, roof_flag, facade_flag):
     """
     A function to apply DAD or code-informed pressures onto the building envelope.
     Updates bldg Roof object and/or subelements with pressures and tap information.
@@ -1917,7 +1866,7 @@ def get_tap_trib_areas(bldg, df_bldg_cps, roof_flag, facade_flag):
     if roof_flag:
         df_roof = df_bldg_cps.iloc[roof_indices]
         # Use voronoi diagram to get 2D pressure tap tributary areas:
-        df_roof = get_roof_2d_mesh(bldg, df_roof)
+        df_roof = get_roof_2d_mesh(bldg, df_roof, high_value_flag)
     else:
         df_roof = None
     # 3) Find tributary areas: Facade
@@ -2044,13 +1993,18 @@ def get_facade_mesh(bldg, df_facade):
     return df_facade
 
 
-def get_roof_2d_mesh(bldg, df_roof):
+def get_roof_2d_mesh(bldg, df_roof, high_value_flag):
     # Get the voronoi discretization of pressure tap areas - element specific:
     # Start with roof elements and their pressure taps:
     coord_list = []
     for idx in df_roof.index:
         ptap_loc = df_roof.loc[idx]['Real Life Location']
         coord_list.append((ptap_loc.x, ptap_loc.y))
+    # Adjust roof geometry based on value of property:
+    if not high_value_flag:
+        bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'] = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
+    else:
+        bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'] = bldg.hasGeometry['Footprint']['local']
     # Buffer out the roof geometry to ensure perimeter points get a closed geometry:
     bpoly = bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'].buffer(distance=20)
     for c in bpoly.exterior.coords:
