@@ -3,9 +3,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from shapely.geometry import Polygon, Point, LineString, MultiPoint, MultiLineString
 from shapely.ops import nearest_points, snap
+from shapely.affinity import translate
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from scipy.stats import norm
-from math import exp, sqrt
+from math import exp, sqrt, floor
 from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from bldg_code import ASCE7
 from OBDM.element import Roof
@@ -652,237 +653,25 @@ def wind_pressure_ftree(bldg, wind_speed, facade_flag):
     return df_fail
 
 
-def get_wbd(df_fail, wind_speed, impact_resistance, tachikawa_num, c, debris_mass, momentum_flag):
-    for i in df_fail.index.to_list():
-        x = 0
-        debris_hvelocity = wind_speed*(1-exp(-1*sqrt(2*c*tachikawa_num*x)))
-        if momentum_flag:
-            min_debris_area = impact_resistance*debris_mass*debris_hvelocity
-
-
-def get_voronoi(bldg):
-    # Get the voronoi discretization of pressure tap areas - element specific:
-    # Start with roof elements and their pressure taps:
-    coord_list = []
-    for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
-        ptap_loc = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[idx]['Real Life Location']
-        coord_list.append((ptap_loc.x, ptap_loc.y))
-    # if len(bldg.adjacentElement['Roof'][0].hasSubElement['cover']) == 0:
-    #     # Find polygons for the entire roof surface:
-    #     for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
-    #         ptap_loc = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[idx]['Real Life Location']
-    #         coord_list.append((ptap_loc.x, ptap_loc.y))
-    # else:
-    #     for elem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
-    #         # Use pressure tap locations as input coordinate list:
-    #         for idx in elem.hasDemand['wind pressure']['external'].index:
-    #             ptap_loc = elem.hasDemand['wind pressure']['external'].loc[idx]['Real Life Location']
-    #             coord_list.append((ptap_loc.x, ptap_loc.y))
-    # Buffer out the roof geometry to ensure perimeter points get a closed geometry:
-    bpoly = bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'].buffer(distance=20)
-    for c in bpoly.exterior.coords:
-        coord_list.append(c)
-    vor = Voronoi(list(set(coord_list)))
-    # Use vertices and regions to create geometry for each pressure tap:  # list of lists - each list is a single region
-    vertices = vor.vertices
-    regions = vor.regions
-    poly_list = []
-    for r in regions:
-        if len(r) > 0:
-            # Elements in list r are indices to the vertices array describing region:
-            point_list = []
-            if -1 in r:
-                new_poly = 0
-            else:
-                for i in range(0, len(r)):
-                    point_list.append((vertices[r[i]][0], vertices[r[i]][1]))
-                # Check if the geometry intersects the roof perimeter:
-                new_poly = Polygon(point_list)
-                if new_poly.intersects(bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local']):
-                    # Find the intersection region:
-                    new_poly = new_poly.intersection(bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'])
-                else:
-                    pass
-        else:
-            new_poly = 0
-        poly_list.append(new_poly)
-    # for poly in poly_list:
-    #     if isinstance(poly, Polygon):
-    #         xpoly, ypoly = poly.exterior.xy
-    #         plt.plot(xpoly, ypoly, 'r')
-    # x, y = bldg.adjacentElement['Roof'][0].hasGeometry['2D Geometry']['local'].exterior.xy
-    # plt.plot(x,y)
-    # plt.show()
-    # Loop through each pressure tap and add its corresponding polygon:
-    tap_poly_list = []
-    no_poly_idx = []
-    for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
-        ptap_loc = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[idx]['Real Life Location']
-        poly_flag = False
-        for poly in poly_list:
-            if isinstance(poly, Polygon):
-                if Point(ptap_loc.x, ptap_loc.y).intersects(poly) or Point(ptap_loc.x, ptap_loc.y).within(poly):
-                    tap_poly_list.append(poly)
-                    poly_flag = True
-                    break
-        if not poly_flag:
-            # Save the polygon:
-            tap_poly_list.append(None)
-            no_poly_idx.append(idx)
-    bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external']['Tap Polygon'] = tap_poly_list
-    # Find which polygons were not mapped:
-    no_map_poly = []
-    for poly in poly_list:
-        if isinstance(poly, Polygon):
-            if poly in tap_poly_list:
-                pass
-            else:
-                no_map_poly.append(poly)
-    # Buffer points without polygons to find corresponding geometry:
-    df_sub = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[no_poly_idx]
-    for idx in df_sub.index:
-        ptap_loc = df_sub.loc[idx]['Real Life Location']
-        bpt = Point(ptap_loc.x, ptap_loc.y).buffer(distance=3)
-        for no_map in no_map_poly:
-            if bpt.intersects(no_map):
-                bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].at[idx, 'Tap Polygon'] = no_map
-                break
-        else:
+def get_wbd(fail_region, target_bldg_footprint, wind_speed, component_impact_resistance, tachikawa_num, c, debris_mass, momentum_flag):
+    # 1) Find distance between fail region and target building (translate fail region to global crs)
+    target_centroid = target_bldg_footprint.centroid
+    fail_region = translate(fail_region, xoff=target_centroid.x, yoff=target_centroid.y)
+    x = fail_region.distance(target_bldg_footprint)
+    # 2) Calculate corresponding debris horizontal velocity:
+    debris_hvelocity = wind_speed*(1-exp(-1*sqrt(2*c*tachikawa_num*x)))
+    # 3) Quantify minimum debris area required to damage component:
+    if momentum_flag:
+        min_debris_area = component_impact_resistance*debris_mass*debris_hvelocity
+    if min_debris_area < fail_region.area:
+        pass
+    else:
+        # This failure region is a potentially dangerous debris source:
+        num_dobjects = floor(fail_region.area/min_debris_area)
+        for i in range(0, num_dobjects):
             pass
-    for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
-        try:
-            xpoly, ypoly = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[idx]['Tap Polygon'].exterior.xy
-            plt.plot(xpoly, ypoly, 'r')
-        except AttributeError:
-            bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'] = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].drop(idx)
-    plt.show()
-    # for idx in bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].index:
-    #     ptap_loc = bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external'].loc[idx]['Real Life Location']
-    #     new_arr = np.array([ptap_loc.x, ptap_loc.y])
-    #     vpoint_idx = np.where(vor.points == new_arr)[0][0]
-    #     vregion_idx = vor.point_region[vpoint_idx]
-    #     tap_poly_list.append(poly_list[vregion_idx])
-    #bldg.adjacentElement['Roof'][0].hasDemand['wind pressure']['external']['Tap Polygon'] = tap_poly_list
-    # if len(bldg.adjacentElement['Roof'][0].hasSubElement['cover']) == 0:
-    #     pass
-    # else:
-    #     # Loop through pressure taps for each element and add their corresponding polygons:
-    #     for elem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
-    #         # Use pressure tap locations as input coordinate list:
-    #         tap_poly_list = []
-    #         for idx in elem.hasDemand['wind pressure']['external'].index:
-    #             ptap_loc = elem.hasDemand['wind pressure']['external'].loc[idx]['Real Life Location']
-    #             new_arr = np.array([ptap_loc.x, ptap_loc.y])
-    #             vpoint_idx = np.where(vor.points==new_arr)[0][0]
-    #             vregion_idx = vor.point_region[vpoint_idx]
-    #             tap_poly_list.append(poly_list[vregion_idx])
-    #         elem.hasDemand['wind pressure']['external']['Tap Polygon'] = tap_poly_list
-    #a = 0
-
-
-def get_facade_mesh(bldg, df_facade):
-    # Collect (x, y) tap locations around bldg perimeter:
-    perim_points = []
-    xp, yp = [], []
-    zlist = []
-    for idx in df_facade.index:
-        ptap_loc = df_facade['Real Life Location'][idx]
-        zlist.append(round(ptap_loc.z, 6))
-        #zlist.append(round(ptap_loc.z, 6))
-        if ptap_loc.z == 0:
-            perim_points.append(ptap_loc)
-            xp.append(ptap_loc.x)
-            yp.append(ptap_loc.y)
-    # Order z locations:
-    zlist_order = np.sort(np.array(list(set(zlist))))
-    # Order points according to building footprint geometry:
-    plist = []
-    x, y = bldg.hasGeometry['Footprint']['local'].exterior.xy
-    # np_list = []
-    # for p in perim_points:
-    #     if p.intersects(bldg.hasGeometry['Footprint']['local']):
-    #         np_list.append(p)
-    #     else:
-    #         npt = nearest_points(Point(p.x, p.y), bldg.hasGeometry['Footprint']['local'])
-    #         for n in npt:
-    #             if n.intersects(bldg.hasGeometry['Footprint']['local']):
-    #                 np_list.append(p)
-    #             else:
-    #                 pass
-    for i in range(0, len(x)-1):
-        max_x = max(x[i], x[i+1])
-        min_x = min(x[i], x[i+1])
-        max_y = max(y[i], y[i+1])
-        min_y = min(y[i], y[i+1])
-        point_info = {'points': [], 'distance': []}
-        for p in perim_points:
-            if min_x <= p.x <= max_x and min_y <= p.y <= max_y:
-                point_info['points'].append(p)
-                # Calculate the distance from this point to origin point:
-                origin_dist = Point(x[i], y[i]).distance(p)
-                point_info['distance'].append(origin_dist)
-        dist_sort = np.sort(np.array(point_info['distance']))
-        for d in dist_sort:
-            pidx = np.where(point_info['distance']==d)[0][0]
-            plist.append(point_info['points'][pidx])
-    # Create tap geometries:
-    tap_poly_list = []
-    for idx in df_facade.index:
-        ptap_loc = df_facade['Real Life Location'][idx]
-        zidx = np.where(zlist_order==round(ptap_loc.z, 6))[0][0]
-        if ptap_loc.z == 0:
-            zmin = ptap_loc.z
-        else:
-            zmin = zlist_order[zidx-1] + (ptap_loc.z-zlist_order[zidx-1])/2
-        if round(ptap_loc.z, 6) != max(zlist_order):
-            zmax = ptap_loc.z + (zlist_order[zidx+1] - ptap_loc.z)/2
-        else:
-            zmax = ptap_loc.z
-        # Find matching (x, y) for this point:
-        poly_list = []
-        for p in range(0, len(plist)):
-            if ptap_loc.x == plist[p].x and ptap_loc.y == plist[p].y:
-                # Find the point between this point and the point preceding it:
-                new_line1 = LineString([(ptap_loc.x, ptap_loc.y), (plist[p-1].x, plist[p-1].y)])
-                dist1 = Point(ptap_loc.x, ptap_loc.y).distance(plist[p-1])
-                ip1 = new_line1.interpolate(distance=dist1/2)
-                poly_list.append((ptap_loc.x, ptap_loc.y, zmin))
-                poly_list.append((ip1.x, ip1.y, zmin))
-                poly_list.append((ip1.x, ip1.y, zmax))
-                poly_list.append((ptap_loc.x, ptap_loc.y, zmax))
-                if p == len(plist)-1:
-                    new_line2 = LineString([(ptap_loc.x, ptap_loc.y), (plist[0].x, plist[0].y)])
-                    dist2 = Point(ptap_loc.x, ptap_loc.y).distance(plist[0])
-                    ip2 = new_line2.interpolate(distance=dist2/2)
-                    poly_list.append((ip2.x, ip2.y, zmax))
-                    poly_list.append((ip2.x, ip2.y, zmin))
-                else:
-                    new_line2 = LineString([(ptap_loc.x, ptap_loc.y), (plist[p + 1].x, plist[p + 1].y)])
-                    dist2 = Point(ptap_loc.x, ptap_loc.y).distance(plist[p + 1])
-                    ip2 = new_line2.interpolate(distance=dist2/2)
-                    poly_list.append((ip2.x, ip2.y, zmax))
-                    poly_list.append((ip2.x, ip2.y, zmin))
-                poly_list.append((ptap_loc.x, ptap_loc.y, zmin))
-                tap_poly_list.append(Polygon(poly_list))
-                break
-            else:
-                pass
-    # Add the polygons to the input DataFrame:
-    df_facade['Tap Polygon'] = tap_poly_list
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
-    for idx in df_facade.index:
-        ptap_loc = df_facade['Real Life Location'][idx]
-        ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z, color='c')
-        coords_list = df_facade['Tap Polygon'][idx].exterior.coords
-        xpoly, ypoly, zpoly = [], [], []
-        for c in coords_list:
-            xpoly.append(c[0])
-            ypoly.append(c[1])
-            zpoly.append(c[2])
-        ax.plot(xpoly, ypoly, zpoly, 'k')
-    plt.show()
-    return df_facade
+            # Quantify alongwind and acrosswind trajectories:
+    # Note: other option is to simply take total affected area and divide by min debris area to get # of debris objects
 
 
 def facade_wind_fault_tree(bldg):
