@@ -11,6 +11,7 @@ from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from bldg_code import ASCE7
 from OBDM.element import Roof
 from code_pressures import PressureCalc
+from get_debris import get_trajectory
 
 
 def populate_code_capacities(bldg, cc_flag, mwfrs_flag, exposure):
@@ -651,27 +652,6 @@ def wind_pressure_ftree(bldg, wind_speed, facade_flag):
     # Return a DataFrame with all failed elements and regions:
     df_fail = pd.DataFrame({'fail elements': fail_elements, 'fail regions': fail_regions})
     return df_fail
-
-
-def get_wbd(fail_region, target_bldg_footprint, wind_speed, component_impact_resistance, tachikawa_num, c, debris_mass, momentum_flag):
-    # 1) Find distance between fail region and target building (translate fail region to global crs)
-    target_centroid = target_bldg_footprint.centroid
-    fail_region = translate(fail_region, xoff=target_centroid.x, yoff=target_centroid.y)
-    x = fail_region.distance(target_bldg_footprint)
-    # 2) Calculate corresponding debris horizontal velocity:
-    debris_hvelocity = wind_speed*(1-exp(-1*sqrt(2*c*tachikawa_num*x)))
-    # 3) Quantify minimum debris area required to damage component:
-    if momentum_flag:
-        min_debris_area = component_impact_resistance*debris_mass*debris_hvelocity
-    if min_debris_area < fail_region.area:
-        pass
-    else:
-        # This failure region is a potentially dangerous debris source:
-        num_dobjects = floor(fail_region.area/min_debris_area)
-        for i in range(0, num_dobjects):
-            pass
-            # Quantify alongwind and acrosswind trajectories:
-    # Note: other option is to simply take total affected area and divide by min debris area to get # of debris objects
 
 
 def facade_wind_fault_tree(bldg):
