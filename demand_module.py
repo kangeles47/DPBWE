@@ -19,7 +19,7 @@ from get_debris import run_debris, get_site_debris, get_trajectory, get_source_b
 from survey_data import SurveyData
 from queries import get_bldgs_at_dist
 from bdm_tpu_pressures import map_tpu_ptaps, convert_to_tpu_wdir, map_ptaps_to_components
-from fault_tree import wind_pressure_ftree
+from fault_tree import wind_pressure_ftree, get_num_dobjects
 
 
 def assign_footprint(parcel, num_stories):
@@ -436,7 +436,8 @@ target_bldg.hasDemand['wind pressure']['external'] = df_target_bldg_cps  # Add c
 # Map pressure coefficients to building components:
 map_ptaps_to_components(target_bldg, df_target_bldg_cps, roof_flag=True, facade_flag=False)
 # Pressure fault tree:
-michael_wind_speed = 123.342  # 126? data model paper: 123.342
+michael_wind_speed = 150
+# michael_wind_speed = 123.342  # 126? data model paper: 123.342
 df_fail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=False)
 # 2) Asset Descriptions: Source Building Parcel Models
 df = pd.read_csv('C:/Users/Karen/Desktop/Parcel_data.csv')  # Parcel data
@@ -541,8 +542,14 @@ for source_bldg in site_source.hasBuilding:
                 axs[i, j].plot(xp, yp, 'r')
             if len(df_fail_source.index.to_list()) > 0:
                 # Debris generation:
+                target_bldg_footprint = target_bldg.hasGeometry['Footprint']['local']
                 df_fail_source['roof element'] = df_fail_source['fail elements'].apply(lambda x: isinstance(x, Roof))
                 potential_wbd = df_fail_source[df_fail_source['roof element'] == True]
+                for idx in potential_wbd.index.to_list():
+                    fail_region = potential_wbd['fail regions'][idx]
+                    debris_name = potential_wbd['fail elements'][idx].hasType
+                    df_debris_char = site_source.hasDebris['roof cover'].loc[site_source.hasDebris['roof cover']['debris name'] == debris_name]
+                    num_dobjects = get_num_dobjects(fail_region, target_bldg_footprint, michael_wind_speed, component_impact_resistance=0, c=df_debris_char['c'], debris_mass=df_debris_char['debris mass'], momentum_flag=True, length_unit='ft')
     plt.show()
 # 5) Fault tree analysis
 df_fail = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=False)
