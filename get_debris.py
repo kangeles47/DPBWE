@@ -1,10 +1,11 @@
 from pandas import read_csv, DataFrame
 from scipy.stats import norm, uniform
 from scipy.interpolate import interp1d
+from math import floor, exp, sqrt
 from geopy import distance
 from shapely.geometry import Polygon, Point, LineString
 from shapely.ops import split
-from shapely.affinity import rotate
+from shapely.affinity import rotate, translate
 from OBDM.zone import Site, Building
 from OBDM.element import Roof
 import numpy as np
@@ -312,6 +313,7 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
     # Update site_source elements and zones:
     site_source.update_elements()
     site_source.update_zones()
+    site_source.hasDebris = site.hasDebris
     return site_source
 
 
@@ -497,11 +499,38 @@ def calc_impact_momentum(debris_mass, debris_area, horiz_impact_vel):
     return debris_mass* debris_area* horiz_impact_vel
 
 
-def get_horiz_impact_vel(wind_speed, c, tachikawa_num, gravity, horiz_fdist):
-    from math import exp, sqrt
-    x = gravity*horiz_fdist/(wind_speed**2)
-    horiz_impact_vel = wind_speed*(1-exp(-1*sqrt(2*c*tachikawa_num*x)))
+def calc_horiz_impact_vel(wind_speed, c, tachikawa_num, gravity, x):
+    dimensionless_x = gravity*x/(wind_speed**2)
+    horiz_impact_vel = wind_speed*(1-exp(-1*sqrt(2*c*tachikawa_num*dimensionless_x)))
     return horiz_impact_vel
+
+
+def get_num_dobjects(fail_region, target_bldg_footprint, wind_speed, component_impact_resistance, c, debris_mass, momentum_flag, length_unit):
+    # 1) Find distance between fail region and target building (translate fail region to global crs)
+    target_centroid = target_bldg_footprint.centroid
+    fail_region = translate(fail_region, xoff=target_centroid.x, yoff=target_centroid.y)
+    x = fail_region.distance(target_bldg_footprint)
+    # 2) Calculate corresponding debris horizontal velocity:
+    # Set up global parameter values:
+    if length_unit == 'm':
+        air_density = 1.225  # kg/m^3
+        gravity = 9.81  # m/s^2
+    elif length_unit == 'ft':
+        air_density = 0.0765  # lb/ft^3
+        gravity = 32.2  # ft/s^2
+        wind_speed = wind_speed * 1.467  # ft/s
+    tachikawa_num = air_density * (wind_speed ** 2) / (2 * debris_mass * gravity)
+    debris_hvelocity = calc_horiz_impact_vel(wind_speed, c, tachikawa_num, gravity, x)
+    # 3) Quantify minimum debris area required to damage component:
+    if momentum_flag:
+        min_debris_area = component_impact_resistance*debris_mass*debris_hvelocity
+    if min_debris_area < fail_region.area:
+        num_dobjects = 0
+    else:
+        # This failure region is a potentially dangerous debris source:
+        num_dobjects = floor(fail_region.area/min_debris_area)
+    # Note: other option is to simply take total affected area and divide by min debris area to get # of debris objects
+    return num_dobjects
 
 
 # # Testing the workflow:
