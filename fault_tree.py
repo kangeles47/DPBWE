@@ -651,6 +651,7 @@ def wind_pressure_ftree(bldg, wind_speed, facade_flag):
                 pass
     # Return a DataFrame with all failed elements and regions:
     df_fail = pd.DataFrame({'fail elements': fail_elements, 'fail regions': fail_regions})
+    df_fail['roof element'] = df_fail['fail elements'].apply(lambda x: isinstance(x, Roof))
     return df_fail
 
 
