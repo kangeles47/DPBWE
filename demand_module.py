@@ -543,13 +543,16 @@ for source_bldg in site_source.hasBuilding:
             if len(df_fail_source.index.to_list()) > 0:
                 # Debris generation:
                 target_bldg_footprint = target_bldg.hasGeometry['Footprint']['local']
-                df_fail_source['roof element'] = df_fail_source['fail elements'].apply(lambda x: isinstance(x, Roof))
                 potential_wbd = df_fail_source[df_fail_source['roof element'] == True]
                 for idx in potential_wbd.index.to_list():
                     fail_region = potential_wbd['fail regions'][idx]
                     debris_name = potential_wbd['fail elements'][idx].hasType
                     df_debris_char = site_source.hasDebris['roof cover'].loc[site_source.hasDebris['roof cover']['debris name'] == debris_name]
                     num_dobjects = get_num_dobjects(fail_region, target_bldg_footprint, michael_wind_speed, component_impact_resistance=0, c=df_debris_char['c'], debris_mass=df_debris_char['debris mass'], momentum_flag=True, length_unit='ft')
+                    # Calculate the debris trajectory:
+                    model_input = df_debris_char.loc[df_debris_char.index[0]].to_dict()
+                    for n in range(0, len(num_dobjects)):
+                        alongwind_dist, acrosswind_dist = get_trajectory(model_input, michael_wind_speed, length_unit, mcs_flag=False)
     plt.show()
 # 5) Fault tree analysis
 df_fail = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=False)
