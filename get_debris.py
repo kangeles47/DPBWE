@@ -535,19 +535,21 @@ def get_num_dobjects(fail_region, target_bldg_footprint, wind_speed, component_i
 
 def get_traj_line(alongwind_dist, acrosswind_dist, wdir, origin_pt):
     # Create a 2D line from origin_pt (start with conventional x-y plane):
-    landing_x = origin_pt.x + alongwind_dist
-    landing_y = origin_pt.y
-    landing_pt = Point(landing_x, landing_y)
-    traj_line = LineString([origin_pt, landing_pt])  # line from origin_pt to landing_pt
-    # Rotate line in direction of wind angle-of-attack
-    angle = wdir - 270
-    traj_line = rotate(traj_line, angle, origin=origin_pt)
+    if 0 < wdir <= 180:
+        landing_x = origin_pt.x - alongwind_dist
+        # Find angle that will inform rotation in direction of wind angle-of-attack
+        angle = 90 - wdir
+    elif 360 < wdir < 180 or wdir == 0:
+        landing_x = origin_pt.x + alongwind_dist
+        angle = 270 - wdir
+    # Create line mapping out across/along-wind trajectories:
     landing_y = origin_pt.y + acrosswind_dist
-    across_pt1 = Point(origin_pt.x + acrosswind_dist, origin_pt.y + alongwind_dist)
-    across_pt2 = Point(origin_pt.x - acrosswind_dist, origin_pt.y + alongwind_dist)
-    traj_region = Polygon([origin_pt, across_pt1, across_pt2])
-    traj_region = rotate(traj_region, angle=-1*wdir, origin=origin_pt.y)
-    return traj_region
+    landing_pt = Point(landing_x, landing_y)
+    ref_traj_line = LineString([origin_pt, landing_pt])  # line from origin_pt to landing_pt
+    # Rotate line in direction of wind angle-of-attack
+    traj_line = rotate(ref_traj_line, angle, origin=origin_pt)
+    return traj_line
+
 # # Testing the workflow:
 # # Step 1: Generate Building data models for each building in a site:
 # site = Site()
