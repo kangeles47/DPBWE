@@ -524,7 +524,7 @@ def get_num_dobjects(fail_region, target_bldg_footprint, wind_speed, component_i
     # 3) Quantify minimum debris area required to damage component:
     if momentum_flag:
         min_debris_area = component_impact_resistance*debris_mass*debris_hvelocity
-    if min_debris_area < fail_region.area:
+    if fail_region.area < min_debris_area:
         num_dobjects = 0
     else:
         # This failure region is a potentially dangerous debris source:
