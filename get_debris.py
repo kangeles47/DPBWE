@@ -505,11 +505,11 @@ def calc_horiz_impact_vel(wind_speed, c, tachikawa_num, gravity, x):
     return horiz_impact_vel
 
 
-def get_num_dobjects(fail_region, target_bldg_footprint, wind_speed, component_impact_resistance, c, debris_mass, momentum_flag, length_unit):
+def get_num_dobjects(fail_region, target_roof_geometry, source_roof_geometry, wind_speed, component_impact_resistance, c, debris_mass, momentum_flag, length_unit):
     # 1) Find distance between fail region and target building (translate fail region to global crs)
-    target_centroid = target_bldg_footprint.centroid
-    fail_region = translate(fail_region, xoff=target_centroid.x, yoff=target_centroid.y)
-    x = fail_region.distance(target_bldg_footprint)
+    source_centroid = source_roof_geometry.centroid
+    gcrs_fail_region = translate(fail_region, xoff=source_centroid.x, yoff=source_centroid.y)
+    x = gcrs_fail_region.distance(target_roof_geometry)
     # 2) Calculate corresponding debris horizontal velocity:
     # Set up global parameter values:
     if length_unit == 'm':
@@ -524,13 +524,13 @@ def get_num_dobjects(fail_region, target_bldg_footprint, wind_speed, component_i
     # 3) Quantify minimum debris area required to damage component:
     if momentum_flag:
         min_debris_area = component_impact_resistance*debris_mass*debris_hvelocity
-    if fail_region.area < min_debris_area:
+    if gcrs_fail_region.area < min_debris_area:
         num_dobjects = 0
     else:
         # This failure region is a potentially dangerous debris source:
-        num_dobjects = floor(fail_region.area/min_debris_area)
+        num_dobjects = floor(gcrs_fail_region.area/min_debris_area)
     # Note: other option is to simply take total affected area and divide by min debris area to get # of debris objects
-    return num_dobjects
+    return num_dobjects, gcrs_fail_region
 
 
 def get_traj_line(alongwind_dist, acrosswind_dist, wdir, origin_pt):
@@ -539,7 +539,7 @@ def get_traj_line(alongwind_dist, acrosswind_dist, wdir, origin_pt):
         landing_x = origin_pt.x - alongwind_dist
         # Find angle that will inform rotation in direction of wind angle-of-attack
         angle = 90 - wdir
-    elif 360 < wdir < 180 or wdir == 0:
+    elif 180 < wdir < 360 or wdir == 0:
         landing_x = origin_pt.x + alongwind_dist
         angle = 270 - wdir
     # Create line mapping out across/along-wind trajectories:
