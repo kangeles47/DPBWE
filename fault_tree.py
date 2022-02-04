@@ -227,7 +227,15 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, wind_spe
                         # Pull the wall's line geometry:
                         wall_line = wall.hasGeometry['1D Geometry']['local']
                         if hit_traj.intersects(wall_line):
-                            wall_list.append(wall)
+                            # z-constraint: check wall's z coordinates:
+                            wall_planar_pts = list(wall.hasGeometry['2D Geometry']['local'].coords)
+                            zs = []
+                            for pt in wall_planar_pts:
+                                zs.append(pt.z)
+                            if max(zs) <= source_bldg.hasGeometry['Height']:
+                                wall_list.append(wall)
+                            else:
+                                pass
                         else:
                             pass
                 # Find out which element got damaged:
