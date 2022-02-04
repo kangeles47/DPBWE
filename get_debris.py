@@ -505,11 +505,11 @@ def calc_horiz_impact_vel(wind_speed, c, tachikawa_num, gravity, x):
     return horiz_impact_vel
 
 
-def get_num_dobjects(fail_region, target_roof_geometry, source_roof_geometry, wind_speed, component_impact_resistance, c, debris_mass, momentum_flag, length_unit):
+def get_num_dobjects(fail_region, target_bldg_footprint, source_roof_geometry, wind_speed, component_impact_resistance, c, debris_mass, momentum_flag, length_unit):
     # 1) Find distance between fail region and target building (translate fail region to global crs)
     source_centroid = source_roof_geometry.centroid
     gcrs_fail_region = translate(fail_region, xoff=source_centroid.x, yoff=source_centroid.y)
-    x = gcrs_fail_region.distance(target_roof_geometry)
+    x = gcrs_fail_region.distance(target_bldg_footprint)
     # 2) Calculate corresponding debris horizontal velocity:
     # Set up global parameter values:
     if length_unit == 'm':
