@@ -1783,11 +1783,14 @@ def map_ptaps_to_components(bldg, df_bldg_cps, roof_flag, facade_flag):
             map_flag = False
             tap_pts = df_facade['Tap Polygon'][idx].exterior.coords
             xt, yt, zt = [], [], []
+            tap_line_pts = []
             for t in tap_pts:
                 xt.append(t[0])
                 yt.append(t[1])
+                tap_line_pts.append((t[0], t[1]))
                 zt.append(t[2])
-            tap_line = LineString([(min(xt), min(yt)), (max(xt), max(yt))])
+            tap_line = LineString(tap_line_pts)
+            # tap_line = LineString([(min(xt), min(yt)), (max(xt), max(yt))])
             # bound_tap_poly = Polygon([(max(xtap), max(ytap)), (min(xtap), max(ytap)), (min(xtap), min(ytap)), (max(xtap), min(ytap))])
             for story in bldg.hasStory:
                 if story.hasElevation[0] <= min(zt) <= story.hasElevation[1] or story.hasElevation[0] <= max(zt) <= story.hasElevation[1]:
@@ -1803,14 +1806,8 @@ def map_ptaps_to_components(bldg, df_bldg_cps, roof_flag, facade_flag):
                         if tap_line.within(bound_poly) or tap_line.intersects(bound_poly):
                             if min(zw) <= min(zt) <= max(zw) or min(zw) <= max(zt) <= max(zw):
                                 wall.hasDemand['wind pressure']['external']['tap number'].append(idx)
-                                if min(zw) <= min(zt) <= max(zw):
-                                    z_intersect = [min(zw), min(zt)]
-                                else:
-                                    z_intersect = [min(zt), max(zw)]
-                                # wall.hasDemand['wind pressure']['external'] = wall.hasDemand['wind pressure']['external'].append(df_tpu_pressures.iloc[idx], ignore_index=True)
+                                wall.hasDemand['wind pressure']['external']['intersecting area'].append(0)
                                 map_flag = True
-                                # Find the intersecting area:
-
                             else:
                                 pass  # Point within x-y boundary but not wall height (z)
                         else:
@@ -1819,31 +1816,6 @@ def map_ptaps_to_components(bldg, df_bldg_cps, roof_flag, facade_flag):
                     pass
             if not map_flag:
                 no_map.append(idx)
-                # ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z, 'r')
-    # Plotting:
-    # fig = plt.figure()
-    # ax = plt.axes(projection='3d')
-    # for story in bldg.hasStory:
-    #     for wall in story.adjacentElement['Walls']:
-    #         wall_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
-    #         xw, yw, zw = [], [], []
-    #         for w in wall_pts:
-    #             xw.append(w[0])
-    #             yw.append(w[1])
-    #             zw.append(w[2])
-    #         ax.plot(xw, yw, zw)
-    #         for idx in wall.hasDemand['wind pressure']['external']:
-    #             ptap_loc = df_facade['Real Life Location'][idx]
-    #             ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z)
-    # for wall in bldg.adjacentElement['Walls']:
-    #     wall_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
-    #     xw, yw, zw = [], [], []
-    #     for w in wall_pts:
-    #         xw.append(w[0])
-    #         yw.append(w[1])
-    #         zw.append(w[2])
-    #     ax.plot(xw, yw, zw, 'k')
-    # plt.show()
 
 
 def get_tap_trib_areas(bldg, df_bldg_cps, high_value_flag, roof_flag, facade_flag):
