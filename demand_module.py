@@ -18,7 +18,7 @@ from get_debris import run_debris, get_site_debris, get_trajectory, get_source_b
 from survey_data import SurveyData
 from queries import get_bldgs_at_dist
 from bdm_tpu_pressures import map_tpu_ptaps, convert_to_tpu_wdir, map_ptaps_to_components
-from fault_tree import wind_pressure_ftree
+from fault_tree import wind_pressure_ftree, wbd_ftree
 from get_debris import get_num_dobjects, get_traj_line
 
 
@@ -526,77 +526,13 @@ for source_bldg in site_source.hasBuilding:
     tpu_wdir = convert_to_tpu_wdir(wind_direction, source_bldg)
     df_source_bldg_cps = map_tpu_ptaps(source_bldg, tpu_wdir, high_value_flag)  # taps and trib areas
     source_bldg.hasDemand['wind pressure']['external'] = df_source_bldg_cps
-    # Map pressure coefficients to building components:
+    # 5) Map pressure coefficients to building components:
     map_ptaps_to_components(source_bldg, df_source_bldg_cps, roof_flag=True, facade_flag=False)
-    source_roof_geometry = source_bldg.hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle
-    xr, yr = source_roof_geometry.exterior.xy
-    df_fail_list = []
-    fig, axs = plt.subplots(10, 10)
-    for i in range(0, 10):
-        for j in range(0, 10):
-            df_fail_source = wind_pressure_ftree(source_bldg, michael_wind_speed, facade_flag=False)
-            df_fail_list.append(df_fail_source)
-            axs[i, j].plot(xr, yr)
-            for idx in df_fail_source['fail regions'].index.to_list():
-                new_poly = df_fail_source['fail regions'][idx]
-                xp, yp = new_poly.exterior.xy
-                axs[i, j].plot(xp, yp, 'r')
-            if len(df_fail_source.index.to_list()) > 0:
-                # Debris generation:
-                target_roof_geometry = target_bldg.hasGeometry['Footprint']['local']
-                potential_wbd = df_fail_source[df_fail_source['roof element'] == True]
-                # fig_traj, ax_traj = plt.subplots()
-                for idx in potential_wbd.index.to_list():
-                    fail_region = potential_wbd['fail regions'][idx]
-                    debris_name = potential_wbd['fail elements'][idx].hasType
-                    df_debris_char = site_source.hasDebris['roof cover'].loc[site_source.hasDebris['roof cover']['debris name'] == debris_name]
-                    num_dobjects, gcrs_fail_region = get_num_dobjects(fail_region, target_roof_geometry, source_roof_geometry, michael_wind_speed, component_impact_resistance=0.0168,
-                                                    c=df_debris_char['c'].values[0], debris_mass=df_debris_char['debris mass'].values[0], momentum_flag=True, length_unit='ft')
-                    # Calculate the debris trajectory:
-                    model_input = df_debris_char.loc[df_debris_char.index[0]].to_dict()
-                    if num_dobjects > 0:
-                        # Keep track of trajectories that hit the building:
-                        hit_traj_list = []
-                        for n in range(0, num_dobjects):
-                            alongwind_dist, acrosswind_dist = get_trajectory(model_input, michael_wind_speed, length_unit, mcs_flag=False)
-                            traj_line = get_traj_line(alongwind_dist[0], acrosswind_dist[0], wind_direction, origin_pt=gcrs_fail_region.centroid)
-                            if traj_line.intersects(target_roof_geometry):
-                                hit_traj_list.append(traj_line)
-                            else:
-                                pass
-                        # Now find what components are affect per impact:
-                        for hit_traj in hit_traj_list:
-                            wall_list = []
-                            for wall in target_bldg.adjacentElements['Walls']:
-                                # Pull the wall's line geometry:
-                                wall_line = wall.hasGeometry['1D Geometry']['local']
-                                if hit_traj.intersects(wall_line):
-                                    wall_list.append(wall)
-                                else:
-                                    pass
-                        # Find out which element got damaged:
-                        prob_hit = uniform.rvs(size=len(wall_list))
-                        max_idx = np.where(prob_hit==max(prob_hit))
-                        # Update the wall's hasFailure attribute:
-                        wall_list[max_idx].hasFailure['debris impact'] = True
-                        #     xt, yt = traj_line.xy
-                        #     ax_traj.plot(xt, yt, 'b', linestyle='dashed')
-                        # ax_traj.scatter(gcrs_fail_region.centroid.x, gcrs_fail_region.centroid.y)
-                        # xfail, yfail = gcrs_fail_region.exterior.xy
-                        # ax_traj.plot(xfail, yfail, 'g')
-                        # xsource_rect, ysource_rect = source_bldg.hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle.exterior.xy
-                        # ax_traj.plot(xsource_rect, ysource_rect, 'k')
-                        # xtarget, ytarget = target_roof_geometry.exterior.xy
-                        # ax_traj.plot(xtarget, ytarget, 'r')
-                        # Plot the directional debris region:
-                        # dir_debris_region = site_source.hasDebris['roof cover'].loc[site_source.hasDebris['roof cover']['debris name']==source_bldg.adjacentElement['Roof'][0].hasCover, 'directional debris region'].values[0]
-                        # xdir, ydir = dir_debris_region.exterior.xy
-                        # ax_traj.plot(xdir, ydir, linestyle='dotted', color='orange')
-                        # Note: here is where you will need to figure out if a hit happens and what component
-                # plt.show()
-    plt.show()
-# 5) Fault tree analysis
-df_fail = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=False)
+    # 6) Fault tree analyses:
+    df_fail_source = wind_pressure_ftree(source_bldg, michael_wind_speed, facade_flag=False)
+    df_site_debris = site_source.hasDebris['roof cover']
+    target_bldg, wall_list = wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, michael_wind_speed, wind_direction, length_unit, plot_flag)
+a = 0
 # # Populate the building's Hurricane Michael loading demand:
 # unit = 'english'
 # # #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
