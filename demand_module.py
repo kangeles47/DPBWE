@@ -436,7 +436,7 @@ target_bldg.hasDemand['wind pressure']['external'] = df_target_bldg_cps  # Add c
 # Map pressure coefficients to building components:
 map_ptaps_to_components(target_bldg, df_target_bldg_cps, roof_flag=True, facade_flag=False)
 # Pressure fault tree:
-michael_wind_speed = 150
+michael_wind_speed = 170
 # michael_wind_speed = 123.342  # 126? data model paper: 123.342
 df_fail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=False)
 # 2) Asset Descriptions: Source Building Parcel Models
@@ -531,7 +531,8 @@ for source_bldg in site_source.hasBuilding:
     # 6) Fault tree analyses:
     df_fail_source = wind_pressure_ftree(source_bldg, michael_wind_speed, facade_flag=False)
     df_site_debris = site_source.hasDebris['roof cover']
-    target_bldg, wall_list = wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, michael_wind_speed, wind_direction, length_unit, plot_flag)
+    for j in range(0,10):
+        target_bldg = wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, michael_wind_speed, wind_direction, length_unit, plot_flag=True)
 a = 0
 # # Populate the building's Hurricane Michael loading demand:
 # unit = 'english'

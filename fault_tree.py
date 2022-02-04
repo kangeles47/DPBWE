@@ -162,9 +162,6 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, wind_spe
     # Plot the failure regions on roof if necessary:
     if plot_flag:
         fig, ax = plt.subplots()
-        for idx in df_fail_source['fail regions'].index.to_list():
-            xp, yp = df_fail_source['fail regions'][idx].exterior.xy
-            ax.plot(xp, yp, 'r')
     else:
         pass
     # 1) Debris generation: Depends on distance to source building and element impact resistance
@@ -223,31 +220,32 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, wind_spe
                 # 3) Now find what elements in target building are affected by impact:
                 for hit_traj in hit_traj_list:
                     wall_list = []
-                    for wall in target_bldg.adjacentElements['Walls']:
+                    for wall in target_bldg.adjacentElement['Walls']:
                         # Pull the wall's line geometry:
                         wall_line = wall.hasGeometry['1D Geometry']['local']
                         if hit_traj.intersects(wall_line):
                             # z-constraint: check wall's z coordinates:
-                            wall_planar_pts = list(wall.hasGeometry['2D Geometry']['local'].coords)
+                            wall_planar_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
                             zs = []
                             for pt in wall_planar_pts:
-                                zs.append(pt.z)
+                                zs.append(pt[2])
                             if max(zs) <= source_bldg.hasGeometry['Height']:
                                 wall_list.append(wall)
                             else:
                                 pass
                         else:
                             pass
-                # Find out which element got damaged:
-                prob_hit = uniform.rvs(size=len(wall_list))
-                max_idx = np.where(prob_hit == max(prob_hit))
-                # Update the wall's hasFailure attribute:
-                wall_list[max_idx].hasFailure['debris impact'] = True
+                    # Find out which element got damaged:
+                    prob_hit = uniform.rvs(size=len(wall_list))
+                    max_idx = np.where(prob_hit == max(prob_hit))[0][0]
+                    # Update the wall's hasFailure attribute:
+                    wall_list[max_idx].hasFailure['debris impact'] = True
             else:
                 pass
     else:
         pass
-    return target_bldg, wall_list
+    plt.show()
+    return target_bldg
 
 
 def wind_pressure_ftree(bldg, wind_speed, facade_flag):
