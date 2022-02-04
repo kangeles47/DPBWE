@@ -292,6 +292,10 @@ def augmented_elements_wall(bldg, num_wall_elems, story_wall_elev, plot_flag):
         ax.yaxis.set_tick_params(labelsize=16)
         ax.zaxis.set_tick_params(labelsize=16)
         plt.show()
+    else:
+        pass
+    # Update elements:
+    bldg.update_elements()
 
 
 def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag):
@@ -380,8 +384,6 @@ for story in target_bldg.hasStory:
 augmented_elements_wall(target_bldg, num_wall_elems, story_wall_elev, plot_flag=False)
 for wall in target_bldg.hasElement['Walls']:
     wall.hasType = 'GLASS THRM; COMMON BRK'
-# Update the Building's Elements:
-target_bldg.update_elements()
 # Add roof information:
 target_bldg.hasElement['Roof'][0].hasShape['flat'] = True
 target_bldg.hasElement['Roof'][0].hasPitch = 0
@@ -434,11 +436,32 @@ tpu_wdir = convert_to_tpu_wdir(wind_direction, target_bldg)
 df_target_bldg_cps = map_tpu_ptaps(target_bldg, tpu_wdir, high_value_flag)
 target_bldg.hasDemand['wind pressure']['external'] = df_target_bldg_cps  # Add coefficients/trib areas to data model
 # Map pressure coefficients to building components:
-map_ptaps_to_components(target_bldg, df_target_bldg_cps, roof_flag=True, facade_flag=False)
+map_ptaps_to_components(target_bldg, df_target_bldg_cps, roof_flag=True, facade_flag=True)
 # Pressure fault tree:
 michael_wind_speed = 170
 # michael_wind_speed = 123.342  # 126? data model paper: 123.342
-df_fail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=False)
+df_fail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=True)
+# Plot wind pressure damage to wall elements:
+fig = plt.figure()
+ax = plt.axes(projection='3d')
+wall_fail = df_fail_target.loc[df_fail_target['roof element']!= True, 'fail regions']
+for idx in wall_fail.index:
+    wall_geometry = wall_fail.loc[idx]
+    xw, yw, zw = [], [], []
+    for pt in list(wall_geometry.exterior.coords):
+        xw.append(pt[0])
+        yw.append(pt[1])
+        zw.append(pt[2])
+    ax.plot(xw, yw, zw, 'r')
+# Plot the building's geometry:
+for story in target_bldg.hasStory:
+    for poly in story.hasGeometry['3D Geometry']['local']:
+        xpoly, ypoly, zpoly = [], [], []
+        for pt in list(poly.exterior.coords):
+            xpoly.append(pt[0])
+            ypoly.append(pt[1])
+            zpoly.append(pt[2])
+        ax.plot(xpoly,ypoly,zpoly,'k')
 # 2) Asset Descriptions: Source Building Parcel Models
 df = pd.read_csv('C:/Users/Karen/Desktop/Parcel_data.csv')  # Parcel data
 # Create data models for each potential source building:
