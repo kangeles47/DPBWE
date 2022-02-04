@@ -315,26 +315,34 @@ def wind_pressure_ftree(bldg, wind_speed, facade_flag):
                     # Sample component capacity:
                     elem_capacity = elem.hasCapacity['wind pressure']['external']['positive']
                     idx = 0
-                    if tap_pressures.loc[p] < 0:
-                        elem_capacity = elem.hasCapacity['wind pressure']['external']['negative']
-                        if elem_capacity > tap_pressures.loc[p]:
-                            fail_flag = True
+                    for p in tap_pressures.index.to_list():
+                        fail_flag = False
+                        if tap_pressures.loc[p] < 0:
+                            elem_capacity = elem.hasCapacity['wind pressure']['external']['negative']
+                            if elem_capacity > tap_pressures.loc[p]:
+                                fail_flag = True
+                            else:
+                                pass
+                        else:
+                            elem_capacity = elem.hasCapacity['wind pressure']['external']['positive']
+                            if elem_capacity < tap_pressures.loc[p]:
+                                fail_flag = True
+                            else:
+                                pass
+                        # Add failure data:
+                        if fail_flag:
+                            if 'GLASS' in elem.hasType.upper():
+                                fail_regions.append(elem.hasGeometry['3D Geometry']['local'])
+                                elem.hasFailure['wind pressure'] = True
+                                fail_elements.append(elem)
+                            else:
+                                print('Glass check not working')
+                                fail_regions.append(tap_areas[idx])
+                                elem.hasFailure['wind pressure'] = True
+                                fail_elements.append(elem)
                         else:
                             pass
-                    else:
-                        elem_capacity = elem.hasCapacity['wind pressure']['external']['positive']
-                        if elem_capacity < tap_pressures.loc[p]:
-                            fail_flag = True
-                        else:
-                            pass
-                    # Add failure data:
-                    if fail_flag:
-                        fail_regions.append(tap_areas[idx])
-                        elem.hasFailure['wind pressure'] = True
-                        fail_elements.append(elem)
-                    else:
-                        pass
-                    idx += 1
+                        idx += 1
             else:
                 pass
     # Return a DataFrame with all failed elements and regions:
