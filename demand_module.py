@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from geopy import distance
 from math import sqrt, sin, atan2, degrees, pi
-from copy import copy
 import numpy as np
 from parcel import Parcel
 from bldg_code import ASCE7, FBC
@@ -546,7 +545,7 @@ for source_bldg in site_source.hasBuilding:
                 # Debris generation:
                 target_roof_geometry = target_bldg.hasGeometry['Footprint']['local']
                 potential_wbd = df_fail_source[df_fail_source['roof element'] == True]
-                fig_traj, ax_traj = plt.subplots()
+                # fig_traj, ax_traj = plt.subplots()
                 for idx in potential_wbd.index.to_list():
                     fail_region = potential_wbd['fail regions'][idx]
                     debris_name = potential_wbd['fail elements'][idx].hasType
@@ -556,24 +555,45 @@ for source_bldg in site_source.hasBuilding:
                     # Calculate the debris trajectory:
                     model_input = df_debris_char.loc[df_debris_char.index[0]].to_dict()
                     if num_dobjects > 0:
+                        # Keep track of trajectories that hit the building:
+                        hit_traj_list = []
                         for n in range(0, num_dobjects):
                             alongwind_dist, acrosswind_dist = get_trajectory(model_input, michael_wind_speed, length_unit, mcs_flag=False)
                             traj_line = get_traj_line(alongwind_dist[0], acrosswind_dist[0], wind_direction, origin_pt=gcrs_fail_region.centroid)
-                            xt, yt = traj_line.xy
-                            ax_traj.plot(xt, yt, 'b', linestyle='dashed')
-                        ax_traj.scatter(gcrs_fail_region.centroid.x, gcrs_fail_region.centroid.y)
-                        xfail, yfail = gcrs_fail_region.exterior.xy
-                        ax_traj.plot(xfail, yfail, 'g')
-                        xsource_rect, ysource_rect = source_bldg.hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle.exterior.xy
-                        ax_traj.plot(xsource_rect, ysource_rect, 'k')
-                        xtarget, ytarget = target_roof_geometry.exterior.xy
-                        ax_traj.plot(xtarget, ytarget, 'r')
+                            if traj_line.intersects(target_roof_geometry):
+                                hit_traj_list.append(traj_line)
+                            else:
+                                pass
+                        # Now find what components are affect per impact:
+                        for hit_traj in hit_traj_list:
+                            wall_list = []
+                            for wall in target_bldg.adjacentElements['Walls']:
+                                # Pull the wall's line geometry:
+                                wall_line = wall.hasGeometry['1D Geometry']['local']
+                                if hit_traj.intersects(wall_line):
+                                    wall_list.append(wall)
+                                else:
+                                    pass
+                        # Find out which element got damaged:
+                        prob_hit = uniform.rvs(size=len(wall_list))
+                        max_idx = np.where(prob_hit==max(prob_hit))
+                        # Update the wall's hasFailure attribute:
+                        wall_list[max_idx].hasFailure['debris impact'] = True
+                        #     xt, yt = traj_line.xy
+                        #     ax_traj.plot(xt, yt, 'b', linestyle='dashed')
+                        # ax_traj.scatter(gcrs_fail_region.centroid.x, gcrs_fail_region.centroid.y)
+                        # xfail, yfail = gcrs_fail_region.exterior.xy
+                        # ax_traj.plot(xfail, yfail, 'g')
+                        # xsource_rect, ysource_rect = source_bldg.hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle.exterior.xy
+                        # ax_traj.plot(xsource_rect, ysource_rect, 'k')
+                        # xtarget, ytarget = target_roof_geometry.exterior.xy
+                        # ax_traj.plot(xtarget, ytarget, 'r')
                         # Plot the directional debris region:
-                        dir_debris_region = site_source.hasDebris['roof cover'].loc[site_source.hasDebris['roof cover']['debris name']==source_bldg.adjacentElement['Roof'][0].hasCover, 'directional debris region'].values[0]
-                        xdir, ydir = dir_debris_region.exterior.xy
-                        ax_traj.plot(xdir, ydir, linestyle='dotted', color='orange')
+                        # dir_debris_region = site_source.hasDebris['roof cover'].loc[site_source.hasDebris['roof cover']['debris name']==source_bldg.adjacentElement['Roof'][0].hasCover, 'directional debris region'].values[0]
+                        # xdir, ydir = dir_debris_region.exterior.xy
+                        # ax_traj.plot(xdir, ydir, linestyle='dotted', color='orange')
                         # Note: here is where you will need to figure out if a hit happens and what component
-                plt.show()
+                # plt.show()
     plt.show()
 # 5) Fault tree analysis
 df_fail = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=False)
