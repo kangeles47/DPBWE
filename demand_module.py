@@ -438,8 +438,8 @@ target_bldg.hasDemand['wind pressure']['external'] = df_target_bldg_cps  # Add c
 # Map pressure coefficients to building components:
 map_ptaps_to_components(target_bldg, df_target_bldg_cps, roof_flag=True, facade_flag=True)
 # Pressure fault tree:
-michael_wind_speed = 170
-# michael_wind_speed = 123.342  # 126? data model paper: 123.342
+#michael_wind_speed = 170
+michael_wind_speed = 123.342  # 126? data model paper: 123.342
 df_fail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=True)
 # Plot wind pressure damage to wall elements:
 fig = plt.figure()
