@@ -257,6 +257,13 @@ def wind_pressure_ftree(bldg, wind_speed, facade_flag):
     # Quantify pressures:
     pressure_calc = PressureCalc()
     df_bldg_cps['Pressure'] = df_bldg_cps['Sample Cp'].apply(lambda j: pressure_calc.get_tpu_pressure(wind_speed, j, 'B', bldg.hasGeometry['Height'], 'mph'))
+    # Apply correction for pressure taps at the bottom: pressure = 0
+    idx_col = np.where(df_bldg_cps.columns == 'Sample Cp')[0][0]
+    for idx in df_bldg_cps.index.to_list():
+        if df_bldg_cps['Real Life Location'][idx].z == 0:
+            df_bldg_cps.iat[idx, idx_col] = 0
+        else:
+            pass
     # 2) Loop through building envelope components, sample capacities, and check for breach:
     fail_elements = []
     fail_regions = []
