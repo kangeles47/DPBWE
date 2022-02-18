@@ -252,7 +252,7 @@ def wind_pressure_ftree(bldg, wind_speed, facade_flag):
     # For each building:
     # 1) Sample pressure coefficients and calculate wind pressure:
     df_bldg_cps = bldg.hasDemand['wind pressure']['external']
-    
+
     def get_sample_cp(mean_cp, cp_std_dev):
         return norm.rvs(mean_cp, cp_std_dev)
     # Sample from gaussian distribution with mean = mean cp and std dev = 0.3
