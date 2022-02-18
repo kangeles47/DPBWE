@@ -324,7 +324,12 @@ def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag):
     tpu_flag = True
     if wall_flag:
         wall_height = bldg.hasStory[0].hasElevation[1] - bldg.hasStory[0].hasElevation[0]
-        area_eff = wall_height * wall_height / 3
+        span_area_eff = wall_height * wall_height / 3
+        spacing_area_eff = wall_height*5
+        if spacing_area_eff > span_area_eff:
+            area_eff = spacing_area_eff
+        else:
+            area_eff = span_area_eff
         wcc = pressure_calc.wcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean,
                                      encl_class, tpu_flag)
     else:
