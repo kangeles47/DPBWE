@@ -100,9 +100,9 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
     :return: site_source: A Site object with Building objects within the specified potential source region (see Site.hasBuilding)
     """
     # Step 1: Extract trajectory information for each unique debris type:
-    df = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Debris/Typical_Debris_Distances.csv')  # Distances in [ft]
-    linestyle_list = ['-', '--', '8-', ':', '-.', '+-', '^-', 's-', '*-']
-    color_list = ['c', 'g', 'saddlebrown', 'orange', 'm', 'b', 'blueviolet', 'darkgray', 'violet']
+    df = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/Datasets/Debris/Typical_Debris_Distances_2.csv')  # Distances in [ft]
+    linestyle_list = ['-', '+-', ':', '8-', '-.', '--', '^-', 's-', '*-']
+    color_list = ['orange', 'm', 'g', 'c', 'saddlebrown', 'b', 'blueviolet', 'darkgray', 'violet']
     df_linestyle = pd.DataFrame({'debris name': df['debris name'].unique(), 'linestyle': linestyle_list[0: len(df['debris name'].unique())],
                                  'color': color_list[0: len(df['debris name'].unique())]})
     df_source = pd.DataFrame(columns=df.columns)
@@ -197,7 +197,8 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
                 ax2.plot(np.array(xs)/div, np.array(ys)/div, 'k')
                 print(b.hasLocation['Address'] + '   ' + b.hasElement['Roof'][0].hasType)
             else:
-                pass
+                xs, ys = bldg_geometry.exterior.xy
+                ax2.plot(np.array(xs) / div, np.array(ys) / div, color='grey')
     # Plot debris regions and target building footprint:
     ax2.plot(np.array(xt) / div, np.array(yt) / div, 'r')
     for region in df_region['debris region'].index.to_list():
@@ -206,7 +207,7 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
         else:
             idx_ltype = df_linestyle.loc[df_linestyle['debris name'] == df_region['debris name'][region], 'linestyle'].index[0]
             xregion, yregion = df_region['debris region'][region].exterior.xy
-            ax2.plot(np.array(xregion)/div, np.array(yregion)/div, df_linestyle['linestyle'][idx_ltype], label=df_region['debris name'][region], color=df_linestyle['color'][idx_ltype])
+            ax2.plot(np.array(xregion)/div, np.array(yregion)/div, df_linestyle['linestyle'][idx_ltype], label=df_region['debris name'][region], color=df_linestyle['color'][idx_ltype], linewidth=1)
     if div != 1:
         ax2.set_xlabel('x [m]')
         ax2.set_ylabel('y [m]')
