@@ -445,6 +445,11 @@ map_ptaps_to_components(target_bldg, df_target_bldg_cps, roof_flag=True, facade_
 # Pressure fault tree:
 #michael_wind_speed = 170
 michael_wind_speed = 123.342  # 126? data model paper: 123.342
+# Calculate the equivalent wind speed for Exposure B using the wind speed in Exposure C:
+vg = (michael_wind_speed/2.237) / ((10 / 274.32) ** (1 / 9.5))
+zg_b = 365.76
+alpha_b = 7
+michael_wind_speed_b = (vg * (10 / zg_b) ** (1 / alpha_b))*2.237
 df_fail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=True)
 # Plot wind pressure damage to wall elements:
 fig = plt.figure()
@@ -537,7 +542,7 @@ get_site_debris(site, length_unit)  # Grab all the debris types in this site
 # Find potential source buildings:
 crs = 'reference cartesian'
 wind_direction = 315
-site_source = get_source_bldgs(target_bldg, site, wind_direction, michael_wind_speed, crs, length_unit)
+site_source = get_source_bldgs(target_bldg, site, wind_direction, michael_wind_speed_b, crs, length_unit)
 # 4) Asset Description: Probable Source Buildings
 # Here we add minimum component capacities and wind pressure coefficients to source buildings
 for source_bldg in site_source.hasBuilding:
