@@ -158,7 +158,7 @@ def time_hist_element_pressure_failure_check(elem, bldg, zone_flag, tcols):
     elem.hasFailure['wind pressure'] = elem_fail.loc[elem_fail['fail'] == True]
 
 
-def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, wind_speed, wind_direction, length_unit, plot_flag):
+def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure_fail_target, wind_speed, wind_direction, length_unit, plot_flag):
     # Plot the failure regions on roof if necessary:
     if plot_flag:
         fig, ax = plt.subplots()
@@ -172,6 +172,8 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, wind_spe
         target_bldg_footprint = target_bldg.hasGeometry['Footprint']['local']
         # Query damage to roof elements in source bldg:
         potential_wbd = df_fail_source[df_fail_source['roof element'] == True]
+        # Create dictionary to hold data:
+        debris_dict = {'flight path': [], 'fail element': [], 'fail region': []}
         for idx in potential_wbd.index.to_list():
             fail_region = potential_wbd['fail regions'][idx]
             debris_name = potential_wbd['fail elements'][idx].hasType
@@ -182,9 +184,11 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, wind_spe
                                                               c=df_debris_char['c'].values[0],
                                                               debris_mass=df_debris_char['debris mass'].values[0],
                                                               momentum_flag=True, length_unit='ft')
+            # Save wbd information:
+            debris_dict['fail region'].append(gcrs_fail_region)
             if plot_flag:
                 xfail, yfail = gcrs_fail_region.exterior.xy
-                ax.plot(xfail, yfail, 'b')
+                ax.plot(np.array(xfail)/3.281, np.array(yfail)/3.281, 'b')
             else:
                 pass
             # 2) Calculate the debris trajectory (in gcrs):
@@ -192,11 +196,13 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, wind_spe
             if num_dobjects > 0:
                 # Keep track of trajectories that hit the building:
                 hit_traj_list = []
+                all_traj_list = []
                 for n in range(0, num_dobjects):
                     alongwind_dist, acrosswind_dist = get_trajectory(model_input, wind_speed, length_unit,
                                                                      mcs_flag=False)
                     traj_line = get_traj_line(alongwind_dist[0], acrosswind_dist[0], wind_direction,
                                               origin_pt=gcrs_fail_region.centroid)
+                    all_traj_list.append(traj_line)
                     # Check if this debris object will hit the building:
                     if traj_line.intersects(target_bldg_footprint):
                         hit_traj_list.append(traj_line)
@@ -205,47 +211,57 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, wind_spe
                     # Add plotting if needed:
                     if plot_flag:
                         xt, yt = traj_line.xy
-                        ax.plot(xt, yt, 'b', linestyle='dashed')
-                        ax.scatter(gcrs_fail_region.centroid.x, gcrs_fail_region.centroid.y)
+                        ax.plot(np.array(xt)/3.281, np.array(yt)/3.281, 'b', linestyle='dashed')
+                        ax.scatter(gcrs_fail_region.centroid.x/3.281, gcrs_fail_region.centroid.y/3.281)
+                debris_dict['flight path'].append(all_traj_list)
                 if plot_flag:
                     # Add source and target building geometries:
                     xsource_rect, ysource_rect = source_roof_geometry.exterior.xy
-                    ax.plot(xsource_rect, ysource_rect, 'k')
+                    ax.plot(np.array(xsource_rect)/3.281, np.array(ysource_rect)/3.281, 'k')
                     xtarget, ytarget = target_bldg_footprint.exterior.xy
-                    ax.plot(xtarget, ytarget, 'r')
+                    ax.plot(np.array(xtarget)/3.281, np.array(ytarget)/3.281, 'r')
                     # Plot the directional debris region:
                     dir_debris_region = df_site_debris.loc[df_site_debris['debris name']==source_bldg.adjacentElement['Roof'][0].hasCover, 'directional debris region'].values[0]
                     xdir, ydir = dir_debris_region.exterior.xy
-                    ax.plot(xdir, ydir, linestyle='dotted', color='orange')
+                    ax.plot(np.array(xdir)/3.281, np.array(ydir)/3.281, color='orange')
                 # 3) Now find what elements in target building are affected by impact:
+                wall_fail_list = []
                 for hit_traj in hit_traj_list:
                     wall_list = []
                     for wall in target_bldg.adjacentElement['Walls']:
-                        # Pull the wall's line geometry:
-                        wall_line = wall.hasGeometry['1D Geometry']['local']
-                        if hit_traj.intersects(wall_line):
-                            # z-constraint: check wall's z coordinates:
-                            wall_planar_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
-                            zs = []
-                            for pt in wall_planar_pts:
-                                zs.append(pt[2])
-                            if max(zs) <= source_bldg.hasGeometry['Height']:
-                                wall_list.append(wall)
+                        # First make sure the wall in question has not already experienced failure:
+                        if wall in pressure_fail_target:
+                            pass
+                        else:
+                            # Pull the wall's line geometry:
+                            wall_line = wall.hasGeometry['1D Geometry']['local']
+                            if hit_traj.intersects(wall_line):
+                                # z-constraint: check wall's z coordinates:
+                                wall_planar_pts = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
+                                zs = []
+                                for pt in wall_planar_pts:
+                                    zs.append(pt[2])
+                                if max(zs) <= source_bldg.hasGeometry['Height']:
+                                    wall_list.append(wall)
+                                else:
+                                    pass
                             else:
                                 pass
-                        else:
-                            pass
                     # Find out which element got damaged:
                     prob_hit = uniform.rvs(size=len(wall_list))
                     max_idx = np.where(prob_hit == max(prob_hit))[0][0]
-                    # Update the wall's hasFailure attribute:
-                    wall_list[max_idx].hasFailure['debris impact'] = True
+                    # Extract the impacted walls:
+                    wall_fail_list.append(wall_list[max_idx])
+                debris_dict['fail element'].append(wall_fail_list)
             else:
-                pass
+                debris_dict['flight path'].append(None)
+                debris_dict['fail element'].append(None)
+        ax.set_xlabel('x [m]')
+        ax.set_ylabel('y [m]')
+        plt.show()
     else:
         pass
-    plt.show()
-    return target_bldg
+    return debris_dict
 
 
 def wind_pressure_ftree(bldg, wind_speed, facade_flag):
