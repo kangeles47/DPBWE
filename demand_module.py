@@ -450,28 +450,27 @@ vg = (michael_wind_speed/2.237) / ((10 / 274.32) ** (1 / 9.5))
 zg_b = 365.76
 alpha_b = 7
 michael_wind_speed_b = (vg * (10 / zg_b) ** (1 / alpha_b))*2.237
-df_fail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=True)
 # Plot wind pressure damage to wall elements:
-fig = plt.figure()
-ax = plt.axes(projection='3d')
-wall_fail = df_fail_target.loc[df_fail_target['roof element']!= True, 'fail regions']
-for idx in wall_fail.index:
-    wall_geometry = wall_fail.loc[idx]
-    xw, yw, zw = [], [], []
-    for pt in list(wall_geometry.exterior.coords):
-        xw.append(pt[0])
-        yw.append(pt[1])
-        zw.append(pt[2])
-    ax.plot(xw, yw, zw, 'r')
-# Plot the building's geometry:
-for story in target_bldg.hasStory:
-    for poly in story.hasGeometry['3D Geometry']['local']:
-        xpoly, ypoly, zpoly = [], [], []
-        for pt in list(poly.exterior.coords):
-            xpoly.append(pt[0])
-            ypoly.append(pt[1])
-            zpoly.append(pt[2])
-        ax.plot(xpoly,ypoly,zpoly,'k')
+# fig = plt.figure()
+# ax = plt.axes(projection='3d')
+# wall_fail = df_fail_target.loc[df_fail_target['roof element']!= True, 'fail regions']
+# for idx in wall_fail.index:
+#     wall_geometry = wall_fail.loc[idx]
+#     xw, yw, zw = [], [], []
+#     for pt in list(wall_geometry.exterior.coords):
+#         xw.append(pt[0])
+#         yw.append(pt[1])
+#         zw.append(pt[2])
+#     ax.plot(xw, yw, zw, 'r')
+# # Plot the building's geometry:
+# for story in target_bldg.hasStory:
+#     for poly in story.hasGeometry['3D Geometry']['local']:
+#         xpoly, ypoly, zpoly = [], [], []
+#         for pt in list(poly.exterior.coords):
+#             xpoly.append(pt[0])
+#             ypoly.append(pt[1])
+#             zpoly.append(pt[2])
+#         ax.plot(xpoly,ypoly,zpoly,'k')
 # 2) Asset Descriptions: Source Building Parcel Models
 df = pd.read_csv('C:/Users/Karen/Desktop/Parcel_data.csv')  # Parcel data
 # Create data models for each potential source building:
@@ -545,6 +544,9 @@ wind_direction = 315
 site_source = get_source_bldgs(target_bldg, site, wind_direction, michael_wind_speed_b, crs, length_unit)
 # 4) Asset Description: Probable Source Buildings
 # Here we add minimum component capacities and wind pressure coefficients to source buildings
+roof_polys_list = []
+rcc_list = []
+count_source = 0
 for source_bldg in site_source.hasBuilding:
     # 4a) Specify the value of the property:
     high_value_flag = False
@@ -555,18 +557,82 @@ for source_bldg in site_source.hasBuilding:
     roof_flag = True
     wall_flag = False
     zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(source_bldg, exposure, high_value_flag, roof_flag, wall_flag)
+    roof_polys_list.append(roof_polys)
+    rcc_list.append(rcc)
     # 4c) Get DAD pressure coefficients:
     tpu_wdir = convert_to_tpu_wdir(wind_direction, source_bldg)
     df_source_bldg_cps = map_tpu_ptaps(source_bldg, tpu_wdir, high_value_flag)  # taps and trib areas
     source_bldg.hasDemand['wind pressure']['external'] = df_source_bldg_cps
     # 5) Map pressure coefficients to building components:
     map_ptaps_to_components(source_bldg, df_source_bldg_cps, roof_flag=True, facade_flag=False)
-    # 6) Fault tree analyses:
-    df_fail_source = wind_pressure_ftree(source_bldg, michael_wind_speed, facade_flag=False)
-    df_site_debris = site_source.hasDebris['roof cover']
-    for j in range(0,10):
-        target_bldg = wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, michael_wind_speed, wind_direction, length_unit, plot_flag=True)
-a = 0
+# Fault tree analyses:
+# Set up empty DataFrame:
+df_site_debris = site_source.hasDebris['roof cover']
+num_realizations = 100
+target_pressure_list = []
+target_debris = []
+source_pressure_ftree = []
+source2_pressure_list = []
+source_roof_fail = []
+for n in range(0, num_realizations):
+    # Target building: Wind pressure fault tree
+    df_pfail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=True)
+    target_pressure_list.append(df_pfail_target)
+    pressure_fail_target = df_pfail_target['fail elements'].values
+    # Source buildings: Wind pressure fault tree
+    roof_fail = False
+    source_pressure_list = []
+    target_debris_list =[]
+    for b in site_source.hasBuilding:
+        df_fail_source = wind_pressure_ftree(b, michael_wind_speed, facade_flag=False)
+        source_pressure_list.append(df_fail_source)
+        df_roof_elems = df_fail_source.loc[df_fail_source['roof element']==True]
+        if len(df_roof_elems.index.to_list()) > 0:
+            roof_fail = True
+            target_debris_dict = wbd_ftree(target_bldg, b, df_fail_source, df_site_debris, pressure_fail_target, michael_wind_speed_b,
+                                   wind_direction, length_unit, plot_flag=True)
+            target_debris_list.append(target_debris_dict)
+        else:
+            pass
+    source_pressure_ftree.append(source_pressure_list)
+    source_roof_fail.append(roof_fail)
+    target_debris.append(target_debris_list)
+df_ftree = pd.DataFrame({'Target Wind Pressure': target_pressure_list})
+count_source += 1
+col_name = 'Source Pressure Ftree ' + str(count_source)
+df_ftree[col_name] = source_pressure_ftree
+df_ftree['Source WBD' + str(count_source)] = source_roof_fail
+    # df_site_debris = site_source.hasDebris['roof cover']
+    # for j in range(0, 100):
+    #     target_bldg = wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, michael_wind_speed, wind_direction, length_unit, plot_flag=True)
+# Debris Fault Tree:
+#df_ftree = pd.DataFrame({'Target Pressure Ftree': target_pressure_ftree})
+#df_site_debris = site_source.hasDebris['roof cover']
+# target_debris_ftree = []
+# source_col_ftrees = []
+# source_col_rdamage = []
+# for b in range(0, len(site_source.hasBuilding)):
+#     source_col_ftrees.append('Source Pressure Ftree ' + str(b+1))
+#     source_col_rdamage.append('Source WBD' + str(b+1))
+# for idx in df_ftree.index.to_list():
+#     # First see if there was any source building damage to begin with:
+#     if df_ftree.loc[idx][source_col_rdamage].any(axis='index'):
+#         # Run WBD fault tree for each target and source pair:
+#         for scol in range(0, len(source_col_ftrees)):
+#             source_bldg = site_source.hasBuilding[scol]
+#             df_fail_source = df_ftree.loc[idx][source_col_ftrees[scol]]
+#             df_roof_elems = df_fail_source.loc[df_fail_source['roof element']==True]
+#             if len(df_fail_source.loc[df_fail_source['roof element']==True]) > 0:
+#                 target_wbd = wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, michael_wind_speed,
+#                               wind_direction,
+#                               length_unit, plot_flag=True)
+#             else:
+#                 pass
+#                 df_ftree['Target Debris Ftree']
+#     else:
+#         target_debris_ftree = 0
+# fig, ax = plt.subplots()
+# a = 0
 # # Populate the building's Hurricane Michael loading demand:
 # unit = 'english'
 # # #wind_speed_file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv'
