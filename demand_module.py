@@ -1,6 +1,7 @@
 import pandas as pd
 import geopandas as gpd
 from shapely import affinity
+from shapely.ops import split
 from shapely.geometry import Polygon, Point, LineString
 from scipy import spatial
 from scipy.stats import uniform
@@ -298,7 +299,7 @@ def augmented_elements_wall(bldg, num_wall_elems, story_wall_elev, plot_flag):
     bldg.update_elements()
 
 
-def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag):
+def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag, source_gable_flag):
     # 1) find C&C zones:
     asce7 = ASCE7(bldg, loading_flag=True)
     if high_value_flag:
@@ -308,7 +309,27 @@ def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag):
         original_footprint = Polygon(list(bldg.hasGeometry['Footprint']['local'].exterior.coords))
         bldg.hasGeometry['Footprint']['local'] = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
         a = asce7.get_cc_zone_width(bldg)
-        zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
+        if source_gable_flag:
+            zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
+            # # Create temporary bldg objects and grab their roof polys:
+            # xrect, yrect = bldg.hasGeometry['Footprint']['local'].exterior.xy
+            # clist = []
+            # for i in range(0, len(xrect)-1):
+            #     new_centroid = LineString([(xrect[i], yrect[i]), (xrect[i+1], yrect[i+1])]).centroid
+            #     clist.append(new_centroid)
+            # split_line = LineString([clist[1], clist[3]])
+            # split_poly = split(bldg.hasGeometry['Footprint']['local'], split_line)
+            # zone_pts = []
+            # roof_polys = []
+            # for poly in split_poly:
+            #     new_bldg = Building()
+            #     new_bldg.hasGeometry['Footprint']['local'] = poly
+            #     zpts, rpolys = asce7.find_cc_zone_points(new_bldg, a, roof_flag, asce7.hasEdition)
+            #     zone_pts.append(zpts)
+            #     roof_polys.append(rpolys)
+            # # Combine dictionaries in zone_pts and roof_polys:
+        else:
+            zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
         # Update building with original footprint:
         bldg.hasGeometry['Footprint']['local'] = original_footprint
     # 2) Calculate zone pressures:
@@ -401,7 +422,7 @@ exposure = 'B'
 roof_flag = True
 wall_flag = True
 high_value_flag=True
-zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(target_bldg, exposure, high_value_flag, roof_flag, wall_flag)  # includes roof mapping
+zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(target_bldg, exposure, high_value_flag, roof_flag, wall_flag, source_gable_flag=True)  # includes roof mapping
 # Map capacities to wall elements:
 # Figure to show zones and component mapping:
 fig = plt.figure()
@@ -434,7 +455,7 @@ for wall in target_bldg.hasElement['Walls']:
         else:
             pass
     # Add impact resistance:
-    wall.hasCapacity['debris impact'] = 0.0168  # lb ft/s, Vanmarcke paper, 3.1717 Barbato
+    wall.hasCapacity['debris impact'] = 0.0336 #0.0168  # lb ft/s, Vanmarcke paper, 3.1717 Barbato
 # 1c) Asset Description: DAD pressure coefficients (wind loading):
 wind_direction = 315
 tpu_wdir = convert_to_tpu_wdir(wind_direction, target_bldg)
@@ -546,7 +567,6 @@ site_source = get_source_bldgs(target_bldg, site, wind_direction, michael_wind_s
 # Here we add minimum component capacities and wind pressure coefficients to source buildings
 roof_polys_list = []
 rcc_list = []
-count_source = 0
 for source_bldg in site_source.hasBuilding:
     # 4a) Specify the value of the property:
     high_value_flag = False
@@ -556,7 +576,7 @@ for source_bldg in site_source.hasBuilding:
     exposure = 'B'
     roof_flag = True
     wall_flag = False
-    zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(source_bldg, exposure, high_value_flag, roof_flag, wall_flag)
+    zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(source_bldg, exposure, high_value_flag, roof_flag, wall_flag, source_gable_flag=True)
     roof_polys_list.append(roof_polys)
     rcc_list.append(rcc)
     # 4c) Get DAD pressure coefficients:
@@ -568,7 +588,7 @@ for source_bldg in site_source.hasBuilding:
 # Fault tree analyses:
 # Set up empty DataFrame:
 df_site_debris = site_source.hasDebris['roof cover']
-num_realizations = 100
+num_realizations = 500
 target_pressure_list = []
 target_debris = []
 source_pressure_ftree = []
@@ -597,11 +617,106 @@ for n in range(0, num_realizations):
     source_pressure_ftree.append(source_pressure_list)
     source_roof_fail.append(roof_fail)
     target_debris.append(target_debris_list)
+    if roof_fail and (len(df_pfail_target) > 0):
+        # Plot the target building's response to wind and WBD hazards:
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
+        # Plot the roof damage and wbd trajectories:
+        fig_plan, ax_plan = plt.subplots()
+        # Walls first:
+        wall_fail = df_pfail_target.loc[df_pfail_target['roof element'] != True, 'fail regions']
+        for idx in wall_fail.index:
+            wall_geometry = wall_fail.loc[idx]
+            xw, yw, zw = [], [], []
+            for pt in list(wall_geometry.exterior.coords):
+                xw.append(pt[0])
+                yw.append(pt[1])
+                zw.append(pt[2])
+            ax.plot(np.array(xw) / 3.281, np.array(yw) / 3.281, np.array(zw) / 3.281, 'r')
+        # Roof next:
+        roof_fail = df_pfail_target.loc[df_pfail_target['roof element'] == True, 'fail regions']
+        for ridx in roof_fail.index:
+            roof_geometry = roof_fail.loc[ridx]
+            xroof, yroof, zroof = [], [], []
+            for pt in list(roof_geometry.exterior.coords):
+                xroof.append(pt[0])
+                yroof.append(pt[1])
+            ax.plot(np.array(xroof) / 3.281, np.array(yroof) / 3.281, np.ones(len(yroof))*target_bldg.hasGeometry['Height']/3.281 / 3.281, 'r')
+        # Plot the building's wireframe geometry:
+        for story in target_bldg.hasStory:
+            for poly in story.hasGeometry['3D Geometry']['local']:
+                xpoly, ypoly, zpoly = [], [], []
+                for pt in list(poly.exterior.coords):
+                    xpoly.append(pt[0])
+                    ypoly.append(pt[1])
+                    zpoly.append(pt[2])
+                ax.plot(np.array(xpoly) / 3.281, np.array(ypoly) / 3.281, np.array(zpoly) / 3.281, 'k')
+        # Plot the target building response to WBD:
+        for tdict in target_debris_list:
+            if len(tdict['fail element']) > 0:
+                # Add target building fail elements due to WBD impact
+                for i in range(0, len(tdict['fail region'])):
+                    xf, yf = target_debris_dict['fail region'][i].exterior.xy
+                    ax_plan.plot(np.array(xf) / 3.281, np.array(yf) / 3.281, 'b')
+                    for elem in tdict['fail element'][i]:
+                        if elem is None:
+                            pass
+                        else:
+                            xe, ye, ze = [], [], []
+                            for pt in list(elem.hasGeometry['3D Geometry']['local'].exterior.coords):
+                                xe.append(pt[0])
+                                ye.append(pt[1])
+                                ze.append(pt[2])
+                            ax.plot(np.array(xe)/3.281, np.array(ye)/3.281, np.array(ze)/3.281, 'b')
+                    for j in target_debris_dict['flight path'][i]:
+                        if j is not None:
+                            xl, yl = j.xy
+                            ax_plan.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'b', linestyle='dashed')
+                        else:
+                            pass
+            else:
+                pass
+        for b in site_source.hasBuilding:
+            xb, yb = b.hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle.exterior.xy
+            ax_plan.plot(np.array(xb) / 3.281, np.array(yb) / 3.281, 'k')
+            dir_debris_region = df_site_debris.loc[
+                df_site_debris['debris name'] == b.adjacentElement['Roof'][0].hasCover, 'directional debris region'].values[
+                0]
+            xdir, ydir = dir_debris_region.exterior.xy
+            ax_plan.plot(np.array(xdir) / 3.281, np.array(ydir) / 3.281, color='orange', linewidth=2)
+        xt, yt = target_bldg.hasGeometry['Footprint']['local'].exterior.xy
+        ax_plan.plot(np.array(xt) / 3.281, np.array(yt) / 3.281, 'r')
+        ax_plan.set_xlabel('x [m]')
+        ax_plan.set_ylabel('y [m]')
+        ax_plan.set_yticks(np.arange(-50, 200, 50))
+        fig_plan.set_tight_layout(True)
+        # Finish up 3D image:
+        fig.set_tight_layout(True)
+        # Make the panes transparent:
+        ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # Make the grids transparent:
+        ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # Plot labels
+        ax.set_xlabel('x [m]', fontsize=16, labelpad=10)
+        ax.set_ylabel('y [m]', fontsize=16, labelpad=10)
+        ax.set_zlabel('z [m]', fontsize=16, labelpad=10)
+        # Set label styles:
+        ax.set_zticks(np.arange(0, 20, 4))
+        ax.xaxis.set_tick_params(labelsize=16)
+        ax.yaxis.set_tick_params(labelsize=16)
+        ax.zaxis.set_tick_params(labelsize=16)
+        plt.show()
+    else:
+        pass
 df_ftree = pd.DataFrame({'Target Wind Pressure': target_pressure_list})
-count_source += 1
-col_name = 'Source Pressure Ftree ' + str(count_source)
-df_ftree[col_name] = source_pressure_ftree
-df_ftree['Source WBD' + str(count_source)] = source_roof_fail
+# count_source += 1
+# col_name = 'Source Pressure Ftree ' + str(count_source)
+# df_ftree[col_name] = source_pressure_ftree
+# df_ftree['Source WBD' + str(count_source)] = source_roof_fail
     # df_site_debris = site_source.hasDebris['roof cover']
     # for j in range(0, 100):
     #     target_bldg = wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, michael_wind_speed, wind_direction, length_unit, plot_flag=True)
