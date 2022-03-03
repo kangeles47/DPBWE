@@ -3,6 +3,7 @@ import geopandas as gpd
 from shapely import affinity
 from shapely.ops import split
 from shapely.geometry import Polygon, Point, LineString
+from shapely.affinity import translate
 from scipy import spatial
 from scipy.stats import uniform
 import matplotlib.pyplot as plt
@@ -319,7 +320,7 @@ def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag, s
                 clist.append(new_centroid)
             split_line = LineString([clist[1], clist[3]])
             split_poly = split(bldg.hasGeometry['Footprint']['local'], split_line)
-            #zone_pts_list = []
+            zone_pts = []
             roof_polys = {'Zone 1': [], 'Zone 2': [], 'Zone 3': []}
             for poly in split_poly:
                 new_bldg = Building()
@@ -328,9 +329,7 @@ def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag, s
                 for key in rpolys:
                     for poly in rpolys[key]:
                         roof_polys[key].append(poly)
-                #zone_pts_list.append(zpts)
-                #roof_polys_list.append(rpolys)
-            # Combine dictionaries in zone_pts and roof_polys:
+                zone_pts.append(zpts)
         else:
             zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
         # Update building with original footprint:
@@ -588,7 +587,27 @@ for source_bldg in site_source.hasBuilding:
     source_bldg.hasDemand['wind pressure']['external'] = df_source_bldg_cps
     # 5) Map pressure coefficients to building components:
     map_ptaps_to_components(source_bldg, df_source_bldg_cps, roof_flag=True, facade_flag=False)
-# Fault tree analyses:
+# Uncomment to plot source building gable roof zones (theta > 7 degrees):
+# fig, ax = plt.subplots()
+# for i in range(0, len(site_source.hasBuilding)):
+#     b = site_source.hasBuilding[i]
+#     xb, yb = b.hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle.exterior.xy
+#     ax.plot(np.array(xb)/3.281, np.array(yb)/3.281, 'grey')
+#     source_centroid = b.hasGeometry['Footprint']['reference cartesian'].centroid
+#     for key in roof_polys_list[i]:
+#         for poly in roof_polys_list[i][key]:
+#             gcrs_poly = translate(poly, xoff=source_centroid.x, yoff=source_centroid.y)
+#             xp, yp = gcrs_poly.exterior.xy
+#             ax.plot(np.array(xp)/3.281, np.array(yp)/3.281, 'grey')
+#             if key == 'Zone 1':
+#                 ax.fill(np.array(xp) / 3.281, np.array(yp) / 3.281, 'gainsboro')
+#             elif key == 'Zone 2':
+#                 ax.fill(np.array(xp) / 3.281, np.array(yp) / 3.281, 'w')
+#             elif key == 'Zone 3':
+#                 ax.fill(np.array(xp) / 3.281, np.array(yp) / 3.281, 'k')
+# ax.set_xlabel('x [m]')
+# ax.set_ylabel('y [m]')
+# plt.show()
 # Set up empty DataFrame:
 df_site_debris = site_source.hasDebris['roof cover']
 num_realizations = 500
