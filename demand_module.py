@@ -346,7 +346,7 @@ def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag, s
     encl_class = 'Enclosed'
     tpu_flag = True
     if wall_flag:
-        wall_height = bldg.hasStory[0].hasElevation[1] - bldg.hasStory[0].hasElevation[0]
+        wall_height = (bldg.hasStory[0].hasElevation[1] - bldg.hasStory[0].hasElevation[0])/2
         span_area_eff = wall_height * wall_height / 3
         spacing_area_eff = wall_height*5
         if spacing_area_eff > span_area_eff:
