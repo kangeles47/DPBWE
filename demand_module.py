@@ -310,24 +310,27 @@ def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag, s
         bldg.hasGeometry['Footprint']['local'] = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
         a = asce7.get_cc_zone_width(bldg)
         if source_gable_flag:
-            zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
+            #zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
             # # Create temporary bldg objects and grab their roof polys:
-            # xrect, yrect = bldg.hasGeometry['Footprint']['local'].exterior.xy
-            # clist = []
-            # for i in range(0, len(xrect)-1):
-            #     new_centroid = LineString([(xrect[i], yrect[i]), (xrect[i+1], yrect[i+1])]).centroid
-            #     clist.append(new_centroid)
-            # split_line = LineString([clist[1], clist[3]])
-            # split_poly = split(bldg.hasGeometry['Footprint']['local'], split_line)
-            # zone_pts = []
-            # roof_polys = []
-            # for poly in split_poly:
-            #     new_bldg = Building()
-            #     new_bldg.hasGeometry['Footprint']['local'] = poly
-            #     zpts, rpolys = asce7.find_cc_zone_points(new_bldg, a, roof_flag, asce7.hasEdition)
-            #     zone_pts.append(zpts)
-            #     roof_polys.append(rpolys)
-            # # Combine dictionaries in zone_pts and roof_polys:
+            xrect, yrect = bldg.hasGeometry['Footprint']['local'].exterior.xy
+            clist = []
+            for i in range(0, len(xrect)-1):
+                new_centroid = LineString([(xrect[i], yrect[i]), (xrect[i+1], yrect[i+1])]).centroid
+                clist.append(new_centroid)
+            split_line = LineString([clist[1], clist[3]])
+            split_poly = split(bldg.hasGeometry['Footprint']['local'], split_line)
+            #zone_pts_list = []
+            roof_polys = {'Zone 1': [], 'Zone 2': [], 'Zone 3': []}
+            for poly in split_poly:
+                new_bldg = Building()
+                new_bldg.hasGeometry['Footprint']['local'] = poly.minimum_rotated_rectangle
+                zpts, rpolys = asce7.find_cc_zone_points(new_bldg, a, roof_flag, asce7.hasEdition)
+                for key in rpolys:
+                    for poly in rpolys[key]:
+                        roof_polys[key].append(poly)
+                #zone_pts_list.append(zpts)
+                #roof_polys_list.append(rpolys)
+            # Combine dictionaries in zone_pts and roof_polys:
         else:
             zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
         # Update building with original footprint:
