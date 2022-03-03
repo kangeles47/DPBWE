@@ -1455,9 +1455,9 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, bfull, hfull, dfull, side_line
             contour_values['Cp Std Dev'].append(std_dev_zvals[row][col])
     # Uncomment to produce 2D contour plots:
     #cp = plt.contourf(x, y, mcp_zvals)
-    cp = plt.contourf(x, y, std_dev_zvals)
-    plt.colorbar()
-    plt.show()
+    # cp = plt.contourf(x, y, std_dev_zvals)
+    # plt.colorbar()
+    # plt.show()
     # Create a new DataFrame with new set of (x, y) and Cps:
     df_contour = pd.DataFrame(contour_values)
     # 6): Coordinate transformation (for tpu_wdir > 90)
@@ -1520,8 +1520,8 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, bfull, hfull, dfull, side_line
     # Convert the dictionary into a DataFrame:
     df_simple_map = pd.DataFrame(proj_dict).set_index('Index')
     # Plot the full-scale geometries and taps + Cps:
-    fig3 = plt.figure()
-    ax3 = plt.axes(projection='3d')
+    # fig3 = plt.figure()
+    # ax3 = plt.axes(projection='3d')
     rl_xs = []
     rl_ys = []
     rl_zs = []
@@ -1529,21 +1529,21 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, bfull, hfull, dfull, side_line
         rl_xs.append(df_simple_map['Real Life Location'][k].x)
         rl_ys.append(df_simple_map['Real Life Location'][k].y)
         rl_zs.append(df_simple_map['Real Life Location'][k].z)
-    img = ax3.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281,
-                        c=df_simple_map['Mean Cp'], cmap=plt.get_cmap('copper', 5))
-    fig3.colorbar(img)
+    # img = ax3.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281,
+    #                     c=df_simple_map['Mean Cp'], cmap=plt.get_cmap('copper', 5))
+    # fig3.colorbar(img)
     # Make the panes transparent:
-    ax3.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax3.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax3.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    # Make the grids transparent:
-    ax3.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    ax3.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    ax3.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    # Plot labels
-    ax3.set_xlabel('x [m]')
-    ax3.set_ylabel('y [m]')
-    ax3.set_zlabel('z [m]')
+    # ax3.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # ax3.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # ax3.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # # Make the grids transparent:
+    # ax3.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # ax3.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # ax3.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # # Plot labels
+    # ax3.set_xlabel('x [m]')
+    # ax3.set_ylabel('y [m]')
+    # ax3.set_zlabel('z [m]')
     # Plot all the model building's surface geometries for verification
     for key in surf_dict:
         xsurf, ysurf, zsurf = [], [], []
@@ -1551,12 +1551,12 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, bfull, hfull, dfull, side_line
             xsurf.append(p[0])
             ysurf.append(p[1])
             zsurf.append(p[2])
-        ax3.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, linestyle='dashed',
-                 color='gray')
+        # ax3.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, linestyle='dashed',
+        #          color='gray')
     # Plot the building's rectangular roof geometry:
     xr, yr = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle.exterior.xy
-    ax3.plot(np.array(xr) / 3.281, np.array(yr) / 3.281, np.ones(len(xr))*bldg.hasGeometry['Height'] / 3.281, linestyle='dashed', color='gray')
-    plt.show()
+    # ax3.plot(np.array(xr) / 3.281, np.array(yr) / 3.281, np.ones(len(xr))*bldg.hasGeometry['Height'] / 3.281, linestyle='dashed', color='gray')
+    # plt.show()
     # When geometries between actual building and model building are not fully compatible:
     # Wrap the pressures to the the parcel's full scale geometry:
     if match_flag:
@@ -1574,38 +1574,38 @@ def map_gable_roof_tap_data(tpu_wdir, model_file, bfull, hfull, dfull, side_line
             df_simple_map['Real Life Location'] = df_simple_map['Real Life Location'].apply(
                 lambda x: affinity.scale(x, xfact=bscale, yfact=dscale, zfact=hscale, origin=(0, 0, 0)))
         # Plot the new pressure tap locations and their Cps:
-        fig4 = plt.figure()
-        ax4 = plt.axes(projection='3d')
+        # fig4 = plt.figure()
+        # ax4 = plt.axes(projection='3d')
         rl_xs, rl_ys, rl_zs = [], [], []
         for k in df_simple_map.index.to_list():
             rl_xs.append(df_simple_map['Real Life Location'][k].x)
             rl_ys.append(df_simple_map['Real Life Location'][k].y)
             rl_zs.append(df_simple_map['Real Life Location'][k].z)
-        img = ax4.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281, c=df_simple_map['Mean Cp'], cmap=plt.get_cmap('copper', 5))
-        fig4.colorbar(img)
-        # Make the panes transparent:
-        ax4.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        ax4.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        ax4.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        # Make the grids transparent:
-        ax4.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        ax4.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        ax4.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        # Plot labels
-        ax4.set_xlabel('x [m]', fontsize=16, labelpad=10)
-        ax4.set_ylabel('y [m]', fontsize=16, labelpad=10)
-        ax4.set_zlabel('z [m]', fontsize=16, labelpad=10)
-        # Set label styles:
-        ax4.set_zticks(np.arange(0, 20, 4))
-        ax4.xaxis.set_tick_params(labelsize=16)
-        ax4.yaxis.set_tick_params(labelsize=16)
-        ax4.zaxis.set_tick_params(labelsize=16)
-        # Plot the building's equivalent rectangle roof for verification:
-        ax4.plot(np.array(xr) / 3.281, np.array(yr) / 3.281, np.ones(len(xr))*bldg.hasGeometry['Height'] / 3.281, linestyle='dashed', color='gray', linewidth=2)
-        # Plot the building's actual planar roof geometry:
+        # img = ax4.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281, c=df_simple_map['Mean Cp'], cmap=plt.get_cmap('copper', 5))
+        # fig4.colorbar(img)
+        # # Make the panes transparent:
+        # ax4.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # ax4.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # ax4.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # # Make the grids transparent:
+        # ax4.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # ax4.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # ax4.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # # Plot labels
+        # ax4.set_xlabel('x [m]', fontsize=16, labelpad=10)
+        # ax4.set_ylabel('y [m]', fontsize=16, labelpad=10)
+        # ax4.set_zlabel('z [m]', fontsize=16, labelpad=10)
+        # # Set label styles:
+        # ax4.set_zticks(np.arange(0, 20, 4))
+        # ax4.xaxis.set_tick_params(labelsize=16)
+        # ax4.yaxis.set_tick_params(labelsize=16)
+        # ax4.zaxis.set_tick_params(labelsize=16)
+        # # Plot the building's equivalent rectangle roof for verification:
+        # ax4.plot(np.array(xr) / 3.281, np.array(yr) / 3.281, np.ones(len(xr))*bldg.hasGeometry['Height'] / 3.281, linestyle='dashed', color='gray', linewidth=2)
+        # # Plot the building's actual planar roof geometry:
         xb, yb = bldg.hasGeometry['Footprint']['local'].exterior.xy
-        ax4.plot(np.array(xb)/3.281, np.array(yb)/3.281, np.ones(len(xb))*bldg.hasGeometry['Height']/3.281, 'k', linewidth=2)
-        plt.show()
+        # ax4.plot(np.array(xb)/3.281, np.array(yb)/3.281, np.ones(len(xb))*bldg.hasGeometry['Height']/3.281, 'k', linewidth=2)
+        # plt.show()
         # Last part: Mapping pressures onto the true 3D geometry:
         if not high_value_flag:
             df_bldg_cps = df_simple_map
