@@ -300,7 +300,7 @@ def augmented_elements_wall(bldg, num_wall_elems, story_wall_elev, plot_flag):
     bldg.update_elements()
 
 
-def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag, source_gable_flag):
+def get_cc_zones(bldg, high_value_flag, roof_flag, wall_flag, source_gable_flag, parcel_flag):
     # 1) find C&C zones:
     asce7 = ASCE7(bldg, loading_flag=True)
     if high_value_flag:
@@ -334,6 +334,118 @@ def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag, s
             zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
         # Update building with original footprint:
         bldg.hasGeometry['Footprint']['local'] = original_footprint
+    # 2) Find element-specific zones
+    zone_elem_dict = {'Zone 1': [], 'Zone 2': [], 'Zone 3': [], 'Zone 4': [], 'Zone 5': []}
+    if wall_flag:
+        # Figure out what zone each wall is in:
+        for wall in target_bldg.hasElement['Walls']:
+            for row in range(0, len(zone_pts.index)):
+                xl, yl = LineString([zone_pts['LinePoint1'][row], zone_pts['LinePoint2'][row]]).xy
+                zone_box = Polygon([(max(xl), max(yl)), (min(xl), max(yl)), (min(xl), min(yl)), (max(xl), min(yl))])
+                if wall.hasGeometry['1D Geometry']['local'].within(zone_box) or wall.hasGeometry['1D Geometry'][
+                    'local'].intersects(zone_box):
+                    x5, y5 = LineString([zone_pts['NewZoneStart'][row], zone_pts['NewZoneEnd'][row]]).xy
+                    zone5_box = Polygon(
+                        [(max(x5), max(y5)), (min(x5), max(y5)), (min(x5), min(y5)), (max(x5), min(y5))])
+                    # Figure out is this wall is in Zone 4 or 5 or both and designate capacity:
+                    if wall.hasGeometry['1D Geometry']['local'].within(zone5_box) or wall.hasGeometry['1D Geometry'][
+                        'local'].intersects(zone5_box):
+                        zone_elem_dict['Zone 5'].append(wall)
+                    else:
+                        # The element is in Zone 4:
+                        zone_elem_dict['Zone 4'].append(wall)
+                else:
+                    pass
+        # Get effective wind area:
+        if parcel_flag:
+            wall_height = (bldg.hasStory[0].hasElevation[1] - bldg.hasStory[0].hasElevation[0])
+            span_area_eff = wall_height * wall_height / 3
+            spacing_area_eff = wall_height * np.arange(1, 9)
+            wall_area_eff = uniform(span_area_eff, max(spacing_area_eff))
+        else:
+            wall_height = (bldg.hasStory[0].hasElevation[1] - bldg.hasStory[0].hasElevation[0])
+            span_area_eff = wall_height * wall_height / 3
+            spacing_area_eff = wall_height * 5
+            if spacing_area_eff > span_area_eff:
+                wall_area_eff = spacing_area_eff
+            else:
+                wall_area_eff = span_area_eff
+    else:
+        wall_area_eff = None
+    if roof_flag:
+        if source_gable_flag:
+            roof_area_eff = 10
+        else:
+            roof_area_eff = 10
+        # Go ahead and map to roof C&C pressures to new set of roof subelements:
+        if len(bldg.hasElement['Roof'][0].hasSubElement['cover']) == 0:
+            # Create sub-elements for roof structure:
+            for key in roof_polys:
+                for poly in roof_polys[key]:
+                    new_subelement = Roof()
+                    new_subelement.hasGeometry['2D Geometry']['local'] = poly
+                    new_subelement.hasCover = bldg.adjacentElement['Roof'][0].hasCover
+                    new_subelement.hasType = bldg.adjacentElement['Roof'][0].hasType
+                    new_subelement.hasPitch = bldg.adjacentElement['Roof'][0].hasPitch
+                    if asce7.hasEdition == 'ASCE 7-88' or asce7.hasEdition == 93:
+                        if key == 'Zone 1':
+                            zone_elem_dict['Zone 1'].append(new_subelement)
+                        elif key == 'Zone 2':
+                            zone_elem_dict['Zone 2'].append(new_subelement)
+                        elif key == 'Zone 3':
+                            zone_elem_dict['Zone 3'].append(new_subelement)
+                        # Add minimum positive wind pressure for C&C:
+                        new_subelement.hasCapacity['wind pressure']['external']['positive'] = 10
+                    else:
+                        if key == 'Zone 1':
+                            zone_elem_dict['Zone 1'].append(new_subelement)
+                        elif key == 'Zone 2':
+                            zone_elem_dict['Zone 2'].append(new_subelement)
+                        elif key == 'Zone 3':
+                            zone_elem_dict['Zone 3'].append(new_subelement)
+                    bldg.adjacentElement['Roof'][0].hasSubElement['cover'].append(new_subelement)
+        else:
+            pass
+    else:
+        roof_area_eff = None
+        
+    return wall_area_eff, roof_area_eff, zone_elem_dict
+
+
+def get_cc_min_capacity_orig(bldg, exposure, high_value_flag, roof_flag, wall_flag, source_gable_flag):
+    # 1) find C&C zones:
+    asce7 = ASCE7(bldg, loading_flag=True)
+    if high_value_flag:
+        a = asce7.get_cc_zone_width(bldg)
+        zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
+    else:
+        original_footprint = Polygon(list(bldg.hasGeometry['Footprint']['local'].exterior.coords))
+        bldg.hasGeometry['Footprint']['local'] = bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle
+        a = asce7.get_cc_zone_width(bldg)
+        if source_gable_flag:
+            # zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
+            # # Create temporary bldg objects and grab their roof polys:
+            xrect, yrect = bldg.hasGeometry['Footprint']['local'].exterior.xy
+            clist = []
+            for i in range(0, len(xrect) - 1):
+                new_centroid = LineString([(xrect[i], yrect[i]), (xrect[i + 1], yrect[i + 1])]).centroid
+                clist.append(new_centroid)
+            split_line = LineString([clist[1], clist[3]])
+            split_poly = split(bldg.hasGeometry['Footprint']['local'], split_line)
+            zone_pts = []
+            roof_polys = {'Zone 1': [], 'Zone 2': [], 'Zone 3': []}
+            for poly in split_poly:
+                new_bldg = Building()
+                new_bldg.hasGeometry['Footprint']['local'] = poly.minimum_rotated_rectangle
+                zpts, rpolys = asce7.find_cc_zone_points(new_bldg, a, roof_flag, asce7.hasEdition)
+                for key in rpolys:
+                    for poly in rpolys[key]:
+                        roof_polys[key].append(poly)
+                zone_pts.append(zpts)
+        else:
+            zone_pts, roof_polys = asce7.find_cc_zone_points(bldg, a, roof_flag, asce7.hasEdition)
+        # Update building with original footprint:
+        bldg.hasGeometry['Footprint']['local'] = original_footprint
     # 2) Calculate zone pressures:
     design_wind_speed = asce7.get_code_wind_speed(bldg)
     pressure_calc = PressureCalc()
@@ -346,21 +458,23 @@ def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag, s
     encl_class = 'Enclosed'
     tpu_flag = True
     if wall_flag:
-        wall_height = (bldg.hasStory[0].hasElevation[1] - bldg.hasStory[0].hasElevation[0])/2
+        wall_height = bldg.hasStory[0].hasElevation[1] - bldg.hasStory[0].hasElevation[0]
         span_area_eff = wall_height * wall_height / 3
-        spacing_area_eff = wall_height*5
+        spacing_area_eff = wall_height * 5
         if spacing_area_eff > span_area_eff:
             area_eff = spacing_area_eff
         else:
             area_eff = span_area_eff
-        wcc = pressure_calc.wcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean,
-                                     encl_class, tpu_flag)
+        wcc = pressure_calc.wcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr,
+                                         h_ocean,
+                                         encl_class, tpu_flag)
     else:
         wcc = None
     if roof_flag:
         area_eff = 10
-        rcc = pressure_calc.rcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean,
-                                     encl_class, tpu_flag)
+        rcc = pressure_calc.rcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr,
+                                         h_ocean,
+                                         encl_class, tpu_flag)
         # Go ahead and map to roof C&C pressures to new set of roof subelements:
         if len(bldg.hasElement['Roof'][0].hasSubElement['cover']) == 0:
             # Create sub-elements for roof structure:
@@ -395,23 +509,88 @@ def get_cc_min_capacity(bldg, exposure, high_value_flag, roof_flag, wall_flag, s
             pass
     else:
         rcc = None
-        
+
     return zone_pts, roof_polys, rcc, wcc
+
+
+def get_cc_min_capacity(bldg, zone_elem_dict, wall_flag, wall_area_eff, roof_flag, roof_area_eff):
+    # 1) Calculate wall C&C zone pressures:
+    asce7 = ASCE7(bldg, loading_flag=True)
+    # 2) Calculate zone pressures:
+    design_wind_speed = asce7.get_code_wind_speed(bldg)
+    pressure_calc = PressureCalc()
+    edition = asce7.hasEdition
+    h_bldg = bldg.hasGeometry['Height']
+    pitch = bldg.hasElement['Roof'][0].hasPitch
+    cat = 2
+    hpr = True
+    h_ocean = True
+    encl_class = 'Enclosed'
+    tpu_flag = True
+    if wall_flag:
+        if type(wall_area_eff):
+            # Sample the effective wind area:
+            warea = wall_area_eff.rvs()
+        else:
+            warea = wall_area_eff
+        # Calculate the pressure:
+        wcc = pressure_calc.wcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, warea, cat, hpr, h_ocean, encl_class, tpu_flag)
+        # Update wall element capacities:
+        for key in ['Zone 4', 'Zone 5']:
+            wall_elems = zone_elem_dict[key]
+            for wall in bldg.adjacentElement['Walls']:
+                if wall in wall_elems:
+                    if key == 'Zone 4':
+                        wall.hasCapacity['wind pressure']['external']['positive'] = wcc[0]
+                        wall.hasCapacity['wind pressure']['external']['negative'] = wcc[2]
+                    else:
+                        # The element is in Zone 5:
+                        wall.hasCapacity['wind pressure']['external']['positive'] = wcc[1]
+                        wall.hasCapacity['wind pressure']['external']['negative'] = wcc[3]
+    else:
+        pass
+    # Calculate roof C&C capacities:
+    if roof_flag:
+        if roof_area_eff:
+            area_eff = 20
+        else:
+            area_eff = 10
+        # Calculate the pressure:
+        rcc = pressure_calc.rcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class, tpu_flag)
+        # Update roof element capacities:
+        for key in ['Zone 1', 'Zone 2', 'Zone 3']:
+            roof_elems = zone_elem_dict[key]
+            for r_elem in bldg.adjacentElement['Roof'][0].hasSubElement['cover']:
+                if r_elem in roof_elems:
+                    if key == 'Zone 1':
+                        r_elem.hasCapacity['wind pressure']['external']['positive'] = rcc[0]
+                        r_elem.hasCapacity['wind pressure']['external']['negative'] = rcc[3]
+                    elif key == 'Zone 2':
+                        r_elem.hasCapacity['wind pressure']['external']['positive'] = rcc[1]
+                        r_elem.hasCapacity['wind pressure']['external']['negative'] = rcc[4]
+                    else:
+                        # The element is in Zone 5:
+                        r_elem.hasCapacity['wind pressure']['external']['positive'] = rcc[2]
+                        r_elem.hasCapacity['wind pressure']['external']['negative'] = rcc[5]
+    else:
+        pass
 
 # 1a) Asset Description: target_bldg Building Parcel Model
 # Parcel Models
 lon = -85.676188
 lat = 30.190142
 target_bldg = Parcel('12345', 4, 'financial', 1996, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)  # 1989
-num_wall_elems = [4, 9, 17, 9, 4, 9, 17, 9]
-wall_height = target_bldg.hasGeometry['Height']/8
-story_wall_elev = []
-for story in target_bldg.hasStory:
-    story_wall_elev.append([story.hasElevation[0], story.hasElevation[0]+wall_height, story.hasElevation[1]])
+#num_wall_elems = [4, 9, 17, 9, 4, 9, 17, 9]
+#wall_height = target_bldg.hasGeometry['Height']/8
+#story_wall_elev = []
+#for story in target_bldg.hasStory:
+    #story_wall_elev.append([story.hasElevation[0], story.hasElevation[0]+wall_height, story.hasElevation[1]])
 # Create augmented elements:
-augmented_elements_wall(target_bldg, num_wall_elems, story_wall_elev, plot_flag=False)
+#augmented_elements_wall(target_bldg, num_wall_elems, story_wall_elev, plot_flag=False)
 for wall in target_bldg.hasElement['Walls']:
     wall.hasType = 'GLASS THRM; COMMON BRK'
+    # Add impact resistance:
+    wall.hasCapacity['debris impact'] = 0.0336  # 0.0168  # lb ft/s, Vanmarcke paper, 3.1717 Barbato
 # Add roof information:
 target_bldg.hasElement['Roof'][0].hasShape['flat'] = True
 target_bldg.hasElement['Roof'][0].hasPitch = 0
@@ -424,40 +603,14 @@ exposure = 'B'
 roof_flag = True
 wall_flag = True
 high_value_flag=True
-zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(target_bldg, exposure, high_value_flag, roof_flag, wall_flag, source_gable_flag=True)  # includes roof mapping
-# Map capacities to wall elements:
+target_wall_area_eff, target_roof_area_eff, target_zone_elem_dict = get_cc_zones(target_bldg, high_value_flag, roof_flag, wall_flag, source_gable_flag=False, parcel_flag=True)  # includes roof mapping
+# Test elem capacity workflow:
+get_cc_min_capacity(target_bldg, target_zone_elem_dict, wall_flag, target_wall_area_eff, roof_flag, target_roof_area_eff)
 # Figure to show zones and component mapping:
 fig = plt.figure()
 ax = plt.axes(projection='3d')
 # Wall C&C first:
-for wall in target_bldg.hasElement['Walls']:
-    for row in range(0, len(zone_pts.index)):
-        xl, yl = LineString([zone_pts['LinePoint1'][row], zone_pts['LinePoint2'][row]]).xy
-        zone_box = Polygon([(max(xl), max(yl)), (min(xl), max(yl)), (min(xl), min(yl)), (max(xl), min(yl))])
-        if wall.hasGeometry['1D Geometry']['local'].within(zone_box) or wall.hasGeometry['1D Geometry']['local'].intersects(zone_box):
-            x5, y5 = LineString([zone_pts['NewZoneStart'][row], zone_pts['NewZoneEnd'][row]]).xy
-            zone5_box = Polygon([(max(x5), max(y5)), (min(x5), max(y5)), (min(x5), min(y5)), (max(x5), min(y5))])
-            # Aside: pull wall 3d geometry for plotting:
-            xw, yw, zw = [], [], []
-            wall_coords = list(wall.hasGeometry['3D Geometry']['local'].exterior.coords)
-            for c in wall_coords:
-                xw.append(c[0])
-                yw.append(c[1])
-                zw.append(c[2])
-            # Figure out is this wall is in Zone 4 or 5 or both and designate capacity:
-            if wall.hasGeometry['1D Geometry']['local'].within(zone5_box) or wall.hasGeometry['1D Geometry']['local'].intersects(zone5_box):
-                wall.hasCapacity['wind pressure']['external']['positive'] = wcc[1]
-                wall.hasCapacity['wind pressure']['external']['negative'] = wcc[3]
-                ax.plot(np.array(xw) / 3.281, np.array(yw) / 3.281, np.array(zw) / 3.281, 'k')
-            else:
-                # The element is in Zone 4:
-                wall.hasCapacity['wind pressure']['external']['positive'] = wcc[0]
-                wall.hasCapacity['wind pressure']['external']['negative'] = wcc[2]
-                ax.plot(np.array(xw)/3.281, np.array(yw)/3.281, np.array(zw)/3.281, 'r')
-        else:
-            pass
-    # Add impact resistance:
-    wall.hasCapacity['debris impact'] = 0.0336 #0.0168  # lb ft/s, Vanmarcke paper, 3.1717 Barbato
+
 # 1c) Asset Description: DAD pressure coefficients (wind loading):
 wind_direction = 315
 tpu_wdir = convert_to_tpu_wdir(wind_direction, target_bldg)
@@ -618,7 +771,9 @@ source2_pressure_list = []
 source_roof_fail = []
 for n in range(0, num_realizations):
     # Target building: Wind pressure fault tree
-    df_pfail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=True)
+    # Sample the effective wind area and calculate element capacities:
+    sample_eff_warea = warea_eff.rvs()
+    df_pfail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=True, parcel_flag=True)
     target_pressure_list.append(df_pfail_target)
     pressure_fail_target = df_pfail_target['fail elements'].values
     # Source buildings: Wind pressure fault tree
@@ -626,7 +781,7 @@ for n in range(0, num_realizations):
     source_pressure_list = []
     target_debris_list =[]
     for b in site_source.hasBuilding:
-        df_fail_source = wind_pressure_ftree(b, michael_wind_speed, facade_flag=False)
+        df_fail_source = wind_pressure_ftree(b, michael_wind_speed, facade_flag=False, parcel_flag=False)
         source_pressure_list.append(df_fail_source)
         df_roof_elems = df_fail_source.loc[df_fail_source['roof element']==True]
         if len(df_roof_elems.index.to_list()) > 0:
@@ -639,7 +794,7 @@ for n in range(0, num_realizations):
     source_pressure_ftree.append(source_pressure_list)
     source_roof_fail.append(roof_fail)
     target_debris.append(target_debris_list)
-    if roof_fail and (len(df_pfail_target) > 0):
+    if roof_fail:
         # Plot the target building's response to wind and WBD hazards:
         fig = plt.figure()
         ax = plt.axes(projection='3d')
@@ -663,7 +818,7 @@ for n in range(0, num_realizations):
             for pt in list(roof_geometry.exterior.coords):
                 xroof.append(pt[0])
                 yroof.append(pt[1])
-            ax.plot(np.array(xroof) / 3.281, np.array(yroof) / 3.281, np.ones(len(yroof))*target_bldg.hasGeometry['Height']/3.281 / 3.281, 'r')
+            ax.plot(np.array(xroof) / 3.281, np.array(yroof) / 3.281, np.ones(len(yroof))*target_bldg.hasGeometry['Height']/3.281, 'r')
         # Plot the building's wireframe geometry:
         for story in target_bldg.hasStory:
             for poly in story.hasGeometry['3D Geometry']['local']:
@@ -711,6 +866,7 @@ for n in range(0, num_realizations):
         ax_plan.set_xlabel('x [m]')
         ax_plan.set_ylabel('y [m]')
         ax_plan.set_yticks(np.arange(-50, 200, 50))
+        ax_plan.set_title(str(n))
         fig_plan.set_tight_layout(True)
         # Finish up 3D image:
         fig.set_tight_layout(True)
@@ -726,6 +882,7 @@ for n in range(0, num_realizations):
         ax.set_xlabel('x [m]', fontsize=16, labelpad=10)
         ax.set_ylabel('y [m]', fontsize=16, labelpad=10)
         ax.set_zlabel('z [m]', fontsize=16, labelpad=10)
+        ax.set_title(str(n))
         # Set label styles:
         ax.set_zticks(np.arange(0, 20, 4))
         ax.xaxis.set_tick_params(labelsize=16)
