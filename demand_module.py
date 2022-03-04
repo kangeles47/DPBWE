@@ -361,7 +361,7 @@ def get_cc_zones(bldg, high_value_flag, roof_flag, wall_flag, source_gable_flag,
             wall_height = (bldg.hasStory[0].hasElevation[1] - bldg.hasStory[0].hasElevation[0])
             span_area_eff = wall_height * wall_height / 3
             spacing_area_eff = wall_height * np.arange(1, 9)
-            wall_area_eff = uniform(span_area_eff, max(spacing_area_eff))
+            wall_area_eff = uniform(span_area_eff, max(spacing_area_eff)-span_area_eff)
         else:
             wall_height = (bldg.hasStory[0].hasElevation[1] - bldg.hasStory[0].hasElevation[0])
             span_area_eff = wall_height * wall_height / 3
@@ -528,35 +528,29 @@ def get_cc_min_capacity(bldg, zone_elem_dict, wall_flag, wall_area_eff, roof_fla
     encl_class = 'Enclosed'
     tpu_flag = True
     if wall_flag:
-        if type(wall_area_eff):
+        try:
             # Sample the effective wind area:
             warea = wall_area_eff.rvs()
-        else:
+        except AttributeError:
             warea = wall_area_eff
         # Calculate the pressure:
         wcc = pressure_calc.wcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, warea, cat, hpr, h_ocean, encl_class, tpu_flag)
         # Update wall element capacities:
-        for key in ['Zone 4', 'Zone 5']:
-            wall_elems = zone_elem_dict[key]
-            for wall in bldg.adjacentElement['Walls']:
-                if wall in wall_elems:
-                    if key == 'Zone 4':
-                        wall.hasCapacity['wind pressure']['external']['positive'] = wcc[0]
-                        wall.hasCapacity['wind pressure']['external']['negative'] = wcc[2]
-                    else:
-                        # The element is in Zone 5:
-                        wall.hasCapacity['wind pressure']['external']['positive'] = wcc[1]
-                        wall.hasCapacity['wind pressure']['external']['negative'] = wcc[3]
+        wall_elems = zone_elem_dict['Zone 4']
+        for wall in bldg.adjacentElement['Walls']:
+            if wall in wall_elems:
+                wall.hasCapacity['wind pressure']['external']['positive'] = wcc[0]
+                wall.hasCapacity['wind pressure']['external']['negative'] = wcc[2]
+            else:
+                # The element is in Zone 5:
+                wall.hasCapacity['wind pressure']['external']['positive'] = wcc[1]
+                wall.hasCapacity['wind pressure']['external']['negative'] = wcc[3]
     else:
         pass
     # Calculate roof C&C capacities:
     if roof_flag:
-        if roof_area_eff:
-            area_eff = 20
-        else:
-            area_eff = 10
         # Calculate the pressure:
-        rcc = pressure_calc.rcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, area_eff, cat, hpr, h_ocean, encl_class, tpu_flag)
+        rcc = pressure_calc.rcc_pressure(design_wind_speed, exposure, edition, h_bldg, pitch, roof_area_eff, cat, hpr, h_ocean, encl_class, tpu_flag)
         # Update roof element capacities:
         for key in ['Zone 1', 'Zone 2', 'Zone 3']:
             roof_elems = zone_elem_dict[key]
@@ -604,13 +598,6 @@ roof_flag = True
 wall_flag = True
 high_value_flag=True
 target_wall_area_eff, target_roof_area_eff, target_zone_elem_dict = get_cc_zones(target_bldg, high_value_flag, roof_flag, wall_flag, source_gable_flag=False, parcel_flag=True)  # includes roof mapping
-# Test elem capacity workflow:
-get_cc_min_capacity(target_bldg, target_zone_elem_dict, wall_flag, target_wall_area_eff, roof_flag, target_roof_area_eff)
-# Figure to show zones and component mapping:
-fig = plt.figure()
-ax = plt.axes(projection='3d')
-# Wall C&C first:
-
 # 1c) Asset Description: DAD pressure coefficients (wind loading):
 wind_direction = 315
 tpu_wdir = convert_to_tpu_wdir(wind_direction, target_bldg)
@@ -720,8 +707,6 @@ wind_direction = 315
 site_source = get_source_bldgs(target_bldg, site, wind_direction, michael_wind_speed_b, crs, length_unit)
 # 4) Asset Description: Probable Source Buildings
 # Here we add minimum component capacities and wind pressure coefficients to source buildings
-roof_polys_list = []
-rcc_list = []
 for source_bldg in site_source.hasBuilding:
     # 4a) Specify the value of the property:
     high_value_flag = False
@@ -731,9 +716,12 @@ for source_bldg in site_source.hasBuilding:
     exposure = 'B'
     roof_flag = True
     wall_flag = False
-    zone_pts, roof_polys, rcc, wcc = get_cc_min_capacity(source_bldg, exposure, high_value_flag, roof_flag, wall_flag, source_gable_flag=True)
-    roof_polys_list.append(roof_polys)
-    rcc_list.append(rcc)
+    source_wall_area_eff, source_roof_area_eff, source_zone_elem_dict = get_cc_zones(source_bldg, high_value_flag,
+                                                                                     roof_flag, wall_flag,
+                                                                                     source_gable_flag=True,
+                                                                                     parcel_flag=False)
+    get_cc_min_capacity(source_bldg, source_zone_elem_dict, wall_flag, source_wall_area_eff, roof_flag,
+                        source_roof_area_eff)
     # 4c) Get DAD pressure coefficients:
     tpu_wdir = convert_to_tpu_wdir(wind_direction, source_bldg)
     df_source_bldg_cps = map_tpu_ptaps(source_bldg, tpu_wdir, high_value_flag)  # taps and trib areas
@@ -771,8 +759,11 @@ source2_pressure_list = []
 source_roof_fail = []
 for n in range(0, num_realizations):
     # Target building: Wind pressure fault tree
-    # Sample the effective wind area and calculate element capacities:
-    sample_eff_warea = warea_eff.rvs()
+    # Sample the effective wind area for target glass panels and calculate element capacities:
+    wall_flag, roof_flag = True, True
+    get_cc_min_capacity(target_bldg, target_zone_elem_dict, wall_flag, target_wall_area_eff, roof_flag,
+                        target_roof_area_eff)
+    # Conduct the wind pressure fault tree:
     df_pfail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=True, parcel_flag=True)
     target_pressure_list.append(df_pfail_target)
     pressure_fail_target = df_pfail_target['fail elements'].values
@@ -787,7 +778,7 @@ for n in range(0, num_realizations):
         if len(df_roof_elems.index.to_list()) > 0:
             roof_fail = True
             target_debris_dict = wbd_ftree(target_bldg, b, df_fail_source, df_site_debris, pressure_fail_target, michael_wind_speed_b,
-                                   wind_direction, length_unit, plot_flag=True)
+                                   wind_direction, length_unit, plot_flag=True, parcel_flag=True)
             target_debris_list.append(target_debris_dict)
         else:
             pass
