@@ -5,7 +5,7 @@ from shapely.geometry import Polygon, Point, LineString, MultiPoint
 from scipy.stats import norm, uniform
 from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from bldg_code import ASCE7
-from OBDM.element import Roof
+from OBDM.element import Roof, Wall
 from code_pressures import PressureCalc
 from get_debris import get_trajectory, get_num_dobjects, get_traj_line
 
@@ -158,7 +158,7 @@ def time_hist_element_pressure_failure_check(elem, bldg, zone_flag, tcols):
     elem.hasFailure['wind pressure'] = elem_fail.loc[elem_fail['fail'] == True]
 
 
-def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure_fail_target, wind_speed, wind_direction, length_unit, plot_flag):
+def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure_fail_target, wind_speed, wind_direction, length_unit, plot_flag, parcel_flag):
     # Plot the failure regions on roof if necessary:
     if plot_flag:
         fig, ax = plt.subplots()
@@ -260,7 +260,33 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure
                     prob_hit = uniform.rvs(size=len(wall_list))
                     max_idx = np.where(prob_hit == max(prob_hit))[0][0]
                     # Extract the impacted walls:
-                    wall_fail_list.append(wall_list[max_idx])
+                    if parcel_flag:
+                        # Narrow the impact region based on the typical or maximum width of WBD-vulnerable element:
+                        ref_wall = wall_list[max_idx]
+                        ipt = hit_traj.intersection(ref_wall.hasGeometry['1D Geometry']['local'])
+                        xl, yl = ref_wall.hasGeometry['1D Geometry']['local'].xy
+                        # Create a new line showing max impact region:
+                        new_pt_list = []
+                        for k in range(0, len(xl)):
+                            new_line = LineString([ipt, (xl[k], yl[k])])
+                            new_pt = new_line.interpolate(distance=8/2)
+                            new_pt_list.append(new_pt)
+                        # Create 3D Geometry:
+                        coords_list = list(ref_wall.hasGeometry['3D Geometry']['local'].exterior.coords)
+                        zs = []
+                        for c in coords_list:
+                            zs.append(c[-1])
+                        wbd_wall_poly = Polygon([(new_pt_list[0].x, new_pt_list[0].y, min(zs)), (new_pt_list[1].x,
+                                                                                                 new_pt_list[1].y, min(zs)), (new_pt_list[1].x, new_pt_list[1].y, max(zs)), (new_pt_list[0].x, new_pt_list[0].y, max(zs))])
+                        new_wall = Wall()
+                        new_wall.hasGeometry['3D Geometry']['local'] = wbd_wall_poly
+                        new_wall.hasGeometry['1D Geometry']['local'] = LineString([(new_pt_list[0].x, new_pt_list[0].y), (new_pt_list[1].x,
+                                                                                                 new_pt_list[1].y)])
+                        new_wall.hasGeometry['Height'] = max(zs)-min(zs)
+                        new_wall.hasGeometry['Area'] = new_wall.hasGeometry['1D Geometry']['local'].length*new_wall.hasGeometry['Height']
+                        wall_fail_list.append(new_wall)
+                    else:
+                        wall_fail_list.append(wall_list[max_idx])
                 debris_dict['fail element'].append(wall_fail_list)
             else:
                 debris_dict['flight path'].append([None])
@@ -348,9 +374,7 @@ def wind_pressure_ftree(bldg, wind_speed, facade_flag, parcel_flag):
                         tap_areas = np.array(tap_areas)
                     else:
                         pass
-                    #elem_loading = sum(tap_pressures*tap_areas)/elem.hasGeometry['2D Geometry']['local'].area
-                    # Sample component capacity:
-                    elem_capacity = elem.hasCapacity['wind pressure']['external']['positive']
+                    # Capacity versus demand checks:
                     idx = 0
                     for p in tap_pressures.index.to_list():
                         fail_flag = False
@@ -369,7 +393,7 @@ def wind_pressure_ftree(bldg, wind_speed, facade_flag, parcel_flag):
                         # Add failure data:
                         if fail_flag:
                             if parcel_flag:
-                                fail_regions.append(tap_areas[idx])
+                                fail_regions.append(df_bldg_cps['Tap Polygon'][idx])
                                 elem.hasFailure['wind pressure'] = True
                                 fail_elements.append(elem)
                             else:
