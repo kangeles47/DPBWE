@@ -275,9 +275,9 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure
     return debris_dict
 
 
-def wind_pressure_ftree(bldg, wind_speed, facade_flag):
+def wind_pressure_ftree(bldg, wind_speed, facade_flag, parcel_flag):
     # For each building:
-    # 1) Sample pressure coefficients and calculate wind pressure:
+    # 1) Sample pressure coefficients and calculate wind pressure loading demand:
     df_bldg_cps = bldg.hasDemand['wind pressure']['external']
 
     def get_sample_cp(mean_cp, cp_std_dev):
@@ -368,15 +368,20 @@ def wind_pressure_ftree(bldg, wind_speed, facade_flag):
                                 pass
                         # Add failure data:
                         if fail_flag:
-                            if 'GLASS' in elem.hasType.upper():
-                                fail_regions.append(elem.hasGeometry['3D Geometry']['local'])
-                                elem.hasFailure['wind pressure'] = True
-                                fail_elements.append(elem)
-                            else:
-                                print('Glass check not working')
+                            if parcel_flag:
                                 fail_regions.append(tap_areas[idx])
                                 elem.hasFailure['wind pressure'] = True
                                 fail_elements.append(elem)
+                            else:
+                                if 'GLASS' in elem.hasType.upper():
+                                    fail_regions.append(elem.hasGeometry['3D Geometry']['local'])
+                                    elem.hasFailure['wind pressure'] = True
+                                    fail_elements.append(elem)
+                                else:
+                                    print('Glass check not working')
+                                    fail_regions.append(tap_areas[idx])
+                                    elem.hasFailure['wind pressure'] = True
+                                    fail_elements.append(elem)
                         else:
                             pass
                         idx += 1
