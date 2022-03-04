@@ -129,9 +129,9 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                     self.hasGeometry['3D Geometry'][key].append(bsurf_poly)
                     self.hasGeometry['Facade'][key].append(bsurf_poly)
         # # Generate a set of building elements (with default attributes) for the parcel:
-        # self.parcel_elements(self, zone_flag=False)
+        self.parcel_elements(self, zone_flag=True)
         # # Update the Building's Elements:
-        # self.update_elements()
+        self.update_elements()
         # # Populate instance attributes informed by national survey data:
         # survey_data.run(self, ref_bldg_flag=False, parcel_flag=True)  # populate component attributes using survey data
         # if survey_data.isSurvey == 'CBECS':
@@ -302,26 +302,27 @@ class Parcel(Building):  # Note here: Consider how story/floor assignments may n
                         rpt_list.append(new_pt)
                     new_roof.hasGeometry['3D Geometry'][key] = Polygon(rpt_list)
                 if zone_flag:
-                    # Create roof sub_elements for C&C:
-                    for key in roof_polys.keys():
-                        # Add roof zone geometries to main roof object:
-                        new_roof.hasGeometry[key] = roof_polys[key]
-                        for poly in roof_polys[key]:
-                            new_sub_element = Roof()
-                            new_sub_element.hasGeometry['2D Geometry']['local'] = poly
-                            # Add 3D geometry:
-                            xpoly, ypoly = poly.exterior.xy
-                            poly_3d = []
-                            for j in range(0, len(xpoly)):
-                                poly_3d.append(Point(xpoly[j], ypoly[j], self.hasGeometry['Height']))
-                            new_sub_element.hasGeometry['3D Geometry']['local'] = Polygon(poly_3d)
-                            # Mark if subelement is on roof perimeter:
-                            if '2' in key or '3' in key:
-                                new_sub_element.hasGeometry['Perimeter'] = True
-                            else:
-                                pass
-                            # Add subelement to roof:
-                            new_roof.hasSubElement['cover'].append(new_sub_element)
+                    pass
+                    # # Create roof sub_elements for C&C:
+                    # for key in roof_polys.keys():
+                    #     # Add roof zone geometries to main roof object:
+                    #     new_roof.hasGeometry[key] = roof_polys[key]
+                    #     for poly in roof_polys[key]:
+                    #         new_sub_element = Roof()
+                    #         new_sub_element.hasGeometry['2D Geometry']['local'] = poly
+                    #         # Add 3D geometry:
+                    #         xpoly, ypoly = poly.exterior.xy
+                    #         poly_3d = []
+                    #         for j in range(0, len(xpoly)):
+                    #             poly_3d.append(Point(xpoly[j], ypoly[j], self.hasGeometry['Height']))
+                    #         new_sub_element.hasGeometry['3D Geometry']['local'] = Polygon(poly_3d)
+                    #         # Mark if subelement is on roof perimeter:
+                    #         if '2' in key or '3' in key:
+                    #             new_sub_element.hasGeometry['Perimeter'] = True
+                    #         else:
+                    #             pass
+                    #         # Add subelement to roof:
+                    #         new_roof.hasSubElement['cover'].append(new_sub_element)
                 else:
                     pass
                 # Add roof to the story:
