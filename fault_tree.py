@@ -277,7 +277,7 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure
                         for c in coords_list:
                             zs.append(c[-1])
                         wbd_wall_poly = Polygon([(new_pt_list[0].x, new_pt_list[0].y, min(zs)), (new_pt_list[1].x,
-                                                                                                 new_pt_list[1].y, min(zs)), (new_pt_list[1].x, new_pt_list[1].y, max(zs)), (new_pt_list[0].x, new_pt_list[0].y, max(zs))])
+                                                                                                 new_pt_list[1].y, min(zs)), (new_pt_list[1].x, new_pt_list[1].y, max(zs)), (new_pt_list[0].x, new_pt_list[0].y, max(zs)), (new_pt_list[0].x, new_pt_list[0].y, min(zs))])
                         new_wall = Wall()
                         new_wall.hasGeometry['3D Geometry']['local'] = wbd_wall_poly
                         new_wall.hasGeometry['1D Geometry']['local'] = LineString([(new_pt_list[0].x, new_pt_list[0].y), (new_pt_list[1].x,
