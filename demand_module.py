@@ -3,7 +3,7 @@ import geopandas as gpd
 from shapely import affinity
 from shapely.ops import split
 from shapely.geometry import Polygon, Point, LineString
-from shapely.affinity import translate
+from shapely.affinity import translate, scale
 from scipy import spatial
 from scipy.stats import uniform
 import matplotlib.pyplot as plt
@@ -318,7 +318,11 @@ def get_cc_zones(bldg, high_value_flag, roof_flag, wall_flag, source_gable_flag,
             for i in range(0, len(xrect)-1):
                 new_centroid = LineString([(xrect[i], yrect[i]), (xrect[i+1], yrect[i+1])]).centroid
                 clist.append(new_centroid)
-            split_line = LineString([clist[1], clist[3]])
+            if (clist[3].x-clist[1].x) > (clist[3].y - clist[1].y):
+                split_line = LineString([clist[0], clist[2]])
+            else:
+                split_line = LineString([clist[1], clist[3]])
+            split_line = scale(split_line, xfact=2.0, yfact=2.0)  # Make longer to ensure split
             split_poly = split(bldg.hasGeometry['Footprint']['local'], split_line)
             zone_pts = []
             roof_polys = {'Zone 1': [], 'Zone 2': [], 'Zone 3': []}
@@ -707,6 +711,7 @@ wind_direction = 315
 site_source = get_source_bldgs(target_bldg, site, wind_direction, michael_wind_speed_b, crs, length_unit)
 # 4) Asset Description: Probable Source Buildings
 # Here we add minimum component capacities and wind pressure coefficients to source buildings
+source_zone_list = []
 for source_bldg in site_source.hasBuilding:
     # 4a) Specify the value of the property:
     high_value_flag = False
@@ -720,6 +725,8 @@ for source_bldg in site_source.hasBuilding:
                                                                                      roof_flag, wall_flag,
                                                                                      source_gable_flag=True,
                                                                                      parcel_flag=False)
+    source_roof_area_eff = 100
+    source_zone_list.append(source_zone_elem_dict)
     get_cc_min_capacity(source_bldg, source_zone_elem_dict, wall_flag, source_wall_area_eff, roof_flag,
                         source_roof_area_eff)
     # 4c) Get DAD pressure coefficients:
@@ -728,26 +735,28 @@ for source_bldg in site_source.hasBuilding:
     source_bldg.hasDemand['wind pressure']['external'] = df_source_bldg_cps
     # 5) Map pressure coefficients to building components:
     map_ptaps_to_components(source_bldg, df_source_bldg_cps, roof_flag=True, facade_flag=False)
-# Uncomment to plot source building gable roof zones (theta > 7 degrees):
-# fig, ax = plt.subplots()
-# for i in range(0, len(site_source.hasBuilding)):
-#     b = site_source.hasBuilding[i]
-#     xb, yb = b.hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle.exterior.xy
-#     ax.plot(np.array(xb)/3.281, np.array(yb)/3.281, 'grey')
-#     source_centroid = b.hasGeometry['Footprint']['reference cartesian'].centroid
-#     for key in roof_polys_list[i]:
-#         for poly in roof_polys_list[i][key]:
+# # Uncomment to plot source building gable roof zones (theta > 7 degrees):
+# fig_zone, ax_zone = plt.subplots()
+# for b in range(0, len(site_source.hasBuilding)):
+#     source_bldg = site_source.hasBuilding[b]
+#     source_zone_elem_dict = source_zone_list[b]
+#     xb, yb = source_bldg.hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle.exterior.xy
+#     ax_zone.plot(np.array(xb) / 3.281, np.array(yb) / 3.281, 'grey')
+#     source_centroid = source_bldg.hasGeometry['Footprint']['reference cartesian'].centroid
+#     for key in source_zone_elem_dict:
+#         for elem in source_zone_elem_dict[key]:
+#             poly = elem.hasGeometry['2D Geometry']['local']
 #             gcrs_poly = translate(poly, xoff=source_centroid.x, yoff=source_centroid.y)
 #             xp, yp = gcrs_poly.exterior.xy
-#             ax.plot(np.array(xp)/3.281, np.array(yp)/3.281, 'grey')
+#             ax_zone.plot(np.array(xp)/3.281, np.array(yp)/3.281, 'grey')
 #             if key == 'Zone 1':
-#                 ax.fill(np.array(xp) / 3.281, np.array(yp) / 3.281, 'gainsboro')
+#                 ax_zone.fill(np.array(xp) / 3.281, np.array(yp) / 3.281, 'gainsboro')
 #             elif key == 'Zone 2':
-#                 ax.fill(np.array(xp) / 3.281, np.array(yp) / 3.281, 'w')
+#                 ax_zone.fill(np.array(xp) / 3.281, np.array(yp) / 3.281, 'w')
 #             elif key == 'Zone 3':
-#                 ax.fill(np.array(xp) / 3.281, np.array(yp) / 3.281, 'k')
-# ax.set_xlabel('x [m]')
-# ax.set_ylabel('y [m]')
+#                 ax_zone.fill(np.array(xp) / 3.281, np.array(yp) / 3.281, 'k')
+# ax_zone.set_xlabel('x [m]')
+# ax_zone.set_ylabel('y [m]')
 # plt.show()
 # Set up empty DataFrame:
 df_site_debris = site_source.hasDebris['roof cover']
@@ -824,7 +833,10 @@ for n in range(0, num_realizations):
             if len(tdict['fail element']) > 0:
                 # Add target building fail elements due to WBD impact
                 for i in range(0, len(tdict['fail region'])):
-                    xf, yf = target_debris_dict['fail region'][i].exterior.xy
+                    try:
+                        xf, yf = target_debris_dict['fail region'][i].exterior.xy
+                    except IndexError:
+                        new_debug = 0
                     ax_plan.plot(np.array(xf) / 3.281, np.array(yf) / 3.281, 'b')
                     for elem in tdict['fail element'][i]:
                         if elem is None:
@@ -879,6 +891,59 @@ for n in range(0, num_realizations):
         ax.xaxis.set_tick_params(labelsize=16)
         ax.yaxis.set_tick_params(labelsize=16)
         ax.zaxis.set_tick_params(labelsize=16)
+        plt.show()
+    elif not roof_fail and len(df_pfail_target.index.to_list()) > 0:
+        fig_p = plt.figure()
+        ax_p = plt.axes(projection='3d')
+        # Walls first:
+        wall_fail = df_pfail_target.loc[df_pfail_target['roof element'] != True, 'fail regions']
+        for idx in wall_fail.index:
+            wall_geometry = wall_fail.loc[idx]
+            xw, yw, zw = [], [], []
+            for pt in list(wall_geometry.exterior.coords):
+                xw.append(pt[0])
+                yw.append(pt[1])
+                zw.append(pt[2])
+            ax_p.plot(np.array(xw) / 3.281, np.array(yw) / 3.281, np.array(zw) / 3.281, 'r')
+        # Roof next:
+        roof_fail = df_pfail_target.loc[df_pfail_target['roof element'] == True, 'fail regions']
+        for ridx in roof_fail.index:
+            roof_geometry = roof_fail.loc[ridx]
+            xroof, yroof, zroof = [], [], []
+            for pt in list(roof_geometry.exterior.coords):
+                xroof.append(pt[0])
+                yroof.append(pt[1])
+            ax_p.plot(np.array(xroof) / 3.281, np.array(yroof) / 3.281,
+                    np.ones(len(yroof)) * target_bldg.hasGeometry['Height'] / 3.281, 'r')
+        # Plot the building's wireframe geometry:
+        for story in target_bldg.hasStory:
+            for poly in story.hasGeometry['3D Geometry']['local']:
+                xpoly, ypoly, zpoly = [], [], []
+                for pt in list(poly.exterior.coords):
+                    xpoly.append(pt[0])
+                    ypoly.append(pt[1])
+                    zpoly.append(pt[2])
+                ax_p.plot(np.array(xpoly) / 3.281, np.array(ypoly) / 3.281, np.array(zpoly) / 3.281, 'k')
+        # Finish up 3D image:
+        fig_p.set_tight_layout(True)
+        # Make the panes transparent:
+        ax_p.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax_p.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax_p.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # Make the grids transparent:
+        ax_p.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax_p.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        ax_p.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # Plot labels
+        ax_p.set_xlabel('x [m]', fontsize=16, labelpad=10)
+        ax_p.set_ylabel('y [m]', fontsize=16, labelpad=10)
+        ax_p.set_zlabel('z [m]', fontsize=16, labelpad=10)
+        ax_p.set_title(str(n))
+        # Set label styles:
+        ax_p.set_zticks(np.arange(0, 20, 4))
+        ax_p.xaxis.set_tick_params(labelsize=16)
+        ax_p.yaxis.set_tick_params(labelsize=16)
+        ax_p.zaxis.set_tick_params(labelsize=16)
         plt.show()
     else:
         pass
