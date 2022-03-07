@@ -318,7 +318,7 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
     return site_source
 
 
-def get_trajectory(model_input, wind_speed, length_unit, mcs_flag):
+def get_trajectory(model_input, wind_speed, length_unit, mcs_flag, rng):
     """
     A function to generate random variables for the debris alongwind and acrosswind trajectory.
 
@@ -350,12 +350,12 @@ def get_trajectory(model_input, wind_speed, length_unit, mcs_flag):
     alongwind_dist = []
     acrosswind_dist = []
     for i in range(0, samples):
-        norm_time = flight_time.rvs() * gravity / wind_speed  # roof-level or use basic wind speed at site
+        norm_time = flight_time.rvs(random_state=rng) * gravity / wind_speed  # roof-level or use basic wind speed at site
         # Calculate mu_x (mean of alongwind distance):
         alongwind_mu = (2*model_input['debris mass']/air_density)*((0.5*c*(tachikawa_num*norm_time)**2) + (c1*(tachikawa_num*norm_time)**3) + (c2*(tachikawa_num*norm_time)**4) + (c3*(tachikawa_num*norm_time)**5))
         count = 0
         while alongwind_mu < 0:
-            norm_time = flight_time.rvs() * gravity / wind_speed  # roof-level or use basic wind speed at site
+            norm_time = flight_time.rvs(random_state=rng) * gravity / wind_speed  # roof-level or use basic wind speed at site
             # Calculate mu_x (mean of alongwind distance):
             alongwind_mu = (2 * model_input['debris mass'] / air_density) * (
                         (0.5 * c * (tachikawa_num * norm_time) ** 2) + (c1 * (tachikawa_num * norm_time) ** 3) + (
@@ -370,8 +370,8 @@ def get_trajectory(model_input, wind_speed, length_unit, mcs_flag):
         sigma_along = 0.35*alongwind_mu
         sigma_across = 0.35*alongwind_mu
         # Current data availability --> alongwind and across wind displacements are independent:
-        alongwind_dist.append(norm.rvs(loc=alongwind_mu, scale=sigma_along))
-        acrosswind_dist.append(norm.rvs(loc=0, scale=sigma_across))
+        alongwind_dist.append(norm.rvs(loc=alongwind_mu, scale=sigma_along, random_state=rng))
+        acrosswind_dist.append(norm.rvs(loc=0, scale=sigma_across, random_state=rng))
     # Add to building data model:
     #bldg.hasDebrisTrajectory[key]['alongwind'], bldg.adjacentElement['Roof'][0].hasDebrisTrajectory[key]['alongwind'] = alongwind_dist, alongwind_dist
     #bldg.hasDebrisTrajectory[key]['acrosswind'], bldg.adjacentElement['Roof'][0].hasDebrisTrajectory[key]['acrosswind'] = acrosswind_dist, acrosswind_dist

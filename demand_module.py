@@ -517,7 +517,7 @@ def get_cc_min_capacity_orig(bldg, exposure, high_value_flag, roof_flag, wall_fl
     return zone_pts, roof_polys, rcc, wcc
 
 
-def get_cc_min_capacity(bldg, zone_elem_dict, wall_flag, wall_area_eff, roof_flag, roof_area_eff):
+def get_cc_min_capacity(bldg, zone_elem_dict, wall_flag, wall_area_eff, roof_flag, roof_area_eff, rng):
     # 1) Calculate wall C&C zone pressures:
     asce7 = ASCE7(bldg, loading_flag=True)
     # 2) Calculate zone pressures:
@@ -534,7 +534,7 @@ def get_cc_min_capacity(bldg, zone_elem_dict, wall_flag, wall_area_eff, roof_fla
     if wall_flag:
         try:
             # Sample the effective wind area:
-            warea = wall_area_eff.rvs()
+            warea = wall_area_eff.rvs(random_state=rng)
         except AttributeError:
             warea = wall_area_eff
         # Calculate the pressure:
@@ -578,6 +578,8 @@ def get_cc_min_capacity(bldg, zone_elem_dict, wall_flag, wall_area_eff, roof_fla
 lon = -85.676188
 lat = 30.190142
 target_bldg = Parcel('12345', 4, 'financial', 1996, '1002 23RD ST W PANAMA CITY 32405', 41134, lon, lat, length_unit='ft', plot_flag=False)  # 1989
+seed = 12345
+rng = np.random.default_rng(seed)
 #num_wall_elems = [4, 9, 17, 9, 4, 9, 17, 9]
 #wall_height = target_bldg.hasGeometry['Height']/8
 #story_wall_elev = []
@@ -728,7 +730,7 @@ for source_bldg in site_source.hasBuilding:
     source_roof_area_eff = 100
     source_zone_list.append(source_zone_elem_dict)
     get_cc_min_capacity(source_bldg, source_zone_elem_dict, wall_flag, source_wall_area_eff, roof_flag,
-                        source_roof_area_eff)
+                        source_roof_area_eff, rng=rng)
     # 4c) Get DAD pressure coefficients:
     tpu_wdir = convert_to_tpu_wdir(wind_direction, source_bldg)
     df_source_bldg_cps = map_tpu_ptaps(source_bldg, tpu_wdir, high_value_flag)  # taps and trib areas
@@ -760,7 +762,7 @@ for source_bldg in site_source.hasBuilding:
 # plt.show()
 # Set up empty DataFrame:
 df_site_debris = site_source.hasDebris['roof cover']
-num_realizations = 500
+num_realizations = 10
 target_pressure_list = []
 target_debris = []
 source_pressure_ftree = []
@@ -771,9 +773,9 @@ for n in range(0, num_realizations):
     # Sample the effective wind area for target glass panels and calculate element capacities:
     wall_flag, roof_flag = True, True
     get_cc_min_capacity(target_bldg, target_zone_elem_dict, wall_flag, target_wall_area_eff, roof_flag,
-                        target_roof_area_eff)
+                        target_roof_area_eff, rng=rng)
     # Conduct the wind pressure fault tree:
-    df_pfail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=True, parcel_flag=True)
+    df_pfail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=True, parcel_flag=True, rng=rng)
     target_pressure_list.append(df_pfail_target)
     pressure_fail_target = df_pfail_target['fail elements'].values
     # Source buildings: Wind pressure fault tree
@@ -781,13 +783,13 @@ for n in range(0, num_realizations):
     source_pressure_list = []
     target_debris_list =[]
     for b in site_source.hasBuilding:
-        df_fail_source = wind_pressure_ftree(b, michael_wind_speed, facade_flag=False, parcel_flag=False)
+        df_fail_source = wind_pressure_ftree(b, michael_wind_speed, facade_flag=False, parcel_flag=False, rng=rng)
         source_pressure_list.append(df_fail_source)
         df_roof_elems = df_fail_source.loc[df_fail_source['roof element']==True]
         if len(df_roof_elems.index.to_list()) > 0:
             roof_fail = True
             target_debris_dict = wbd_ftree(target_bldg, b, df_fail_source, df_site_debris, pressure_fail_target, michael_wind_speed_b,
-                                   wind_direction, length_unit, plot_flag=True, parcel_flag=True)
+                                   wind_direction, length_unit, plot_flag=False, parcel_flag=True, rng=rng)
             target_debris_list.append(target_debris_dict)
         else:
             pass
