@@ -947,6 +947,36 @@ for n in range(0, num_realizations):
         plt.show()
     else:
         pass
+# Aggregate damage:
+source_damage_dict = {'Source 1': [], 'Source 2': []}
+for k in range(0, len(source_roof_fail)):
+    if source_roof_fail[k]:
+        for m in range(0, len(source_pressure_ftree[k])):
+            if len(source_pressure_ftree[k][m].index.to_list()) > 0:
+                for j in source_pressure_ftree[k][m].index.to_list():
+                    damage = source_pressure_ftree[k][m]['fail regions'][j].area
+            else:
+                damage = 0
+            if m == 0:
+                source_damage_dict['Source 1'].append(damage)
+            else:
+                source_damage_dict['Source 2'].append(damage)
+    else:
+        source_damage_dict['Source 1'].append(0)
+        source_damage_dict['Source 2'].append(0)
+plt.plot(np.arange(0, 100), 100*np.array(source_damage_dict['Source 1'])/(site_source.hasBuilding[0].hasGeometry['Footprint']['local'].area), label='Source 2')
+plt.plot(np.arange(0, 100), 100*np.array(source_damage_dict['Source 2'])/(site_source.hasBuilding[1].hasGeometry['Footprint']['local'].area), label='Source 1')
+plt.show()
+glazing_pressure = []
+glazing_debris = []
+for dframe in target_pressure_list:
+    glazing_area = 0
+    for idx in dframe.index.to_list():
+        if dframe['roof element'][idx] == False:
+            glazing_area += dframe['fail regions'][idx].hasGeometry['Area']
+        else:
+            pass
+    glazing_pressure.append(glazing_area)
 df_ftree = pd.DataFrame({'Target Wind Pressure': target_pressure_list})
 # count_source += 1
 # col_name = 'Source Pressure Ftree ' + str(count_source)
