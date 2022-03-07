@@ -158,7 +158,7 @@ def time_hist_element_pressure_failure_check(elem, bldg, zone_flag, tcols):
     elem.hasFailure['wind pressure'] = elem_fail.loc[elem_fail['fail'] == True]
 
 
-def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure_fail_target, wind_speed, wind_direction, length_unit, plot_flag, parcel_flag):
+def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure_fail_target, wind_speed, wind_direction, length_unit, plot_flag, parcel_flag, rng):
     # Plot the failure regions on roof if necessary:
     if plot_flag:
         fig, ax = plt.subplots()
@@ -208,7 +208,7 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure
                 all_traj_list = []
                 for n in range(0, num_dobjects):
                     alongwind_dist, acrosswind_dist = get_trajectory(model_input, wind_speed, length_unit,
-                                                                     mcs_flag=False)
+                                                                     mcs_flag=False, rng=rng)
                     traj_line = get_traj_line(alongwind_dist[0], acrosswind_dist[0], wind_direction,
                                               origin_pt=gcrs_fail_region.centroid)
                     all_traj_list.append(traj_line)
@@ -257,7 +257,7 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure
                             else:
                                 pass
                     # Find out which element got damaged:
-                    prob_hit = uniform.rvs(size=len(wall_list))
+                    prob_hit = uniform.rvs(size=len(wall_list), random_state=rng)
                     max_idx = np.where(prob_hit == max(prob_hit))[0][0]
                     # Extract the impacted walls:
                     if parcel_flag:
@@ -291,23 +291,26 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure
             else:
                 debris_dict['flight path'].append([None])
                 debris_dict['fail element'].append([None])
-        ax.set_xlabel('x [m]')
-        ax.set_ylabel('y [m]')
-        ax.set_yticks(np.arange(-50, 200, 50))
-        fig.set_tight_layout(True)
-        plt.show()
+        if plot_flag:
+            ax.set_xlabel('x [m]')
+            ax.set_ylabel('y [m]')
+            ax.set_yticks(np.arange(-50, 200, 50))
+            fig.set_tight_layout(True)
+            plt.show()
+        else:
+            pass
     else:
         pass
     return debris_dict
 
 
-def wind_pressure_ftree(bldg, wind_speed, facade_flag, parcel_flag):
+def wind_pressure_ftree(bldg, wind_speed, facade_flag, parcel_flag, rng):
     # For each building:
     # 1) Sample pressure coefficients and calculate wind pressure loading demand:
     df_bldg_cps = bldg.hasDemand['wind pressure']['external']
 
     def get_sample_cp(mean_cp, cp_std_dev):
-        return norm.rvs(mean_cp, cp_std_dev)
+        return norm.rvs(mean_cp, cp_std_dev, random_state=rng)
     # Sample from gaussian distribution with mean = mean cp and std dev = 0.3
     df_bldg_cps['Sample Cp'] = get_sample_cp(df_bldg_cps['Mean Cp'], df_bldg_cps['Cp Std Dev'])
     # Quantify pressures:
