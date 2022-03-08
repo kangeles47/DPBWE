@@ -762,12 +762,13 @@ for source_bldg in site_source.hasBuilding:
 # plt.show()
 # Set up empty DataFrame:
 df_site_debris = site_source.hasDebris['roof cover']
-num_realizations = 10
-target_pressure_list = []
-target_debris = []
-source_pressure_ftree = []
-source2_pressure_list = []
-source_roof_fail = []
+num_realizations = 1000
+# target_pressure_list = []
+# target_debris = []
+# source_pressure_ftree = []
+# source2_pressure_list = []
+# source_roof_fail = []
+damage_dict = {'Source 1 Roof': [], 'Source 2 Roof': [], 'Source 1 Hit': [], 'Source 2 Hit': [], 'Target Glazing Pressure': [], 'Target Glazing WBD': [], 'Target Roof Pressure': []}
 for n in range(0, num_realizations):
     # Target building: Wind pressure fault tree
     # Sample the effective wind area for target glass panels and calculate element capacities:
@@ -776,26 +777,66 @@ for n in range(0, num_realizations):
                         target_roof_area_eff, rng=rng)
     # Conduct the wind pressure fault tree:
     df_pfail_target = wind_pressure_ftree(target_bldg, michael_wind_speed, facade_flag=True, parcel_flag=True, rng=rng)
-    target_pressure_list.append(df_pfail_target)
+    #target_pressure_list.append(df_pfail_target)
     pressure_fail_target = df_pfail_target['fail elements'].values
+    # Save pressure damage information:
+    wall_fail = df_pfail_target.loc[df_pfail_target['roof element'] != True, 'fail regions']
+    total_wall_damage = 0
+    for idx in wall_fail.index:
+        wall_length = wall_fail.loc[idx].length
+        clist = list(wall_fail.loc[idx].exterior.coords)
+        zc = []
+        for c in clist:
+            zc.append(c[2])
+        wall_height = max(zc)-min(zc)
+        total_wall_damage += wall_length*wall_height
+    damage_dict['Target Glazing Pressure'].append(total_wall_damage)
+    roof_fail = df_pfail_target.loc[df_pfail_target['roof element'] == True, 'fail regions']
+    pct_troof_damage = 0
+    for ridx in roof_fail.index:
+        roof_geometry = roof_fail.loc[ridx]
+        pct_troof_damage += roof_geometry.area / target_bldg.hasGeometry['Footprint']['local'].area
+    damage_dict['Target Roof Pressure'].append(pct_troof_damage)
     # Source buildings: Wind pressure fault tree
     roof_fail = False
-    source_pressure_list = []
+    #source_pressure_list = []
     target_debris_list =[]
-    for b in site_source.hasBuilding:
-        df_fail_source = wind_pressure_ftree(b, michael_wind_speed, facade_flag=False, parcel_flag=False, rng=rng)
-        source_pressure_list.append(df_fail_source)
+    wbd_target_damage = 0
+    for b in range(0, len(site_source.hasBuilding)):
+        source_bldg = site_source.hasBuilding[b]
+        df_fail_source = wind_pressure_ftree(source_bldg, michael_wind_speed, facade_flag=False, parcel_flag=False, rng=rng)
+        #source_pressure_list.append(df_fail_source)
         df_roof_elems = df_fail_source.loc[df_fail_source['roof element']==True]
         if len(df_roof_elems.index.to_list()) > 0:
             roof_fail = True
-            target_debris_dict = wbd_ftree(target_bldg, b, df_fail_source, df_site_debris, pressure_fail_target, michael_wind_speed_b,
+            target_debris_dict = wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure_fail_target, michael_wind_speed_b,
                                    wind_direction, length_unit, plot_flag=False, parcel_flag=True, rng=rng)
             target_debris_list.append(target_debris_dict)
         else:
             pass
-    source_pressure_ftree.append(source_pressure_list)
-    source_roof_fail.append(roof_fail)
-    target_debris.append(target_debris_list)
+        # Save roof cover damage and number of hits:
+        key = 'Source ' + str(b + 1) + ' Roof'
+        key_hit = 'Source ' + str(b + 1) + ' Hit'
+        if roof_fail:
+            total_sroof_area = source_bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle.area
+            fail_region_area = 0
+            for fail_region in range(0, len(target_debris_dict['fail region'])):
+                fail_region_area += target_debris_dict['fail region'][fail_region].area/total_sroof_area
+                num_hits = len(target_debris_dict['fail element'][fail_region])
+                for elem in target_debris_dict['fail element'][fail_region]:
+                    if elem is not None:
+                        wbd_target_damage += elem.hasGeometry['Area']
+                    else:
+                        pass
+            damage_dict[key].append(fail_region_area)
+            damage_dict[key_hit].append(num_hits)
+        else:
+            damage_dict[key].append(0)
+            damage_dict[key_hit].append(0)
+    damage_dict['Target Glazing WBD'].append(wbd_target_damage)
+    #source_pressure_ftree.append(source_pressure_list)
+    #source_roof_fail.append(roof_fail)
+    #target_debris.append(target_debris_list)
     if roof_fail:
         # Plot the target building's response to wind and WBD hazards:
         fig = plt.figure()
@@ -894,63 +935,67 @@ for n in range(0, num_realizations):
         ax.yaxis.set_tick_params(labelsize=16)
         ax.zaxis.set_tick_params(labelsize=16)
         plt.show()
-    elif not roof_fail and len(df_pfail_target.index.to_list()) > 0:
-        fig_p = plt.figure()
-        ax_p = plt.axes(projection='3d')
-        # Walls first:
-        wall_fail = df_pfail_target.loc[df_pfail_target['roof element'] != True, 'fail regions']
-        for idx in wall_fail.index:
-            wall_geometry = wall_fail.loc[idx]
-            xw, yw, zw = [], [], []
-            for pt in list(wall_geometry.exterior.coords):
-                xw.append(pt[0])
-                yw.append(pt[1])
-                zw.append(pt[2])
-            ax_p.plot(np.array(xw) / 3.281, np.array(yw) / 3.281, np.array(zw) / 3.281, 'r')
-        # Roof next:
-        roof_fail = df_pfail_target.loc[df_pfail_target['roof element'] == True, 'fail regions']
-        for ridx in roof_fail.index:
-            roof_geometry = roof_fail.loc[ridx]
-            xroof, yroof, zroof = [], [], []
-            for pt in list(roof_geometry.exterior.coords):
-                xroof.append(pt[0])
-                yroof.append(pt[1])
-            ax_p.plot(np.array(xroof) / 3.281, np.array(yroof) / 3.281,
-                    np.ones(len(yroof)) * target_bldg.hasGeometry['Height'] / 3.281, 'r')
-        # Plot the building's wireframe geometry:
-        for story in target_bldg.hasStory:
-            for poly in story.hasGeometry['3D Geometry']['local']:
-                xpoly, ypoly, zpoly = [], [], []
-                for pt in list(poly.exterior.coords):
-                    xpoly.append(pt[0])
-                    ypoly.append(pt[1])
-                    zpoly.append(pt[2])
-                ax_p.plot(np.array(xpoly) / 3.281, np.array(ypoly) / 3.281, np.array(zpoly) / 3.281, 'k')
-        # Finish up 3D image:
-        fig_p.set_tight_layout(True)
-        # Make the panes transparent:
-        ax_p.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        ax_p.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        ax_p.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        # Make the grids transparent:
-        ax_p.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        ax_p.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        ax_p.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        # Plot labels
-        ax_p.set_xlabel('x [m]', fontsize=16, labelpad=10)
-        ax_p.set_ylabel('y [m]', fontsize=16, labelpad=10)
-        ax_p.set_zlabel('z [m]', fontsize=16, labelpad=10)
-        ax_p.set_title(str(n))
-        # Set label styles:
-        ax_p.set_zticks(np.arange(0, 20, 4))
-        ax_p.xaxis.set_tick_params(labelsize=16)
-        ax_p.yaxis.set_tick_params(labelsize=16)
-        ax_p.zaxis.set_tick_params(labelsize=16)
-        plt.show()
+    # elif not roof_fail and len(df_pfail_target.index.to_list()) > 0:
+    #     fig_p = plt.figure()
+    #     ax_p = plt.axes(projection='3d')
+    #     # Walls first:
+    #     wall_fail = df_pfail_target.loc[df_pfail_target['roof element'] != True, 'fail regions']
+    #     for idx in wall_fail.index:
+    #         wall_geometry = wall_fail.loc[idx]
+    #         xw, yw, zw = [], [], []
+    #         for pt in list(wall_geometry.exterior.coords):
+    #             xw.append(pt[0])
+    #             yw.append(pt[1])
+    #             zw.append(pt[2])
+    #         ax_p.plot(np.array(xw) / 3.281, np.array(yw) / 3.281, np.array(zw) / 3.281, 'r')
+    #     # Roof next:
+    #     roof_fail = df_pfail_target.loc[df_pfail_target['roof element'] == True, 'fail regions']
+    #     for ridx in roof_fail.index:
+    #         roof_geometry = roof_fail.loc[ridx]
+    #         xroof, yroof, zroof = [], [], []
+    #         for pt in list(roof_geometry.exterior.coords):
+    #             xroof.append(pt[0])
+    #             yroof.append(pt[1])
+    #         ax_p.plot(np.array(xroof) / 3.281, np.array(yroof) / 3.281,
+    #                 np.ones(len(yroof)) * target_bldg.hasGeometry['Height'] / 3.281, 'r')
+    #     # Plot the building's wireframe geometry:
+    #     for story in target_bldg.hasStory:
+    #         for poly in story.hasGeometry['3D Geometry']['local']:
+    #             xpoly, ypoly, zpoly = [], [], []
+    #             for pt in list(poly.exterior.coords):
+    #                 xpoly.append(pt[0])
+    #                 ypoly.append(pt[1])
+    #                 zpoly.append(pt[2])
+    #             ax_p.plot(np.array(xpoly) / 3.281, np.array(ypoly) / 3.281, np.array(zpoly) / 3.281, 'k')
+    #     # Finish up 3D image:
+    #     fig_p.set_tight_layout(True)
+    #     # Make the panes transparent:
+    #     ax_p.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    #     ax_p.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    #     ax_p.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    #     # Make the grids transparent:
+    #     ax_p.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    #     ax_p.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    #     ax_p.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    #     # Plot labels
+    #     ax_p.set_xlabel('x [m]', fontsize=16, labelpad=10)
+    #     ax_p.set_ylabel('y [m]', fontsize=16, labelpad=10)
+    #     ax_p.set_zlabel('z [m]', fontsize=16, labelpad=10)
+    #     ax_p.set_title(str(n))
+    #     # Set label styles:
+    #     ax_p.set_zticks(np.arange(0, 20, 4))
+    #     ax_p.xaxis.set_tick_params(labelsize=16)
+    #     ax_p.yaxis.set_tick_params(labelsize=16)
+    #     ax_p.zaxis.set_tick_params(labelsize=16)
+    #     plt.show()
     else:
         pass
 # Aggregate damage:
+df_damage = pd.DataFrame(damage_dict)
+df_damage.to_csv('CaseStudy_Summary_1000_12345.csv')
 source_damage_dict = {'Source 1': [], 'Source 2': []}
+source_roof_fail = [0, 1, 2]
+source_pressure_ftree = [0, 1, 2]
 for k in range(0, len(source_roof_fail)):
     if source_roof_fail[k]:
         for m in range(0, len(source_pressure_ftree[k])):
@@ -971,15 +1016,15 @@ plt.plot(np.arange(0, 100), 100*np.array(source_damage_dict['Source 2'])/(site_s
 plt.show()
 glazing_pressure = []
 glazing_debris = []
-for dframe in target_pressure_list:
-    glazing_area = 0
-    for idx in dframe.index.to_list():
-        if dframe['roof element'][idx] == False:
-            glazing_area += dframe['fail regions'][idx].hasGeometry['Area']
-        else:
-            pass
-    glazing_pressure.append(glazing_area)
-df_ftree = pd.DataFrame({'Target Wind Pressure': target_pressure_list})
+# for dframe in target_pressure_list:
+#     glazing_area = 0
+#     for idx in dframe.index.to_list():
+#         if dframe['roof element'][idx] == False:
+#             glazing_area += dframe['fail regions'][idx].hasGeometry['Area']
+#         else:
+#             pass
+#     glazing_pressure.append(glazing_area)
+# df_ftree = pd.DataFrame({'Target Wind Pressure': target_pressure_list})
 # count_source += 1
 # col_name = 'Source Pressure Ftree ' + str(count_source)
 # df_ftree[col_name] = source_pressure_ftree
