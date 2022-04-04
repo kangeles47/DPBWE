@@ -378,10 +378,12 @@ def wind_pressure_ftree(bldg, wind_speed, facade_flag, parcel_flag, rng):
                     else:
                         pass
                     # Capacity versus demand checks:
-                    idx = 0
+                    area_idx = 0
                     for p in tap_pressures.index.to_list():
                         fail_flag = False
-                        if tap_pressures.loc[p] < 0:
+                        if tap_pressures.loc[p] == 0:  # If no pressure, skip
+                            pass
+                        elif tap_pressures.loc[p] < 0:
                             elem_capacity = elem.hasCapacity['wind pressure']['external']['negative']
                             if elem_capacity > tap_pressures.loc[p]:
                                 fail_flag = True
@@ -395,8 +397,8 @@ def wind_pressure_ftree(bldg, wind_speed, facade_flag, parcel_flag, rng):
                                 pass
                         # Add failure data:
                         if fail_flag:
-                            if parcel_flag:
-                                fail_regions.append(df_bldg_cps['Tap Polygon'][idx])
+                            if parcel_flag:  # Failure region is the tap area:
+                                fail_regions.append(df_bldg_cps['Tap Polygon'][p])
                                 elem.hasFailure['wind pressure'] = True
                                 fail_elements.append(elem)
                             else:
@@ -406,7 +408,7 @@ def wind_pressure_ftree(bldg, wind_speed, facade_flag, parcel_flag, rng):
                                     fail_elements.append(elem)
                                 else:
                                     print('Glass check not working')
-                                    fail_regions.append(tap_areas[idx])
+                                    fail_regions.append(tap_areas[area_idx])
                                     elem.hasFailure['wind pressure'] = True
                                     fail_elements.append(elem)
                         else:
