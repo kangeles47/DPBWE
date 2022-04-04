@@ -727,7 +727,7 @@ for source_bldg in site_source.hasBuilding:
                                                                                      roof_flag, wall_flag,
                                                                                      source_gable_flag=True,
                                                                                      parcel_flag=False)
-    source_roof_area_eff = 100
+    source_roof_area_eff = 10
     source_zone_list.append(source_zone_elem_dict)
     get_cc_min_capacity(source_bldg, source_zone_elem_dict, wall_flag, source_wall_area_eff, roof_flag,
                         source_roof_area_eff, rng=rng)
@@ -912,6 +912,7 @@ for n in range(0, num_realizations):
         ax_plan.set_xlabel('x [m]')
         ax_plan.set_ylabel('y [m]')
         ax_plan.set_yticks(np.arange(-50, 200, 50))
+        ax_plan.set_xticks(np.arange(-80, 70, 20))
         ax_plan.set_title(str(n))
         fig_plan.set_tight_layout(True)
         # Finish up 3D image:
@@ -931,6 +932,8 @@ for n in range(0, num_realizations):
         ax.set_title(str(n))
         # Set label styles:
         ax.set_zticks(np.arange(0, 20, 4))
+        ax.set_xticks(np.arange(-20, 30, 10))
+        ax.set_yticks(np.arange(-20, 30, 10))
         ax.xaxis.set_tick_params(labelsize=16)
         ax.yaxis.set_tick_params(labelsize=16)
         ax.zaxis.set_tick_params(labelsize=16)
