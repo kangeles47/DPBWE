@@ -302,10 +302,10 @@ class PressureCalc:
                 elif gcp < 0:
                     p = q * (gcp - gcpi)
             # Exception for ASCE 7-95: For buildings in Exposure B, calculated pressure shall be multiplied by 0.85
-            if edition == 'ASCE 7-95':
-                p = 0.85 * p
-            else:
-                pass
+            # if edition == 'ASCE 7-95':
+            #     p = 0.85 * p
+            # else:
+            #     pass
         else:
             if tpu_flag:
                 p = q * gcp
