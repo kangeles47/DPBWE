@@ -820,9 +820,10 @@ for n in range(0, num_realizations):
         if roof_fail:
             total_sroof_area = source_bldg.hasGeometry['Footprint']['local'].minimum_rotated_rectangle.area
             fail_region_area = 0
+            num_hits = 0
             for fail_region in range(0, len(target_debris_dict['fail region'])):
                 fail_region_area += target_debris_dict['fail region'][fail_region].area/total_sroof_area
-                num_hits = len(target_debris_dict['fail element'][fail_region])
+                num_hits += len(target_debris_dict['fail element'][fail_region])
                 for elem in target_debris_dict['fail element'][fail_region]:
                     if elem is not None:
                         wbd_target_damage += elem.hasGeometry['Area']
@@ -995,7 +996,7 @@ for n in range(0, num_realizations):
         pass
 # Aggregate damage:
 df_damage = pd.DataFrame(damage_dict)
-df_damage.to_csv('CaseStudy_Summary_1000_12345.csv')
+df_damage.to_csv('CaseStudy_Summary_1000_12345_final.csv')
 source_damage_dict = {'Source 1': [], 'Source 2': []}
 source_roof_fail = [0, 1, 2]
 source_pressure_ftree = [0, 1, 2]
