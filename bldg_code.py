@@ -1077,7 +1077,8 @@ class ASCE7(BldgCode):
         elif self.hasEdition == 'ASCE 7-95' or self.hasEdition == 'ASCE 7-98' or self.hasEdition == 'ASCE 7-02' or self.hasEdition == 'ASCE 7-05':
             if bldg.hasLocation['State'] == 'FL':
                 if bldg.hasLocation['County'].upper() == 'BAY':
-                    code_wind_speed = 130  # [mph], 3-s gust, referred to as nominal in 7-98
+                    if bldg.hasLocation['City'].upper() == 'PANAMA CITY':
+                        code_wind_speed = 127  # [mph], 3-s gust, referred to as nominal in 7-98
                 else:
                     pass
         elif self.hasEdition == 'ASCE 7-10' or self.hasEdition == 'ASCE 7-16':
