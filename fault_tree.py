@@ -269,7 +269,7 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure
                         new_pt_list = []
                         for k in range(0, len(xl)):
                             new_line = LineString([ipt, (xl[k], yl[k])])
-                            new_pt = new_line.interpolate(distance=8/2)
+                            new_pt = new_line.interpolate(distance=5/2)
                             new_pt_list.append(new_pt)
                         # Create 3D Geometry:
                         coords_list = list(ref_wall.hasGeometry['3D Geometry']['local'].exterior.coords)
