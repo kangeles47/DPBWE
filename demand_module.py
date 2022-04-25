@@ -769,6 +769,8 @@ num_realizations = 1000
 # source2_pressure_list = []
 # source_roof_fail = []
 damage_dict = {'Source 1 Roof': [], 'Source 2 Roof': [], 'Source 1 Hit': [], 'Source 2 Hit': [], 'Target Glazing Pressure': [], 'Target Glazing WBD': [], 'Target Roof Pressure': []}
+pressure_dict = {0: np.zeros(num_realizations), 1: np.zeros(num_realizations), 2: np.zeros(num_realizations), 3: np.zeros(num_realizations)}
+wbd_dict = {0: np.zeros(num_realizations), 1: np.zeros(num_realizations), 2: np.zeros(num_realizations), 3: np.zeros(num_realizations)}
 for n in range(0, num_realizations):
     # Target building: Wind pressure fault tree
     # Sample the effective wind area for target glass panels and calculate element capacities:
@@ -790,6 +792,16 @@ for n in range(0, num_realizations):
             zc.append(c[2])
         wall_height = max(zc)-min(zc)
         total_wall_damage += wall_length*wall_height
+        # Add story-wise glazing area:
+        for s in range(0, len(target_bldg.hasStory)):
+            if min(zc) >= target_bldg.hasStory[s].hasElevation[0] and max(zc) <= target_bldg.hasStory[s].hasElevation[1]:
+                pressure_dict[s][n] += wall_length*wall_height
+            elif (target_bldg.hasStory[s].hasElevation[0] <= min(zc) < target_bldg.hasStory[s].hasElevation[1]) and max(zc) > target_bldg.hasStory[s].hasElevation[1]:
+                pressure_dict[s][n] += wall_length * (target_bldg.hasStory[s].hasElevation[1]-min(zc))
+            elif (target_bldg.hasStory[s].hasElevation[0] < max(zc) <= target_bldg.hasStory[s].hasElevation[1]) and min(zc) < target_bldg.hasStory[s].hasElevation[0]:
+                pressure_dict[s][n] += wall_length * (max(zc)-target_bldg.hasStory[s].hasElevation[0])
+            else:
+                pass
     damage_dict['Target Glazing Pressure'].append(total_wall_damage)
     roof_fail = df_pfail_target.loc[df_pfail_target['roof element'] == True, 'fail regions']
     pct_troof_damage = 0
@@ -827,6 +839,16 @@ for n in range(0, num_realizations):
                 for elem in target_debris_dict['fail element'][fail_region]:
                     if elem is not None:
                         wbd_target_damage += elem.hasGeometry['Area']
+                        # Figure out what story to designate the area to:
+                        ecoords = list(elem.hasGeometry['3D Geometry']['local'].exterior.coords)
+                        ezs = []
+                        for e in ecoords:
+                            ezs.append(e[2])
+                        for s in range(0, len(target_bldg.hasStory)):
+                            if target_bldg.hasStory[s].hasElevation[0] <= min(ezs) and max(ezs) <= target_bldg.hasStory[s].hasElevation[1]:
+                                wbd_dict[s][n] += elem.hasGeometry['Area']
+                            else:
+                                pass
                     else:
                         pass
             damage_dict[key].append(fail_region_area)
@@ -996,7 +1018,11 @@ for n in range(0, num_realizations):
         pass
 # Aggregate damage:
 df_damage = pd.DataFrame(damage_dict)
-df_damage.to_csv('CaseStudy_Summary_1000_12345_final.csv')
+df_damage.to_csv('CaseStudy_Summary_1000_12345_final.csv', index_label=False)
+df_story_pressure = pd.DataFrame(pressure_dict)
+df_story_pressure.to_csv('Story_Glazing_Area_Pressure.csv', index_label=False)
+df_story_wbd = pd.DataFrame(wbd_dict)
+df_story_wbd.to_csv('Story_Glazing_Area_WBD.csv', index_label=False)
 source_damage_dict = {'Source 1': [], 'Source 2': []}
 source_roof_fail = [0, 1, 2]
 source_pressure_ftree = [0, 1, 2]
