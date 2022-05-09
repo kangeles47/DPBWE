@@ -766,7 +766,7 @@ num_realizations = 1000
 target_pressure_list = []
 target_debris = []
 source1_pressure_list = []
-# source2_pressure_list = []
+source2_pressure_list = []
 # source_roof_fail = []
 damage_dict = {'Source 1 Roof': [], 'Source 2 Roof': [], 'Source 1 Hit': [], 'Source 2 Hit': [], 'Target Glazing Pressure': [], 'Target Glazing WBD': [], 'Target Roof Pressure': []}
 pressure_dict = {0: np.zeros(num_realizations), 1: np.zeros(num_realizations), 2: np.zeros(num_realizations), 3: np.zeros(num_realizations)}
@@ -820,12 +820,16 @@ for n in range(0, num_realizations):
         if b == 1:
             source1_pressure_list.append(df_fail_source)
         else:
-            pass
+            source2_pressure_list.append(df_fail_source)
         df_roof_elems = df_fail_source.loc[df_fail_source['roof element']==True]
         if len(df_roof_elems.index.to_list()) > 0:
             roof_fail = True
-            target_debris_dict = wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure_fail_target, michael_wind_speed_b,
-                                   wind_direction, length_unit, plot_flag=False, parcel_flag=True, rng=rng)
+            source_wind_speed = (vg * ((source_bldg.hasGeometry['Height']/3.281) / zg_b) ** (1 / alpha_b))*2.237
+            target_debris_dict = wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris,
+                                           pressure_fail_target, source_wind_speed,
+                                           wind_direction, length_unit, plot_flag=False, parcel_flag=True, rng=rng)
+            # target_debris_dict = wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure_fail_target, michael_wind_speed_b,
+            #                        wind_direction, length_unit, plot_flag=False, parcel_flag=True, rng=rng)
             target_debris_list.append(target_debris_dict)
         else:
             pass
@@ -929,6 +933,17 @@ for n in range(0, num_realizations):
             for b in site_source.hasBuilding:
                 xb, yb = b.hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle.exterior.xy
                 ax_plan.plot(np.array(xb) / 3.281, np.array(yb) / 3.281, 'k')
+                # Plot the gable roof line:
+                cpt_list = []
+                for m in range(0, len(xb)-1):
+                    cpt_list.append(LineString([(xb[m], yb[m]), (xb[m+1], yb[m+1])]).centroid)
+                if b.hasID == '13209-060-000':
+                    cline = LineString([cpt_list[1], cpt_list[3]])
+                else:
+                    cline = LineString([cpt_list[0], cpt_list[2]])
+                xl, yl = cline.xy
+                ax_plan.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'k')
+                # Plot debris regions:
                 dir_debris_region = df_site_debris.loc[
                     df_site_debris['debris name'] == b.adjacentElement['Roof'][0].hasCover, 'directional debris region'].values[
                     0]
@@ -1037,13 +1052,27 @@ for story in target_bldg.hasStory:
 for j in target_pressure_list:
     dfj = j.loc[j['roof element']==False]
     for idx in dfj.index.to_list():
-        xf, yf = dfj['fail regions'][idx].exterior.xy
-        t_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281, 'r')
-for k in target_debris_list:
-    dfk = k.loc[k['roof element'] == False]
-    for idx in dfk.index.to_list():
-        xf, yf = dfk['fail regions'][idx].exterior.xy
-        t_ax.plot(np.array(xf) / 3.281, np.array(yf) / 3.281, 'b')
+        coords_list = list(dfj['fail regions'][idx].exterior.coords)
+        xf, yf, zf = [], [], []
+        for c in coords_list:
+            xf.append(c[0])
+            yf.append(c[1])
+            zf.append(c[2])
+        t_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281, np.array(zf)/3.281, 'r')
+for td_list in target_debris:
+    for m in td_list:
+        for elem_list in m['fail element']:
+            for elem in elem_list:
+                if isinstance(elem, Wall):
+                    ecoords = list(elem.hasGeometry['3D Geometry']['local'].exterior.coords)
+                    xe, ye, ze = [], [], []
+                    for e in ecoords:
+                        xe.append(e[0])
+                        ye.append(e[1])
+                        ze.append(e[2])
+                    t_ax.plot(np.array(xe) / 3.281, np.array(ye) / 3.281, np.array(ze) / 3.281, 'b')
+                else:
+                    pass
 # Make the panes transparent:
 t_ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
 t_ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
@@ -1076,37 +1105,67 @@ for i in source1_pressure_list:
         gcrs_fail_region = translate(i['fail regions'][idx], xoff=source_centroid.x, yoff=source_centroid.y)
         xf, yf = gcrs_fail_region.exterior.xy
         s1_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281,'b')
+s1_ax.set_ylim(60, 110)
+s1_ax.set_xlim(-80, -40)
+# Plot the gable roof line:
+cpt_list = []
+for m in range(0, len(xb)-1):
+    cpt_list.append(LineString([(xs1[m], ys1[m]), (xs1[m+1], ys1[m+1])]).centroid)
+cline = LineString([cpt_list[0], cpt_list[2]])
+xl, yl = cline.xy
+s1_ax.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'k')
+plt.show()
+# Source Building 2:
+s2_fig, s2_ax = plt.subplots()
+s2_ax.set_xlabel('x [m]')
+s2_ax.set_ylabel('y [m]')
+xs2, ys2 = site_source.hasBuilding[0].hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle.exterior.xy
+source_centroid = site_source.hasBuilding[0].hasGeometry['Footprint']['reference cartesian'].centroid
+s2_ax.plot(np.array(xs2)/3.281, np.array(ys2)/3.281, 'k')
+for i in source2_pressure_list:
+    for idx in i.index.to_list():
+        gcrs_fail_region = translate(i['fail regions'][idx], xoff=source_centroid.x, yoff=source_centroid.y)
+        xf, yf = gcrs_fail_region.exterior.xy
+        s2_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281,'b')
+s2_ax.set_xlim(-60, 0)
+# Plot the gable roof ridgeline:
+cpt_list = []
+for m in range(0, len(xb)-1):
+    cpt_list.append(LineString([(xs2[m], ys2[m]), (xs2[m+1], ys2[m+1])]).centroid)
+cline = LineString([cpt_list[1], cpt_list[3]])
+xl, yl = cline.xy
+s2_ax.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'k')
 plt.show()
 # Aggregate damage:
-df_damage = pd.DataFrame(damage_dict)
-df_damage.to_csv('CaseStudy_Summary_1000_12345_final.csv', index_label=False)
-df_story_pressure = pd.DataFrame(pressure_dict)
-df_story_pressure.to_csv('Story_Glazing_Area_Pressure.csv', index_label=False)
-df_story_wbd = pd.DataFrame(wbd_dict)
-df_story_wbd.to_csv('Story_Glazing_Area_WBD.csv', index_label=False)
-source_damage_dict = {'Source 1': [], 'Source 2': []}
-source_roof_fail = [0, 1, 2]
-source_pressure_ftree = [0, 1, 2]
-for k in range(0, len(source_roof_fail)):
-    if source_roof_fail[k]:
-        for m in range(0, len(source_pressure_ftree[k])):
-            if len(source_pressure_ftree[k][m].index.to_list()) > 0:
-                for j in source_pressure_ftree[k][m].index.to_list():
-                    damage = source_pressure_ftree[k][m]['fail regions'][j].area
-            else:
-                damage = 0
-            if m == 0:
-                source_damage_dict['Source 1'].append(damage)
-            else:
-                source_damage_dict['Source 2'].append(damage)
-    else:
-        source_damage_dict['Source 1'].append(0)
-        source_damage_dict['Source 2'].append(0)
-plt.plot(np.arange(0, 100), 100*np.array(source_damage_dict['Source 1'])/(site_source.hasBuilding[0].hasGeometry['Footprint']['local'].area), label='Source 2')
-plt.plot(np.arange(0, 100), 100*np.array(source_damage_dict['Source 2'])/(site_source.hasBuilding[1].hasGeometry['Footprint']['local'].area), label='Source 1')
-plt.show()
-glazing_pressure = []
-glazing_debris = []
+# df_damage = pd.DataFrame(damage_dict)
+# df_damage.to_csv('CaseStudy_Summary_1000_12345_final_corrected.csv', index_label=False)
+# df_story_pressure = pd.DataFrame(pressure_dict)
+# df_story_pressure.to_csv('Story_Glazing_Area_Pressure_corrected.csv', index_label=False)
+# df_story_wbd = pd.DataFrame(wbd_dict)
+# df_story_wbd.to_csv('Story_Glazing_Area_WBD_corrected.csv', index_label=False)
+# source_damage_dict = {'Source 1': [], 'Source 2': []}
+# source_roof_fail = [0, 1, 2]
+# source_pressure_ftree = [0, 1, 2]
+# for k in range(0, len(source_roof_fail)):
+#     if source_roof_fail[k]:
+#         for m in range(0, len(source_pressure_ftree[k])):
+#             if len(source_pressure_ftree[k][m].index.to_list()) > 0:
+#                 for j in source_pressure_ftree[k][m].index.to_list():
+#                     damage = source_pressure_ftree[k][m]['fail regions'][j].area
+#             else:
+#                 damage = 0
+#             if m == 0:
+#                 source_damage_dict['Source 1'].append(damage)
+#             else:
+#                 source_damage_dict['Source 2'].append(damage)
+#     else:
+#         source_damage_dict['Source 1'].append(0)
+#         source_damage_dict['Source 2'].append(0)
+# plt.plot(np.arange(0, 100), 100*np.array(source_damage_dict['Source 1'])/(site_source.hasBuilding[0].hasGeometry['Footprint']['local'].area), label='Source 2')
+# plt.plot(np.arange(0, 100), 100*np.array(source_damage_dict['Source 2'])/(site_source.hasBuilding[1].hasGeometry['Footprint']['local'].area), label='Source 1')
+# plt.show()
+# glazing_pressure = []
+# glazing_debris = []
 # for dframe in target_pressure_list:
 #     glazing_area = 0
 #     for idx in dframe.index.to_list():
