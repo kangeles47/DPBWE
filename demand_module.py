@@ -1100,43 +1100,51 @@ s1_ax.set_ylabel('y [m]')
 xs1, ys1 = site_source.hasBuilding[1].hasGeometry['Footprint']['reference cartesian'].exterior.xy
 source_centroid = site_source.hasBuilding[1].hasGeometry['Footprint']['reference cartesian'].centroid
 s1_ax.plot(np.array(xs1)/3.281, np.array(ys1)/3.281, 'k')
+query_count = 0
 for i in source1_pressure_list:
     for idx in i.index.to_list():
         gcrs_fail_region = translate(i['fail regions'][idx], xoff=source_centroid.x, yoff=source_centroid.y)
         xf, yf = gcrs_fail_region.exterior.xy
+        query_arr = np.where(np.array(yf) > 90 * 3.281)[0]
+        if len(query_arr) > 0:
+            query_count += 1
+        else:
+            pass
         s1_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281,'b')
-s1_ax.set_ylim(60, 110)
-s1_ax.set_xlim(-80, -40)
+# s1_ax.set_ylim(60, 110)
+# s1_ax.set_xlim(-80, -40)
 # Plot the gable roof line:
 cpt_list = []
-for m in range(0, len(xb)-1):
+for m in range(0, len(xs1)-1):
     cpt_list.append(LineString([(xs1[m], ys1[m]), (xs1[m+1], ys1[m+1])]).centroid)
 cline = LineString([cpt_list[0], cpt_list[2]])
 xl, yl = cline.xy
 s1_ax.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'k')
-plt.show()
+# plt.show()
 # Source Building 2:
-s2_fig, s2_ax = plt.subplots()
-s2_ax.set_xlabel('x [m]')
-s2_ax.set_ylabel('y [m]')
+#s2_fig, s2_ax = plt.subplots()
+# s2_ax.set_xlabel('x [m]')
+# s2_ax.set_ylabel('y [m]')
 xs2, ys2 = site_source.hasBuilding[0].hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle.exterior.xy
 source_centroid = site_source.hasBuilding[0].hasGeometry['Footprint']['reference cartesian'].centroid
-s2_ax.plot(np.array(xs2)/3.281, np.array(ys2)/3.281, 'k')
+s1_ax.plot(np.array(xs2)/3.281, np.array(ys2)/3.281, 'k')
 for i in source2_pressure_list:
     for idx in i.index.to_list():
         gcrs_fail_region = translate(i['fail regions'][idx], xoff=source_centroid.x, yoff=source_centroid.y)
         xf, yf = gcrs_fail_region.exterior.xy
-        s2_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281,'b')
-s2_ax.set_xlim(-60, 0)
+        s1_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281,'b')
+# s2_ax.set_xlim(-60, 0)
 # Plot the gable roof ridgeline:
 cpt_list = []
-for m in range(0, len(xb)-1):
+for m in range(0, len(xs2)-1):
     cpt_list.append(LineString([(xs2[m], ys2[m]), (xs2[m+1], ys2[m+1])]).centroid)
 cline = LineString([cpt_list[1], cpt_list[3]])
 xl, yl = cline.xy
-s2_ax.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'k')
+s1_ax.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'k')
+plt.tight_layout()
 plt.show()
 # Aggregate damage:
+a=0
 # df_damage = pd.DataFrame(damage_dict)
 # df_damage.to_csv('CaseStudy_Summary_1000_12345_final_corrected.csv', index_label=False)
 # df_story_pressure = pd.DataFrame(pressure_dict)
