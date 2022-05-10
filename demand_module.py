@@ -1038,6 +1038,18 @@ for n in range(0, num_realizations):
     else:
         pass
 # Set up summary figures:
+# Figure out what face the damage is on:
+xf, yf = target_bldg.hasGeometry['Footprint']['local'].exterior.xy
+box_list = []
+for p in range(0, len(xf)-1):
+    new_line = LineString([(xf[p], yf[p]), (xf[p+1], yf[p+1])])
+    xl, yl = new_line.xy
+    new_box = Polygon([(min(xl), max(yl)), (min(xl), min(yl)), (max(xl), min(yl)),(max(xl), max(yl))])
+    box_list.append(new_box)
+    plt.plot(xl, yl, label = 'Line' + str(p))
+plt.legend()
+plt.show()
+new_dict = {0: [], 1: [], 2: [], 3: [], 4:[], 5:[], 6:[], 7: []}
 # Target building:
 t_fig = plt.figure()
 t_ax = plt.axes(projection='3d')
@@ -1049,6 +1061,7 @@ for story in target_bldg.hasStory:
             ypoly.append(pt[1])
             zpoly.append(pt[2])
         t_ax.plot(np.array(xpoly) / 3.281, np.array(ypoly) / 3.281, np.array(zpoly) / 3.281, 'k')
+story_count = 0
 for j in target_pressure_list:
     dfj = j.loc[j['roof element']==False]
     for idx in dfj.index.to_list():
@@ -1059,6 +1072,15 @@ for j in target_pressure_list:
             yf.append(c[1])
             zf.append(c[2])
         t_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281, np.array(zf)/3.281, 'r')
+        new_line = LineString([(xf[0], yf[0]), (xf[1], yf[1])])
+        for box in range(0, len(box_list)):
+            if new_line.within(box_list[box]) or new_line.intersects(box_list[box]):
+                new_dict[box].append(new_line)
+                if box == 0:
+                    if max(zf) <= 3*target_bldg.hasGeometry['Height']/4:
+                        story_count += 1
+            else:
+                pass
 for td_list in target_debris:
     for m in td_list:
         for elem_list in m['fail element']:
@@ -1071,6 +1093,12 @@ for td_list in target_debris:
                         ye.append(e[1])
                         ze.append(e[2])
                     t_ax.plot(np.array(xe) / 3.281, np.array(ye) / 3.281, np.array(ze) / 3.281, 'b')
+                    new_line = LineString([(xe[0], ye[0]), (xe[1], ye[1])])
+                    for box in range(0, len(box_list)):
+                        if new_line.within(box_list[box]) or new_line.intersects(box_list[box]):
+                            new_dict[box].append(new_line)
+                        else:
+                            pass
                 else:
                     pass
 # Make the panes transparent:
