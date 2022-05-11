@@ -159,6 +159,29 @@ def time_hist_element_pressure_failure_check(elem, bldg, zone_flag, tcols):
 
 
 def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure_fail_target, wind_speed, wind_direction, length_unit, plot_flag, parcel_flag, rng):
+    """
+    A function to conduct the WBD portion of the fault tree analysis
+    :param target_bldg: (Building object) describing the target building. Should have footprint geometry and wall impact
+                        resistance (Wall.hasCapacity). Wall objects should also be populated with linear and planar
+                        geometries
+    :param source_bldg: (Building object) describing the source building. Should have footprint geometry 'reference
+                        Cartesian' (i.e., relative to target building)
+    :param df_fail_source: (Pandas DataFrame) containing description of all roof failure occurrences for source building
+    :param df_site_debris: (Pandas DataFrame) containing description of site debris characteristics (e.g., debris types,
+                            mass/unit area, directional debris region, etc.)
+    :param pressure_fail_target: (List) containing all walls that have already experienced pressure-related failure
+    :param wind_speed: The wind speed used to quantify debris trajectories. Simplified analysis allows for this to be
+                        wind speed at source building's mean roof height (in corresponding site conditions)
+    :param wind_direction: (Int) The actual (real-life) wind direction.
+    :param length_unit: The length unit for the wind speed, set to 'mi' or 'm'
+    :param plot_flag: (Boolean) True if you want summary plots showing source building, target building, and debris
+                    trajectories
+    :param parcel_flag: (Boolean) True if the target's Building object does not contain information regarding component
+                        sizing.
+    :param rng: (From np.random.default_rng(seed)) Random number generator object
+    :return: debris_dict: (Dict) with keys = flight path, fail element, fail region, values= list of Shapely
+            LineStrings, list of element objects, list of Shapely polygons
+    """
     # Plot the failure regions on roof if necessary:
     if plot_flag:
         fig, ax = plt.subplots()
@@ -305,6 +328,19 @@ def wbd_ftree(target_bldg, source_bldg, df_fail_source, df_site_debris, pressure
 
 
 def wind_pressure_ftree(bldg, wind_speed, facade_flag, parcel_flag, rng):
+    """
+    A function to conduct the wind pressure fault tree analysis of a building.
+    :param bldg: (Building object) with hasDemand attribute populated with external wind pressures. Wall and Roof
+                objects in Building.adjacentElement
+    :param wind_speed: The wind speed that will be used to quantify the pressure demand. This should be the wind speed
+                        in Exposure C, 10 m reference height at the building location
+    :param facade_flag: (Boolean) True if the fault tree analysis includes assessment of facade component performance
+    :param parcel_flag: (Boolean) True if the Building object is populated with minimum descriptions (i.e., has no
+                        information regarding component sizing)
+    :param rng: (From np.random.default_rng(seed)) Random number generator object
+    :return: df_fail: (Pandas DataFrame) with columns = failure elements (Wall/Roof objects), failure regions
+            (Shapely polygon), and whether element is a roof element (True/False)
+    """
     # For each building:
     # 1) Sample pressure coefficients and calculate wind pressure loading demand:
     df_bldg_cps = bldg.hasDemand['wind pressure']['external']

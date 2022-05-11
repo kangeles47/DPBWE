@@ -301,6 +301,20 @@ def augmented_elements_wall(bldg, num_wall_elems, story_wall_elev, plot_flag):
 
 
 def get_cc_zones(bldg, high_value_flag, roof_flag, wall_flag, source_gable_flag, parcel_flag):
+    """
+    A function to get C&C zones for a given building.
+    :param bldg: (Building object) with footprint geometry and story elevations
+    :param high_value_flag: (Boolean) True if this building is considered a high-value structure. If False, the cc zones
+                            are derived using the building equivalent rectangular footprint
+    :param roof_flag: (Boolean) True/False if roof C&C zones are/are not needed
+    :param wall_flag: (Boolean) True/False if wall C&C zones (facade) are/are not needed
+    :param source_gable_flag: (Boolean) True if source building roof effective wind area needs to be set = 0
+    :param parcel_flag: (Boolean) True if the Building object is a minimum model and does not contain information
+                        regarding component sizes
+    :return: wall_area_eff: The effective wind area for the wall component
+            roof_area_eff: The effective wind area for roof C&C
+            zone_elem_dict: (Dict) Keys are C&C pressure zone names, values are components within each zone
+    """
     # 1) find C&C zones:
     asce7 = ASCE7(bldg, loading_flag=True)
     if high_value_flag:
@@ -518,6 +532,18 @@ def get_cc_min_capacity_orig(bldg, exposure, high_value_flag, roof_flag, wall_fl
 
 
 def get_cc_min_capacity(bldg, zone_elem_dict, wall_flag, wall_area_eff, roof_flag, roof_area_eff, rng):
+    """
+    Function used to calculate C&C pressure per zone given a wall_area_eff and/or roof_area_eff
+
+    :param bldg: Building object with Wall and Roof objects in adjacentElement
+    :param zone_elem_dict: (Dict) from get_cc_zones that contains keys = Zone names, values = Element objects
+    :param wall_flag: (Boolean) True if wall C&C pressures need to be quantified
+    :param wall_area_eff: Either an integer or a scipy.rv describing wall component effective wind area
+    :param roof_flag: (Boolean) True if roof C&C pressures need to be quantified
+    :param roof_area_eff: Either an integer or a scipy.rv describing roof component effective wind area
+    :param rng: (From np.random.default_rng(seed)) Random number generator object
+    :return: Nothing. Wall and/or Roof objects are updated - Element.hasDemand['wind pressure']
+    """
     # 1) Calculate wall C&C zone pressures:
     asce7 = ASCE7(bldg, loading_flag=True)
     # 2) Calculate zone pressures:
