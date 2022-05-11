@@ -125,6 +125,13 @@ def assign_footprint(parcel, num_stories):
 
 
 def get_ref_bldg_crs(ref_bldg, bldg, length_unit):
+    """
+    A function to derive bldg's reference cartesian footprint geometry from ref_bldg
+    :param ref_bldg: (Building object) for reference building with footprint geometry in cartesian coordinates
+    :param bldg: (Building object) for other building with footprint geometry in cartesian coordinates
+    :param length_unit: (String) Set to 'ft'
+    :return: Nothing. Updated bldg's hasGeometry['Footprint']['reference cartesian'] data field
+    """
     # Use the reference building's footprint centroid as origin:
     origin = ref_bldg.hasGeometry['Footprint']['geodesic'].centroid
     # Pull other building footprint - geographic coordinates:
