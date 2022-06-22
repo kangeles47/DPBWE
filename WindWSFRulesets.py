@@ -67,41 +67,45 @@ def wsf_config(BIM):
                     swr = (BIM['avg_jan_temp'] == 'below')
 
     # Roof Deck Attachment (RDA)
-    # IRC codes:
-    # NJ code requires 8d nails (with spacing 6”/12”) for sheathing thicknesses
-    # between ⅜”-1” -  see Table R602.3(1)
-    # Fastener selection is contingent on thickness of sheathing in building
-    # codes. Commentary for Table R602.3(1) indicates 8d nails with 6”/6”
-    # spacing (enhanced roof spacing) for ultimate wind speeds greater than
-    # a speed_lim. speed_lim depends on the year of construction
+    # FBCR 2007-2017:
+    # Section R803.2.3.1 - Wood structural panel sheathing shall be fastened to roof framing with 8d ring shank nails
+    # at 6 in. o.c. at edges and 6 in. o.c. at intermediate framing.
+    # Note: stricter requirements for 2017 FBCR - 6"/6" spacing
     RDA = '6d' # Default (aka A) in Reorganized Rulesets - WIND
-    if year > 2000:
-        if year >= 2016:
-            # IRC 2015
-            speed_lim = 130.0 # mph
+    if BIM['year_built'] > 2007:
+        rda = '8s'  # 8d @ 6"/6" ('D' in Reorganized Rulesets - WIND)
+    elif 2001 < BIM['year_built'] <= 2007:
+        # 2001 FBC: Table 2306.1 Fastening schedule - 8d nails 6"/12" spacing, req'd for sheathing < 1/2" or > 19/32"
+        # thick.
+        # 2001 FBC: Section 2322.2.5 - Requires 8d nails with 6"/6" spacing for roof sheathing in HVHZ.
+        if BIM['hvhz']:
+            rda = '8s'
         else:
-            # IRC 2000 - 2009
-            speed_lim = 100.0 # mph
-        if BIM['V_ult'] > speed_lim:
-            RDA = '8s'  # 8d @ 6"/6" ('D' in the Reorganized Rulesets - WIND)
-        else:
-            RDA = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
-    elif year > 1995:
+            rda = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
         if ((BIM['sheathing_t'] >= 0.3125) and (BIM['sheathing_t'] <= 0.5)):
             RDA = '6d' # 6d @ 6"/12" ('A' in the Reorganized Rulesets - WIND)
         elif ((BIM['sheathing_t'] >= 0.59375) and (BIM['sheathing_t'] <= 1.125)):
             RDA = '8d' # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
-    elif year > 1986:
-        if ((BIM['sheathing_t'] >= 0.3125) and (BIM['sheathing_t'] <= 0.5)):
-            RDA = '6d' # 6d @ 6"/12" ('A' in the Reorganized Rulesets - WIND)
-        elif ((BIM['sheathing_t'] >= 0.59375) and (BIM['sheathing_t'] <= 1.0)):
-            RDA = '8d' # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
+    elif 1994 < BIM['year_built'] <= 2001:
+        # 1994 SFBC: Section 2909.2 - Requires 8d nails with 6"/6" for roof sheathing (HVHZ)
+        # 1995 CABO: Table 602.3a - 8d or 6d nails at 6"/12" depending on sheathing thickness.
+        # Assign as RV for buildings outside of HVHZ.
+        if BIM['hvhz']:
+            rda = '8s'
+        else:
+            if random.random() <= 0.5:
+                rda = '6d'  # 6d @ 6"/12" ('A' in the Reorganized Rulesets - WIND)
+            else:
+                rda = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
     else:
-        # year <= 1986
-        if ((BIM['sheathing_t'] >= 0.3125) and (BIM['sheathing_t'] <= 0.5)):
-            RDA = '6d' # 6d @ 6"/12" ('A' in the Reorganized Rulesets - WIND)
-        elif ((BIM['sheathing_t'] >= 0.625) and (BIM['sheathing_t'] <= 1.0)):
-            RDA = '8d' # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
+        # year <= 1994
+        # SFBC and CABO both designate nailing based on sheathing thickness
+        # See e.g., 1992 SFBC: Section 2909.2 and 1992 CABO: Table R-402.3a.
+        # With no way to determine actual sheathing thickness, assign as random variable:
+        if random.random() <= 0.5:
+            rda = '6d'  # 6d @ 6"/12" ('A' in the Reorganized Rulesets - WIND)
+        else:
+            rda = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
 
     # Roof-Wall Connection (RWC)
     # IRC 2015
@@ -232,7 +236,7 @@ def wsf_config(BIM):
                   f"{int(min(BIM['stories'],2))}_" \
                   f"{BIM['roof_shape']}_" \
                   f"{int(swr)}_" \
-                  f"{RDA}_" \
+                  f"{rda}_" \
                   f"{RWC}_" \
                   f"{garage}_" \
                   f"{int(shutters)}_" \
