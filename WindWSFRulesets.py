@@ -104,53 +104,29 @@ def wsf_config(BIM):
             rda = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
 
     # Roof-Wall Connection (RWC)
-    # IRC 2015
-    # "Assume all homes not having wind speed consideration are Toe Nail
-    # (regardless of year)
-    # For homes with wind speed consideration, 2015 IRC Section R802.11: no
-    # specific connection type, must resist uplift forces using various
-    # guidance documents, e.g., straps would be required (based on WFCM 2015);
-    # will assume that if classified as HPR, then enhanced connection would be
-    # used.
-    if year > 2015:
+    # 2001 FBC: Section 2321.1 - Anchorage shall be continuous from the
+    # foundation to the roof and shall satisfy the uplift requirements of Section 1620.
+    # 2001 FBC: Section 2321.6.1 indicates that steel straps must be used in HVHZ to connect wood to wood.
+    # Documentation from FL's State Board of Administration indicate that straps became the standard for Floridian
+    # construction after Hurricane Andrew in 1992.
+    # Assume that if classified as HPR, then enhanced connection would be used.
+    if BIM['year_built'] > 1992:
         if BIM['HPR']:
-            RWC = 'strap'  # Strap
+            rwc = 'strap'  # Strap
         else:
-            RWC = 'tnail'  # Toe-nail
-    # IRC 2000-2009
-    # In Section R802.11.1 Uplift Resistance of the NJ 2009 IRC, roof
-    # assemblies which are subject to wind uplift pressures of 20 pounds per
-    # square foot or greater are required to have attachments that are capable
-    # of providing resistance, in this case assumed to be straps.
-    # Otherwise, the connection is assumed to be toe nail.
-    # CABO 1992-1995:
-    # 802.11 Roof Tie-Down: Roof assemblies subject to wind uplift pressures of
-    # 20 lbs per sq ft or greater shall have rafter or truess ties. The
-    # resulting uplift forces from the rafter or turss ties shall be
-    # transmitted to the foundation.
-    # Roof uplift pressure varies by wind speed, exposure category, building
-    # aspect ratio and roof height. For a reference building (9 ft tall in
-    # exposure B -- WSF1) analysis suggests that wind speeds in excess of
-    # 110 mph begin to generate pressures of 20 psf in high pressure zones of
-    # the roof. Thus 110 mph is used as the critical velocity.
-    elif year > 1992:
-        if BIM['V_ult'] > 110:
-            RWC = 'strap'  # Strap
+            rwc = 'tnail'  # Toe-nail
+    # HAZUS-HM documentation states that tie down straps have been required for rwc in Dade and Broward counties since
+    # the inception of the SFBC in the late 1950's. In Palm Beach County, rwc have been straps since late 1970's.
+    elif 1957 < BIM['year_built'] <= 1992:
+        if BIM['hvhz']:
+            rwc = 'strap'  # Strap
         else:
-            RWC = 'tnail'  # Toe-nail
-    # CABO 1989 and earlier
-    # There is no mention of straps or enhanced tie-downs in the CABO codes
-    # older than 1992, and there is no description of these adoptions in IBHS
-    # reports or the New Jersey Construction Code Communicator .
-    # Although there is no explicit information, it seems that hurricane straps
-    # really only came into effect in Florida after Hurricane Andrew (1992).
-    # Because Florida is the leader in adopting hurricane protection measures
-    # into codes and because there is no mention of shutters or straps in the
-    # CABO codes, it is assumed that all roof-wall connections for residential
-    # buildings are toe nails before 1992.
+            if BIM['year_built'] > 1976 and BIM['county'] == 'Palm Beach':
+                rwc = 'strap'
+            else:
+                rwc = 'tnail'
     else:
-        # year <= 1992
-        RWC = 'tnail' # Toe-nail
+        rwc = 'tnail'  # Assume all remaining construction uses toe-nails for rwc
 
     # Shutters
     # IRC 2000-2015:
@@ -233,7 +209,7 @@ def wsf_config(BIM):
                   f"{BIM['roof_shape']}_" \
                   f"{int(swr)}_" \
                   f"{rda}_" \
-                  f"{RWC}_" \
+                  f"{rwc}_" \
                   f"{garage}_" \
                   f"{int(shutters)}_" \
                   f"{int(BIM['terrain'])}"
