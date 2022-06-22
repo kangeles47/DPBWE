@@ -1,16 +1,16 @@
 import random
 import numpy as np
 import datetime
-from math import atan2, degrees
 
 
-def wsf_config(bldg, hvhz, avg_jan_temp):
+def wsf_config(BIM):
     """
     Rules to identify a HAZUS WSF configuration based on building data
     Parameters
     ----------
-    bldg: Building object
-        Building model with information about the building characteristics.
+    BIM: dictionary
+        Information about the building characteristics.
+
     Returns
     -------
     config: str
@@ -21,23 +21,23 @@ def wsf_config(bldg, hvhz, avg_jan_temp):
     # Secondary Water Resistance (SWR)
     # Minimum drainage recommendations are in place in FL (See below) except in HVHZ regions.
     # However, SWR indicates a code-plus practice.
-    if bldg.hasYearBuilt > 2001:
-        if hvhz:
+    if BIM['year_built'] > 2001:
+        if BIM['hvhz']:
             swr = True
         else:
-            if bldg.hasYearBuilt > 2007:
+            if BIM['year_built'] > 2007:
                 swr = True
             else:
                 # For buildings not built in HVHZ and built before 2007 corrections to FBC, SWR is based on homeowner
                 # compliance data from NC Coastal Homeowner Survey (2017) to capture potential
                 # human behavior (% of sealed roofs in NC dataset).
                 swr = random.random() < 0.6
-    elif 1983 < bldg.hasYearBuilt <= 2001:
+    elif 1983 < BIM['year_built'] <= 2001:
         # HVHZ (Broward and Dade County):
         # 1979 SFBC Section 3402.3: 30 lb felt underlayment is required for asphalt shingle roof covers
         # This must be fastened through tin-caps spaced 18 inches o.c. both ways.
-        if hvhz:
-            if bldg.adjacentElement['Roof'][0].hasShape['gable'] or bldg.adjacentElement['Roof'][0].hasShape['hip']:
+        if BIM['hvhz']:
+            if BIM['roof_shape'] == 'gable' or BIM['roof_shape'] == 'hip':
                 swr = False
             else:
                 swr = True  # Assume SWR applies for flat roof as per 1988 SFBC: Section 1806.4
@@ -58,13 +58,13 @@ def wsf_config(bldg, hvhz, avg_jan_temp):
             # Almost all other roof types require underlayment of some sort, but
             # the ruleset is based on asphalt shingles because it is most
             # conservative.
-            if bldg.adjacentElement['Roof'][0].hasShape['flat']:  # note there is actually no 'flat'
+            if BIM['roof_shape'] == 'flat':  # note there is actually no 'flat'
                 swr = True
-            elif bldg.adjacentElement['Roof'][0].hasShape['gable'] or bldg.adjacentElement['Roof'][0].hasShape['hip']:
-                if bldg.adjacentElement['Roof'][0].hasPitch <= degrees(atan2(2, 12)):
+            elif BIM['roof_shape'] == 'gable' or BIM['roof_shape'] == 'hip':
+                if BIM['roof_slope'] <= 0.17:
                     swr = True
-                elif bldg.adjacentElement['Roof'][0].hasPitch < degrees(atan2(4, 12)):
-                    swr = (avg_jan_temp == 'below')
+                elif BIM['roof_slope'] < 0.33:
+                    swr = (BIM['avg_jan_temp'] == 'below')
 
     # Roof Deck Attachment (RDA)
     # IRC codes:
