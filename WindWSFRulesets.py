@@ -82,10 +82,6 @@ def wsf_config(BIM):
             rda = '8s'
         else:
             rda = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
-        if ((BIM['sheathing_t'] >= 0.3125) and (BIM['sheathing_t'] <= 0.5)):
-            RDA = '6d' # 6d @ 6"/12" ('A' in the Reorganized Rulesets - WIND)
-        elif ((BIM['sheathing_t'] >= 0.59375) and (BIM['sheathing_t'] <= 1.125)):
-            RDA = '8d' # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
     elif 1994 < BIM['year_built'] <= 2001:
         # 1994 SFBC: Section 2909.2 - Requires 8d nails with 6"/6" for roof sheathing (HVHZ)
         # 1995 CABO: Table 602.3a - 8d or 6d nails at 6"/12" depending on sheathing thickness.
