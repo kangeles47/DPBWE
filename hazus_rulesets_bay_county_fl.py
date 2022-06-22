@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def get_hazus_occupancy(occupancy, roof_shape, frame_type, num_stories):
+def building_class(occupancy, roof_shape, frame_type, num_stories):
     wmuh_occupancies = ['MULTI-FAMI (000300)', 'COOPERATIV (000500)', 'HOTELS AND (003900)']
     if 'SINGLE' in occupancy:
         if roof_shape != 'FLAT':
