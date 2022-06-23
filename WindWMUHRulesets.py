@@ -23,6 +23,7 @@ def wmuh_config(BIM):
     # Included in this list is a double layer of an ASTM D226 Type I underlayment. It is assumed that the
     # listed single layer options are equivalent. Assume swr for WMUH with asphalt shingles and in HVHZ.
     # Note that similar underlayment requirements are seen starting from 2001 FBC.
+    swr = int(False)  # Default value
     if BIM['year_built'] > 2001:
         if BIM['roof_shape'] == 'flt':
             swr = 'null' # because SWR is not a question for flat roofs
@@ -90,65 +91,57 @@ def wmuh_config(BIM):
                 roof_quality = 'por'
 
     # Roof Deck Attachment (RDA)
-    # IRC 2009-2015:
-    # Requires 8d nails (with spacing 6”/12”) for sheathing thicknesses between
-    # ⅜”-1”, see Table 2304.10, Line 31. Fastener selection is contingent on
-    # thickness of sheathing in building codes.
-    # Wind Speed Considerations taken from Table 2304.6.1, Maximum Nominal
-    # Design Wind Speed, Vasd, Permitted For Wood Structural Panel Wall
-    # Sheathing Used to Resist Wind Pressures. Typical wall stud spacing is 16
-    # inches, according to table 2304.6.3(4). NJ code defines this with respect
-    # to exposures B and C only. These are mapped to HAZUS categories based on
-    # roughness length in the ruleset herein.
-    # The base rule was then extended to the exposures closest to suburban and
-    # light suburban, even though these are not considered by the code.
-    if year > 2009:
-        if BIM['terrain'] >= 35: # suburban or light trees
-            if BIM['V_ult'] > 168.0:
-                RDA = '8s'  # 8d @ 6"/6" 'D'
-            else:
-                RDA = '8d'  # 8d @ 6"/12" 'B'
-        else:  # light suburban or open
+    # 2017/2014 FBC: Section 2322.2.5 - requires 8d nails, 6"/6" spacing for roof sheathing in HVHZ
+    # 2017/2014 FBC: Table 2304.10.1 - Use of 8d nails requires 6"/12" spacing for all roof sheathing thicknesses.
+    # Other nailing options also mentioned, but assume that 8d nails are used.
+    if BIM['year_built'] > 2014:
+        if BIM['hvhz']:
+            rda = '8s'  # 8d @ 6"/6" 'D'
+        else:
+            rda = '8d'  # 8d @ 6"/12" 'B'
+    elif 2007 < BIM['year_built'] <= 2014:
+        # 2007 to 2010 FBC: Section 2322.2.5 - Requires 8d nails, 6"/6" spacing for roof sheathing in HVHZ.
+        # 2007 to 2010 FBC: Table 2304.9.1 or 2304.10.1 (respectively) - 8d nails with 6"/6" spacing required
+        # for roofs in basic wind speeds between 110-140 mph (exposure B). 8d nails with 6"/12" spacing listed as
+        # an option for sheathing thicknesses <= 1/2" and > 19/32".
+        if BIM['hvhz']:
+            rda = '8s'
+        else:
             if BIM['V_ult'] > 142.0:
-                RDA = '8s'  # 8d @ 6"/6" 'D'
+                rda = '8s'
             else:
-                RDA = '8d'  # 8d @ 6"/12" 'B'
-    # IRC 2000-2006:
-    # Table 2304.9.1, Line 31 of the 2006
-    # NJ IBC requires 8d nails (with spacing 6”/12”) for sheathing thicknesses
-    # of ⅞”-1”. Fastener selection is contingent on thickness of sheathing in
-    # building codes. Table 2308.10.1 outlines the required rating of approved
-    # uplift connectors, but does not specify requirements that require a
-    # change of connector at a certain wind speed.
-    # Thus, all RDAs are assumed to be 8d @ 6”/12”.
-    elif year > 2000:
-        RDA = '8d'  # 8d @ 6"/12" 'B'
-    # BOCA 1996:
-    # The BOCA 1996 Building Code Requires 8d nails (with spacing 6”/12”) for
-    # roof sheathing thickness up to 1". See Table 2305.2, Section 4.
-    # Attachment requirements are given based on sheathing thickness, basic
-    # wind speed, and the mean roof height of the building.
-    elif year > 1996:
-        if (BIM['V_ult'] >= 103 ) and (BIM['mean_roof_height'] >= 25.0):
-            RDA = '8s'  # 8d @ 6"/6" 'D'
+                rda = '8d'
+    elif 2001 < BIM['year_built'] <= 2007:
+        # 2001/2004 FBC: Section 2322.2.4 and 2322.2.5 - Requires 8d nails, 6"/6" spacing for roof sheathing in HVHZ.
+        # 2001/2004 FBC: Table 2306.1/Table 2304.9.1 - Requires 8d nails, 6"/12" spacing for roof sheathing.
+        if BIM['hvhz']:
+            rda = '8s'
         else:
-            RDA = '8d'  # 8d @ 6"/12" 'B'
-    # BOCA 1993:
-    # The BOCA 1993 Building Code Requires 8d nails (with spacing 6”/12”) for
-    # sheathing thicknesses of 19/32  inches or greater, and 6d nails (with
-    # spacing 6”/12”) for sheathing thicknesses of ½ inches or less.
-    # See Table 2305.2, Section 4.
-    elif year > 1993:
-        if BIM['sheathing_t'] <= 0.5:
-            RDA = '6d'  # 6d @ 6"/12" 'A'
+            rda = '8d'
+    elif 1994 < BIM['year_built'] <= 2001:
+        # 1994 SFBC: Section 2909.2 - Requires 8d nails with 6"/6" spacing for roof sheathing. (HVHZ)
+        # 1973 SBC: Table 1704.1 - Requires 6d nails with 6"/12" spacing for sheathing thicknesses <= 1/2".
+        # 8d nails with 6"/12" spacing for sheathing of >= 5/8" thickness. With no way to determine actual
+        # sheathing thickness assign as a random variable for regions outside of HVHZ.
+        if BIM['hvhz']:
+            rda = '8s'
         else:
-            RDA = '8d'  # 8d @ 6"/12" 'B'
+            if random.random() <= 0.5:
+                rda = '6d'
+            else:
+                rda = '8d'
     else:
-        # year <= 1993
-        if BIM['sheathing_t'] <= 0.5:
-            RDA = '6d' # 6d @ 6"/12" 'A'
+        # 1992 SFBC: Section 2909.2 - Indicates that 8d nails be used for roof sheathing 5/8", 3/4", and 7/8" thick.
+        # 6d nails be used for minimum 1/2" thick sheathing. 6"/12" spacing required for both applications.
+        # Same requirement is seen starting in 1957 SFBC.
+        # 1973 SBC: Table 1704.1 - Requires 6d nails with 6"/12" spacing for roof sheathing <= 1/2" thick.
+        # 8d nails with 6"/12" spacing required for roof sheathing >= 5/8" thick. There are no clear requirements that
+        # indicate a change of connector at a certain wind speed.
+        # With no way to determine actual sheathing thickness for HVHZ/non-HVHZ regions, assign using a random variable.
+        if random.random() <= 0.5:
+            rda = '6d'
         else:
-            RDA = '8d' # 8d @ 6"/12" 'B'
+            rda = '8d'
 
     # Roof-Wall Connection (RWC)
     # IRC 2000-2015:
@@ -160,7 +153,7 @@ def wmuh_config(BIM):
     # Underlayment installed where Vasd, in accordance with section 1609.3.1
     # equals or exceeds 120 mph shall be attached in a grid pattern of 12
     # inches between side laps with a 6-inch spacing at the side laps.
-    if year > 2000:
+    if BIM['year_built'] > 2001:
         if BIM['V_ult'] > 142.0:
             RWC = 'strap'  # Strap
         else:
@@ -218,7 +211,7 @@ def wmuh_config(BIM):
                   f"{roof_cover}_" \
                   f"{roof_quality}_" \
                   f"{swr}_" \
-                  f"{RDA}_" \
+                  f"{rda}_" \
                   f"{RWC}_" \
                   f"{int(shutters)}_" \
                   f"{int(BIM['terrain'])}"
