@@ -157,7 +157,7 @@ def wsf_config(BIM):
         shutters = False
 
     # Garage
-    # As per IRC 2015:
+    # As per FBC 2001 Section 1606.1.4 through FBCR 2017 Section R301.2.1.2:
     # Garage door glazed opening protection for windborne debris shall meet the
     # requirements of an approved impact-resisting standard or ANSI/DASMA 115.
     # Exception: Wood structural panels with a thickness of not less than 7/16
@@ -176,32 +176,32 @@ def wsf_config(BIM):
         garage = 'std'
         shutters = 0 # HAZUS ties standard garage to w/o shutters
     else:
-        if year > 2000:
+        if BIM['year_built'] > 2001:
             if shutters:
                 if BIM['garage_tag'] < 1:
                     garage = 'no'
                 else:
-                    garage = 'sup' # SFBC 1994
-                    shutters = 1 # HAZUS ties SFBC 1994 to with shutters
+                    garage = 'sup'  # SFBC 1994
+                    shutters = 1  # HAZUS ties SFBC 1994 to with shutters
             else:
                 if BIM['garage_tag'] < 1:
                     garage = 'no' # None
                 else:
                     garage = 'std' # Standard
                     shutters = 0 # HAZUS ties standard garage to w/o shutters
-        elif year > (datetime.datetime.now().year - 30):
+        elif BIM['year_built'] > (datetime.datetime.now().year - 30):
             if BIM['garage_tag'] < 1:
-                garage = 'no' # None
+                garage = 'no'  # None
             else:
-                garage = 'std' # Standard
-                shutters = 0 # HAZUS ties standard garage to w/o shutters
+                garage = 'std'  # Standard
+                shutters = 0  # HAZUS ties standard garage to w/o shutters
         else:
             # year <= current year - 30
             if BIM['garage_tag'] < 1:
-                garage = 'no' # None
+                garage = 'no'  # None
             else:
-                garage = 'wkd' # Weak
-                shutters = 0 # HAZUS ties weak garage to w/o shutters
+                garage = 'wkd'  # Weak
+                shutters = 0  # HAZUS ties weak garage to w/o shutters
 
     # building configuration tag
     bldg_config = f"WSF" \
