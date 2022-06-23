@@ -32,7 +32,7 @@ def wsf_config(BIM):
                 # compliance data from NC Coastal Homeowner Survey (2017) to capture potential
                 # human behavior (% of sealed roofs in NC dataset).
                 swr = random.random() < 0.6
-    elif 1983 < BIM['year_built'] <= 2001:
+    elif 1979 < BIM['year_built'] <= 2001:
         # HVHZ (Broward and Dade County):
         # 1979 SFBC Section 3402.3: 30 lb felt underlayment is required for asphalt shingle roof covers
         # This must be fastened through tin-caps spaced 18 inches o.c. both ways.
