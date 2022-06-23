@@ -35,15 +35,23 @@ def wmuh_config(BIM):
         if BIM['roof_shape'] == 'flt':
             swr = 'null' # because SWR is not a question for flat roofs
         elif (BIM['roof_shape'] == 'gab') or (BIM['roof_shape'] == 'hip'):
-            if BIM['roof_slope'] < 0.33:
-                swr = int(True)
+            # 1988 SFBC: Section 3402.3 - For asphalt shingles, the following underlayment is required:
+            # 30 lb felt underlayment, fastened through tin-caps placed 18" o.c. both ways.
+            # Consulting newer code editions, this description is not considered SWR in an HVHZ region.
+            if BIM['hvhz']:
+                swr = int(False)
             else:
-                swr = int(BIM['avg_jan_temp'] == 'below')
+                # Come back and check SWR requirements in SBC:
+                if BIM['roof_slope'] < 0.33:
+                    swr = int(True)
+                else:
+                    swr = int(BIM['avg_jan_temp'] == 'below')
     else:
-        # year <= 1987
+        # year <= 1979
         if BIM['roof_shape'] == 'flt':
             swr = 'null' # because SWR is not a question for flat roofs
         else:
+            # Use human subjects data from NC:
             swr = int(random.random() < 0.3)
 
     # Roof cover & Roof quality
