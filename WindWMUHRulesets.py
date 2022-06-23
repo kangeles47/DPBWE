@@ -59,19 +59,15 @@ def wmuh_config(BIM):
     if BIM['roof_shape'] in ['gab', 'hip']:
         roof_cover = 'null'
         roof_quality = 'null'
-    # NJ Building Code Section 1507 (in particular 1507.10 and 1507.12) address
-    # Built Up Roofs and Single Ply Membranes. However, the NJ Building Code
-    # only addresses installation and material standards of different roof
-    # covers, but not in what circumstance each must be used.
-    # SPMs started being used in the 1960s, but different types continued to be
-    # developed through the 1980s. Today, single ply membrane roofing is the
-    # most popular flat roof option. BURs have been used for over 100 years,
-    # and although they are still used today, they are used less than SPMs.
-    # Since there is no available ruleset to be taken from the NJ Building
-    # Code, the ruleset is based off this information.
-    # We assume that all flat roofs built before 1975 are BURs and all roofs
-    # built after 1975 are SPMs.
-    # Nothing in NJ Building Code or in the Hazus manual specifies what
+    # Chapter 15 in the FBC (2001-2017) addresses Built Up Roofs and Single Ply Membranes. However, the FBC
+    # only addresses installation and material standards of different roof covers, but not in what circumstance
+    # each must be used. # SPMs started being used in the 1960s, but different types continued to be
+    # developed through the 1980s. Today, single ply membrane roofing is the most popular flat roof option.
+    # BURs have been used for over 100 years, and although they are still used today, they are used less than SPMs.
+    # Since there is no available ruleset to be taken from the FBC, the ruleset is based off this information.
+    # We assume that all flat roofs built before 1975 are BURs and all roofs built after 1975 are SPMs.
+
+    # Nothing in the FBC or in the Hazus manual specifies what
     # constitutes “good” and “poor” roof conditions, so ruleset is dependant
     # on the age of the roof and average lifespan of BUR and SPM roofs.
     # We assume that the average lifespan of a BUR roof is 30 years and the
@@ -79,7 +75,7 @@ def wmuh_config(BIM):
     # 1990 are in poor condition, and SPMs installed before 1985 are in poor
     # condition.
     else:
-        if year >= 1975:
+        if BIM['year_built'] >= 1975:
             roof_cover = 'spm'
             if BIM['year_built'] >= (datetime.datetime.now().year - 35):
                 roof_quality = 'god'
