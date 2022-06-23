@@ -129,32 +129,32 @@ def wsf_config(BIM):
         rwc = 'tnail'  # Assume all remaining construction uses toe-nails for rwc
 
     # Shutters
-    # IRC 2000-2015:
-    # R301.2.1.2 in NJ IRC 2015 says protection of openings required for
-    # buildings located in WBD regions, mentions impact-rated protection for
-    # glazing, impact-resistance for garage door glazed openings, and finally
-    # states that wood structural panels with a thickness > 7/16" and a
-    # span <8' can be used, as long as they are precut, attached to the framing
-    # surrounding the opening, and the attachments are resistant to corrosion
+    # FBCR 2000-2015:
+    # R301.2.1.2 in 2207-2017 FBCR says protection of openings required for buildings located in WBD regions,
+    # mentions impact-rated protection for glazing, impact-resistance for garage door glazed openings, and finally
+    # states that wood structural panels with a thickness > 7/16" and a span <8' can be used, as long as they are
+    # precut, attached to the framing surrounding the opening, and the attachments are resistant to corrosion
     # and are able to resist component and cladding loads;
-    # Earlier IRC editions provide similar rules.
-    if year > 2000:
+    # Earlier FBC editions provide similar rules.
+    # Note that previous logic to designate meta-variable WBD will ensure Panhandle exemption for construction built
+    # between 2001 and 2007 FBC.
+    if BIM['year_built'] > 2001:
         shutters = BIM['WBD']
-    # CABO:
-    # Based on Human Subjects Data, roughly 45% of houses built in the 1980s
-    # and 1990s had entries that implied they had shutters on at some or all of
-    # their windows. Therefore, 45% of houses in this time should be randomly
-    # assigned to have shutters.
-    # Data ranges checked:
-    # 1992 to 1995, 33/74 entries (44.59%) with shutters
-    # 1986 to 1992, 36/79 entries (45.57%) with shutters
-    # 1983 to 1986, 19/44 entries (43.18%) with shutters
-    else:
-        # year <= 2000
-        if BIM['WBD']:
-            shutters = random.random() < 0.45
+    elif 1994 < BIM['year_built'] <= 2001:
+        # 1994 SFBC: Section 3501.1 - Specifies that exterior wall cladding, surfacing and glazing within
+        # lowest 30 ft of structure must be sufficiently strong to resist large missile impact test; > 30 ft
+        # must be able to resist small missile impact test
+        # Since homes outside of HVHZ would have been built following CABO, it is assumed that no shutter protection
+        # was enacted.
+        if BIM['hvhz']:
+            shutters = True
         else:
             shutters = False
+    else:
+        # 1992 SFBC: Section 3513 - Storm shutters are not required for glass glazing
+        # Since homes outside of HVHZ would have been built following CABO, it is assumed that no shutter protection
+        # was enacted.
+        shutters = False
 
     # Garage
     # As per IRC 2015:
