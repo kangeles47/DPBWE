@@ -26,15 +26,15 @@ def wmuh_config(BIM):
     swr = int(False)  # Default value
     if BIM['year_built'] > 2001:
         if BIM['roof_shape'] == 'flt':
-            swr = 'null' # because SWR is not a question for flat roofs
-        elif BIM['roof_shape'] in ['gab','hip']:
+            swr = 'null'  # because SWR is not a question for flat roofs
+        elif BIM['roof_shape'] in ['gab', 'hip']:
             if BIM['hvhz']:
                 swr = int(True)
             else:
                 swr = int(random.random() < 0.6)
     elif 1979 < BIM['year_built'] <= 2001:
         if BIM['roof_shape'] == 'flt':
-            swr = 'null' # because SWR is not a question for flat roofs
+            swr = 'null'  # because SWR is not a question for flat roofs
         elif (BIM['roof_shape'] == 'gab') or (BIM['roof_shape'] == 'hip'):
             # 1988 SFBC: Section 3402.3 - For asphalt shingles, the following underlayment is required:
             # 30 lb felt underlayment, fastened through tin-caps placed 18" o.c. both ways.
@@ -50,7 +50,7 @@ def wmuh_config(BIM):
     else:
         # year <= 1979
         if BIM['roof_shape'] == 'flt':
-            swr = 'null' # because SWR is not a question for flat roofs
+            swr = 'null'  # because SWR is not a question for flat roofs
         else:
             # Use human subjects data from NC:
             swr = int(random.random() < 0.3)
@@ -143,34 +143,37 @@ def wmuh_config(BIM):
         else:
             rda = '8d'
 
-    # Roof-Wall Connection (RWC)
-    # IRC 2000-2015:
-    # 1507.2.8.1 High Wind Attachment. Underlayment applied in areas subject
-    # to high winds (Vasd greater than 110 mph as determined in accordance
-    # with Section 1609.3.1) shall be applied with corrosion-resistant
-    # fasteners in accordance with the manufacturer’s instructions. Fasteners
-    # are to be applied along the overlap not more than 36 inches on center.
-    # Underlayment installed where Vasd, in accordance with section 1609.3.1
-    # equals or exceeds 120 mph shall be attached in a grid pattern of 12
-    # inches between side laps with a 6-inch spacing at the side laps.
-    if BIM['year_built'] > 2001:
-        if BIM['V_ult'] > 142.0:
-            RWC = 'strap'  # Strap
+    # Roof-Wall Connection (rwc)
+    # 2001-2017 FBC: Section 2321.6.1 indicates that steel straps must be used in HVHZ to connect wood to wood.
+    # General construction requirements for load paths in wood frame construction (2004-2017 FBC Section 2304.10.6):
+    # Requires sheet metal clamps, ties, or clips where wall framing members are not continuous from the foundation sill
+    # to the roof to ensure continuous load path.
+    # Assume that if in HPR, straps are required (most of FL).
+    if BIM['year_built'] > 2004:
+        if BIM['hpr']:
+            rwc = 'strap'  # Strap
         else:
-            RWC = 'tnail'  # Toe-nail
-    # BOCA 1996 and earlier:
-    # There is no mention of straps or enhanced tie-downs of any kind in the
-    # BOCA codes, and there is no description of these adoptions in IBHS
-    # reports or the New Jersey Construction Code Communicator .
-    # Although there is no explicit information, it seems that hurricane straps
-    # really only came into effect in Florida after Hurricane Andrew (1992),
-    # and likely it took several years for these changes to happen. Because
-    # Florida is the leader in adopting hurricane protection measures into
-    # codes and because there is no mention of shutters or straps in the BOCA
-    # codes, it is assumed that New Jersey did not adopt these standards until
-    # the 2000 IBC.
+            rwc = 'tnail'  # Toe-nail
+    elif 1957 < BIM['year_built'] <= 2004:
+        # HAZUS-HM documentation states that tie down straps have been required for rwc in Dade and Broward counties
+        # since inception of the SFBC. In Palm Beach county, roof-wall tie downs have been required on every truss-wall
+        # connections since the late 1970s. 1957 SFBC: Section 2905 - Wood-to-wood anchorage must be steel strap. See
+        # Section 2908.6 in 1992 SFBC for similar requirements. 1973 Standard Building Code: Section 1205.3 - Indicates
+        # that adequate anchorage of the roof to walls and columns is required to resist wind loads, but does not
+        # specify the connection type. Assume toe-nail for any construction outside of HVHZ and for Palm Beach County
+        # before 1976.
+        if BIM['hvhz']:
+            rwc = 'strap'
+        else:
+            if BIM['county'].upper() == 'PALM BEACH':
+                if BIM['year_built'] > 1976:
+                    rwc = 'strap'
+                else:
+                    rwc = 'tnail'
+            else:
+                rwc = 'tnail'
     else:
-        RWC = 'tnail'  # Toe-nail
+        rwc = 'tnail'  # Assume all remaining construction uses toe-nails for rwc
 
     # Shutters
     # IRC 2000-2015:
@@ -212,7 +215,7 @@ def wmuh_config(BIM):
                   f"{roof_quality}_" \
                   f"{swr}_" \
                   f"{rda}_" \
-                  f"{RWC}_" \
+                  f"{rwc}_" \
                   f"{int(shutters)}_" \
                   f"{int(BIM['terrain'])}"
 
