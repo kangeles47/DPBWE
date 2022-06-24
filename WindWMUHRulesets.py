@@ -17,8 +17,8 @@ def wmuh_config(BIM):
         class.
     """
 
-    # Secondary Water Resistance (SWR)
-    # SWR = 0 # Default
+    # Secondary Water Resistance (swr)
+    swr = 0  # Default
     # 2017 FBC: Section 1518.4 - Lists underlayment requirements for prepared roof coverings in HVHZ.
     # Included in this list is a double layer of an ASTM D226 Type I underlayment. It is assumed that the
     # listed single layer options are equivalent. Assume swr for WMUH with asphalt shingles and in HVHZ.
