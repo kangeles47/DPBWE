@@ -176,33 +176,33 @@ def wmuh_config(BIM):
         rwc = 'tnail'  # Assume all remaining construction uses toe-nails for rwc
 
     # Shutters
-    # IRC 2000-2015:
-    # 1609.1.2 Protection of Openings. In wind-borne debris regions, glazing in
-    # buildings shall be impact resistant or protected with an impact-resistant
-    # covering meeting the requirements of an approved impact-resistant
-    # covering meeting the requirements of an approved impact-resistant
-    # standard.
-    # Exceptions: Wood structural panels with a minimum thickness of 7/16 of an
-    # inch and a maximum panel span of 8 feet shall be permitted for opening
-    # protection in buildings with a mean roof height of 33 feet or less that
-    # are classified as a Group R-3 or R-4 occupancy.
-    # Earlier IRC editions provide similar rules.
-    if year >= 2000:
+    # Section 1609.1.4 in FBC 2007-2017 says protection of openings required for buildings located in WBD regions,
+    # mentions impact-rated protection for glazing, impact-resistance for garage door glazed openings, and finally
+    # states that wood structural panels with a thickness > 7/16" and a span <8' can be used, as long as they are
+    # precut, attached to the framing surrounding the opening, and the attachments are resistant to corrosion
+    # and are able to resist component and cladding loads;
+    # FBC 2001/2004: Section 1606.1.4 states that exterior glazing < 60 ft in buildings is considered an opening in
+    # WBD regions unless impact resistant glass or covering is provided. Section 1606.1.4.2 states that WBD region
+    # requirements do not apply landward of designated contour line in Figure 1606.
+    # Note that previous logic to designate meta-variable WBD will ensure Panhandle exemption for construction built
+    # between 2001 and 2007 FBC.
+    if BIM['year_built'] > 2001:
         shutters = BIM['WBD']
-    # BOCA 1996 and earlier:
-    # Shutters were not required by code until the 2000 IBC. Before 2000, the
-    # percentage of commercial buildings that have shutters is assumed to be
-    # 46%. This value is based on a study on preparedness of small businesses
-    # for hurricane disasters, which says that in Sarasota County, 46% of
-    # business owners had taken action to wind-proof or flood-proof their
-    # facilities. In addition to that, 46% of business owners reported boarding
-    # up their businesses before Hurricane Katrina. In addition, compliance
-    # rates based on the Homeowners Survey data hover between 43 and 50 percent.
-    else:
-        if BIM['WBD']:
-            shutters = random.random() < 0.46
+    elif 1994 < BIM['year_built'] <= 2001:
+        # 1994 SFBC: Section 3501.1 - Specifies that exterior wall cladding, surfacing and glazing within
+        # lowest 30 ft of structure must be sufficiently strong to resist large missile impact test; > 30 ft
+        # must be able to resist small missile impact test
+        # Since homes outside of HVHZ would have been built following CABO, it is assumed that no shutter protection
+        # was enacted.
+        if BIM['hvhz']:
+            shutters = True
         else:
             shutters = False
+    else:
+        # 1992 SFBC: Section 3513 - Storm shutters are not required for glass glazing
+        # Since homes outside of HVHZ would have been built following CABO, it is assumed that no shutter protection
+        # was enacted.
+        shutters = False
 
     # Stories
     # Buildings with more than 3 stories are mapped to the 3-story configuration
