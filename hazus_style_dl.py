@@ -49,14 +49,43 @@ PAL.demand.generate_sample({'SampleSize': sample_size})
 PAL.demand.save_sample().describe()
 
 # Step 3: Asset Description
-cmp_marginals = pd.DataFrame({'Units': 'en', 'Location': 1, 'Direction': 1, 'Theta_0': 1, 'Blocks': 1},
+cmp_marginals = pd.DataFrame({'Units': 'ea', 'Location': 1, 'Direction': 1, 'Theta_0': 1, 'Blocks': 1},
                              index=['W.SF.1.gab.0.6d.strap.no.1.70'])
 print(cmp_marginals)
 # Load the model:
 PAL.asset.load_cmp_model({'marginals': cmp_marginals})
 # Generate the component quantity samples (in this case identical):
+PAL.asset.generate_cmp_sample(sample_size)
+# Show to component quantity samples:
+PAL.asset.save_cmp_sample().describe()
 
+# Step 4: Damage Model and Assessment:
+PAL.damage.load_damage_model(['PelicunDefault/fragility_DB_SimCenter_HAZUS_HU.csv'])
+# Check the parameters assigned to the components (defaults):
+PAL.damage.damage_params.T.dropna()
+# Run the damage calculation:
+PAL.damage.calculate(sample_size)
+# Show the results:
+dmg_sample = PAL.damage.save_sample()
+print(dmg_sample.describe())
 
+# Step 5: Loss ratios:
+# In the following line, we tell pelicun that we are using damage as the way to get the associated loss ratio:
+drivers = [f'DMG-{cmp}' for cmp in cmp_marginals.index.unique()]
+# Loss models are chosen according to their respective building archetype:
+loss_models = cmp_marginals.index.unique()
+# Assemble a DataFrame with the mapping information:
+loss_map = pd.DataFrame(loss_models, columns=['BldgRepair'], index=drivers)
+print(loss_map)
+# Load hurricane loss model and map to pelicun:
+PAL.bldg_repair.load_model(['PelicunDefault/fragility_DB_SimCenter_HAZUS_HU.csv'], loss_map)
+# Check the parameters assigned to the component:
+print(PAL.bldg_repair.loss_params.T)
+# Run the calculation:
+PAL.bldg_repair.calculate(sample_size)
+# Show the results:
+loss_sample = PAL.bldg_repair.save_sample()
+print(loss_sample)
 
 # BIM = dict(
 #     occupancy_class=str(oc),
