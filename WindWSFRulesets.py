@@ -21,6 +21,7 @@ def wsf_config(BIM):
     # Secondary Water Resistance (SWR)
     # Minimum drainage recommendations are in place in FL (See below) except in HVHZ regions.
     # However, SWR indicates a code-plus practice.
+    swr = False
     if BIM['year_built'] > 2001:
         if BIM['hvhz']:
             swr = True
@@ -65,13 +66,15 @@ def wsf_config(BIM):
                     swr = True
                 elif BIM['roof_slope'] < 0.33:
                     swr = (BIM['avg_jan_temp'] == 'below')
+    else:
+        print('possible new use case for swr: ' + str(BIM['year_built']))
 
     # Roof Deck Attachment (RDA)
     # FBCR 2007-2017:
     # Section R803.2.3.1 - Wood structural panel sheathing shall be fastened to roof framing with 8d ring shank nails
     # at 6 in. o.c. at edges and 6 in. o.c. at intermediate framing.
     # Note: stricter requirements for 2017 FBCR - 6"/6" spacing
-    RDA = '6d' # Default (aka A) in Reorganized Rulesets - WIND
+    rda = '6d' # Default (aka A) in Reorganized Rulesets - WIND
     if BIM['year_built'] > 2007:
         rda = '8s'  # 8d @ 6"/6" ('D' in Reorganized Rulesets - WIND)
     elif 2001 < BIM['year_built'] <= 2007:
@@ -111,7 +114,7 @@ def wsf_config(BIM):
     # construction after Hurricane Andrew in 1992.
     # Assume that if classified as HPR, then enhanced connection would be used.
     if BIM['year_built'] > 1992:
-        if BIM['HPR']:
+        if BIM['hpr']:
             rwc = 'strap'  # Strap
         else:
             rwc = 'tnail'  # Toe-nail
