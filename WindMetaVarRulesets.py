@@ -1,5 +1,6 @@
 from math import sqrt
 
+
 def get_meta_var(BIM):
     # Hurricane-Prone Region (HRP)
     # Areas vulnerable to hurricane, defined as the U.S. Atlantic Ocean and
@@ -69,47 +70,17 @@ def get_meta_var(BIM):
     # suburban (0.35) = 35
     # light trees (0.70) = 70
     # trees (1.00) = 100
-    # Mapped to Land Use Categories in NJ (see https://www.state.nj.us/dep/gis/
-    # digidownload/metadata/lulc02/anderson2002.html) by T. Wu group
-    # (see internal report on roughness calculations, Table 4).
-    # These are mapped to Hazus defintions as follows:
-    # Open Water (5400s) with zo=0.01 and barren land (7600) with zo=0.04 assume Open
-    # Open Space Developed, Low Intensity Developed, Medium Intensity Developed
-    # (1110-1140) assumed zo=0.35-0.4 assume Suburban
-    # High Intensity Developed (1600) with zo=0.6 assume Lt. Tree
-    # Forests of all classes (4100-4300) assumed zo=0.6 assume Lt. Tree
-    # Shrub (4400) with zo=0.06 assume Open
-    # Grasslands, pastures and agricultural areas (2000 series) with
-    # zo=0.1-0.15 assume Lt. Suburban
-    # Woody Wetlands (6250) with zo=0.3 assume suburban
-    # Emergent Herbaceous Wetlands (6240) with zo=0.03 assume Open
-    # Note: HAZUS category of trees (1.00) does not apply to any LU/LC in NJ
-    terrain = 15 # Default in Reorganized Rulesets - WIND
-    if (BIM['z0'] > 0):
-        terrain = int(100 * BIM['z0'])
-    elif (BIM['lulc'] > 0):
-        if (BIM['flood_zone'].startswith('V') or BIM['flood_zone'] in ['A', 'AE', 'A1-30', 'AR', 'A99']):
-            terrain = 3
-        elif ((BIM['lulc'] >= 5000) and (BIM['lulc'] <= 5999)):
-            terrain = 3 # Open
-        elif ((BIM['lulc'] == 4400) or (BIM['lulc'] == 6240)) or (BIM['lulc'] == 7600):
-            terrain = 3 # Open
-        elif ((BIM['lulc'] >= 2000) and (BIM['lulc'] <= 2999)):
-            terrain = 15 # Light suburban
-        elif ((BIM['lulc'] >= 1110) and (BIM['lulc'] <= 1140)) or ((BIM['lulc'] >= 6250) and (BIM['lulc'] <= 6252)):
-            terrain = 35 # Suburban
-        elif ((BIM['lulc'] >= 4100) and (BIM['lulc'] <= 4300)) or (BIM['lulc'] == 1600):
-            terrain = 70 # light trees
-    elif (BIM['Terrain'] > 0):
-        if (BIM['flood_zone'].startswith('V') or BIM['flood_zone'] in ['A', 'AE', 'A1-30', 'AR', 'A99']):
-            terrain = 3
-        elif ((BIM['Terrain'] >= 50) and (BIM['Terrain'] <= 59)):
-            terrain = 3 # Open
-        elif ((BIM['Terrain'] == 44) or (BIM['Terrain'] == 62)) or (BIM['Terrain'] == 76):
-            terrain = 3 # Open
-        elif ((BIM['Terrain'] >= 20) and (BIM['Terrain'] <= 29)):
-            terrain = 15 # Light suburban
-        elif (BIM['Terrain'] == 11) or (BIM['Terrain'] == 61):
-            terrain = 35 # Suburban
-        elif ((BIM['Terrain'] >= 41) and (BIM['Terrain'] <= 43)) or (BIM['Terrain'] in [16, 17]):
-            terrain = 70 # light trees
+    # For purposes of case study, set default to light suburban (0.15).
+    # In the future, robust rulests can be formalized by consulting LULC categories for FL
+    # https://geodata.dep.state.fl.us/datasets/FDEP::statewide-land-use-land-cover/about
+    if BIM['lulc'] == 1400:  # Commercial and services
+        terrain = 35  # suburban
+    elif BIM['lulc'] == 1330:  # High density, multiple dwelling units, low rise
+        terrain = 35
+    elif BIM['lulc'] == 1210 or BIM['lulc'] == 1740:  # Medium density, fixed single family units or medical/health care
+        terrain = 15  # light suburban
+    else:
+        terrain = 15  # Default value
+    BIM['terrain'] = terrain
+
+    return BIM
