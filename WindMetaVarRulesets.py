@@ -14,6 +14,7 @@ def get_meta_var(BIM):
         # The limit is 90 mph (basic wind speed, V_asd) in 2001-2009 FBC
         # Conversion: V_asd = V_ult*sqrt(0.6)
         HPR = BIM['V_ult'] > 90.0/sqrt(0.6)
+    BIM['hpr'] = HPR
 
     # High-velocity hurricane zone (HVHZ):
     # Chapter 2 in 2001-2017 FBC defines HVHZ zone as Broward and Dade Counties. Note that before the FBC, these counties adhered to the South Florida Building Code (SFBC)
