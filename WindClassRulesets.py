@@ -1,5 +1,6 @@
 def building_class(BIM):
     wmuh_occupancies = ['MULTI-FAMI (000300)', 'COOPERATIV (000500)', 'HOTELS AND (003900)']
+    comm_eng_occupancies = ['OFFICE BLD (001700)', 'STORES, 1 (001100)', 'DRIVE-IN R (002200)']
     if 'SINGLE' in BIM['occupancy_class']:
         if BIM['roof_shape'] != 'FLAT':
             # Single family homes in HAZUS can only have hip or gable roofs
@@ -36,5 +37,7 @@ def building_class(BIM):
                 return 'SECB'
         elif 'CONCRETE' in BIM['frame_type']:  # engineered residential
             return 'CECB'
-        elif 'MASONRY' in BIM['frame_type'] and BIM['occupancy_class'] == 'STORES, 1 (001100)':
+        elif 'MASONRY' in BIM['frame_type'] and any(occ == BIM['occupancy_class'] for occ in comm_eng_occupancies):
             return 'MECBL'
+        elif 'WOOD' in BIM['frame_type'] or 'NOT AVAILABLE' in BIM['frame_type']:
+            return 'WMUH'  # model as a hotel/motel/multi-fam unit
