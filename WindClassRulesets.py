@@ -22,7 +22,7 @@ def building_class(BIM):
         elif 'CONCRETE' in BIM['frame_type']:  # engineered residential
             return 'CERB'
         else:
-            if 'MASONRY' in BIM['frame_type'] and BIM['num_stories'] < 4:
+            if 'MASONRY' in BIM['frame_type'] and BIM['stories'] < 4:
                 return 'MMUH'
             else:
                 # Assume that this is a wood frame structural system
@@ -30,7 +30,7 @@ def building_class(BIM):
     else:
         # Choose from remaining commercial occupancies:
         if 'STEEL' in BIM['frame_type']:  # engineered residential
-            if BIM['num_stories'] == 1:
+            if BIM['stories'] == 1:
                 return 'SPMB'
             else:
                 return 'SECB'
