@@ -60,11 +60,11 @@ PAL.asset.generate_cmp_sample(sample_size)
 PAL.asset.save_cmp_sample().describe()
 
 # Step 4: Damage Model and Assessment:
-PAL.damage.load_damage_model(['PelicunDefault/fragility_DB_SimCenter_HAZUS_HU.csv'])
+PAL.damage.load_damage_model(['PelicunDefault/fragility_DB_SimCenter_HAZUS_HU.csv',])
 # Check the parameters assigned to the components (defaults):
 PAL.damage.damage_params.T.dropna()
 # Run the damage calculation:
-PAL.damage.calculate(sample_size)
+PAL.damage.calculate()  # originally had fed in sample_size here
 # Show the results:
 dmg_sample = PAL.damage.save_sample()
 print(dmg_sample.describe())
@@ -78,7 +78,7 @@ loss_models = cmp_marginals.index.unique()
 loss_map = pd.DataFrame(loss_models, columns=['BldgRepair'], index=drivers)
 print(loss_map)
 # Load hurricane loss model and map to pelicun:
-PAL.bldg_repair.load_model(['PelicunDefault/fragility_DB_SimCenter_HAZUS_HU.csv'], loss_map)
+PAL.bldg_repair.load_model(['PelicunDefault/bldg_repair_DB_SimCenter_HAZUS_HU.csv',], loss_map)
 # Check the parameters assigned to the component:
 print(PAL.bldg_repair.loss_params.T)
 # Run the calculation:
