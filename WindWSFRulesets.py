@@ -38,7 +38,7 @@ def wsf_config(BIM):
         # 1979 SFBC Section 3402.3: 30 lb felt underlayment is required for asphalt shingle roof covers
         # This must be fastened through tin-caps spaced 18 inches o.c. both ways.
         if BIM['hvhz']:
-            if BIM['roof_shape'] == 'gable' or BIM['roof_shape'] == 'hip':
+            if BIM['roof_shape'] == 'gab' or BIM['roof_shape'] == 'hip':
                 swr = False
             else:
                 swr = True  # Assume SWR applies for flat roof as per 1988 SFBC: Section 1806.4
@@ -59,9 +59,9 @@ def wsf_config(BIM):
             # Almost all other roof types require underlayment of some sort, but
             # the ruleset is based on asphalt shingles because it is most
             # conservative.
-            if BIM['roof_shape'] == 'flat':  # note there is actually no 'flat'
+            if BIM['roof_shape'] == 'flt':  # note there is actually no 'flat'
                 swr = True
-            elif BIM['roof_shape'] == 'gable' or BIM['roof_shape'] == 'hip':
+            elif BIM['roof_shape'] == 'gab' or BIM['roof_shape'] == 'hip':
                 if BIM['roof_slope'] <= 0.17:
                     swr = True
                 elif BIM['roof_slope'] < 0.33:
@@ -207,13 +207,13 @@ def wsf_config(BIM):
                 shutters = 0  # HAZUS ties weak garage to w/o shutters
 
     # building configuration tag
-    bldg_config = f"WSF" \
-                  f"{int(min(BIM['stories'],2))}_" \
-                  f"{BIM['roof_shape']}_" \
-                  f"{int(swr)}_" \
-                  f"{rda}_" \
-                  f"{rwc}_" \
-                  f"{garage}_" \
-                  f"{int(shutters)}_" \
+    bldg_config = f"W.SF." \
+                  f"{int(min(BIM['stories'],2))}." \
+                  f"{BIM['roof_shape']}." \
+                  f"{int(swr)}." \
+                  f"{rda}." \
+                  f"{rwc}." \
+                  f"{garage}." \
+                  f"{int(shutters)}." \
                   f"{int(BIM['terrain'])}"
     return bldg_config
