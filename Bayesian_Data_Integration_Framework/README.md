@@ -21,6 +21,7 @@ Note: the research developments herein have been formalized into a manuscript th
 ### The How
 
 Schematic overview of Bayesian Data Integration framework:
+![My Image](Framework.png)
 
 Fragilities are automatically created for a given building's components according to a specified damage scale (associated with a specific hazard) through a set of subroutines that automate:
 - Building sample selection
