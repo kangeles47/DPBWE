@@ -1,7 +1,12 @@
 # Bayesian Data Integration Framework for the Development of Component-level Fragilities Derived from Multiple Post-Disaster Datasets
-## Project Overview
+
 Note: the research developments herein have been formalized into a manuscript that is currently under review in [Structural Safety](https://www.journals.elsevier.com/structural-safety) and the link for this article will be included once it is available.
 
+In the manuscript, the framework is applied to deliver roof cover fragilities for the following two case studies: 
+1. Hurricane Michael - single family homes with asphalt shingle roofs (considering construction before/after Florida Building Code) using [field observations](https://www.designsafe-ci.org/data/browser/public/designsafe.storage.published/PRJ-2113) and post-disaster building [permit data](https://applications.baycountyfl.gov/Search/permit.aspx) from Florida's Bay County
+2. Hurricane Irma - instutional buildings with built-up roofs using [field observations](https://www.designsafe-ci.org/data/browser/public/designsafe.storage.published//PRJ-1828) and [regional damage data from FEMA](https://www.fema.gov/about/openfema/data-sets#hazard)
+
+## Project Overview
 ### Context
 - The design of targeted mitigation strategies and policies to reduce disaster-related losses across entire regions requires the realization of building-specific, component-level regional loss assessments. However, such highly granular loss assessments face a unique challenge in sourcing reliable fragilities for actual constructed buildings, particularly for the case of wind-vulnerable structures. 
 
@@ -32,11 +37,7 @@ Fragilities are automatically created for a given building's components accordin
 - Fragility model updating
   - This implementation utilizes the [PyMC3](https://docs.pymc.io/en/v3/index.html) library and available simulation-based fragilities
 
-The framework is applied to deliver roof cover fragilities for the following two case studies: 
-1. Hurricane Michael - single family homes with asphalt shingle roofs (considering construction before/after Florida Building Code) using [field observations](https://www.designsafe-ci.org/data/browser/public/designsafe.storage.published/PRJ-2113) and post-disaster building [permit data](https://applications.baycountyfl.gov/Search/permit.aspx) from Florida's Bay County
-2. Hurricane Irma - instutional buildings with built-up roofs using [field observations](https://www.designsafe-ci.org/data/browser/public/designsafe.storage.published//PRJ-1828) and [regional damage data from FEMA](https://www.fema.gov/about/openfema/data-sets#hazard)
-
-## Overview of Skills Necessary to Implement this Project:
+## Overview of Skills Necessary to Implement this Project
 ### Data Science
 **Data Mining** 
 - Web-scraping ([scrapy](https://scrapy.org/) Python package) to extract parcel tax assessor data from the Bay County Property Appraiser's website
