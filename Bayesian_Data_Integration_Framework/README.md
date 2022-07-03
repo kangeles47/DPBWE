@@ -21,6 +21,7 @@ Note: the research developments herein have been formalized into a manuscript th
 ### The How
 
 Schematic overview of Bayesian Data Integration framework:
+
 ![My Image](Framework.png)
 
 Fragilities are automatically created for a given building's components according to a specified damage scale (associated with a specific hazard) through a set of subroutines that automate:
@@ -31,8 +32,28 @@ Fragilities are automatically created for a given building's components accordin
 - Fragility model updating
   - This implementation utilizes the [PyMC3](https://docs.pymc.io/en/v3/index.html) library and available simulation-based fragilities
 
+The framework is applied to deliver roof cover fragilities for the following two case studies: 
+1. Hurricane Michael - single family homes with asphalt shingle roofs (considering construction before/after Florida Building Code) using [field observations](https://www.designsafe-ci.org/data/browser/public/designsafe.storage.published/PRJ-2113) and post-disaster building [permit data](https://applications.baycountyfl.gov/Search/permit.aspx) from Florida's Bay County
+2. Hurricane Irma - instutional buildings with built-up roofs using [field observations](https://www.designsafe-ci.org/data/browser/public/designsafe.storage.published//PRJ-1828) and [regional damage data from FEMA](https://www.fema.gov/about/openfema/data-sets#hazard)
+
 ## Overview of Skills Necessary to Implement this Project:
 ### Data Science
-Web-scraping, Application Programming Interface, Data cleaning and manipulation
+**Data Mining** 
+- Web-scraping ([scrapy](https://scrapy.org/) Python package) to extract parcel tax assessor data from the Bay County Property Appraiser's website
+- Application Programming Interface ([OpenFEMA API](https://www.fema.gov/about/openfema/api)) to extract damage observations for a case study in Hurricane Irma
+
+**Data Wrangling** 
+- Feature clean-up: establishing data fields, filling in missing values, removing duplicates
+
+**Data Exploration**
+- [Pandas](https://pandas.pydata.org/) to obtain an overview of building archetypes in Florida's Bay County
+- [Matplotlib](https://matplotlib.org/) to plot distributions of damage observations in Hurricane Irma exposure region
+
+**Feature Engineering**
+- Integrated parcel tax assessor data along with other open data to populate building models 
+
 ### Probability/Statistics
-Bayesian model updating, Gaussian mixture model, Cumulative distribution functions
+Bayesian model updating, Gaussian mixture model, Cumulative distribution functions, Maximum likelihood estimation
+
+### Civil/Structural Engineering
+Knowledge of fragility curves, damage and loss assessments, building load paths, modern building codes, Floridian construction practices, wind profiles, and roof pressure distributions
