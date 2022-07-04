@@ -8,7 +8,7 @@ In the manuscript, the framework is applied to deliver roof cover fragilities fo
 
 ## Project Overview
 ### Context
-- The design of targeted mitigation strategies and policies to reduce disaster-related losses across entire regions requires the realization of building-specific, component-level regional loss assessments. However, such highly granular loss assessments face a unique challenge in sourcing reliable fragilities for actual constructed buildings, particularly for the case of wind-vulnerable structures. 
+- The design of targeted mitigation strategies and policies to reduce disaster-related losses across entire regions requires the realization of building-specific, component-level regional loss assessments. However, such highly granular loss assessments face a unique challenge in sourcing reliable fragilities to conduct damage assessment of actual constructed buildings; this is particularly an issue for the case of wind-vulnerable structures. 
 
 ### Data Opportunity
 - Field observations from reconnaissance missions 
@@ -33,11 +33,11 @@ Fragilities are automatically created for a given building's components accordin
 - Building sample selection
   - Here we define a set of similitude criteria which evaluate feature and load path similarity between potential samples in an inventory and a given reference building
 - Damage data querying and integration
-  - We formalized a data utility index that evaluates each available damage observation across the following data quality measures: granularity, precision, accuracy, perishability. This allows the framework to automatically identify the most reliable and granular observation for each sample building
+  - We formalized a data utility index that evaluates each available damage observation across the following data quality measures: granularity, precision, accuracy, perishability -- this allows the framework to automatically identify the most reliable and granular observation for each sample building
 - Fragility model updating
   - This implementation utilizes the [PyMC3](https://docs.pymc.io/en/v3/index.html) library and available simulation-based fragilities
 
-## Overview of Skills Necessary to Implement this Project
+## Overview of Skills Necessary to Develop this Project
 ### Data Science
 **Data Mining** 
 - Web-scraping ([scrapy](https://scrapy.org/) Python package) to extract parcel tax assessor data from the Bay County Property Appraiser's website
@@ -48,13 +48,16 @@ Fragilities are automatically created for a given building's components accordin
 
 **Data Exploration**
 - [Pandas](https://pandas.pydata.org/) to obtain an overview of building archetypes in Florida's Bay County
-- [Matplotlib](https://matplotlib.org/) to plot distributions of damage observations in Hurricane Irma exposure region
+- [Matplotlib](https://matplotlib.org/) to plot distributions of damage observations in Hurricane Irma exposure region and to visualize distributions of the hazard intensity across exposure regions
 
 **Feature Engineering**
-- Integrated parcel tax assessor data along with other open data to populate building models 
+- Integrated parcel tax assessor data along with other open data to populate additional features in building models necessary to automate sample selection process. Additional open data sources include:
+  - Data from the Department of Energy's Residential and Commercial Reference Buildings
+  - Modern codes and standards
+  - Building footprint data 
 
 ### Probability/Statistics
-Bayesian model updating, Gaussian mixture model, Cumulative distribution functions, Maximum likelihood estimation
+Bayesian model updating, Gaussian mixture model (Expectation-Maximization), Cumulative distribution functions, Maximum likelihood estimation
 
 ### Civil/Structural Engineering
 Knowledge of fragility curves, damage and loss assessments, building load paths, modern building codes, Floridian construction practices, wind profiles, and roof pressure distributions
