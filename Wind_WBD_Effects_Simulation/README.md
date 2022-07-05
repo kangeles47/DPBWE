@@ -33,6 +33,10 @@ The accompanying publication for this work (see below) demonstrates that the fra
 4. specify building-specific, minimum component capacities, and 
 5. conduct a site- and building-specific fault tree analysis to propagate demand through the building envelope’s load path.
 
+### Broader Impacts
+- The framework has the potential to reveal hazard-, site- and building-specific impacts and thereby the benefits of mitigation investments made in response
+- The framework provides an important first step towards capturing site-specific wind effects on actual constructed buildings, enhancing modeling and analysis capabilities for granular and robust hurricane regional loss estimation
+
 ## Publications
 
 Note: the research developments described above have been formalized into a manuscript that is currently under review in [Journal of Wind Engineering and Industrial Aerodynamics](https://www.sciencedirect.com/journal/journal-of-wind-engineering-and-industrial-aerodynamics) and the link for this article will be included once it is available.
