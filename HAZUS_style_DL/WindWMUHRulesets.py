@@ -31,6 +31,9 @@ def wmuh_config(BIM):
             if BIM['hvhz']:
                 swr = int(True)
             else:
+                # Use homeowner compliance data from NC Coastal Homeowner Survey (2017) to capture potential
+                # human behavior (% of sealed roofs in NC dataset) that would lead to the installation of SWR
+                # in regions outside of HVHZ.
                 swr = int(random.random() < 0.6)
     elif 1979 < BIM['year_built'] <= 2001:
         if BIM['roof_shape'] == 'flt':
@@ -42,7 +45,10 @@ def wmuh_config(BIM):
             if BIM['hvhz']:
                 swr = int(False)
             else:
-                # Come back and check SWR requirements in SBC:
+                # No access to Standard Building Code after 1976, so adopt BOCA-based ruleset for now:
+                # BOCA code requires SWR for steep-slope roofs with winters at or below 25℉, according
+                # to Section 1507.4. Asphalt shingles can be installed on roof slopes 2:12 and greater.
+                # BUR is considered low-slope roofing.
                 if BIM['roof_slope'] < 0.33:
                     swr = int(True)
                 else:
@@ -148,13 +154,17 @@ def wmuh_config(BIM):
     # General construction requirements for load paths in wood frame construction (2004-2017 FBC Section 2304.10.6):
     # Requires sheet metal clamps, ties, or clips where wall framing members are not continuous from the foundation sill
     # to the roof to ensure continuous load path.
+    # Documentation from FL's State Board of Administration indicate that straps became the standard for Floridian
+    # construction after Hurricane Andrew in 1992.
+    # It is understood that wind speed intensities throughout most of Florida would result in pressures that would
+    # require the installation of metal straps in order for roof-to-wall connections to be deemed code-compliant.
     # Assume that if in HPR, straps are required (most of FL).
-    if BIM['year_built'] > 2004:
+    if BIM['year_built'] > 1992:
         if BIM['hpr']:
             rwc = 'strap'  # Strap
         else:
             rwc = 'tnail'  # Toe-nail
-    elif 1957 < BIM['year_built'] <= 2004:
+    elif 1957 < BIM['year_built'] <= 1992:
         # HAZUS-HM documentation states that tie down straps have been required for rwc in Dade and Broward counties
         # since inception of the SFBC. In Palm Beach county, roof-wall tie downs have been required on every truss-wall
         # connections since the late 1970s. 1957 SFBC: Section 2905 - Wood-to-wood anchorage must be steel strap. See
