@@ -31,7 +31,7 @@ Fragilities are automatically created for a given building's components accordin
 - Fragility model updating
   - This implementation utilizes the [PyMC3](https://docs.pymc.io/en/v3/index.html) library and available simulation-based fragilities
 
-## Broader Impacts
+### Broader Impacts
 - Generated observation-informed fragilities can now be used to support regional damage assessments of actual constructed buildings (less dependence on simulation-based fragilities populated using generic building models)
   - Component-level fragilities can be calibrated for specific regions (e.g., Florida's Bay County)
   - Component-level fragilities can be calibrated to account for changes in construction practices (e.g., homes built before and after the instantiation of the Florida Building Code)
