@@ -1,3 +1,15 @@
+# -------------------------------------------------------------------------------
+# Name:             demand_module.py
+# Purpose:          Runs end-to-end workflow for fault tree analysis for a given case study structure,
+#                   building inventory, wind speed intensity and angle-of-attack.
+#
+# Author:           Karen Irely Angeles (kangeles@nd.edu)
+# Affiliation:      Department of Civil and Environmental Engineering and Earth Sciences,
+#                   University of Notre Dame, Notre Dame, IN
+
+# Last updated:          (v1) 06/20/2022
+# ------------------------------------------------------------------------------
+
 import pandas as pd
 import geopandas as gpd
 from shapely import affinity
