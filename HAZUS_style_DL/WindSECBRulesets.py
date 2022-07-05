@@ -58,7 +58,7 @@ def secb_config(BIM):
 
     # Wind Debris (widd in HAZUS)
     # HAZUS A: Res/Comm, B: Varies by direction, C: Residential, D: None
-    widd = 'C' # residential (default)
+    widd = 'C'  # residential (default)
     if BIM['occupancy_class'] in ['SINGLE FAM (000100), MULTI-FAMI (000300), COOPERATIV (000500)']:
         widd = 'C'  # residential
     elif BIM['occupancy_class'] in ['VACANT/XFO (000070), VACANT (000000), VACANT COM (001000), VACANT COM (001070), '
