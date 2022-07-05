@@ -1,8 +1,8 @@
 import pandas as pd
-from WindMetaVarRulesets import get_meta_var
-from WindClassRulesets import building_class
-from WindWSFRulesets import wsf_config
-from WindWMUHRulesets import wmuh_config
+from HAZUS_style_DL.WindMetaVarRulesets import get_meta_var
+from HAZUS_style_DL.WindClassRulesets import building_class
+from HAZUS_style_DL.WindWSFRulesets import wsf_config
+from HAZUS_style_DL.WindWMUHRulesets import wmuh_config
 
 file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Asset_Description_PC_FL.csv'
 column_names = ['id', 'Latitude', 'Longitude', 'BldgID', 'Address', 'City', 'county',
