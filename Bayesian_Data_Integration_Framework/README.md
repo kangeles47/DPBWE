@@ -60,4 +60,4 @@ Fragilities are automatically created for a given building's components accordin
 Bayesian model updating, Gaussian mixture model (Expectation-Maximization), Cumulative distribution functions, Maximum likelihood estimation
 
 ### Civil/Structural Engineering
-Knowledge of fragility curves, damage and loss assessments, building load paths, modern building codes, Floridian construction practices, wind profiles, and roof pressure distributions
+Knowledge of fragility curves, damage and loss assessments, building load paths, modern building codes, Floridian construction practices, wind profiles, and roof pressure distributions. Understanding of the current state-of-practice in hurricane regional loss assessment and new efforts in open-source loss modeling. 
