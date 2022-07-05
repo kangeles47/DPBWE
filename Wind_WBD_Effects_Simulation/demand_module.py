@@ -16,12 +16,10 @@ from bldg_code import ASCE7, FBC
 from OBDM.zone import Site, Building
 from OBDM.element import Roof, Floor, Wall, Ceiling
 from code_pressures import PressureCalc
-from get_debris import run_debris, get_site_debris, get_trajectory, get_source_bldgs
+from Wind_WBD_Effects_Simulation.get_debris import run_debris, get_site_debris, get_trajectory, get_source_bldgs, get_num_dobjects, get_traj_line
 from survey_data import SurveyData
-from queries import get_bldgs_at_dist
-from bdm_tpu_pressures import map_tpu_ptaps, convert_to_tpu_wdir, map_ptaps_to_components
-from fault_tree import wind_pressure_ftree, wbd_ftree
-from get_debris import get_num_dobjects, get_traj_line
+from Wind_WBD_Effects_Simulation.bdm_tpu_pressures import map_tpu_ptaps, convert_to_tpu_wdir, map_ptaps_to_components
+from Wind_WBD_Effects_Simulation.fault_tree import wind_pressure_ftree, wbd_ftree
 
 
 def assign_footprint(parcel, num_stories):

@@ -7,7 +7,7 @@ from tpu_pressures import calc_tpu_pressures, convert_to_tpu_wdir
 from bldg_code import ASCE7
 from OBDM.element import Roof, Wall
 from code_pressures import PressureCalc
-from get_debris import get_trajectory, get_num_dobjects, get_traj_line
+from Wind_WBD_Effects_Simulation.get_debris import get_trajectory, get_num_dobjects, get_traj_line
 
 
 def polygon_area(poly):
