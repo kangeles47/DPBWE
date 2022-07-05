@@ -2,14 +2,17 @@
 
 ## Project Overview
 ### Context
-The development of open-source scientific workflows that conduct site-specific, building-specific and component-level loss assessments across entire regions is imperative to minimizing disaster losses in the United States. However, today's open-source workflows are limited in their ability to simulate site-specific effects of wind and WBD hazards on actual constructed buildings. Such granularity is ultimately necessary to identify hazard- and building-specific, component-level damage across diverse, hurricane-vulnerable building inventories.
+The development of open-source scientific workflows that conduct site-specific, building-specific and component-level loss assessments across entire regions is imperative to minimizing disaster losses in the United States. *However, today's open-source workflows are limited in their ability to simulate site-specific effects of wind and WBD hazards on actual constructed buildings. Such granularity is ultimately necessary to identify hazard- and building-specific, component-level damage across diverse, hurricane-vulnerable building inventories.*
 
 ### Data Opportunity
-The ever-growing open data landscape is exposing a number of data sources (e.g., building footprints, national survery data, tax assessor data) that contain valuable building and site information pertinent to loss estimation workflows. We propose that this data can be used to advance the natural hazards engineering community's ability to simulate site-specific effects of wind and WBD hazards on buildings within a hurricane regional loss assessment.
+The ever-growing open data landscape is exposing a number of data sources (e.g., building footprints, national survey data, tax assessor data) that contain valuable building and site information pertinent to loss estimation workflows. 
+
+We propose that this data can be used to advance the natural hazards engineering community's ability to simulate site-specific effects of wind and WBD hazards on buildings within a hurricane regional loss assessment.
 
 ### Project Goal
 
-Formalize a new framework that utilizes publically available data to enable the modeling and analysis capabilities necessary to: 1. capture site-specific, building-specific exposure to wind and WBD hazards and 
+Formalize a new framework that utilizes publically available data to enable the modeling and analysis capabilities necessary to:
+1. capture site-specific, building-specific exposure to wind and WBD hazards and 
 2. propagate these demands through the building envelope’s load path
 
 ### The How
@@ -18,7 +21,10 @@ Schematic overview of the data-driven framework:
 
 ![My Image](Framework.png)
 
-The framework utilizes building tax assessor data, open-source probabilistic debris trajectory models, aerodynamic databases of surface pressures, and code-informed minimum requirements/scientific literature to respectively formalize data-driven characterizations of: (1) site models, (2) WBD missile environment, (3) wind pressure coefficient distributions, and (4) component capacities. These data-driven characterizations then enable the realization of demand propagation, currently achieved through a data-driven fault tree analysis (Monte Carlo simulation).
+The framework utilizes building tax assessor data, open-source probabilistic debris trajectory models, aerodynamic databases of surface pressures, and code-informed minimum requirements/scientific literature to respectively formalize **data-driven characterizations** of: 
+(1) site models, (2) WBD missile environment, (3) wind pressure coefficient distributions, and (4) component capacities. 
+
+These data-driven characterizations then enable the realization of demand propagation, currently achieved through a data-driven fault tree analysis (**Monte Carlo simulation**).
 
 The accompanying publication for this work (see below) demonstrates that the framework’s data-driven characterizations can be utilized to: 
 1. specify site models with all relevant buildings to streamline the query and incorporation of element- to site-level information
@@ -60,4 +66,3 @@ Monte Carlo simulation, Cumulative distribution functions, Random variables (unc
 
 ### Civil/Structural Engineering
 Knowledge of building load paths for wind-vulnerable buildings (various typologies), fault tree analyses, windborne debris trajectory models, database-assisted design (wind pressures). Understanding of the current state-of-practice in hurricane regional loss assessment and new efforts in open-source loss modeling. 
-
