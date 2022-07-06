@@ -1,7 +1,7 @@
 def building_class(BIM):
     wmuh_occupancies = ['MULTI-FAMI (000300)', 'COOPERATIV (000500)', 'HOTELS AND (003900)']
     comm_eng_occupancies = ['OFFICE BLD (001700)', 'STORES, 1 (001100)', 'DRIVE-IN R (002200)']
-    if 'SINGLE' in BIM['occupancy_class']:
+    if BIM['occupancy_class'] == 'SINGLE FAM (000100)':
         if BIM['roof_shape'] != 'flt':
             # Single family homes in HAZUS can only have hip or gable roofs
             if 'MASONRY' in BIM['frame_type']:
