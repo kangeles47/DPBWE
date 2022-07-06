@@ -38,6 +38,6 @@ def building_class(BIM):
         elif 'CONCRETE' in BIM['frame_type']:  # engineered residential
             return 'CECB'
         elif 'MASONRY' in BIM['frame_type'] and any(occ == BIM['occupancy_class'] for occ in comm_eng_occupancies):
-            return 'MECBL'
+            return 'MECB'
         elif 'WOOD' in BIM['frame_type'] or 'NOT AVAILABLE' in BIM['frame_type']:
             return 'WMUH'  # model as a hotel/motel/multi-fam unit
