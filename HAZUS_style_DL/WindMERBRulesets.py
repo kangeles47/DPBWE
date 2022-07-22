@@ -1,4 +1,4 @@
-def MERB_config(BIM):
+def merb_config(BIM):
     """
     Rules to identify a HAZUS MERB configuration based on BIM data
     Parameters
