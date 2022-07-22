@@ -3,6 +3,10 @@ from HAZUS_style_DL.WindMetaVarRulesets import get_meta_var
 from HAZUS_style_DL.WindClassRulesets import building_class
 from HAZUS_style_DL.WindWSFRulesets import wsf_config
 from HAZUS_style_DL.WindWMUHRulesets import wmuh_config
+from HAZUS_style_DL.WindMECBRulesets import mecb_config
+from HAZUS_style_DL.WindMERBRulesets import merb_config
+from HAZUS_style_DL.WindSECBRulesets import secb_config
+from HAZUS_style_DL.WindSPMBRulesets import spmb_config
 
 file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Asset_Description_PC_FL.csv'
 column_names = ['id', 'Latitude', 'Longitude', 'BldgID', 'Address', 'City', 'county',
@@ -33,6 +37,14 @@ for idx in df_inventory.index.to_list():
     if bldg_class == 'WSF':
         bldg_config = wsf_config(BIM)
     elif bldg_class == 'WMUH':
+        bldg_config = wmuh_config(BIM)
+    elif bldg_class == 'MECB':
+        bldg_config = mecb_config(BIM)
+    elif bldg_class == 'MERB':  # Note: need to still modify MERB ruleset, if we want to include here
+        bldg_config = merb_config(BIM)
+    elif bldg_class == 'SECB':
+        bldg_config = wmuh_config(BIM)
+    elif bldg_class == 'SPMB':
         bldg_config = wmuh_config(BIM)
     else:
         bldg_config = 'NONE'
