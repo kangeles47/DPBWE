@@ -3,8 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 from scipy.stats import norm
-import get_sim_bldgs
-import post_disaster_damage_dataset
+from Bayesian_Data_Integration_Framework import get_sim_bldgs
+from Bayesian_Data_Integration_Framework import post_disaster_damage_dataset
 import pymc3 as pm
 import arviz as az
 import theano.tensor as tt
