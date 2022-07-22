@@ -24,7 +24,7 @@ def building_class(BIM):
         spbm_occupancies = ['GYM (003350)', 'WAREHOUSE- (004800)']
         # Choose from remaining commercial occupancies:
         if 'STEEL' in BIM['frame_type']:  # engineered residential
-            if any(occ == BIM['occupancy_class'] for occ in spbm_occupancies) and BIM['num_stories'] == 1:
+            if any(occ == BIM['occupancy_class'] for occ in spbm_occupancies) and BIM['stories'] == 1:
                 return 'SPMB'
             else:
                 return 'SECB'
