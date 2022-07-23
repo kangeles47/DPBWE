@@ -47,22 +47,22 @@ def get_hazus_archetype(BIM):
     return bldg_config
 
 
-file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Asset_Description_PC_FL.csv'
-column_names = ['id', 'Latitude', 'Longitude', 'BldgID', 'Address', 'City', 'county',
-                'State', 'occupancy_class', 'frame_type', 'year_built',
-                'stories', 'NoUnits', 'PlanArea', 'flood_zone', 'V_ult', 'lulc', 'WindZone', 'AvgJanTemp', 'roof_shape',
-                'roof_slope', 'RoofCover', 'RoofSystem', 'MeanRoofHt', 'window_area', 'garage_tag',
-                'HazusClassW', 'AnalysisDefault', 'AnalysisAdopted', 'Modifications',
-                'z0', 'structureType', 'replacementCost', 'Footprint',
-                'HazardProneRegion', 'WindBorneDebris', 'SecondaryWaterResistance',
-                'RoofQuality', 'RoofDeckAttachmentW', 'Shutters', 'TerrainRoughness']
-df_inventory = pd.read_csv(file_path, names=column_names, header=0)
-# Clean up data according to ruleset convention:
-df_inventory = inventory_data_clean(df_inventory)
-# Find the HAZUS archetype for each building in the given inventory:
-hazus_archetypes = []
-for idx in df_inventory.index.to_list():
-    BIM = df_inventory.iloc[idx].to_dict()
-    bldg_config = get_hazus_archetype(BIM)
-    hazus_archetypes.append(bldg_config)
-print(hazus_archetypes)
+# file_path = 'D:/Users/Karen/Documents/Github/DPBWE/Asset_Description_PC_FL.csv'
+# column_names = ['id', 'Latitude', 'Longitude', 'BldgID', 'Address', 'City', 'county',
+#                 'State', 'occupancy_class', 'frame_type', 'year_built',
+#                 'stories', 'NoUnits', 'PlanArea', 'flood_zone', 'V_ult', 'lulc', 'WindZone', 'AvgJanTemp', 'roof_shape',
+#                 'roof_slope', 'RoofCover', 'RoofSystem', 'MeanRoofHt', 'window_area', 'garage_tag',
+#                 'HazusClassW', 'AnalysisDefault', 'AnalysisAdopted', 'Modifications',
+#                 'z0', 'structureType', 'replacementCost', 'Footprint',
+#                 'HazardProneRegion', 'WindBorneDebris', 'SecondaryWaterResistance',
+#                 'RoofQuality', 'RoofDeckAttachmentW', 'Shutters', 'TerrainRoughness']
+# df_inventory = pd.read_csv(file_path, names=column_names, header=0)
+# # Clean up data according to ruleset convention:
+# df_inventory = inventory_data_clean(df_inventory)
+# # Find the HAZUS archetype for each building in the given inventory:
+# hazus_archetypes = []
+# for idx in df_inventory.index.to_list():
+#     BIM = df_inventory.iloc[idx].to_dict()
+#     bldg_config = get_hazus_archetype(BIM)
+#     hazus_archetypes.append(bldg_config)
+# print(hazus_archetypes)
