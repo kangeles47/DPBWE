@@ -17,6 +17,8 @@ def inventory_data_clean(df_inventory):
     # Replacing roof shape names to SimCenter naming convention:
     df_inventory['roof_shape'] = df_inventory['roof_shape'].replace(['flat'], 'flt')
     df_inventory['roof_shape'] = df_inventory['roof_shape'].replace(['gable'], 'gab')
+    # Make sure January temperature is lower case:
+    df_inventory['avg_jan_temp'] = df_inventory['avg_jan_temp'].str.lower()
     return df_inventory
 
 
