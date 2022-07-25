@@ -17,6 +17,8 @@ from HAZUS_style_DL.run_hazus_dl import inventory_data_clean, get_hazus_archetyp
 # roof cover performance
 # Roof slope designation is based off of minimum slope for asphalt shingles in the Bay County: 2:12 slope
 # We could also randomly sample values between 2:12 and 4:12 to assign swr? Not important to roof cover performance?
+# Review garage-informed shutter designations with Tracy.
+
 # Will affect final building loss ratio. Discuss with Tracy.
 # Food for thought: BUILDING loss ratios in HAZUS --> would require multiplying final loss ration by whatever % we deem
 # the roof cover to account for?
