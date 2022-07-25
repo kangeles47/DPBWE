@@ -65,6 +65,8 @@ def get_meta_var(BIM):
         # https://www.baycountyfl.gov/508/FEMA-Flood-Zones
         WBD = (((BIM['flood_zone'].startswith('A') or BIM['flood_zone'].startswith('V')) and
                 BIM['V_ult'] >= flood_lim) or (BIM['V_ult'] >= general_lim and not panhandle_flag))
+        # Note: here if first criteria is met, this enforces 1-mi boundary for panhandle exemption.
+        # In the future, it would be better to have an actually polygon or line that creates a boundary to easily query
     BIM['WBD'] = WBD
     # Terrain
     # open (0.03) = 3
