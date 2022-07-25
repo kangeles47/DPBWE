@@ -5,13 +5,23 @@ from HAZUS_style_DL.run_hazus_dl import inventory_data_clean, get_hazus_archetyp
 
 
 # 1) Asset Description:
-column_names = ['parcel_id', 'address', 'occupancy_class', 'square_footage', 'stories', 'year_built', 'exterior_walls',
-                'roof_cover', 'interior_walls', 'frame_type', 'floor_cover', 'permit_number', 'permit_issue_date',
-                'permit_type', 'permit_description', 'permit_amount', 'latitude', 'longitude', 'roof_shape', 'lulc',
-                'V_ult', 'county']
+# column_names = ['parcel_id', 'address', 'occupancy_class', 'square_footage', 'stories', 'year_built', 'exterior_walls',
+#                 'roof_cover', 'interior_walls', 'frame_type', 'floor_cover', 'permit_number', 'permit_issue_date',
+#                 'permit_type', 'permit_description', 'permit_amount', 'latitude', 'longitude', 'roof_shape', 'lulc',
+#                 'V_ult', 'county', 'flood_zone', 'garage_tag', 'roof_slope', 'avg_jan_temp']
 # Note: V_ult is designated considering year_built for each parcel.
 # We use V_ult = 133 for year_built > 2010
 # We use basic wind speed = 129 mph for year_built <= 2010 --> V_ult = 129/sqrt(0.6)
+# Note: Flood zone will need to be verified, particularly for parcels with year_built >= 2007
+# Assuming no attached garage for all parcels given that difficult to discern from parcel data alone and does not affect
+# roof cover performance
+# Roof slope designation is based off of minimum slope for asphalt shingles in the Bay County: 2:12 slope
+# We could also randomly sample values between 2:12 and 4:12 to assign swr? Not important to roof cover performance?
+# Will affect final building loss ratio. Discuss with Tracy.
+# Food for thought: BUILDING loss ratios in HAZUS --> would require multiplying final loss ration by whatever % we deem
+# the roof cover to account for?
+# As long as I apply logic to quantify losses in the same way for all approaches, I can at least get a relative idea of
+# the effects of changing stuff in the workflow...
                 # ['Latitude', 'Longitude', 'BldgID', 'Address', 'City', 'county',
                 # 'State', 'occupancy_class', 'frame_type', 'year_built',
                 # 'stories', 'NoUnits', 'PlanArea', 'flood_zone', 'V_ult', 'lulc', 'WindZone', 'AvgJanTemp', 'roof_shape',
@@ -20,7 +30,7 @@ column_names = ['parcel_id', 'address', 'occupancy_class', 'square_footage', 'st
                 # 'z0', 'structureType', 'replacementCost', 'Footprint',
                 # 'HazardProneRegion', 'WindBorneDebris', 'SecondaryWaterResistance',
                 # 'RoofQuality', 'RoofDeckAttachmentW', 'Shutters', 'TerrainRoughness']
-df_inventory = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/MB_shingle_samples.csv', names=column_names, header=0)
+df_inventory = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/MB_shingle_samples.csv', keep_default_na=False)
 # Clean up data types if needed:
 df_inventory = inventory_data_clean(df_inventory)
 # 2) Asset Representation (HAZUS archetypes):
