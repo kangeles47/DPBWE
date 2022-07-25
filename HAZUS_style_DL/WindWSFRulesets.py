@@ -26,7 +26,7 @@ def wsf_config(BIM):
             swr = True
         else:
             if BIM['year_built'] > 2007:
-                swr = True
+                swr = True  # Based off of roof retrofit provisions in 2007 FBC - Existing buildings
             else:
                 # For buildings not built in HVHZ and built before 2007 corrections to FBC, SWR is based on homeowner
                 # compliance data from NC Coastal Homeowner Survey (2017) to capture potential
