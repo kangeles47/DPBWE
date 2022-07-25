@@ -75,6 +75,8 @@ def get_meta_var(BIM):
     # For purposes of case study, set default to light suburban (0.15).
     # In the future, robust rulests can be formalized by consulting LULC categories for FL
     # https://geodata.dep.state.fl.us/datasets/FDEP::statewide-land-use-land-cover/about
+    # Note that, for coastal cities, it may be more appropriate to designate open terrain conditions:
+    coastal_cities_fl = ['MEXICO BEACH', 'PANAMA CITY BEACH']
     if BIM['lulc'] == 1400:  # Commercial and services
         terrain = 35  # suburban
     elif BIM['lulc'] == 1330:  # High density, multiple dwelling units, low rise
@@ -82,7 +84,12 @@ def get_meta_var(BIM):
     elif BIM['lulc'] == 1210 or BIM['lulc'] == 1740:  # Medium density, fixed single family units or medical/health care
         terrain = 15  # light suburban
     else:
-        terrain = 15  # Default value
+        # Check for coastal cities:
+        if any(city == BIM['city'].upper() for city in coastal_cities_fl):
+            terrain = 3
+        else:
+            # Assume light, suburban terrain:
+            terrain = 15  # Default value
     BIM['terrain'] = terrain
 
     return BIM
