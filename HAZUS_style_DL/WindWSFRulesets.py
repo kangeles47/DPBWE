@@ -66,7 +66,39 @@ def wsf_config(BIM):
                 elif BIM['roof_slope'] < 0.33:
                     swr = (BIM['avg_jan_temp'] == 'below')
     else:
-        print('possible new use case for swr: ' + str(BIM['year_built']))
+        # Note: there is no information for buildings constructed before 1979, so the same rule will be used here:
+        # HVHZ (Broward and Dade County):
+        # 1979 SFBC Section 3402.3: 30 lb felt underlayment is required for asphalt shingle roof covers
+        # This must be fastened through tin-caps spaced 18 inches o.c. both ways.
+        if BIM['hvhz']:
+            if BIM['roof_shape'] == 'gab' or BIM['roof_shape'] == 'hip':
+                swr = False
+            else:
+                swr = True  # Assume SWR applies for flat roof as per 1988 SFBC: Section 1806.4
+        else:
+            # According to 903.2 in the 1995 CABO, for roofs with slopes between
+            # 2:12 and 4:12, an underlayment consisting of two layers of No. 15
+            # felt must be applied. In severe climates (less than or equal to 25
+            # degrees Fahrenheit average in January), these two layers must be
+            # cemented together.
+            # According to 903.3 in the 1995 CABO, roofs with slopes greater than
+            # or equal to 4:12 shall have an underlayment of not less than one ply
+            # of No. 15 felt.
+            #
+            # Similar rules are prescribed in CABO 1992, 1989, 1986, 1983
+            #
+            # Since low-slope roofs require two layers of felt, this is taken to
+            # be secondary water resistance. This ruleset is for asphalt shingles.
+            # Almost all other roof types require underlayment of some sort, but
+            # the ruleset is based on asphalt shingles because it is most
+            # conservative.
+            if BIM['roof_shape'] == 'flt':  # note there is actually no 'flat'
+                swr = True
+            elif BIM['roof_shape'] == 'gab' or BIM['roof_shape'] == 'hip':
+                if BIM['roof_slope'] <= 0.17:
+                    swr = True
+                elif BIM['roof_slope'] < 0.33:
+                    swr = (BIM['avg_jan_temp'] == 'below')
 
     # Roof Deck Attachment (RDA)
     # FBCR 2007-2017:
