@@ -208,7 +208,7 @@ def wsf_config(BIM):
     if BIM['garage_tag'] == -1:
         # no garage data, using the default "standard"
         garage = 'std'
-        # shutters = 0 # HAZUS ties standard garage to w/o shutters
+        shutters = 0  # HAZUS ties standard garage to w/o shutters
     else:
         if BIM['year_built'] > 2001:
             if shutters:
@@ -216,26 +216,26 @@ def wsf_config(BIM):
                     garage = 'no'
                 else:
                     garage = 'sup'  # SFBC 1994
-                    # shutters = 1  # HAZUS ties SFBC 1994 to with shutters
+                    shutters = 1  # HAZUS ties SFBC 1994 to with shutters
             else:
                 if BIM['garage_tag'] < 1:
                     garage = 'no' # None
                 else:
                     garage = 'std' # Standard
-                    # shutters = 0 # HAZUS ties standard garage to w/o shutters
+                    shutters = 0 # HAZUS ties standard garage to w/o shutters
         elif BIM['year_built'] > (datetime.datetime.now().year - 30):
             if BIM['garage_tag'] < 1:
                 garage = 'no'  # None
             else:
                 garage = 'std'  # Standard
-                # shutters = 0  # HAZUS ties standard garage to w/o shutters
+                shutters = 0  # HAZUS ties standard garage to w/o shutters
         else:
             # year <= current year - 30
             if BIM['garage_tag'] < 1:
                 garage = 'no'  # None
             else:
                 garage = 'wkd'  # Weak
-                # shutters = 0  # HAZUS ties weak garage to w/o shutters
+                shutters = 0  # HAZUS ties weak garage to w/o shutters
 
     # building configuration tag
     bldg_config = f"W.SF." \
