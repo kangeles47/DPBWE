@@ -183,6 +183,16 @@ loss_sample = PAL.bldg_repair.save_sample()
 print(loss_sample.describe())
 # Length of loss sample is = sample_size
 # Each index, e.g., loss_sample.iloc[0] summarizes D/L values for that realization
+# Aggregate losses per realization in sample_size:
+PAL.bldg_repair.aggregate_losses()
+# Summary of results:
+# Can access specific archetype by: loss_sample['COST'][archetype]
+# archetype grouped by location --> .groupby('loc', axis=1): locs per damage state, all realizations
+
+print(loss_sample.groupby(['loc'], axis=1).sum())  # loss ratio per realization per location (across ds)
+# Uncomment to see summary statistics per location, all realizations (segmented by damage state):
+df_mean_loc = loss_sample.groupby(['loc'], axis=1).sum().describe()
+# Can access location-specific mean: df_mean_los['0']
 
 # 4) Component fragilities:
 # Need to feed in HAZUS fragilities for roof cover into pelicun:
