@@ -26,21 +26,7 @@ PAL = Assessment({
     "Seed": 415,
     "NonDirectionalMultipliers": {'ALL': 1.0}})
 
-# Step 2: Define the demand:
-wind_speed = 150
-# Define the demand distribution:
-raw_demand = pd.DataFrame({'Units': ['mph'], 1: wind_speed}, index=['PWS-1-1']).T
-# Load the demand into the Assessment object:
-PAL.demand.load_sample(raw_demand)
-# Resample to get the desired amount of realizations:
-# Using empirical here to sample with replacement: (?)
-PAL.demand.calibrate_model({'ALL': {'DistributionFamily': 'empirical'}})
-# Generate the demand samples:
-PAL.demand.generate_sample({'SampleSize': sample_size})
-# Show the demand sample:
-PAL.demand.save_sample().describe()
-
-# Step 3: Asset Description
+# Step 2: Asset Description
 archetypes = ['W.MUH.1.gab.null.null.1.6d.tnail.0.35', 'W.MUH.1.gab.null.null.1.6d.tnail.0.35', 'W.MUH.2.gab.null.null.1.8d.tnail.0.35', 'W.MUH.2.gab.null.null.1.8d.tnail.0.35', 'W.MUH.2.gab.null.null.1.8d.tnail.0.35', 'W.MUH.1.gab.null.null.1.8d.tnail.0.35', 'W.SF.1.hip.0.8d.tnail.no.0.15']
 unique_archetypes = []
 for a in archetypes:
@@ -60,6 +46,20 @@ PAL.asset.load_cmp_model({'marginals': cmp_marginals})  # Note: make sure that y
 PAL.asset.generate_cmp_sample(sample_size)
 # Show to component quantity samples:
 PAL.asset.save_cmp_sample().describe()
+
+# Step 3: Define the demand:
+wind_speed = 150
+# Define the demand distribution:
+raw_demand = pd.DataFrame({'Units': ['mph'], 1: wind_speed}, index=['PWS-1-1']).T
+# Load the demand into the Assessment object:
+PAL.demand.load_sample(raw_demand)
+# Resample to get the desired amount of realizations:
+# Using empirical here to sample with replacement: (?)
+PAL.demand.calibrate_model({'ALL': {'DistributionFamily': 'empirical'}})
+# Generate the demand samples:
+PAL.demand.generate_sample({'SampleSize': sample_size})
+# Show the demand sample:
+PAL.demand.save_sample().describe()
 
 # Step 4: Damage Model and Assessment:
 PAL.damage.load_damage_model(['PelicunDefault/fragility_DB_SimCenter_HAZUS_HU.csv',])
