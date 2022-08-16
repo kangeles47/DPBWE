@@ -100,6 +100,28 @@ def get_wind_speed(bldg_lon, bldg_lat, wind_speed_file_path, exposure, unit):
 df_inventory = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/MB_shingle_samples.csv', keep_default_na=False)
 # Clean up data types if needed:
 df_inventory = inventory_data_clean(df_inventory)
+rpermit_flag = True
+count = 0
+if rpermit_flag:
+    for row in df_inventory.index.to_list():
+        try:
+            if len(df_inventory['permit_issue_date'][row]) > 0:
+                pdesc = df_inventory['permit_description'][row][2:-2].split("'")
+                pyear = df_inventory['permit_issue_date'][row][2:-2].split("'")
+                year = df_inventory['year_built'][row]
+                for p in range(0, len(pdesc)):
+                    if 'REROOF' in pdesc[p] or 'RERF' in pdesc[p] or 'ROOF' in pdesc[p]:
+                        new_year = int(pyear[p][:4])
+                        if year < new_year < 2018:
+                            year = new_year
+                    else:
+                        pass
+                df_inventory.at[row, 'year_built'] = year
+                count += 1
+        except TypeError:
+            pass
+else:
+    pass
 # 2) Asset Representation (HAZUS archetypes):
 hazus_archetypes = []
 for idx in df_inventory.index.to_list():
