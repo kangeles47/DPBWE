@@ -100,7 +100,7 @@ def get_wind_speed(bldg_lon, bldg_lat, wind_speed_file_path, exposure, unit):
 df_inventory = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/MB_shingle_samples.csv', keep_default_na=False)
 # Clean up data types if needed:
 df_inventory = inventory_data_clean(df_inventory)
-rpermit_flag = True
+rpermit_flag = False
 count = 0
 if rpermit_flag:
     for row in df_inventory.index.to_list():
@@ -211,10 +211,27 @@ PAL.bldg_repair.aggregate_losses()
 # Can access specific archetype by: loss_sample['COST'][archetype]
 # archetype grouped by location --> .groupby('loc', axis=1): locs per damage state, all realizations
 
-print(loss_sample.groupby(['loc'], axis=1).sum())  # loss ratio per realization per location (across ds)
+#print(loss_sample.groupby(['loc'], axis=1).sum())  # loss ratio per realization per location (across ds)
 # Uncomment to see summary statistics per location, all realizations (segmented by damage state):
 df_mean_loc = loss_sample.groupby(['loc'], axis=1).sum().describe()
 # Can access location-specific mean: df_mean_los['0']
+
+# Aggregate losses:
+agg_sample = loss_sample.groupby(level=[0], axis=1).sum()
+print(agg_sample.describe())  # Will see mean losses for entire building inventory
+
+# Mapping average losses to specific buildings:
+mean_bldg_loss = []
+
+for idx in df_inventory.index.to_list():
+    col_name = str(idx)
+    mean_bldg_loss.append(df_mean_loc[col_name]['mean'])
+# Save data:
+df_output = pd.DataFrame({'parcel_id': df_inventory['parcel_id'], 'michael_wind_speed': wind_speed_list, 'mean_bldg_loss': mean_bldg_loss})
+a=0
+# Export results:
+# Save outputs:
+#PAL.save_outputs('Rpermit_outputs')
 
 # 4) Component fragilities:
 # Need to feed in HAZUS fragilities for roof cover into pelicun:
