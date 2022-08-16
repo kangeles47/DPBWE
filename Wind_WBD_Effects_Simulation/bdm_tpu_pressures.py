@@ -69,7 +69,7 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
         wdir_tag = '90.mat'
     if len(wdir_tag) == 0:
         # Assign wind direction tag based on "closest" wind direction:
-        print('Exact TPU wind direction not available for ' + str(tpu_wdir) + ' degrees')
+        #print('Exact TPU wind direction not available for ' + str(tpu_wdir) + ' degrees')
         if tpu_wdir <= 7.5 or tpu_wdir > 352.5 or (172.5 < tpu_wdir <= 187.5):
             wdir_tag = '00.mat'
         elif (7.5 < tpu_wdir <= 22.5) or (157.5 < tpu_wdir <= 172.5) or (187.5 < tpu_wdir <= 202.5) or (337.5 < tpu_wdir <= 352.5):
@@ -84,7 +84,7 @@ def find_tpu_use_case(bldg, tpu_wdir, eave_length):
             wdir_tag = '75.mat'
         elif (82.5 < tpu_wdir <= 90) or (262.5 < tpu_wdir <= 277.5):
             wdir_tag = '90.mat'
-        print('Approximate TPU wind direction will be used: ' + wdir_tag[:-3])
+        #print('Approximate TPU wind direction will be used: ' + wdir_tag[:-3])
     else:
         pass
     # Step 2: Determine the building's aspect ratios:
@@ -323,8 +323,8 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
         else:
             pass
     # Set up plotting:
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
+    #fig = plt.figure()
+    #ax = plt.axes(projection='3d')
     if num_surf == 5 or num_surf == 8:  # Hip and gable roofs both have rectangular vertical planes
         for plane in range(0, len(new_zpts) - 1):
             for zpt in range(0, len(new_zpts[plane]) - 1):
@@ -340,7 +340,7 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
                     surf_ys.append(surf_points[1])
                     surf_zs.append(surf_points[2])
                 # Plot the surfaces for the entire building to verify:
-                ax.plot(np.array(surf_xs) / 3.281, np.array(surf_ys) / 3.281, np.array(surf_zs) / 3.281, linestyle='dashed', color='gray')
+                #ax.plot(np.array(surf_xs) / 3.281, np.array(surf_ys) / 3.281, np.array(surf_zs) / 3.281, linestyle='dashed', color='gray')
                 # Repeat this process for buildings with geometries that do not exactly match TPU:
                 if not match_flag:
                     bldg_surf = Polygon([bldg_zpts[plane][zpt], bldg_zpts[plane + 1][zpt], bldg_zpts[plane + 1][zpt + 1], bldg_zpts[plane][zpt + 1]])
@@ -353,7 +353,7 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
                         bsurf_ys.append(bsurf_points[1])
                         bsurf_zs.append(bsurf_points[2])
                     # Plot the surfaces for the entire building:
-                    ax.plot(np.array(bsurf_xs) / 3.281, np.array(bsurf_ys) / 3.281, np.array(bsurf_zs) / 3.281, linestyle='dashed', color='gray')
+                    #ax.plot(np.array(bsurf_xs) / 3.281, np.array(bsurf_ys) / 3.281, np.array(bsurf_zs) / 3.281, linestyle='dashed', color='gray')
         # Plot the building geometry:
         for poly in bldg.hasGeometry['3D Geometry']['local']:
             x_bpoly, y_bpoly, z_bpoly = [], [], []
@@ -363,23 +363,23 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
                 z_bpoly.append(bpt[2])
             #ax.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, color='k')
         # Make the panes transparent:
-        ax.set_zlim3d(bottom=0, top=16)
-        ax.set_zticks(np.arange(0, 20, 4))
-        ax.xaxis.set_tick_params(labelsize=16)
-        ax.yaxis.set_tick_params(labelsize=16)
-        ax.zaxis.set_tick_params(labelsize=16)
-        ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        # Make the grids transparent:
-        ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        # Plot labels
-        ax.set_xlabel('x [m]', fontsize=16, labelpad=10)
-        ax.set_ylabel('y [m]', fontsize=16, labelpad=10)
-        ax.set_zlabel('z [m]', fontsize=16, labelpad=10)
-        plt.show()
+        # ax.set_zlim3d(bottom=0, top=16)
+        # ax.set_zticks(np.arange(0, 20, 4))
+        # ax.xaxis.set_tick_params(labelsize=16)
+        # ax.yaxis.set_tick_params(labelsize=16)
+        # ax.zaxis.set_tick_params(labelsize=16)
+        # ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # # Make the grids transparent:
+        # ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # # Plot labels
+        # ax.set_xlabel('x [m]', fontsize=16, labelpad=10)
+        # ax.set_ylabel('y [m]', fontsize=16, labelpad=10)
+        # ax.set_zlabel('z [m]', fontsize=16, labelpad=10)
+        # plt.show()
         # Add roof surfaces to the end of the list:
         if num_surf == 5:
             roof_surf = Polygon(new_zpts[-1])
@@ -439,8 +439,8 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
     # Assign the surfaces to the correct key
     idx = surf_dict.keys()
     # Set up plotting:
-    fig2 = plt.figure()
-    ax2 = plt.axes(projection='3d')
+    #fig2 = plt.figure()
+    #ax2 = plt.axes(projection='3d')
     for i in idx:
         surf_dict[i] = tpu_polys[poly_order[i - 1]]
         if not match_flag:
@@ -459,9 +459,9 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
         # Define various line colors to keep track of surfaces:
         colors = ['b', 'g', 'r', 'y', 'm']
         # Plot the surface geometry:
-        ax2.plot(poly_xs, poly_ys, poly_zs, color=colors[i-1], label='Surface' + str(i))
-        #ax2.plot(poly_xs, poly_ys, poly_zs, color='0.50', linestyle=(0, (1, 1)), label='Surface' + str(i))
-    ax2.legend(loc='best')
+        #ax2.plot(poly_xs, poly_ys, poly_zs, color=colors[i-1], label='Surface' + str(i))
+        ##ax2.plot(poly_xs, poly_ys, poly_zs, color='0.50', linestyle=(0, (1, 1)), label='Surface' + str(i))
+    #ax2.legend(loc='best')
     # Plot the building 3D Geometry:
     for poly in bldg.hasGeometry['3D Geometry']['local']:
         x_bpoly, y_bpoly, z_bpoly = [], [], []
@@ -470,22 +470,22 @@ def get_TPU_surfaces(bldg, match_flag, num_surf, side_lines, hb_ratio, db_ratio,
             y_bpoly.append(bpt[1])
             z_bpoly.append(bpt[2])
         # Plot the building geometry:
-        ax2.plot(x_bpoly, y_bpoly, z_bpoly, 'k')
+        #ax2.plot(x_bpoly, y_bpoly, z_bpoly, 'k')
     # Make the panes transparent:
-    ax2.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax2.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax2.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    # Make the grids transparent:
-    ax2.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    ax2.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    ax2.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    # Plot labels
-    ax2.set_xlabel('x [m]')
-    ax2.set_ylabel('y [m]')
-    ax2.set_zlabel('z [m]')
-    ax2.set_title('Surfaces for TPU Wind Direction: ' + str(tpu_wdir))
-    # plt.axis('off')
-    plt.show()
+    # ax2.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # ax2.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # ax2.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # # Make the grids transparent:
+    # ax2.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # ax2.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # ax2.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # # Plot labels
+    # ax2.set_xlabel('x [m]')
+    # ax2.set_ylabel('y [m]')
+    # ax2.set_zlabel('z [m]')
+    # ax2.set_title('Surfaces for TPU Wind Direction: ' + str(tpu_wdir))
+    # # plt.axis('off')
+    # plt.show()
     # Step 5: Save the surfaces to the building description:
     bldg.hasGeometry['TPU_surfaces']['local'] = surf_dict
     return bfull, hfull, dfull, rect_surf_dict
@@ -570,21 +570,21 @@ def get_tpu_gable_rsurfaces(bldg, match_flag, side_lines, hb_ratio, db_ratio, re
                 surf_dict[5] = tpu_roof_polys[1]
                 surf_dict[6] = tpu_roof_polys[0]
     # Plot the result:
-    fig, ax = plt.subplots()
+    #fig, ax = plt.subplots()
     for key in surf_dict:
         xs, ys = surf_dict[key].exterior.xy
-        ax.plot(np.array(xs)/3.281, np.array(ys)/3.281, label='Surface ' + str(key))
+        #ax.plot(np.array(xs)/3.281, np.array(ys)/3.281, label='Surface ' + str(key))
         # Convert to 3D coordinates?
         if not high_value_flag:
             surf_dict[key] = Polygon(create_zcoords(surf_dict[key], hfull))
         else:
             pass
     xr, yr = rect.exterior.xy
-    ax.plot(np.array(xr)/3.281, np.array(yr)/3.281, label='Actual building rectangle')
-    ax.legend()
-    ax.set_xlabel('x [m]', fontsize=16)
-    ax.set_ylabel('y [m]', fontsize=16)
-    plt.show()
+    # ax.plot(np.array(xr)/3.281, np.array(yr)/3.281, label='Actual building rectangle')
+    # ax.legend()
+    # ax.set_xlabel('x [m]', fontsize=16)
+    # ax.set_ylabel('y [m]', fontsize=16)
+    # plt.show()
     # 5) : Save the surfaces to the building description:
     bldg.hasGeometry['TPU_surfaces']['local'] = surf_dict
     return bfull, hfull, dfull, surf_dict
@@ -913,8 +913,8 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
     # ax2.scatter(np.array([i.x])/3.281, np.array([i.y])/3.281, np.array([i.z])/3.281, 'o')
     # plt.show()
     # Plot the full-scale pressures:
-    fig3 = plt.figure()
-    ax3 = plt.axes(projection='3d')
+    #fig3 = plt.figure()
+    #ax3 = plt.axes(projection='3d')
     rl_xs = []
     rl_ys = []
     rl_zs = []
@@ -922,21 +922,21 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
         rl_xs.append(df_simple_map['Real Life Location'][k].x)
         rl_ys.append(df_simple_map['Real Life Location'][k].y)
         rl_zs.append(df_simple_map['Real Life Location'][k].z)
-    img = ax3.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281,
-                        c=df_simple_map['Mean Cp'], cmap=plt.get_cmap('copper', 5))
-    fig3.colorbar(img)
-    # Make the panes transparent:
-    ax3.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax3.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax3.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    # Make the grids transparent:
-    ax3.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    ax3.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    ax3.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-    # Plot labels
-    ax3.set_xlabel('x [m]')
-    ax3.set_ylabel('y [m]')
-    ax3.set_zlabel('z [m]')
+    # img = ax3.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281,
+    #                     c=df_simple_map['Mean Cp'], cmap=plt.get_cmap('copper', 5))
+    # fig3.colorbar(img)
+    # # Make the panes transparent:
+    # ax3.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # ax3.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # ax3.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    # # Make the grids transparent:
+    # ax3.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # ax3.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # ax3.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+    # # Plot labels
+    # ax3.set_xlabel('x [m]')
+    # ax3.set_ylabel('y [m]')
+    # ax3.set_zlabel('z [m]')
     # Plot all surface geometries for verification
     for key in surf_dict:
         xsurf, ysurf, zsurf = [], [], []
@@ -949,9 +949,9 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             xr.append(b[0])
             yr.append(b[1])
             zr.append(b[2])
-        ax3.plot(np.array(xsurf)/3.281, np.array(ysurf)/3.281, np.array(zsurf)/3.281, linestyle='dashed', color='gray')
-        ax3.plot(np.array(xr) / 3.281, np.array(yr) / 3.281, np.array(zr) / 3.281, linestyle='dashed', color='gray')
-    plt.show()
+    #     ax3.plot(np.array(xsurf)/3.281, np.array(ysurf)/3.281, np.array(zsurf)/3.281, linestyle='dashed', color='gray')
+    #     ax3.plot(np.array(xr) / 3.281, np.array(yr) / 3.281, np.array(zr) / 3.281, linestyle='dashed', color='gray')
+    # plt.show()
     # When geometries between actual building and model building are not fully compatible:
     # Wrap the pressures to the the parcel's full scale geometry:
     if match_flag:
@@ -1081,32 +1081,32 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                                         origin_pt.x + (new_space * multiplier * cos(theta)),
                                         origin_pt.y + (new_space * multiplier * sin(theta)), origin_pt.z)
         # Plot the new pressure tap locations and their Cps:
-        fig4 = plt.figure()
-        ax4 = plt.axes(projection='3d')
+        # fig4 = plt.figure()
+        # ax4 = plt.axes(projection='3d')
         rl_xs, rl_ys, rl_zs = [], [], []
         for k in df_simple_map.index.to_list():
             rl_xs.append(df_simple_map['Real Life Location'][k].x)
             rl_ys.append(df_simple_map['Real Life Location'][k].y)
             rl_zs.append(df_simple_map['Real Life Location'][k].z)
-        img = ax4.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281, c=df_simple_map['Mean Cp'], cmap=plt.get_cmap('copper', 5))
-        fig4.colorbar(img)
-        # Make the panes transparent:
-        ax4.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        ax4.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        ax4.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-        # Make the grids transparent:
-        ax4.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        ax4.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        ax4.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-        # Plot labels
-        ax4.set_xlabel('x [m]', fontsize=16, labelpad=10)
-        ax4.set_ylabel('y [m]', fontsize=16, labelpad=10)
-        ax4.set_zlabel('z [m]', fontsize=16, labelpad=10)
-        # Set label styles:
-        ax4.set_zticks(np.arange(0, 20, 4))
-        ax4.xaxis.set_tick_params(labelsize=16)
-        ax4.yaxis.set_tick_params(labelsize=16)
-        ax4.zaxis.set_tick_params(labelsize=16)
+        # img = ax4.scatter3D(np.array([rl_xs]) / 3.281, np.array([rl_ys]) / 3.281, np.array([rl_zs]) / 3.281, c=df_simple_map['Mean Cp'], cmap=plt.get_cmap('copper', 5))
+        # fig4.colorbar(img)
+        # # Make the panes transparent:
+        # ax4.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # ax4.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # ax4.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        # # Make the grids transparent:
+        # ax4.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # ax4.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # ax4.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+        # # Plot labels
+        # ax4.set_xlabel('x [m]', fontsize=16, labelpad=10)
+        # ax4.set_ylabel('y [m]', fontsize=16, labelpad=10)
+        # ax4.set_zlabel('z [m]', fontsize=16, labelpad=10)
+        # # Set label styles:
+        # ax4.set_zticks(np.arange(0, 20, 4))
+        # ax4.xaxis.set_tick_params(labelsize=16)
+        # ax4.yaxis.set_tick_params(labelsize=16)
+        # ax4.zaxis.set_tick_params(labelsize=16)
         # Plot the surface geometries for verification
         for key in rect_surf_dict:
             xsurf, ysurf, zsurf = [], [], []
@@ -1114,7 +1114,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                 xsurf.append(p[0])
                 ysurf.append(p[1])
                 zsurf.append(p[2])
-            ax4.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, linestyle='dashed', color='gray', linewidth=2)
+            #ax4.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, linestyle='dashed', color='gray', linewidth=2)
             # Plot the building 3D Geometry:
         for poly in bldg.hasGeometry['3D Geometry']['local']:
             x_bpoly, y_bpoly, z_bpoly = [], [], []
@@ -1123,8 +1123,8 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                 y_bpoly.append(bpt[1])
                 z_bpoly.append(bpt[2])
                 # Plot the building geometry:
-            ax4.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, 'k', linewidth=2)
-        plt.show()
+        #     ax4.plot(np.array(x_bpoly)/3.281, np.array(y_bpoly)/3.281, np.array(z_bpoly)/3.281, 'k', linewidth=2)
+        # plt.show()
         # Last part: Mapping pressures onto the true 3D geometry:
         if not high_value_flag:
             df_bldg_cps = df_simple_map
@@ -1133,8 +1133,8 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
             df_bldg_cps = pd.DataFrame(columns=df_simple_map.columns)  # Create master DataFrame for entire building
             df_roof_cps = pd.DataFrame(columns=df_simple_map.columns)
             # Set up plotting:
-            fig5 = plt.figure()
-            ax5 = plt.axes(projection='3d')
+            # fig5 = plt.figure()
+            # ax5 = plt.axes(projection='3d')
             # Use the actual constructed building's 3D geometry to define boundaries for the points:
             # First figure out what surface is directly in line with the 3D building geometry:
             for bsurf in bldg.hasGeometry['3D Geometry']['local'][1:]:
@@ -1155,7 +1155,7 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                     xsurf.append(surf_pt[0])
                     ysurf.append(surf_pt[1])
                     zsurf.append(surf_pt[2])
-                ax5.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, 'k', linewidth=2)
+                #ax5.plot(np.array(xsurf) / 3.281, np.array(ysurf) / 3.281, np.array(zsurf) / 3.281, 'k', linewidth=2)
                 rsurf_list = []
                 for key in rect_surf_dict:
                     xr, yr = rect_surf_dict[key].exterior.xy
@@ -1311,29 +1311,29 @@ def map_tap_data(tpu_wdir, model_file, num_surf, bfull, hfull, dfull, side_lines
                 xf.append(df_bldg_cps['Real Life Location'][k].x)
                 yf.append(df_bldg_cps['Real Life Location'][k].y)
                 zf.append(df_bldg_cps['Real Life Location'][k].z)
-            img = ax5.scatter3D(np.array([xf]) / 3.281, np.array([yf]) / 3.281, np.array([zf]) / 3.281,
-                                c=df_bldg_cps['Mean Cp'], cmap=plt.get_cmap('copper', 5))
-            fig5.colorbar(img)
-            ax5.set_xlim(left=-20, right=20)
-            ax5.set_ylim3d(bottom=-20, top=20)
-            # Make the panes transparent:
-            ax5.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-            ax5.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-            ax5.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-            # Make the grids transparent:
-            ax5.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-            ax5.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-            ax5.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-            # Plot labels
-            ax5.set_xlabel('x [m]', fontsize=14, labelpad=10)
-            ax5.set_ylabel('y [m]', fontsize=14, labelpad=10)
-            ax5.set_zlabel('z [m]', fontsize=14, labelpad=10)
-            # Set label styles:
-            ax5.set_zticks(np.arange(0, 20, 4))
-            ax5.xaxis.set_tick_params(labelsize=14)
-            ax5.yaxis.set_tick_params(labelsize=14)
-            ax5.zaxis.set_tick_params(labelsize=14)
-            plt.show()
+            # img = ax5.scatter3D(np.array([xf]) / 3.281, np.array([yf]) / 3.281, np.array([zf]) / 3.281,
+            #                     c=df_bldg_cps['Mean Cp'], cmap=plt.get_cmap('copper', 5))
+            # fig5.colorbar(img)
+            # ax5.set_xlim(left=-20, right=20)
+            # ax5.set_ylim3d(bottom=-20, top=20)
+            # # Make the panes transparent:
+            # ax5.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+            # ax5.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+            # ax5.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+            # # Make the grids transparent:
+            # ax5.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+            # ax5.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+            # ax5.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+            # # Plot labels
+            # ax5.set_xlabel('x [m]', fontsize=14, labelpad=10)
+            # ax5.set_ylabel('y [m]', fontsize=14, labelpad=10)
+            # ax5.set_zlabel('z [m]', fontsize=14, labelpad=10)
+            # # Set label styles:
+            # ax5.set_zticks(np.arange(0, 20, 4))
+            # ax5.xaxis.set_tick_params(labelsize=14)
+            # ax5.yaxis.set_tick_params(labelsize=14)
+            # ax5.zaxis.set_tick_params(labelsize=14)
+            # plt.show()
         # Final step: Get tap tributary areas:
         df_bldg_cps = get_tap_trib_areas(bldg, df_bldg_cps, high_value_flag, roof_flag=True, facade_flag=True)
     return df_bldg_cps
@@ -1975,19 +1975,19 @@ def get_facade_mesh(bldg, df_facade):
                 pass
     # Add the polygons to the input DataFrame:
     df_facade['Tap Polygon'] = tap_poly_list
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
+    # fig = plt.figure()
+    # ax = plt.axes(projection='3d')
     for idx in df_facade.index:
         ptap_loc = df_facade['Real Life Location'][idx]
-        ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z, color='c')
+        #ax.scatter(ptap_loc.x, ptap_loc.y, ptap_loc.z, color='c')
         coords_list = df_facade['Tap Polygon'][idx].exterior.coords
         xpoly, ypoly, zpoly = [], [], []
         for c in coords_list:
             xpoly.append(c[0])
             ypoly.append(c[1])
             zpoly.append(c[2])
-        ax.plot(xpoly, ypoly, zpoly, 'k')
-    plt.show()
+    #     ax.plot(xpoly, ypoly, zpoly, 'k')
+    # plt.show()
     return df_facade
 
 

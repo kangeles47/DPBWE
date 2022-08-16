@@ -487,7 +487,8 @@ class SurveyData:
             else:
                 pass
         else:
-            print('Non-engineered residential buildings not yet supported: using dummy data')
+            pass
+            #print('Non-engineered residential buildings not yet supported: using dummy data')
             # All reference buildings have the same floor-to-floor height:
             for i in range(0, len(parcel.hasStory)):
                 parcel.hasStory[i].hasGeometry['Height'] = 4.0 * 3.28084  # [ft]

@@ -32,6 +32,7 @@ from Wind_WBD_Effects_Simulation.get_debris import run_debris, get_site_debris, 
 from survey_data import SurveyData
 from Wind_WBD_Effects_Simulation.bdm_tpu_pressures import map_tpu_ptaps, convert_to_tpu_wdir, map_ptaps_to_components
 from Wind_WBD_Effects_Simulation.fault_tree import wind_pressure_ftree, wbd_ftree
+import time
 
 
 def assign_footprint(parcel, num_stories):
@@ -184,10 +185,12 @@ def augmented_elements_wall(bldg, num_wall_elems, story_wall_elev, plot_flag):
             idist = length*k
             new_pt = lines[j].interpolate(idist)
             new_pt_list.append(new_pt)
-            plt.scatter(new_pt.x/3.281, new_pt.y/3.281, color='b')
-    plt.xlabel('x [m]')
-    plt.ylabel('y [m]')
-    plt.show()
+            if plot_flag:
+                plt.scatter(new_pt.x/3.281, new_pt.y/3.281, color='b')
+    if plot_flag:
+        plt.xlabel('x [m]')
+        plt.ylabel('y [m]')
+        plt.show()
     bldg.hasGeometry['Footprint']['augmented local'] = Polygon(new_pt_list)
     # Create building elements:
     if plot_flag:
@@ -1080,142 +1083,142 @@ for n in range(0, num_realizations):
             pass
     else:
         pass
-# Set up summary figures:
-# Figure out what face the damage is on:
-xf, yf = target_bldg.hasGeometry['Footprint']['local'].exterior.xy
-box_list = []
-for p in range(0, len(xf)-1):
-    new_line = LineString([(xf[p], yf[p]), (xf[p+1], yf[p+1])])
-    xl, yl = new_line.xy
-    new_box = Polygon([(min(xl), max(yl)), (min(xl), min(yl)), (max(xl), min(yl)),(max(xl), max(yl))])
-    box_list.append(new_box)
-    plt.plot(xl, yl, label = 'Line' + str(p))
-plt.legend()
-plt.show()
-new_dict = {0: [], 1: [], 2: [], 3: [], 4:[], 5:[], 6:[], 7: []}
-# Target building:
-t_fig = plt.figure()
-t_ax = plt.axes(projection='3d')
-for story in target_bldg.hasStory:
-    for poly in story.hasGeometry['3D Geometry']['local']:
-        xpoly, ypoly, zpoly = [], [], []
-        for pt in list(poly.exterior.coords):
-            xpoly.append(pt[0])
-            ypoly.append(pt[1])
-            zpoly.append(pt[2])
-        t_ax.plot(np.array(xpoly) / 3.281, np.array(ypoly) / 3.281, np.array(zpoly) / 3.281, 'k')
-story_count = 0
-for j in target_pressure_list:
-    dfj = j.loc[j['roof element']==False]
-    for idx in dfj.index.to_list():
-        coords_list = list(dfj['fail regions'][idx].exterior.coords)
-        xf, yf, zf = [], [], []
-        for c in coords_list:
-            xf.append(c[0])
-            yf.append(c[1])
-            zf.append(c[2])
-        t_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281, np.array(zf)/3.281, 'r')
-        new_line = LineString([(xf[0], yf[0]), (xf[1], yf[1])])
-        for box in range(0, len(box_list)):
-            if new_line.within(box_list[box]) or new_line.intersects(box_list[box]):
-                new_dict[box].append(new_line)
-                if box == 0:
-                    if max(zf) <= 3*target_bldg.hasGeometry['Height']/4:
-                        story_count += 1
-            else:
-                pass
-for td_list in target_debris:
-    for m in td_list:
-        for elem_list in m['fail element']:
-            for elem in elem_list:
-                if isinstance(elem, Wall):
-                    ecoords = list(elem.hasGeometry['3D Geometry']['local'].exterior.coords)
-                    xe, ye, ze = [], [], []
-                    for e in ecoords:
-                        xe.append(e[0])
-                        ye.append(e[1])
-                        ze.append(e[2])
-                    t_ax.plot(np.array(xe) / 3.281, np.array(ye) / 3.281, np.array(ze) / 3.281, 'b')
-                    new_line = LineString([(xe[0], ye[0]), (xe[1], ye[1])])
-                    for box in range(0, len(box_list)):
-                        if new_line.within(box_list[box]) or new_line.intersects(box_list[box]):
-                            new_dict[box].append(new_line)
-                        else:
-                            pass
-                else:
-                    pass
-# Make the panes transparent:
-t_ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-t_ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-t_ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-# Make the grids transparent:
-t_ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-t_ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-t_ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
-# Plot labels
-t_ax.set_xlabel('x [m]', fontsize=16, labelpad=10)
-t_ax.set_ylabel('y [m]', fontsize=16, labelpad=10)
-t_ax.set_zlabel('z [m]', fontsize=16, labelpad=10)
-# Set label styles:
-t_ax.set_zticks(np.arange(0, 20, 4))
-t_ax.set_xticks(np.arange(-20, 30, 10))
-t_ax.set_yticks(np.arange(-20, 30, 10))
-t_ax.xaxis.set_tick_params(labelsize=16)
-t_ax.yaxis.set_tick_params(labelsize=16)
-t_ax.zaxis.set_tick_params(labelsize=16)
-plt.show()
-# Source Building 1:
-s1_fig, s1_ax = plt.subplots()
-s1_ax.set_xlabel('x [m]')
-s1_ax.set_ylabel('y [m]')
-xs1, ys1 = site_source.hasBuilding[1].hasGeometry['Footprint']['reference cartesian'].exterior.xy
-source_centroid = site_source.hasBuilding[1].hasGeometry['Footprint']['reference cartesian'].centroid
-s1_ax.plot(np.array(xs1)/3.281, np.array(ys1)/3.281, 'k')
-query_count = 0
-for i in source1_pressure_list:
-    for idx in i.index.to_list():
-        gcrs_fail_region = translate(i['fail regions'][idx], xoff=source_centroid.x, yoff=source_centroid.y)
-        xf, yf = gcrs_fail_region.exterior.xy
-        query_arr = np.where(np.array(yf) > 90 * 3.281)[0]
-        if len(query_arr) > 0:
-            query_count += 1
-        else:
-            pass
-        s1_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281,'b')
-# s1_ax.set_ylim(60, 110)
-# s1_ax.set_xlim(-80, -40)
-# Plot the gable roof line:
-cpt_list = []
-for m in range(0, len(xs1)-1):
-    cpt_list.append(LineString([(xs1[m], ys1[m]), (xs1[m+1], ys1[m+1])]).centroid)
-cline = LineString([cpt_list[0], cpt_list[2]])
-xl, yl = cline.xy
-s1_ax.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'k')
+# # Set up summary figures:
+# # Figure out what face the damage is on:
+# xf, yf = target_bldg.hasGeometry['Footprint']['local'].exterior.xy
+# box_list = []
+# for p in range(0, len(xf)-1):
+#     new_line = LineString([(xf[p], yf[p]), (xf[p+1], yf[p+1])])
+#     xl, yl = new_line.xy
+#     new_box = Polygon([(min(xl), max(yl)), (min(xl), min(yl)), (max(xl), min(yl)),(max(xl), max(yl))])
+#     box_list.append(new_box)
+#     plt.plot(xl, yl, label = 'Line' + str(p))
+# plt.legend()
 # plt.show()
-# Source Building 2:
-#s2_fig, s2_ax = plt.subplots()
-# s2_ax.set_xlabel('x [m]')
-# s2_ax.set_ylabel('y [m]')
-xs2, ys2 = site_source.hasBuilding[0].hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle.exterior.xy
-source_centroid = site_source.hasBuilding[0].hasGeometry['Footprint']['reference cartesian'].centroid
-s1_ax.plot(np.array(xs2)/3.281, np.array(ys2)/3.281, 'k')
-for i in source2_pressure_list:
-    for idx in i.index.to_list():
-        gcrs_fail_region = translate(i['fail regions'][idx], xoff=source_centroid.x, yoff=source_centroid.y)
-        xf, yf = gcrs_fail_region.exterior.xy
-        s1_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281,'b')
-# s2_ax.set_xlim(-60, 0)
-# Plot the gable roof ridgeline:
-cpt_list = []
-for m in range(0, len(xs2)-1):
-    cpt_list.append(LineString([(xs2[m], ys2[m]), (xs2[m+1], ys2[m+1])]).centroid)
-cline = LineString([cpt_list[1], cpt_list[3]])
-xl, yl = cline.xy
-s1_ax.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'k')
-plt.tight_layout()
-plt.show()
-# Aggregate damage:
-a=0
+# new_dict = {0: [], 1: [], 2: [], 3: [], 4:[], 5:[], 6:[], 7: []}
+# # Target building:
+# t_fig = plt.figure()
+# t_ax = plt.axes(projection='3d')
+# for story in target_bldg.hasStory:
+#     for poly in story.hasGeometry['3D Geometry']['local']:
+#         xpoly, ypoly, zpoly = [], [], []
+#         for pt in list(poly.exterior.coords):
+#             xpoly.append(pt[0])
+#             ypoly.append(pt[1])
+#             zpoly.append(pt[2])
+#         t_ax.plot(np.array(xpoly) / 3.281, np.array(ypoly) / 3.281, np.array(zpoly) / 3.281, 'k')
+# story_count = 0
+# for j in target_pressure_list:
+#     dfj = j.loc[j['roof element']==False]
+#     for idx in dfj.index.to_list():
+#         coords_list = list(dfj['fail regions'][idx].exterior.coords)
+#         xf, yf, zf = [], [], []
+#         for c in coords_list:
+#             xf.append(c[0])
+#             yf.append(c[1])
+#             zf.append(c[2])
+#         t_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281, np.array(zf)/3.281, 'r')
+#         new_line = LineString([(xf[0], yf[0]), (xf[1], yf[1])])
+#         for box in range(0, len(box_list)):
+#             if new_line.within(box_list[box]) or new_line.intersects(box_list[box]):
+#                 new_dict[box].append(new_line)
+#                 if box == 0:
+#                     if max(zf) <= 3*target_bldg.hasGeometry['Height']/4:
+#                         story_count += 1
+#             else:
+#                 pass
+# for td_list in target_debris:
+#     for m in td_list:
+#         for elem_list in m['fail element']:
+#             for elem in elem_list:
+#                 if isinstance(elem, Wall):
+#                     ecoords = list(elem.hasGeometry['3D Geometry']['local'].exterior.coords)
+#                     xe, ye, ze = [], [], []
+#                     for e in ecoords:
+#                         xe.append(e[0])
+#                         ye.append(e[1])
+#                         ze.append(e[2])
+#                     t_ax.plot(np.array(xe) / 3.281, np.array(ye) / 3.281, np.array(ze) / 3.281, 'b')
+#                     new_line = LineString([(xe[0], ye[0]), (xe[1], ye[1])])
+#                     for box in range(0, len(box_list)):
+#                         if new_line.within(box_list[box]) or new_line.intersects(box_list[box]):
+#                             new_dict[box].append(new_line)
+#                         else:
+#                             pass
+#                 else:
+#                     pass
+# # Make the panes transparent:
+# t_ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+# t_ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+# t_ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+# # Make the grids transparent:
+# t_ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+# t_ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+# t_ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+# # Plot labels
+# t_ax.set_xlabel('x [m]', fontsize=16, labelpad=10)
+# t_ax.set_ylabel('y [m]', fontsize=16, labelpad=10)
+# t_ax.set_zlabel('z [m]', fontsize=16, labelpad=10)
+# # Set label styles:
+# t_ax.set_zticks(np.arange(0, 20, 4))
+# t_ax.set_xticks(np.arange(-20, 30, 10))
+# t_ax.set_yticks(np.arange(-20, 30, 10))
+# t_ax.xaxis.set_tick_params(labelsize=16)
+# t_ax.yaxis.set_tick_params(labelsize=16)
+# t_ax.zaxis.set_tick_params(labelsize=16)
+# plt.show()
+# # Source Building 1:
+# s1_fig, s1_ax = plt.subplots()
+# s1_ax.set_xlabel('x [m]')
+# s1_ax.set_ylabel('y [m]')
+# xs1, ys1 = site_source.hasBuilding[1].hasGeometry['Footprint']['reference cartesian'].exterior.xy
+# source_centroid = site_source.hasBuilding[1].hasGeometry['Footprint']['reference cartesian'].centroid
+# s1_ax.plot(np.array(xs1)/3.281, np.array(ys1)/3.281, 'k')
+# query_count = 0
+# for i in source1_pressure_list:
+#     for idx in i.index.to_list():
+#         gcrs_fail_region = translate(i['fail regions'][idx], xoff=source_centroid.x, yoff=source_centroid.y)
+#         xf, yf = gcrs_fail_region.exterior.xy
+#         query_arr = np.where(np.array(yf) > 90 * 3.281)[0]
+#         if len(query_arr) > 0:
+#             query_count += 1
+#         else:
+#             pass
+#         s1_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281,'b')
+# # s1_ax.set_ylim(60, 110)
+# # s1_ax.set_xlim(-80, -40)
+# # Plot the gable roof line:
+# cpt_list = []
+# for m in range(0, len(xs1)-1):
+#     cpt_list.append(LineString([(xs1[m], ys1[m]), (xs1[m+1], ys1[m+1])]).centroid)
+# cline = LineString([cpt_list[0], cpt_list[2]])
+# xl, yl = cline.xy
+# s1_ax.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'k')
+# # plt.show()
+# # Source Building 2:
+# #s2_fig, s2_ax = plt.subplots()
+# # s2_ax.set_xlabel('x [m]')
+# # s2_ax.set_ylabel('y [m]')
+# xs2, ys2 = site_source.hasBuilding[0].hasGeometry['Footprint']['reference cartesian'].minimum_rotated_rectangle.exterior.xy
+# source_centroid = site_source.hasBuilding[0].hasGeometry['Footprint']['reference cartesian'].centroid
+# s1_ax.plot(np.array(xs2)/3.281, np.array(ys2)/3.281, 'k')
+# for i in source2_pressure_list:
+#     for idx in i.index.to_list():
+#         gcrs_fail_region = translate(i['fail regions'][idx], xoff=source_centroid.x, yoff=source_centroid.y)
+#         xf, yf = gcrs_fail_region.exterior.xy
+#         s1_ax.plot(np.array(xf)/3.281, np.array(yf)/3.281,'b')
+# # s2_ax.set_xlim(-60, 0)
+# # Plot the gable roof ridgeline:
+# cpt_list = []
+# for m in range(0, len(xs2)-1):
+#     cpt_list.append(LineString([(xs2[m], ys2[m]), (xs2[m+1], ys2[m+1])]).centroid)
+# cline = LineString([cpt_list[1], cpt_list[3]])
+# xl, yl = cline.xy
+# s1_ax.plot(np.array(xl) / 3.281, np.array(yl) / 3.281, 'k')
+# plt.tight_layout()
+# plt.show()
+# # Aggregate damage:
+# a=0
 # df_damage = pd.DataFrame(damage_dict)
 # df_damage.to_csv('CaseStudy_Summary_1000_12345_final_corrected.csv', index_label=False)
 # df_story_pressure = pd.DataFrame(pressure_dict)

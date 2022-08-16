@@ -898,13 +898,13 @@ class ASCE7(BldgCode):
             # Create Shapely Point Objects and store in DataFrame:
             zone_pts = zone_pts.append({'LinePoint1': Point(xc[j], yc[j]), 'NewZoneStart': point1, 'NewZoneEnd': point2,
                                         'LinePoint2': Point(xc[j + 1], yc[j + 1])}, ignore_index=True)
-            # Plot points:
-            plt.scatter(point1.x, point1.y)
-            plt.scatter(point2.x, point2.y)
-            # Plot line segment:
-            lx, ly = line1.xy
-            plt.plot(lx, ly)
-        plt.show()
+        #     # Plot points:
+        #     plt.scatter(point1.x, point1.y)
+        #     plt.scatter(point2.x, point2.y)
+        #     # Plot line segment:
+        #     lx, ly = line1.xy
+        #     plt.plot(lx, ly)
+        # plt.show()
         # Note: zone_pts returns planar coordinates of zone locations
         # Apply to walls with 'NewZoneStart/End' corresponding to Start/End of Zone 4 locations
         # Apply to roof with 'NewZoneStart/End' corresponding to Start/End of Zone 2 locations

@@ -153,7 +153,7 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
     if crs == 'reference cartesian':
         # Plot the target building's footprint:
         xt, yt = bldg.hasGeometry['Footprint']['local'].exterior.xy
-        ax.plot(np.array(xt)/div, np.array(yt)/div, 'r')
+        # ax.plot(np.array(xt)/div, np.array(yt)/div, 'r')
         # Use the reference building's footprint as origin:
         origin = bldg.hasGeometry['Footprint']['local'].centroid
         # Collect debris regions:
@@ -166,18 +166,18 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
             else:
                 debris_region.append(None)
             idx_ltype = df_linestyle.loc[df_linestyle['debris name']==debris_name[i], 'linestyle'].index[0]
-            ax.plot(np.array(xb)/div, np.array(yb)/div, df_linestyle['linestyle'][idx_ltype], label=debris_name[i], color=df_linestyle['color'][idx_ltype])
-        ax.set_xlabel('x [m]')
-        ax.set_ylabel('y [m]')
-        plt.legend(fontsize=14)
-        plt.show()
+        #     ax.plot(np.array(xb)/div, np.array(yb)/div, df_linestyle['linestyle'][idx_ltype], label=debris_name[i], color=df_linestyle['color'][idx_ltype])
+        # ax.set_xlabel('x [m]')
+        # ax.set_ylabel('y [m]')
+        # plt.legend(fontsize=14)
+        # plt.show()
     # Add debris data to site's data model:
     site.hasDebris['roof cover']['debris region'] = debris_region
     site.hasDebris['roof cover']['alongwind_dist'] = along_traj_list
     site.hasDebris['roof cover']['acrosswind_dist'] = across_traj_list
     df_region = site.hasDebris['roof cover']
     # Find source buildings:
-    fig2, ax2 = plt.subplots()
+    #fig2, ax2 = plt.subplots()
     bldg_list = []
     for b in site.hasBuilding:
         # Find the debris region based on the bldg's debris type:
@@ -194,35 +194,35 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
             if bldg_geometry.within(df_region['debris region'][idx_region]) or bldg_geometry.intersects(df_region['debris region'][idx_region]):
                 bldg_list.append(b)
                 xs, ys = bldg_geometry.exterior.xy
-                ax2.plot(np.array(xs)/div, np.array(ys)/div, 'k')
-                print(b.hasLocation['Address'] + '   ' + b.hasElement['Roof'][0].hasType)
+                #ax2.plot(np.array(xs)/div, np.array(ys)/div, 'k')
+                #print(b.hasLocation['Address'] + '   ' + b.hasElement['Roof'][0].hasType)
             else:
                 xs, ys = bldg_geometry.exterior.xy
-                ax2.plot(np.array(xs) / div, np.array(ys) / div, color='grey')
+                #ax2.plot(np.array(xs) / div, np.array(ys) / div, color='grey')
     # Plot debris regions and target building footprint:
-    ax2.plot(np.array(xt) / div, np.array(yt) / div, 'r')
+    #ax2.plot(np.array(xt) / div, np.array(yt) / div, 'r')
     for region in df_region['debris region'].index.to_list():
         if df_region['debris region'][region] is None:
             pass
         else:
             idx_ltype = df_linestyle.loc[df_linestyle['debris name'] == df_region['debris name'][region], 'linestyle'].index[0]
             xregion, yregion = df_region['debris region'][region].exterior.xy
-            ax2.plot(np.array(xregion)/div, np.array(yregion)/div, df_linestyle['linestyle'][idx_ltype], label=df_region['debris name'][region], color=df_linestyle['color'][idx_ltype], linewidth=1)
-    if div != 1:
-        ax2.set_xlabel('x [m]')
-        ax2.set_ylabel('y [m]')
-    else:
-        ax2.set_xlabel('x [ft]')
-        ax2.set_ylabel('y [ft]')
-    plt.legend(fontsize=14)
-    plt.show()
+            #ax2.plot(np.array(xregion)/div, np.array(yregion)/div, df_linestyle['linestyle'][idx_ltype], label=df_region['debris name'][region], color=df_linestyle['color'][idx_ltype], linewidth=1)
+    # if div != 1:
+    #     ax2.set_xlabel('x [m]')
+    #     ax2.set_ylabel('y [m]')
+    # else:
+    #     ax2.set_xlabel('x [ft]')
+    #     ax2.set_ylabel('y [ft]')
+    # plt.legend(fontsize=14)
+    # plt.show()
     # Create site object and add source buildings based on wind intensity (and wind direction)
     site_source = Site()
     if wind_direction is None:
         site_source.hasBuilding = bldg_list
     else:
         # Filter the identified buildings by wind direction:
-        fig3, ax3 = plt.subplots()
+        #fig3, ax3 = plt.subplots()
         # Step 1: Find the maximum probable alongwind distance in region (mean + std_dev):
         max_dist = max(along_traj_list) + 5
         # Step 2: Find the upwind debris region:
@@ -286,7 +286,7 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
                 if bldg_geometry.within(df_region['directional debris region'][idx_region]) or bldg_geometry.intersects(df_region['directional debris region'][idx_region]):
                     dir_bldg_list.append(k)
                     xk, yk = bldg_geometry.exterior.xy
-                    ax3.plot(np.array(xk)/div, np.array(yk)/div, 'k')
+                    #ax3.plot(np.array(xk)/div, np.array(yk)/div, 'k')
                 else:
                     pass
         # Add queried buildings to site_source:
@@ -298,19 +298,19 @@ def get_source_bldgs(bldg, site, wind_direction, wind_speed, crs, length_unit):
             else:
                 idx_ltype = df_linestyle.loc[df_linestyle['debris name'] == df_region['debris name'][r], 'linestyle'].index[0]
                 xrdir, yrdir = df_region['directional debris region'][r].exterior.xy
-                ax3.plot(np.array(xrdir)/div, np.array(yrdir)/div, df_linestyle['linestyle'][idx_ltype], label=df_region['debris name'][r], color=df_linestyle['color'][idx_ltype])
-        if div != 1:
-            ax3.set_xlabel('x [m]')
-            ax3.set_ylabel('y [m]')
-        else:
-            ax3.set_xlabel('x [ft]')
-            ax3.set_ylabel('y [ft]')
-        # Plot the target building's footprint:
-        ax3.plot(np.array(xt) / div, np.array(yt) / div, 'r')
-        ax3.set_xticks([-100, -50, 0, 50, 100])
-        ax3.set_yticks([-100, -50, 0, 50, 100, 150])
-        plt.legend(fontsize=14)
-        plt.show()
+                #ax3.plot(np.array(xrdir)/div, np.array(yrdir)/div, df_linestyle['linestyle'][idx_ltype], label=df_region['debris name'][r], color=df_linestyle['color'][idx_ltype])
+        # if div != 1:
+        #     ax3.set_xlabel('x [m]')
+        #     ax3.set_ylabel('y [m]')
+        # else:
+        #     ax3.set_xlabel('x [ft]')
+        #     ax3.set_ylabel('y [ft]')
+        # # Plot the target building's footprint:
+        # ax3.plot(np.array(xt) / div, np.array(yt) / div, 'r')
+        # ax3.set_xticks([-100, -50, 0, 50, 100])
+        # ax3.set_yticks([-100, -50, 0, 50, 100, 150])
+        # plt.legend(fontsize=14)
+        # plt.show()
     # Update site_source elements and zones:
     site_source.update_elements()
     site_source.update_zones()
