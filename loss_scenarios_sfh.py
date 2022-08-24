@@ -97,10 +97,27 @@ def get_wind_speed(bldg_lon, bldg_lat, wind_speed_file_path, exposure, unit):
                 # 'z0', 'structureType', 'replacementCost', 'Footprint',
                 # 'HazardProneRegion', 'WindBorneDebris', 'SecondaryWaterResistance',
                 # 'RoofQuality', 'RoofDeckAttachmentW', 'Shutters', 'TerrainRoughness']
+
+
+# Uncomment below to create hazard files:
+# df = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/WindFields/2018-Michael_windgrid_ver36.csv')
+# egrid_dict = {'GP_file': [], 'Longitude': [], 'Latitude': []}
+# for id in df.index.to_list():
+#     # Create .csv for this ID - Peak Wind Speed:
+#     df_id = pd.DataFrame({'PWS': df['Vg_mph'][id]}, index=[0])
+#     df_id.to_csv('D:/Users/Karen/Documents/GitHub/DPBWE/HAZUS_style_DL/IMs/' + str(df['ID'][id]) + '.csv', index=False)
+#     # Add data to egrid_dict:
+#     egrid_dict['GP_file'].append(str(df['ID'][id]) + '.csv')
+#     egrid_dict['Longitude'].append(df['Lon'][id])
+#     egrid_dict['Latitude'].append(df['Lat'][id])
+# # Create EventGrid .csv file:
+# df_egrid = pd.DataFrame(egrid_dict)
+# df_egrid.to_csv('D:/Users/Karen/Documents/GitHub/DPBWE/HAZUS_style_DL/IMs/EventGrid.csv', index=False)
+# Moving on
 df_inventory = pd.read_csv('D:/Users/Karen/Documents/Github/DPBWE/MB_shingle_samples.csv', keep_default_na=False)
 # Clean up data types if needed:
 df_inventory = inventory_data_clean(df_inventory)
-rpermit_flag = False
+rpermit_flag = True
 count = 0
 if rpermit_flag:
     for row in df_inventory.index.to_list():
@@ -177,6 +194,8 @@ PAL.demand.save_sample().describe()
 
 # Step 4: Damage Model and Assessment:
 PAL.damage.load_damage_model(['PelicunDefault/fragility_DB_SimCenter_HAZUS_HU.csv',])
+# Uncomment below for component-level hazus functions:
+#PAL.damage.load_damage_model(['PelicunDefault/fragility_DB_Component_HAZUS_HU.csv',])
 # Check the parameters assigned to the components (defaults):
 PAL.damage.damage_params.T.dropna()
 # Run the damage calculation:
