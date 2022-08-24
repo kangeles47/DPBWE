@@ -2,7 +2,7 @@ import random
 import datetime
 
 
-def wsf_config(BIM):
+def WSF_config(BIM):
     """
     Rules to identify a HAZUS WSF configuration based on building data
     Parameters
