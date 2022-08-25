@@ -1,12 +1,7 @@
-import pandas as pd
-from HAZUS_style_DL.WindMetaVarRulesets import get_meta_var
-from HAZUS_style_DL.WindClassRulesets import building_class
-from HAZUS_style_DL.WindWSFRulesets import wsf_config
-from HAZUS_style_DL.WindWMUHRulesets import wmuh_config
-from HAZUS_style_DL.WindMECBRulesets import mecb_config
-from HAZUS_style_DL.WindMERBRulesets import merb_config
-from HAZUS_style_DL.WindSECBRulesets import secb_config
-from HAZUS_style_DL.WindSPMBRulesets import spmb_config
+from WindClassRulesets import building_class
+from WindWMUHRulesets import wmuh_config
+from WindMECBRulesets import mecb_config
+from WindMERBRulesets import merb_config
 
 
 def inventory_data_clean(df_inventory):
