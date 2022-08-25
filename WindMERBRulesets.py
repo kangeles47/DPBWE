@@ -1,3 +1,6 @@
+import random
+
+
 def merb_config(BIM):
     """
     Rules to identify a HAZUS MERB configuration based on BIM data
@@ -72,7 +75,7 @@ def merb_config(BIM):
     else:
         bldg_tag = 'MERBH'
 
-    bldg_config = f"{bldg_tag}_" \
+    bldg_config = f"{bldg_tag}" \
                   f"{roof_cover}_" \
                   f"{WWR}_" \
                   f"{int(shutters)}_" \

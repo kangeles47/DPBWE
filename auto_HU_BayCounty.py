@@ -1,11 +1,6 @@
-import random
-import numpy as np
-import datetime
-import math
-
-from HAZUS_style_DL.WindMetaVarRulesets import parse_BIM
-from HAZUS_style_DL.WindClassRulesets import building_class
-from HAZUS_style_DL.WindWSFRulesets import WSF_config
+from WindMetaVarRulesets import parse_BIM
+from WindClassRulesets import building_class
+from WindWSFRulesets import WSF_config
 
 
 def auto_populate(BIM):
@@ -49,7 +44,7 @@ def auto_populate(BIM):
             f"Building class {bldg_class} not recognized by the "
             f"auto-population routine."
         )
-
+    print(bldg_config)
     DL_ap = {
         '_method'      : 'HAZUS MH HU',
         'LossModel'    : {
