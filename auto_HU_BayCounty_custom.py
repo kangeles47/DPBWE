@@ -73,6 +73,12 @@ def auto_populate(BIM):
         print('Custom fragilities are for single family homes between 3.35-10 m tall stories.')
 
     # Load path -related queries (based on Wind loading provisions in ASCE 7):
+    # Check that roof was constructed before ASCE 7 2016:
+    if BIM_ap['roof_year_built'] < 2016:
+        year_flag = True
+    else:
+        print('Roof constructed using ASCE 7-16 provisions. Does not fit roof pressure zone use case used to develop '
+              'these custom fragilities.')
     # Roof shape:
     if 'gab' in BIM_ap['roof_shape'].lower() or 'hip' in BIM_ap['roof_shape'].lower():
         rshape_flag = True
@@ -84,7 +90,7 @@ def auto_populate(BIM):
     else:
         print('Custom fragilities are for roof pitches between 7-27.')
     # Pressure zone:
-    if rshape_flag and rpitch_flag:
+    if rshape_flag and rpitch_flag and year_flag:
         zone_tag = '2'
     else:
         print('Building roof pressure zone use case is incompatible.')
