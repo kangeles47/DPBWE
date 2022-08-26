@@ -64,9 +64,9 @@ def auto_populate(BIM):
     # Building height: Note we used actual heights estimated using DOE's residential reference buildings. Stories
     # estimate useful when no building height data is available.
     if BIM_ap['height_unit'] == 'ft':
-        height_m = BIM_ap['height_unit'] * 3.281
+        height_m = BIM_ap['bldg_height'] * 3.281
     elif BIM_ap['height_unit'] == 'm':
-        height_m = BIM_ap['height_unit']
+        height_m = BIM_ap['bldg_height']
     if 3.35 <= height_m <= 10:
         height_tag = '1'
     else:
