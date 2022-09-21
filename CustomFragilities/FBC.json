@@ -1,0 +1,72 @@
+{
+  "Name": "FBC",
+  "GeneralInformation": {
+    "ID": "NONE",
+    "Description": "Fragilities for asphalt shingle roof covers installed according to Florida Building Code (FBC). Model parameters are derived using sample buildings in Mexico Beach, FL and Panama City Beach, FL and post-disaster datasets produced after Hurricane Michael (2018). Roof permit data from Florida's Bay County was used to designate roof year of construction. Methodology supporting development of fragility models is described in Angeles and Kijewski-Correa (2022). 'Bayesian Data Integration Framework for the Development of Component-Level Fragilities Derived from Multiple Post-Disaster Datasets'. Structural Safety, 99(102260), 1-16. https://doi.org/10.1016/j.strusafe.2022.102260.",
+    "Building type": "Single family homes",
+    "Roof Shape": "hip or gable",
+    "ASCE 7 Roof Pressure Zone Case": "2",
+    "Number of Stories": "1-1.5",
+    "Terrain": "Open"
+  },
+  "EDP": {
+    "Type": "Peak Gust Wind Speed",
+    "Unit": [
+      1.0,
+      "mph"
+    ]
+  },
+  "DSGroups": [
+    {
+      "MedianEDP": 127.254,
+      "Beta": 0.111,
+      "CurveType": "LogNormal",
+      "DSGroupType": "Single",
+      "DamageStates": [
+        {
+          "Weight": 1.0,
+          "Consequences": {
+            "ReconstructionCost": {
+              "Amount": 1e-10
+            }
+          },
+          "Description": "Minor Damage: >2 to <= 15% roof cover loss"
+        }
+      ]
+    },
+    {
+      "MedianEDP": 157.648,
+      "Beta": 0.227,
+      "CurveType": "LogNormal",
+      "DSGroupType": "Single",
+      "DamageStates": [
+        {
+          "Weight": 1.0,
+          "Consequences": {
+            "ReconstructionCost": {
+              "Amount": 1e-10
+            }
+          },
+          "Description": "Moderate Damage: >15 to <= 50% roof cover loss"
+        }
+      ]
+    },
+    {
+      "MedianEDP": 167.501,
+      "Beta": 0.235,
+      "CurveType": "LogNormal",
+      "DSGroupType": "Single",
+      "DamageStates": [
+        {
+          "Weight": 1.0,
+          "Consequences": {
+            "ReconstructionCost": {
+              "Amount": 1e-10
+            }
+          },
+          "Description": "Severe Damage: > 50% roof cover loss"
+        }
+      ]
+    }
+  ]
+}
