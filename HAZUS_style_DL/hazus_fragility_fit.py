@@ -26,4 +26,4 @@ for file in file_list:
         param_dict[beta_dict].append(popt[0][1])
 df_param = pd.DataFrame(param_dict)
 # Save parameter estimates:
-df_param.to_csv('SFH_fragility_params.csv', index=False)
+df_param.to_csv('HAZUS_fitted_SFH_fragility_params.csv', index=False)
