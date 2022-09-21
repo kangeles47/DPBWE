@@ -1220,7 +1220,7 @@ for n in range(0, num_realizations):
 # # Aggregate damage:
 # a=0
 # df_damage = pd.DataFrame(damage_dict)
-# df_damage.to_csv('CaseStudy_Summary_1000_12345_final_corrected.csv', index_label=False)
+# df_damage.to_csv('JWEIA_CS_summary.csv', index_label=False)
 # df_story_pressure = pd.DataFrame(pressure_dict)
 # df_story_pressure.to_csv('Story_Glazing_Area_Pressure_corrected.csv', index_label=False)
 # df_story_wbd = pd.DataFrame(wbd_dict)
