@@ -21,23 +21,23 @@ def WSF_config(BIM):
     # Minimum drainage recommendations are in place in FL (See below) except in HVHZ regions.
     # However, SWR indicates a code-plus practice.
     swr = False
-    if BIM['year_built'] > 2001:
+    if BIM['YearBuilt'] > 2001:
         if BIM['hvhz']:
             swr = True
         else:
-            if BIM['year_built'] > 2007:
+            if BIM['YearBuilt'] > 2007:
                 swr = True  # Based off of roof retrofit provisions in 2007 FBC - Existing buildings
             else:
                 # For buildings not built in HVHZ and built before 2007 corrections to FBC, SWR is based on homeowner
                 # compliance data from NC Coastal Homeowner Survey (2017) to capture potential
                 # human behavior (% of sealed roofs in NC dataset).
                 swr = random.random() < 0.6
-    elif 1979 < BIM['year_built'] <= 2001:
+    elif 1979 < BIM['YearBuilt'] <= 2001:
         # HVHZ (Broward and Dade County):
         # 1979 SFBC Section 3402.3: 30 lb felt underlayment is required for asphalt shingle roof covers
         # This must be fastened through tin-caps spaced 18 inches o.c. both ways.
         if BIM['hvhz']:
-            if BIM['roof_shape'] == 'gab' or BIM['roof_shape'] == 'hip':
+            if BIM['RoofShape'] == 'gab' or BIM['RoofShape'] == 'hip':
                 swr = False
             else:
                 swr = True  # Assume SWR applies for flat roof as per 1988 SFBC: Section 1806.4
@@ -58,12 +58,12 @@ def WSF_config(BIM):
             # Almost all other roof types require underlayment of some sort, but
             # the ruleset is based on asphalt shingles because it is most
             # conservative.
-            if BIM['roof_shape'] == 'flt':  # note there is actually no 'flat'
+            if BIM['RoofShape'] == 'flt':  # note there is actually no 'flat'
                 swr = True
-            elif BIM['roof_shape'] == 'gab' or BIM['roof_shape'] == 'hip':
-                if BIM['roof_slope'] <= 0.17:
+            elif BIM['RoofShape'] == 'gab' or BIM['RoofShape'] == 'hip':
+                if BIM['RoofSlope'] <= 0.17:
                     swr = True
-                elif BIM['roof_slope'] < 0.33:
+                elif BIM['RoofSlope'] < 0.33:
                     swr = (BIM['avg_jan_temp'] == 'below')
     else:
         # Note: there is no information for buildings constructed before 1979, so the same rule will be used here:
@@ -71,7 +71,7 @@ def WSF_config(BIM):
         # 1979 SFBC Section 3402.3: 30 lb felt underlayment is required for asphalt shingle roof covers
         # This must be fastened through tin-caps spaced 18 inches o.c. both ways.
         if BIM['hvhz']:
-            if BIM['roof_shape'] == 'gab' or BIM['roof_shape'] == 'hip':
+            if BIM['RoofShape'] == 'gab' or BIM['RoofShape'] == 'hip':
                 swr = False
             else:
                 swr = True  # Assume SWR applies for flat roof as per 1988 SFBC: Section 1806.4
@@ -92,12 +92,12 @@ def WSF_config(BIM):
             # Almost all other roof types require underlayment of some sort, but
             # the ruleset is based on asphalt shingles because it is most
             # conservative.
-            if BIM['roof_shape'] == 'flt':  # note there is actually no 'flat'
+            if BIM['RoofShape'] == 'flt':  # note there is actually no 'flat'
                 swr = True
-            elif BIM['roof_shape'] == 'gab' or BIM['roof_shape'] == 'hip':
-                if BIM['roof_slope'] <= 0.17:
+            elif BIM['RoofShape'] == 'gab' or BIM['RoofShape'] == 'hip':
+                if BIM['RoofSlope'] <= 0.17:
                     swr = True
-                elif BIM['roof_slope'] < 0.33:
+                elif BIM['RoofSlope'] < 0.33:
                     swr = (BIM['avg_jan_temp'] == 'below')
 
     # Roof Deck Attachment (RDA)
@@ -106,9 +106,9 @@ def WSF_config(BIM):
     # at 6 in. o.c. at edges and 6 in. o.c. at intermediate framing.
     # Note: stricter requirements for 2017 FBCR - 6"/6" spacing
     rda = '6d' # Default (aka A) in Reorganized Rulesets - WIND
-    if BIM['year_built'] > 2007:
+    if BIM['YearBuilt'] > 2007:
         rda = '8s'  # 8d @ 6"/6" ('D' in Reorganized Rulesets - WIND)
-    elif 2001 < BIM['year_built'] <= 2007:
+    elif 2001 < BIM['YearBuilt'] <= 2007:
         # 2001 FBC: Table 2306.1 Fastening schedule - 8d nails 6"/12" spacing, req'd for sheathing < 1/2" or > 19/32"
         # thick.
         # 2001 FBC: Section 2322.2.5 - Requires 8d nails with 6"/6" spacing for roof sheathing in HVHZ.
@@ -116,7 +116,7 @@ def WSF_config(BIM):
             rda = '8s'
         else:
             rda = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
-    elif 1994 < BIM['year_built'] <= 2001:
+    elif 1994 < BIM['YearBuilt'] <= 2001:
         # 1994 SFBC: Section 2909.2 - Requires 8d nails with 6"/6" for roof sheathing (HVHZ)
         # 1995 CABO: Table 602.3a - 8d or 6d nails at 6"/12" depending on sheathing thickness.
         # Assign as RV for buildings outside of HVHZ.
@@ -144,18 +144,18 @@ def WSF_config(BIM):
     # Documentation from FL's State Board of Administration indicate that straps became the standard for Floridian
     # construction after Hurricane Andrew in 1992.
     # Assume that if classified as HPR, then enhanced connection would be used.
-    if BIM['year_built'] > 1992:
+    if BIM['YearBuilt'] > 1992:
         if BIM['hpr']:
             rwc = 'strap'  # Strap
         else:
             rwc = 'tnail'  # Toe-nail
     # HAZUS-HM documentation states that tie down straps have been required for rwc in Dade and Broward counties since
     # the inception of the SFBC in the late 1950's. In Palm Beach County, rwc have been straps since late 1970's.
-    elif 1957 < BIM['year_built'] <= 1992:
+    elif 1957 < BIM['YearBuilt'] <= 1992:
         if BIM['hvhz']:
             rwc = 'strap'  # Strap
         else:
-            if BIM['year_built'] > 1976 and BIM['county'] == 'Palm Beach':
+            if BIM['YearBuilt'] > 1976 and BIM['county'] == 'Palm Beach':
                 rwc = 'strap'
             else:
                 rwc = 'tnail'
@@ -172,9 +172,9 @@ def WSF_config(BIM):
     # Earlier FBC editions provide similar rules.
     # Note that previous logic to designate meta-variable WBD will ensure Panhandle exemption for construction built
     # between 2001 and 2007 FBC.
-    if BIM['year_built'] > 2001:
+    if BIM['YearBuilt'] > 2001:
         shutters = BIM['WBD']
-    elif 1994 < BIM['year_built'] <= 2001:
+    elif 1994 < BIM['YearBuilt'] <= 2001:
         # 1994 SFBC: Section 3501.1 - Specifies that exterior wall cladding, surfacing and glazing within
         # lowest 30 ft of structure must be sufficiently strong to resist large missile impact test; > 30 ft
         # must be able to resist small missile impact test
@@ -205,33 +205,33 @@ def WSF_config(BIM):
     # (and therefore do not have any strength requirements) that are older than
     # 30 years are considered to be weak, whereas those from the last 30 years
     # are considered to be standard.
-    if BIM['garage_tag'] == -1:
+    if BIM['Garage'] == -1:
         # no garage data, using the default "standard"
         garage = 'std'
         shutters = 0  # HAZUS ties standard garage to w/o shutters
     else:
-        if BIM['year_built'] > 2001:
+        if BIM['YearBuilt'] > 2001:
             if shutters:
-                if BIM['garage_tag'] < 1:
+                if BIM['Garage'] < 1:
                     garage = 'no'
                 else:
                     garage = 'sup'  # SFBC 1994
                     shutters = 1  # HAZUS ties SFBC 1994 to with shutters
             else:
-                if BIM['garage_tag'] < 1:
+                if BIM['Garage'] < 1:
                     garage = 'no' # None
                 else:
                     garage = 'std' # Standard
                     shutters = 0 # HAZUS ties standard garage to w/o shutters
-        elif BIM['year_built'] > (datetime.datetime.now().year - 30):
-            if BIM['garage_tag'] < 1:
+        elif BIM['YearBuilt'] > (datetime.datetime.now().year - 30):
+            if BIM['Garage'] < 1:
                 garage = 'no'  # None
             else:
                 garage = 'std'  # Standard
                 shutters = 0  # HAZUS ties standard garage to w/o shutters
         else:
             # year <= current year - 30
-            if BIM['garage_tag'] < 1:
+            if BIM['Garage'] < 1:
                 garage = 'no'  # None
             else:
                 garage = 'wkd'  # Weak
@@ -240,7 +240,7 @@ def WSF_config(BIM):
     # building configuration tag
     bldg_config = f"WSF" \
                   f"{int(min(BIM['NumberOfStories'],2))}_" \
-                  f"{BIM['roof_shape']}_" \
+                  f"{BIM['RoofShape']}_" \
                   f"{int(swr)}_" \
                   f"{rda}_" \
                   f"{rwc}_" \

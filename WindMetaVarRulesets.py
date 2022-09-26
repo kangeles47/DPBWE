@@ -39,7 +39,7 @@ def parse_BIM(BIM):
     # Areas vulnerable to hurricane, defined as the U.S. Atlantic Ocean and
     # Gulf of Mexico coasts where the ultimate design wind speed, V_ult is
     # greater than a pre-defined limit.
-    if BIM['year_built'] > 2010:
+    if BIM['YearBuilt'] > 2010:
         # The limit is 115 mph (ultimate wind speed, V_ult) in 2010-2017 FBC (see Section 1609.2)
         HPR = BIM['V_ult'] > 115.0
     else:
@@ -65,11 +65,11 @@ def parse_BIM(BIM):
     # The flood_lim and general_lim limits depend on the year of construction
     panhandle_flag = False  # variable to enact Panhandle WBD exemption
     panhandle_counties = ['GULF', 'BAY', 'WALTON', 'OKALOOSA', 'SANTA ROSA', 'ESCAMBIA']
-    if BIM['year_built'] > 2010:
+    if BIM['YearBuilt'] > 2010:
         # In 2010 FBC - present:
         flood_lim = 130.0 # mph
         general_lim = 140.0 # mph
-    elif BIM['year_built'] <= 2010:
+    elif BIM['YearBuilt'] <= 2010:
         # Section 1609.2 - FBC 2007
         # Areas within hurricane-prone regions located in accordance with one of the following:
         # (1) Within 1 mile (1.61 km) of the coastal mean high water line where the basic wind speed, Vasd, is 110 mph (48m/s) or greater.
@@ -77,7 +77,7 @@ def parse_BIM(BIM):
         # Conversion: V_asd = V_ult*sqrt(0.6)
         flood_lim = 110/sqrt(0.6) # mph
         general_lim = 120.0/sqrt(0.6) # mph
-        if BIM['year_built'] <= 2007:
+        if BIM['YearBuilt'] <= 2007:
             # Check for Panhandle exemption: Section 1609.2 - FBC 2004, Section 1606.1.5 - FBC 2001
             # Areas within hurricane-prone regions located in accordance with one of the following:
             # (1) Within 1 mile (1.61 km) of the coastal mean high water line where the basic wind speed, Vasd, is 110 mph (48m/s) or greater.
@@ -95,7 +95,7 @@ def parse_BIM(BIM):
         # Applicable flood zones for the Bay County include the following: A, AE, AH, AO, VE
         # Bay County, FL FEMA Flood Zones can easily be viewed at:
         # https://www.baycountyfl.gov/508/FEMA-Flood-Zones
-        WBD = (((BIM['flood_zone'].startswith('A') or BIM['flood_zone'].startswith('V')) and
+        WBD = (((BIM['FloodZone'].startswith('A') or BIM['FloodZone'].startswith('V')) and
                 BIM['V_ult'] >= flood_lim) or (BIM['V_ult'] >= general_lim and not panhandle_flag))
         # Note: here if first criteria is met, this enforces 1-mi boundary for panhandle exemption.
         # In the future, it would be better to have an actually polygon or line that creates a boundary to easily query
@@ -111,11 +111,11 @@ def parse_BIM(BIM):
     # https://geodata.dep.state.fl.us/datasets/FDEP::statewide-land-use-land-cover/about
     # Note that, for coastal cities, it may be more appropriate to designate open terrain conditions:
     coastal_cities_fl = ['MEXICO BEACH', 'PANAMA CITY BEACH']
-    if BIM['lulc'] == 1400:  # Commercial and services
+    if BIM['LULC'] == 1400:  # Commercial and services
         terrain = 35  # suburban
-    elif BIM['lulc'] == 1330:  # High density, multiple dwelling units, low rise
+    elif BIM['LULC'] == 1330:  # High density, multiple dwelling units, low rise
         terrain = 35
-    elif BIM['lulc'] == 1210 or BIM['lulc'] == 1740:  # Medium density, fixed single family units or medical/health care
+    elif BIM['LULC'] == 1210 or BIM['LULC'] == 1740:  # Medium density, fixed single family units or medical/health care
         terrain = 15  # light suburban
     else:
         # Check for coastal cities:
