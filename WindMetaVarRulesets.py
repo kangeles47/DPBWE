@@ -41,11 +41,11 @@ def parse_BIM(BIM):
     # greater than a pre-defined limit.
     if BIM['YearBuilt'] > 2010:
         # The limit is 115 mph (ultimate wind speed, V_ult) in 2010-2017 FBC (see Section 1609.2)
-        HPR = BIM['V_ult'] > 115.0
+        HPR = BIM['DWSII'] > 115.0
     else:
         # The limit is 90 mph (basic wind speed, V_asd) in 2001-2009 FBC
         # Conversion: V_asd = V_ult*sqrt(0.6)
-        HPR = BIM['V_ult'] > 90.0/sqrt(0.6)
+        HPR = BIM['DWSII'] > 90.0/sqrt(0.6)
     BIM['hpr'] = HPR
 
     # High-velocity hurricane zone (HVHZ):
@@ -96,7 +96,7 @@ def parse_BIM(BIM):
         # Bay County, FL FEMA Flood Zones can easily be viewed at:
         # https://www.baycountyfl.gov/508/FEMA-Flood-Zones
         WBD = (((BIM['FloodZone'].startswith('A') or BIM['FloodZone'].startswith('V')) and
-                BIM['V_ult'] >= flood_lim) or (BIM['V_ult'] >= general_lim and not panhandle_flag))
+                BIM['DWSII'] >= flood_lim) or (BIM['DWSII'] >= general_lim and not panhandle_flag))
         # Note: here if first criteria is met, this enforces 1-mi boundary for panhandle exemption.
         # In the future, it would be better to have an actually polygon or line that creates a boundary to easily query
     BIM['WBD'] = WBD
