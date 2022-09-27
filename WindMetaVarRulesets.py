@@ -65,18 +65,18 @@ def parse_BIM(BIM):
     # The flood_lim and general_lim limits depend on the year of construction
     panhandle_flag = False  # variable to enact Panhandle WBD exemption
     panhandle_counties = ['GULF', 'BAY', 'WALTON', 'OKALOOSA', 'SANTA ROSA', 'ESCAMBIA']
-    if BIM['YearBuilt'] > 2012:
+    if BIM['YearBuilt'] > 2011:
         # In 2010 FBC - present:
-        flood_lim = 130.0 # mph
-        general_lim = 140.0 # mph
-    elif BIM['YearBuilt'] <= 2012:
+        flood_lim = 130.0  # mph
+        general_lim = 140.0  # mph
+    elif BIM['YearBuilt'] <= 2011:
         # Section 1609.2 - FBC 2007
         # Areas within hurricane-prone regions located in accordance with one of the following:
         # (1) Within 1 mile (1.61 km) of the coastal mean high water line where the basic wind speed, Vasd, is 110 mph (48m/s) or greater.
         # (2) In areas where the basic wind speed is 120 mph (53 m/s) or greater.
         # Conversion: V_asd = V_ult*sqrt(0.6)
-        flood_lim = 110/sqrt(0.6) # mph
-        general_lim = 120.0/sqrt(0.6) # mph
+        flood_lim = 110/sqrt(0.6)  # mph
+        general_lim = 120.0/sqrt(0.6)  # mph
         if BIM['YearBuilt'] <= 2007:
             # Check for Panhandle exemption: Section 1609.2 - FBC 2004, Section 1606.1.5 - FBC 2001
             # Areas within hurricane-prone regions located in accordance with one of the following:
