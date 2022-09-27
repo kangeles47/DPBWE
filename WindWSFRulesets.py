@@ -18,87 +18,51 @@ def WSF_config(BIM):
     """
 
     # Secondary Water Resistance (SWR)
-    # Minimum drainage recommendations are in place in FL (See below) except in HVHZ regions.
-    # However, SWR indicates a code-plus practice.
     swr = False
-    if BIM['YearBuilt'] > 2001:
-        if BIM['hvhz']:
+    if BIM['YearBuilt'] > 2009:  # swr required in single family homes upon 2009 supplement to 2007 FBC
+        swr = True
+    elif 2007 < BIM['YearBuilt'] <= 2009:
+        if BIM['hvhz']:  # between 2007-2009, swr required in HVHZ and outside HVHZ
             swr = True
         else:
-            if BIM['YearBuilt'] > 2007:
+            if (2/12) <= BIM['RoofSlope'] < (4/12):  # swr required for some sloped roofs
                 swr = True  # Based off of roof retrofit provisions in 2007 FBC - Existing buildings
             else:
-                # For buildings not built in HVHZ and built before 2007 corrections to FBC, SWR is based on homeowner
+                # For roof slopes >= 4/12 and not in HVHZ, use homeowner
                 # compliance data from NC Coastal Homeowner Survey (2017) to capture potential
                 # human behavior (% of sealed roofs in NC dataset).
                 swr = random.random() < 0.6
-    elif 1979 < BIM['YearBuilt'] <= 2001:
-        # HVHZ (Broward and Dade County):
-        # 1979 SFBC Section 3402.3: 30 lb felt underlayment is required for asphalt shingle roof covers
-        # This must be fastened through tin-caps spaced 18 inches o.c. both ways.
-        if BIM['hvhz']:
-            if BIM['RoofShape'] == 'gab' or BIM['RoofShape'] == 'hip':
-                swr = False
-            else:
-                swr = True  # Assume SWR applies for flat roof as per 1988 SFBC: Section 1806.4
-        else:
-            # According to 903.2 in the 1995 CABO, for roofs with slopes between
-            # 2:12 and 4:12, an underlayment consisting of two layers of No. 15
-            # felt must be applied. In severe climates (less than or equal to 25
-            # degrees Fahrenheit average in January), these two layers must be
-            # cemented together.
-            # According to 903.3 in the 1995 CABO, roofs with slopes greater than
-            # or equal to 4:12 shall have an underlayment of not less than one ply
-            # of No. 15 felt.
-            #
-            # Similar rules are prescribed in CABO 1992, 1989, 1986, 1983
-            #
-            # Since low-slope roofs require two layers of felt, this is taken to
-            # be secondary water resistance. This ruleset is for asphalt shingles.
-            # Almost all other roof types require underlayment of some sort, but
-            # the ruleset is based on asphalt shingles because it is most
-            # conservative.
-            if BIM['RoofShape'] == 'flt':  # note there is actually no 'flat'
-                swr = True
-            elif BIM['RoofShape'] == 'gab' or BIM['RoofShape'] == 'hip':
-                if BIM['RoofSlope'] <= 0.17:
-                    swr = True
-                elif BIM['RoofSlope'] < 0.33:
-                    swr = (BIM['avg_jan_temp'] == 'below')
+    elif 2001 < BIM['YearBuilt'] <= 2007:
+        # For buildings built before enactment of FBC, SWR is based on homeowner
+        # compliance data from NC Coastal Homeowner Survey (2017) to capture potential
+        # human behavior (% of sealed roofs in NC dataset).
+        swr = random.random() < 0.6
     else:
-        # Note: there is no information for buildings constructed before 1979, so the same rule will be used here:
-        # HVHZ (Broward and Dade County):
-        # 1979 SFBC Section 3402.3: 30 lb felt underlayment is required for asphalt shingle roof covers
-        # This must be fastened through tin-caps spaced 18 inches o.c. both ways.
-        if BIM['hvhz']:
-            if BIM['RoofShape'] == 'gab' or BIM['RoofShape'] == 'hip':
-                swr = False
-            else:
-                swr = True  # Assume SWR applies for flat roof as per 1988 SFBC: Section 1806.4
-        else:
-            # According to 903.2 in the 1995 CABO, for roofs with slopes between
-            # 2:12 and 4:12, an underlayment consisting of two layers of No. 15
-            # felt must be applied. In severe climates (less than or equal to 25
-            # degrees Fahrenheit average in January), these two layers must be
-            # cemented together.
-            # According to 903.3 in the 1995 CABO, roofs with slopes greater than
-            # or equal to 4:12 shall have an underlayment of not less than one ply
-            # of No. 15 felt.
-            #
-            # Similar rules are prescribed in CABO 1992, 1989, 1986, 1983
-            #
-            # Since low-slope roofs require two layers of felt, this is taken to
-            # be secondary water resistance. This ruleset is for asphalt shingles.
-            # Almost all other roof types require underlayment of some sort, but
-            # the ruleset is based on asphalt shingles because it is most
-            # conservative.
-            if BIM['RoofShape'] == 'flt':  # note there is actually no 'flat'
+        # According to 903.2 in the 1995 CABO, for roofs with slopes between
+        # 2:12 and 4:12, an underlayment consisting of two layers of No. 15
+        # felt must be applied. In severe climates (less than or equal to 25
+        # degrees Fahrenheit average in January), these two layers must be
+        # cemented together.
+        # According to 903.3 in the 1995 CABO, roofs with slopes greater than
+        # or equal to 4:12 shall have an underlayment of not less than one ply
+        # of No. 15 felt.
+        #
+        # Similar rules are prescribed in CABO 1992, 1989, 1986, 1983
+        #
+        # Since low-slope roofs require two layers of felt, this is taken to
+        # be secondary water resistance. This ruleset is for asphalt shingles.
+        # Almost all other roof types require underlayment of some sort, but
+        # the ruleset is based on asphalt shingles because it is most
+        # conservative.
+        if BIM['RoofShape'].lower() == 'flt':  # note there is actually no 'flat'
+            swr = True
+        elif BIM['RoofShape'].lower() == 'gab' or BIM['RoofShape'].lower() == 'hip':
+            if BIM['RoofSlope'] <= 0.17:
                 swr = True
-            elif BIM['RoofShape'] == 'gab' or BIM['RoofShape'] == 'hip':
-                if BIM['RoofSlope'] <= 0.17:
-                    swr = True
-                elif BIM['RoofSlope'] < 0.33:
-                    swr = (BIM['avg_jan_temp'] == 'below')
+            elif 0.17 < BIM['RoofSlope'] < 0.33:
+                swr = (BIM['avg_jan_temp'].lower() == 'below')
+            elif BIM['RoofSlope'] >= 0.33:
+                swr = False
 
     # Roof Deck Attachment (RDA)
     # FBCR 2007-2017:
