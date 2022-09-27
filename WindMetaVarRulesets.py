@@ -39,7 +39,7 @@ def parse_BIM(BIM):
     # Areas vulnerable to hurricane, defined as the U.S. Atlantic Ocean and
     # Gulf of Mexico coasts where the ultimate design wind speed, V_ult is
     # greater than a pre-defined limit.
-    if BIM['YearBuilt'] > 2010:
+    if BIM['YearBuilt'] > 2012:
         # The limit is 115 mph (ultimate wind speed, V_ult) in 2010-2017 FBC (see Section 1609.2)
         HPR = BIM['DWSII'] > 115.0
     else:
@@ -65,11 +65,11 @@ def parse_BIM(BIM):
     # The flood_lim and general_lim limits depend on the year of construction
     panhandle_flag = False  # variable to enact Panhandle WBD exemption
     panhandle_counties = ['GULF', 'BAY', 'WALTON', 'OKALOOSA', 'SANTA ROSA', 'ESCAMBIA']
-    if BIM['YearBuilt'] > 2010:
+    if BIM['YearBuilt'] > 2012:
         # In 2010 FBC - present:
         flood_lim = 130.0 # mph
         general_lim = 140.0 # mph
-    elif BIM['YearBuilt'] <= 2010:
+    elif BIM['YearBuilt'] <= 2012:
         # Section 1609.2 - FBC 2007
         # Areas within hurricane-prone regions located in accordance with one of the following:
         # (1) Within 1 mile (1.61 km) of the coastal mean high water line where the basic wind speed, Vasd, is 110 mph (48m/s) or greater.
@@ -95,8 +95,14 @@ def parse_BIM(BIM):
         # Applicable flood zones for the Bay County include the following: A, AE, AH, AO, VE
         # Bay County, FL FEMA Flood Zones can easily be viewed at:
         # https://www.baycountyfl.gov/508/FEMA-Flood-Zones
-        WBD = (((BIM['FloodZone'].startswith('A') or BIM['FloodZone'].startswith('V')) and
-                BIM['DWSII'] >= flood_lim) or (BIM['DWSII'] >= general_lim and not panhandle_flag))
+        if panhandle_flag:
+            if (BIM['FloodZone'].startswith('A') or BIM['FloodZone'].startswith('V')) and BIM['DWSII'] >= general_lim:
+                WBD = True
+            else:
+                WBD = False
+        else:
+            WBD = (((BIM['FloodZone'].startswith('A') or BIM['FloodZone'].startswith('V')) and
+                    BIM['DWSII'] >= flood_lim) or (BIM['DWSII'] >= general_lim))
         # Note: here if first criteria is met, this enforces 1-mi boundary for panhandle exemption.
         # In the future, it would be better to have an actually polygon or line that creates a boundary to easily query
     BIM['WBD'] = WBD
