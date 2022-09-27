@@ -65,18 +65,11 @@ def WSF_config(BIM):
                 swr = False
 
     # Roof Deck Attachment (RDA)
-    # FBCR 2007-2017:
-    # Section R803.2.3.1 - Wood structural panel sheathing shall be fastened to roof framing with 8d ring shank nails
-    # at 6 in. o.c. at edges and 6 in. o.c. at intermediate framing.
-    # Note: stricter requirements for 2017 FBCR - 6"/6" spacing
     rda = '6d' # Default (aka A) in Reorganized Rulesets - WIND
-    if BIM['YearBuilt'] > 2007:
-        rda = '8s'  # 8d @ 6"/6" ('D' in Reorganized Rulesets - WIND)
-    elif 2001 < BIM['YearBuilt'] <= 2007:
-        # 2001 FBC: Table 2306.1 Fastening schedule - 8d nails 6"/12" spacing, req'd for sheathing < 1/2" or > 19/32"
-        # thick.
-        # 2001 FBC: Section 2322.2.5 - Requires 8d nails with 6"/6" spacing for roof sheathing in HVHZ.
-        if BIM['hvhz']:
+    if BIM['YearBuilt'] > 2001:
+        # Table R602.2(1) of 2007 FBCR requires 8d nails with 6"/12" spacing for Vasd less that 100 mph
+        # 8d nails with 6"/6" spacing for Vasd > 100 mph.
+        if BIM['DWSII'] > 130:
             rda = '8s'
         else:
             rda = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
