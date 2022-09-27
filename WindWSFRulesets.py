@@ -172,10 +172,10 @@ def WSF_config(BIM):
     # (and therefore do not have any strength requirements) that are older than
     # 30 years are considered to be weak, whereas those from the last 30 years
     # are considered to be standard.
-    if BIM['Garage'] == -1:
+    if BIM['Garage'] == -1:  # -1 used to designate no garage data
         # no garage data, using the default "standard"
         garage = 'std'
-        shutters = 0  # HAZUS ties standard garage to w/o shutters
+        shutters = False  # HAZUS ties standard garage to w/o shutters
     else:
         if BIM['YearBuilt'] > 2001:
             if shutters:
@@ -183,26 +183,26 @@ def WSF_config(BIM):
                     garage = 'no'
                 else:
                     garage = 'sup'  # SFBC 1994
-                    shutters = 1  # HAZUS ties SFBC 1994 to with shutters
+                    shutters = True  # HAZUS ties SFBC 1994 to with shutters
             else:
                 if BIM['Garage'] < 1:
                     garage = 'no' # None
                 else:
                     garage = 'std' # Standard
-                    shutters = 0 # HAZUS ties standard garage to w/o shutters
+                    shutters = False  # HAZUS ties standard garage to w/o shutters
         elif BIM['YearBuilt'] > (datetime.datetime.now().year - 30):
             if BIM['Garage'] < 1:
                 garage = 'no'  # None
             else:
                 garage = 'std'  # Standard
-                shutters = 0  # HAZUS ties standard garage to w/o shutters
+                shutters = False  # HAZUS ties standard garage to w/o shutters
         else:
             # year <= current year - 30
             if BIM['Garage'] < 1:
                 garage = 'no'  # None
             else:
                 garage = 'wkd'  # Weak
-                shutters = 0  # HAZUS ties weak garage to w/o shutters
+                shutters = False  # HAZUS ties weak garage to w/o shutters
 
     # building configuration tag
     bldg_config = f"WSF" \
