@@ -119,7 +119,7 @@ def WSF_config(BIM):
         if BIM['hvhz']:
             rwc = 'strap'  # Strap
         else:
-            if BIM['YearBuilt'] > 1976 and BIM['county'] == 'Palm Beach':
+            if BIM['YearBuilt'] > 1976 and BIM['county'].lower() == 'palm beach':
                 rwc = 'strap'
             else:
                 rwc = 'tnail'
@@ -136,6 +136,7 @@ def WSF_config(BIM):
     # Earlier FBC editions provide similar rules.
     # Note that previous logic to designate meta-variable WBD will ensure Panhandle exemption for construction built
     # between 2001 and 2007 FBC.
+    shutters = False  # default value
     if BIM['YearBuilt'] > 2001:
         shutters = BIM['WBD']
     elif 1994 < BIM['YearBuilt'] <= 2001:
@@ -143,16 +144,18 @@ def WSF_config(BIM):
         # lowest 30 ft of structure must be sufficiently strong to resist large missile impact test; > 30 ft
         # must be able to resist small missile impact test
         # Since homes outside of HVHZ would have been built following CABO, it is assumed that no shutter protection
-        # was enacted.
+        # was not required; use human subjects data to designate statistical description.
         if BIM['hvhz']:
             shutters = True
         else:
-            shutters = False
+            if BIM['WBD']:
+                shutters = random.random() < 0.45
     else:
         # 1992 SFBC: Section 3513 - Storm shutters are not required for glass glazing
         # Since homes outside of HVHZ would have been built following CABO, it is assumed that no shutter protection
-        # was enacted.
-        shutters = False
+        # was not required; use human subjects data to designate statistical description.
+        if BIM['WBD']:
+            shutters = random.random() < 0.45
 
     # Garage
     # As per FBC 2001 Section 1606.1.4 through FBCR 2017 Section R301.2.1.2:
