@@ -31,22 +31,26 @@ def get_garage(year_built, file_path, state, num_stories):
         year_range = 9
     # Query samples
     samples = df_recs.loc[(df_recs['DIVISION']==division) & (df_recs['state_postal']==state) & (df_recs['STORIES']==num_stories) & (df_recs['YEARMADERANGE']==year_range)]
-    garage_options = []
-    garage_weights = []
-    for u in samples['PRKGPLC1'].unique():
-        garage_options.append(u)
-        new_weight = len(samples.loc[samples['PRKGPLC1']==u])
-        garage_weights.append(new_weight)
-    garage_choice = int(choices(garage_options, garage_weights)[0])
+    if len(samples) > 0:
+        garage_options = []
+        garage_weights = []
+        for u in samples['PRKGPLC1'].unique():
+            garage_options.append(u)
+            new_weight = len(samples.loc[samples['PRKGPLC1']==u])
+            garage_weights.append(new_weight)
+        garage_choice = int(choices(garage_options, garage_weights)[0])
+    else:
+        garage_choice = 0
+        print(year_range)
     return garage_choice
 
 
-# file_path = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/RECS/recs2020_public_v1.csv'
-# df_inventory = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/MB_Building_Inventory_Aug.csv')
-# garage_recs = []
-# seed(101)
-# for idx in df_inventory.index.to_list():
-#     garage_choice = get_garage(df_inventory['YearBuilt'][idx], file_path, df_inventory['state'][idx], df_inventory['NumberOfStories'][idx])
-#     garage_recs.append(garage_choice)
-# df_inventory['garage_recs'] = garage_recs
-# df_inventory.to_csv('MB_Building_Inventory_Aug.csv', index=False)
+file_path = 'D:/Users/Karen/Documents/GitHub/DPBWE/Datasets/RECS/recs2020_public_v1.csv'
+df_inventory = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/HAZUS_style_DL/PCB_Building_Inventory.csv')
+garage_recs = []
+seed(101)
+for idx in df_inventory.index.to_list():
+    garage_choice = get_garage(df_inventory['YearBuilt'][idx], file_path, 'FL', df_inventory['NumberOfStories'][idx])
+    garage_recs.append(garage_choice)
+df_inventory['garage_recs'] = garage_recs
+df_inventory.to_csv('PCB_Building_Inventory.csv', index=False)
