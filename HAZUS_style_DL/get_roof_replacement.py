@@ -17,10 +17,10 @@ def get_roof_replacement(permit_description, permit_issue_date, bldg_yrbuilt):
     return roof_replace_year
 
 
-df = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/MB_Building_Inventory_BayCounty.csv')
+df = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/HAZUS_style_DL/PCB_Building_Inventory.csv')
 replace_years = []
 for idx in df.index.to_list():
     roof_replace_year = get_roof_replacement(df['permit_description'][idx], df['permit_issue_date'][idx], df['YearBuilt'][idx])
     replace_years.append(roof_replace_year)
 df['RoofReplaceYear'] = replace_years
-df.to_csv('D:/Users/Karen/Documents/GitHub/DPBWE/MB_Building_Inventory_BayCounty_Permits.csv', index=False)
+df.to_csv('D:/Users/Karen/Documents/GitHub/DPBWE/HAZUS_style_DL/PCB_Building_Inventory.csv', index=False)
