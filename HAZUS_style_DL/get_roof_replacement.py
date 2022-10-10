@@ -23,4 +23,4 @@ for idx in df.index.to_list():
     roof_replace_year = get_roof_replacement(df['permit_description'][idx], df['permit_issue_date'][idx], df['YearBuilt'][idx])
     replace_years.append(roof_replace_year)
 df['RoofReplaceYear'] = replace_years
-df.to_csv('D:/Users/Karen/Documents/GitHub/DPBWE/HAZUS_style_DL/PCB_Building_Inventory.csv', index=False)
+df.to_csv('D:/Users/Karen/Documents/GitHub/DPBWE/HAZUS_style_DL/PCB_Building_Inventory_Permit.csv', index=False)
