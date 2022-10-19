@@ -40,7 +40,7 @@ def auto_populate(BIM):
     #     print("WARNING: Custom fragilities are developed using sample buildings from Florida's Bay County")
 
     # Execute simple year_built query to figure out if Pre_FBC or FBC construction:
-    if BIM_ap['year_built'] < 2002:
+    if BIM_ap['ReRoofYear'] < 2002:
         component_config = 'Pre_FBC'
     else:
         component_config = 'FBC'

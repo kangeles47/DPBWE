@@ -1,5 +1,5 @@
 {
-  "Name": "Pre_FBC",
+  "Name": "WSF_Pre_FBC",
   "GeneralInformation": {
     "ID": "NONE",
     "Description": "Fragilities for asphalt shingle roof covers installed before Florida Building Code (pre-FBC). Model parameters are derived using sample buildings in Mexico Beach, FL and Panama City Beach, FL and post-disaster datasets produced after Hurricane Michael (2018). Roof permit data from Florida's Bay County was used to designate roof year of construction. Methodology supporting development of fragility models is described in Angeles and Kijewski-Correa (2022). 'Bayesian Data Integration Framework for the Development of Component-Level Fragilities Derived from Multiple Post-Disaster Datasets'. Structural Safety, 99(102260), 1-16. https://doi.org/10.1016/j.strusafe.2022.102260.",
