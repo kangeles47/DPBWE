@@ -41,9 +41,9 @@ def auto_populate(BIM):
 
     # Execute simple year_built query to figure out if Pre_FBC or FBC construction:
     if BIM_ap['ReRoofYear'] < 2002:
-        component_config = 'Pre_FBC'
+        component_config = 'WSF_Pre_FBC'
     else:
-        component_config = 'FBC'
+        component_config = 'WSF_FBC'
 
     # # Identify the tag for the roof cover type:
     # if BIM_ap['roof_cover'].upper() == 'ENG SHINGL' or 'ASPHALT' in BIM_ap['roof_cover'].upper():
