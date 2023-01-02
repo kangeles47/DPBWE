@@ -47,10 +47,10 @@ def get_reroof(permit_description, permit_issue_date, bldg_yrbuilt):
 # df.to_csv('D:/Users/Karen/Documents/GitHub/DPBWE/HAZUS_style_DL/PCB_Building_Inventory_Permit.csv', index=False)
 
 # Uncomment below to populate re-roof year:
-df = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/A9_Buildings.csv')
+df = pd.read_csv('D:/Users/Karen/Documents/GitHub/DPBWE/A9_Buildings_MB.csv')
 reroof_years = []
 for idx in df.index.to_list():
     reroof_year = get_reroof(df['permit_description'][idx], df['permit_issue_date'][idx], df['YearBuilt'][idx])
     reroof_years.append(reroof_year)
 df['ReRoofYear'] = reroof_years
-df.to_csv('D:/Users/Karen/Documents/GitHub/DPBWE/A9_Buildings.csv', index=False)
+df.to_csv('D:/Users/Karen/Documents/GitHub/DPBWE/A9_Buildings_MB.csv', index=False)
