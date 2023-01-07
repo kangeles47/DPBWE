@@ -44,6 +44,7 @@ from WindWMUHRulesets import WMUH_config
 from WindMECBRulesets import MECB_config
 from WindSECBRulesets import SECB_config
 from WindSPMBRulesets import SPMB_config
+from WindMLRIRulesets import MLRI_config
 
 
 def auto_populate(BIM):
@@ -88,6 +89,8 @@ def auto_populate(BIM):
         bldg_config = SECB_config(BIM_ap)
     elif bldg_class == 'SPMB':
         bldg_config = SPMB_config(BIM_ap)
+    elif bldg_class == 'MLRI':
+        bldg_config = MLRI_config(BIM_ap)
     else:
         raise ValueError(
             f"Building class {bldg_class} not recognized by the "
