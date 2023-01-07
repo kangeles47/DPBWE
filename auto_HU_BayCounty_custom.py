@@ -165,7 +165,7 @@ def auto_populate(BIM):
     #     print('Building roof pressure zone use case is incompatible.')
     # 
     # # ---------------------------------------Compile component fragility identifier:-----------------------------------
-    # if state & county & rcover & occ & height & ryear & rshape & rslope & zone:
+    # if state and county and rcover and occ and height and ryear and rshape and rslope and zone:
     #     if BIM_ap['RCYearBuilt'] < 2002:
     #         component_config = 'WSF_Pre_FBC'
     #     else:
