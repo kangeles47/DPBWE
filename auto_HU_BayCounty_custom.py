@@ -109,7 +109,12 @@ def auto_populate(BIM):
     #     county = False
     #     print("WARNING: Custom fragilities are developed using sample buildings from Florida's Bay County. Use at "
     #           "modeler's discretion.")
-    # 
+    #
+    # # ----------------------------------------Verify wind hazard presence:---------------------------------------------
+    # if BIM_ap['WHPresence']:
+    #     hazard = True
+    # else:
+    #     hazard = False
     # # ---------------------------------------------Verify roof cover type:---------------------------------------------
     # if BIM_ap['RoofCover'].upper() == 'ENG SHINGL' or 'ASPHALT' in BIM_ap['RoofCover'].upper():
     #     rcover = True
@@ -165,7 +170,7 @@ def auto_populate(BIM):
     #     print('Building roof pressure zone use case is incompatible.')
     # 
     # # ---------------------------------------Compile component fragility identifier:-----------------------------------
-    # if state and county and rcover and occ and height and ryear and rshape and rslope and zone:
+    # if state and county and hazard and rcover and occ and height and ryear and rshape and rslope and zone:
     #     if BIM_ap['RCYearBuilt'] < 2002:
     #         component_config = 'WSF_Pre_FBC'
     #     else:
