@@ -64,7 +64,7 @@ def WSF_config(BIM):
         if BIM['YearBuilt'] > 2008:  # swr required in single family homes upon 2009 supplement to 2007 FBC
             swr = True
         elif 2007 < BIM['YearBuilt'] <= 2008:
-            if BIM['hvhz']:  # between 2007-2008, swr required in HVHZ and outside HVHZ
+            if BIM['HVHZ']:  # between 2007-2008, swr required in HVHZ and outside HVHZ
                 swr = True
             else:
                 if (2/12) <= BIM['RoofSlope'] < (4/12):  # swr required for some sloped roofs
@@ -102,7 +102,7 @@ def WSF_config(BIM):
                 if BIM['RoofSlope'] <= 0.17:
                     swr = True
                 elif 0.17 < BIM['RoofSlope'] < 0.33:
-                    swr = (BIM['avg_jan_temp'].lower() == 'below')
+                    swr = (BIM['AvgJanTemp'].lower() == 'below')
                 elif BIM['RoofSlope'] >= 0.33:
                     swr = False
 
@@ -114,7 +114,7 @@ def WSF_config(BIM):
         if BIM['YearBuilt'] > 2001:
             # Table R602.2(1) of 2007 FBCR requires 8d nails with 6"/12" spacing for Vasd less that 100 mph
             # 8d nails with 6"/6" spacing for Vasd > 100 mph.
-            if BIM['DWSII'] > 130:
+            if BIM['V_ult'] > 130:
                 rda = '8s'
             else:
                 rda = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
@@ -122,7 +122,7 @@ def WSF_config(BIM):
             # 1994 SFBC: Section 2909.2 - Requires 8d nails with 6"/6" for roof sheathing (HVHZ)
             # 1995 CABO: Table 602.3a - 8d or 6d nails at 6"/12" depending on sheathing thickness.
             # Assign as RV for buildings outside of HVHZ.
-            if BIM['hvhz']:
+            if BIM['HVHZ']:
                 rda = '8s'
             else:
                 if random.random() <= 0.5:
@@ -150,17 +150,17 @@ def WSF_config(BIM):
         rwc = 'strap'
     else:
         if BIM['YearBuilt'] > 1992:
-            if BIM['hpr']:
+            if BIM['HPR']:
                 rwc = 'strap'  # Strap
             else:
                 rwc = 'tnail'  # Toe-nail
         # HAZUS-HM documentation states that tie down straps have been required for rwc in Dade and Broward counties since
         # the inception of the SFBC in the late 1950's. In Palm Beach County, rwc have been straps since late 1970's.
         elif 1957 < BIM['YearBuilt'] <= 1992:
-            if BIM['hvhz']:
+            if BIM['HVHZ']:
                 rwc = 'strap'  # Strap
             else:
-                if BIM['YearBuilt'] > 1976 and BIM['county'].lower() == 'palm beach':
+                if BIM['YearBuilt'] > 1976 and BIM['County'].lower() == 'palm beach':
                     rwc = 'strap'
                 else:
                     rwc = 'tnail'
@@ -186,7 +186,7 @@ def WSF_config(BIM):
         # must be able to resist small missile impact test
         # Since homes outside of HVHZ would have been built following CABO, it is assumed that no shutter protection
         # was not required; use human subjects data to designate statistical description.
-        if BIM['hvhz']:
+        if BIM['HVHZ']:
             shutters = True
         else:
             if BIM['WBD']:
@@ -254,5 +254,5 @@ def WSF_config(BIM):
                   f"{rwc}_" \
                   f"{garage}_" \
                   f"{int(shutters)}_" \
-                  f"{int(BIM['terrain'])}"
+                  f"{int(BIM['Terrain'])}"
     return bldg_config

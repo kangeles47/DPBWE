@@ -97,19 +97,19 @@ def auto_populate(BIM):
     # 
     # # --------------------Preliminary query to see if this building is in Florida and in the Bay County-----------------
     # # Print warnings if otherwise:
-    # if BIM_ap['state'].upper() == 'FL' or BIM_ap['state'].upper() == 'FLORIDA':
+    # if BIM_ap['State'].upper() == 'FL' or BIM_ap['State'].upper() == 'FLORIDA':
     #     state = True
     # else:
     #     state = False
     #     print("WARNING: Custom fragilities are developed using sample buildings from Florida's Bay County. Use at "
     #           "modeler's discretion.")
-    # if 'BAY' in BIM_ap['county'].upper():
+    # if 'BAY' in BIM_ap['County'].upper():
     #     county = True
     # else:
     #     county = False
     #     print("WARNING: Custom fragilities are developed using sample buildings from Florida's Bay County. Use at "
     #           "modeler's discretion.")
-    #
+    # 
     # # ---------------------------------------------Verify roof cover type:---------------------------------------------
     # if BIM_ap['RoofCover'].upper() == 'ENG SHINGL' or 'ASPHALT' in BIM_ap['RoofCover'].upper():
     #     rcover = True
@@ -117,7 +117,7 @@ def auto_populate(BIM):
     #     rcover = False
     #     print('Custom fragilities are for asphalt shingle roof covers only. Modify IF statement if identifier for'
     #           'this county is different than those provided.')
-    #
+    # 
     # # ---------------------------------------------Verify occupancy type:-----------------------------------------------
     # if 'SINGLE' in BIM_ap['OccupancyClass'].upper():
     #     occ = True
@@ -125,7 +125,7 @@ def auto_populate(BIM):
     #     occ = False
     #     print('Custom fragilities are for single family occupancies only. Modify IF statement is identifier is '
     #           'different that those provided.')
-    #
+    # 
     # # -------------------------------------------Verify building height:------------------------------------------------
     # # Note - building heights were estimated using DOE's residential reference buildings. Stories
     # # estimate can also be used when no building height data is available, to modeler's discretion.
@@ -134,7 +134,7 @@ def auto_populate(BIM):
     # else:
     #     height = False
     #     print('Custom fragilities are for single family homes with height between 3.35-10 m.')
-    #
+    # 
     # # ------------------------- Load path-related queries (based on Wind loading provisions in ASCE 7):-----------------
     # # (1) Check that roof was constructed before ASCE 7 2016:
     # if BIM_ap['RCYearBuilt'] < 2016:
@@ -149,21 +149,21 @@ def auto_populate(BIM):
     # else:
     #     rshape = False
     #     print('Custom fragilities are for gable or hip roof shapes only.')
-    #
+    # 
     # # (3) Roof Slope:
     # if 0.12 < BIM_ap['RoofSlope'] <= 0.51:
     #     rslope = True
     # else:
     #     rslope = False
     #     print('Custom fragilities are for roof pitches between 7-27.')
-    #
+    # 
     # # (4) Pressure zone:
     # if rshape and rslope and ryear:
     #     zone = True
     # else:
     #     zone = False
     #     print('Building roof pressure zone use case is incompatible.')
-    #
+    # 
     # # ---------------------------------------Compile component fragility identifier:-----------------------------------
     # if state & county & rcover & occ & height & ryear & rshape & rslope & zone:
     #     if BIM_ap['RCYearBuilt'] < 2002:
@@ -172,7 +172,7 @@ def auto_populate(BIM):
     #         component_config = 'WSF_FBC'
     # else:
     #     component_config = 'Not compatible with these custom fragilities'
-    #
+    #     
     # # ------------------------------------------------------------------------------------------------------------------
     # # ------------------------------------- End of Option 2 Code Block -------------------------------------------------
 

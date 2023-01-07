@@ -53,19 +53,19 @@ def building_class(BIM):
     comm_eng_occupancies = ['OFFICE BLD (001700)', 'STORES, 1 (001100)', 'DRIVE-IN R (002200)']
     if BIM['OccupancyClass'] == 'SINGLE FAM (000100)':
         # Single family homes in HAZUS can only have hip or gable roofs
-        if 'MASONRY' in BIM['frame_type']:
+        if 'MASONRY' in BIM['FrameType']:
             return 'MSF'
         else:
             # Assume that this is a wood frame structural system
             return 'WSF'
     elif any(occ == BIM['OccupancyClass'] for occ in wmuh_occupancies):
         # Multi-family homes and Multi-unit hotel/motels:
-        if 'STEEL' in BIM['frame_type']:  # engineered residential
+        if 'STEEL' in BIM['FrameType']:  # engineered residential
             return 'SERB'  # Note: ruleset for SERB still needs to be formalized for FL
-        elif 'CONCRETE' in BIM['frame_type']:  # engineered residential
+        elif 'CONCRETE' in BIM['FrameType']:  # engineered residential
             return 'CERB'
         else:
-            if 'MASONRY' in BIM['frame_type'] and BIM['stories'] < 4:
+            if 'MASONRY' in BIM['FrameType'] and BIM['NumberOfStories'] < 4:
                 return 'MMUH'  # Note: ruleset for MMUH still needs to be formalized for FL
             else:
                 # Assume that this is a wood frame structural system
@@ -73,16 +73,16 @@ def building_class(BIM):
     else:
         spbm_occupancies = ['GYM (003350)', 'WAREHOUSE- (004800)']
         # Choose from remaining commercial occupancies:
-        if 'STEEL' in BIM['frame_type']:  # engineered residential
-            if any(occ == BIM['OccupancyClass'] for occ in spbm_occupancies) and BIM['stories'] == 1:
+        if 'STEEL' in BIM['FrameType']:  # engineered residential
+            if any(occ == BIM['OccupancyClass'] for occ in spbm_occupancies) and BIM['NumberOfStories'] == 1:
                 return 'SPMB'
             else:
                 return 'SECB'
-        elif 'CONCRETE' in BIM['frame_type']:  # engineered commercial
+        elif 'CONCRETE' in BIM['FrameType']:  # engineered commercial
             return 'CECB'
-        elif 'MASONRY' in BIM['frame_type'] and any(occ == BIM['OccupancyClass'] for occ in comm_eng_occupancies):
+        elif 'MASONRY' in BIM['FrameType'] and any(occ == BIM['OccupancyClass'] for occ in comm_eng_occupancies):
             return 'MECB'
-        elif 'WOOD' in BIM['frame_type'] or 'NOT AVAILABLE' in BIM['frame_type']:
+        elif 'WOOD' in BIM['FrameType'] or 'NOT AVAILABLE' in BIM['FrameType']:
             return 'WMUH'  # model as a hotel/motel/multi-fam unit
         else:
             return 'WMUH'

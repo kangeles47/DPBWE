@@ -62,38 +62,38 @@ def WMUH_config(BIM):
     # listed single layer options are equivalent. Assume swr for WMUH with asphalt shingles and in HVHZ.
     # Note that similar underlayment requirements are seen starting from 2001 FBC.
     swr = int(False)  # Default value
-    if BIM['year_built'] > 2001:
-        if BIM['roof_shape'] == 'flt':
+    if BIM['YearBuilt'] > 2001:
+        if BIM['RoofShape'] == 'flt':
             swr = 'null'  # because SWR is not a question for flat roofs
-        elif BIM['roof_shape'] in ['gab', 'hip']:
-            if BIM['hvhz']:
+        elif BIM['RoofShape'] in ['gab', 'hip']:
+            if BIM['HVHZ']:
                 swr = int(True)
             else:
                 # Use homeowner compliance data from NC Coastal Homeowner Survey (2017) to capture potential
                 # human behavior (% of sealed roofs in NC dataset) that would lead to the installation of SWR
                 # in regions outside of HVHZ.
                 swr = int(random.random() < 0.6)
-    elif 1979 < BIM['year_built'] <= 2001:
-        if BIM['roof_shape'] == 'flt':
+    elif 1979 < BIM['YearBuilt'] <= 2001:
+        if BIM['RoofShape'] == 'flt':
             swr = 'null'  # because SWR is not a question for flat roofs
-        elif (BIM['roof_shape'] == 'gab') or (BIM['roof_shape'] == 'hip'):
+        elif (BIM['RoofShape'] == 'gab') or (BIM['RoofShape'] == 'hip'):
             # 1988 SFBC: Section 3402.3 - For asphalt shingles, the following underlayment is required:
             # 30 lb felt underlayment, fastened through tin-caps placed 18" o.c. both ways.
             # Consulting newer code editions, this description is not considered SWR in an HVHZ region.
-            if BIM['hvhz']:
+            if BIM['HVHZ']:
                 swr = int(False)
             else:
                 # No access to Standard Building Code after 1976, so adopt BOCA-based ruleset for now:
                 # BOCA code requires SWR for steep-slope roofs with winters at or below 25℉, according
                 # to Section 1507.4. Asphalt shingles can be installed on roof slopes 2:12 and greater.
                 # BUR is considered low-slope roofing.
-                if BIM['roof_slope'] < 0.33:
+                if BIM['RoofSlope'] < 0.33:
                     swr = int(True)
                 else:
-                    swr = int(BIM['avg_jan_temp'] == 'below')
+                    swr = int(BIM['AvgJanTemp'] == 'below')
     else:
         # year <= 1979
-        if BIM['roof_shape'] == 'flt':
+        if BIM['RoofShape'] == 'flt':
             swr = 'null'  # because SWR is not a question for flat roofs
         else:
             # Use human subjects data from NC:
@@ -101,7 +101,7 @@ def WMUH_config(BIM):
 
     # Roof cover & Roof quality
     # Roof cover and quality do not apply to gable and hip roofs
-    if BIM['roof_shape'] in ['gab', 'hip']:
+    if BIM['RoofShape'] in ['gab', 'hip']:
         roof_cover = 'null'
         roof_quality = 'null'
     # Chapter 15 in the FBC (2001-2017) addresses Built Up Roofs and Single Ply Membranes. However, the FBC
@@ -120,16 +120,16 @@ def WMUH_config(BIM):
     # 1990 are in poor condition, and SPMs installed before 1985 are in poor
     # condition.
     else:
-        if BIM['year_built'] >= 1975:
+        if BIM['YearBuilt'] >= 1975:
             roof_cover = 'spm'
-            if BIM['year_built'] >= (datetime.datetime.now().year - 35):
+            if BIM['YearBuilt'] >= (datetime.datetime.now().year - 35):
                 roof_quality = 'god'
             else:
                 roof_quality = 'por'
         else:
             # year < 1975
             roof_cover = 'bur'
-            if BIM['year_built'] >= (datetime.datetime.now().year - 30):
+            if BIM['YearBuilt'] >= (datetime.datetime.now().year - 30):
                 roof_quality = 'god'
             else:
                 roof_quality = 'por'
@@ -138,36 +138,36 @@ def WMUH_config(BIM):
     # 2017/2014 FBC: Section 2322.2.5 - requires 8d nails, 6"/6" spacing for roof sheathing in HVHZ
     # 2017/2014 FBC: Table 2304.10.1 - Use of 8d nails requires 6"/12" spacing for all roof sheathing thicknesses.
     # Other nailing options also mentioned, but assume that 8d nails are used.
-    if BIM['year_built'] > 2014:
-        if BIM['hvhz']:
+    if BIM['YearBuilt'] > 2014:
+        if BIM['HVHZ']:
             rda = '8s'  # 8d @ 6"/6" 'D'
         else:
             rda = '8d'  # 8d @ 6"/12" 'B'
-    elif 2007 < BIM['year_built'] <= 2014:
+    elif 2007 < BIM['YearBuilt'] <= 2014:
         # 2007 to 2010 FBC: Section 2322.2.5 - Requires 8d nails, 6"/6" spacing for roof sheathing in HVHZ.
         # 2007 to 2010 FBC: Table 2304.9.1 or 2304.10.1 (respectively) - 8d nails with 6"/6" spacing required
         # for roofs in basic wind speeds between 110-140 mph (exposure B). 8d nails with 6"/12" spacing listed as
         # an option for sheathing thicknesses <= 1/2" and > 19/32".
-        if BIM['hvhz']:
+        if BIM['HVHZ']:
             rda = '8s'
         else:
             if BIM['V_ult'] > 142.0:
                 rda = '8s'
             else:
                 rda = '8d'
-    elif 2001 < BIM['year_built'] <= 2007:
+    elif 2001 < BIM['YearBuilt'] <= 2007:
         # 2001/2004 FBC: Section 2322.2.4 and 2322.2.5 - Requires 8d nails, 6"/6" spacing for roof sheathing in HVHZ.
         # 2001/2004 FBC: Table 2306.1/Table 2304.9.1 - Requires 8d nails, 6"/12" spacing for roof sheathing.
-        if BIM['hvhz']:
+        if BIM['HVHZ']:
             rda = '8s'
         else:
             rda = '8d'
-    elif 1994 < BIM['year_built'] <= 2001:
+    elif 1994 < BIM['YearBuilt'] <= 2001:
         # 1994 SFBC: Section 2909.2 - Requires 8d nails with 6"/6" spacing for roof sheathing. (HVHZ)
         # 1973 SBC: Table 1704.1 - Requires 6d nails with 6"/12" spacing for sheathing thicknesses <= 1/2".
         # 8d nails with 6"/12" spacing for sheathing of >= 5/8" thickness. With no way to determine actual
         # sheathing thickness assign as a random variable for regions outside of HVHZ.
-        if BIM['hvhz']:
+        if BIM['HVHZ']:
             rda = '8s'
         else:
             if random.random() <= 0.5:
@@ -197,12 +197,12 @@ def WMUH_config(BIM):
     # It is understood that wind speed intensities throughout most of Florida would result in pressures that would
     # require the installation of metal straps in order for roof-to-wall connections to be deemed code-compliant.
     # Assume that if in HPR, straps are required (most of FL).
-    if BIM['year_built'] > 1992:
-        if BIM['hpr']:
+    if BIM['YearBuilt'] > 1992:
+        if BIM['HPR']:
             rwc = 'strap'  # Strap
         else:
             rwc = 'tnail'  # Toe-nail
-    elif 1957 < BIM['year_built'] <= 1992:
+    elif 1957 < BIM['YearBuilt'] <= 1992:
         # HAZUS-HM documentation states that tie down straps have been required for rwc in Dade and Broward counties
         # since inception of the SFBC. In Palm Beach county, roof-wall tie downs have been required on every truss-wall
         # connections since the late 1970s. 1957 SFBC: Section 2905 - Wood-to-wood anchorage must be steel strap. See
@@ -210,11 +210,11 @@ def WMUH_config(BIM):
         # that adequate anchorage of the roof to walls and columns is required to resist wind loads, but does not
         # specify the connection type. Assume toe-nail for any construction outside of HVHZ and for Palm Beach County
         # before 1976.
-        if BIM['hvhz']:
+        if BIM['HVHZ']:
             rwc = 'strap'
         else:
-            if BIM['county'].upper() == 'PALM BEACH':
-                if BIM['year_built'] > 1976:
+            if BIM['County'].upper() == 'PALM BEACH':
+                if BIM['YearBuilt'] > 1976:
                     rwc = 'strap'
                 else:
                     rwc = 'tnail'
@@ -234,15 +234,15 @@ def WMUH_config(BIM):
     # requirements do not apply landward of designated contour line in Figure 1606.
     # Note that previous logic to designate meta-variable WBD will ensure Panhandle exemption for construction built
     # between 2001 and 2007 FBC.
-    if BIM['year_built'] > 2001:
+    if BIM['YearBuilt'] > 2001:
         shutters = BIM['WBD']
-    elif 1994 < BIM['year_built'] <= 2001:
+    elif 1994 < BIM['YearBuilt'] <= 2001:
         # 1994 SFBC: Section 3501.1 - Specifies that exterior wall cladding, surfacing and glazing within
         # lowest 30 ft of structure must be sufficiently strong to resist large missile impact test; > 30 ft
         # must be able to resist small missile impact test
         # Since homes outside of HVHZ would have been built following CABO, it is assumed that no shutter protection
         # was enacted.
-        if BIM['hvhz']:
+        if BIM['HVHZ']:
             shutters = True
         else:
             shutters = False
@@ -254,17 +254,17 @@ def WMUH_config(BIM):
 
     # Stories
     # Buildings with more than 3 stories are mapped to the 3-story configuration
-    stories = min(BIM['stories'], 3)
+    stories = min(BIM['NumberOfStories'], 3)
 
     bldg_config = f"W.MUH." \
                   f"{int(stories)}." \
-                  f"{BIM['roof_shape']}." \
+                  f"{BIM['RoofShape']}." \
                   f"{roof_cover}." \
                   f"{roof_quality}." \
                   f"{swr}." \
                   f"{rda}." \
                   f"{rwc}." \
                   f"{int(shutters)}." \
-                  f"{int(BIM['terrain'])}"
+                  f"{int(BIM['Terrain'])}"
 
     return bldg_config

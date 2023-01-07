@@ -57,11 +57,11 @@ def MECB_config(BIM):
     # However, the FBC only addresses installation and material standards of different roof covers,
     # but not in what circumstance each must be used.
     # Assign roof cover types considering roof shape and construction trends.
-    if BIM['roof_shape'] in ['gab', 'hip']:
+    if BIM['RoofShape'] in ['gab', 'hip']:
         roof_cover = 'bur'
         # Warning: HAZUS does not have N/A option for CECB, so here we use bur
     else:
-        if BIM['year_built'] >= 1975:
+        if BIM['YearBuilt'] >= 1975:
             roof_cover = 'spm'
         else:
             # year < 1975
@@ -78,15 +78,15 @@ def MECB_config(BIM):
     # requirements do not apply landward of designated contour line in Figure 1606.
     # Note that previous logic to designate meta-variable WBD will ensure Panhandle exemption for construction built
     # between 2001 and 2007 FBC.
-    if BIM['year_built'] > 2001:
+    if BIM['YearBuilt'] > 2001:
         shutters = BIM['WBD']
-    elif 1994 < BIM['year_built'] <= 2001:
+    elif 1994 < BIM['YearBuilt'] <= 2001:
         # 1994 SFBC: Section 3501.1 - Specifies that exterior wall cladding, surfacing and glazing within
         # lowest 30 ft of structure must be sufficiently strong to resist large missile impact test; > 30 ft
         # must be able to resist small missile impact test
         # Since homes outside of HVHZ would have been built following CABO, it is assumed that no shutter protection
         # was enacted.
-        if BIM['hvhz']:
+        if BIM['HVHZ']:
             shutters = True
         else:
             shutters = False
@@ -99,18 +99,18 @@ def MECB_config(BIM):
     # Wind Debris (widd in HAZUS)
     # HAZUS A: Res/Comm, B: Varies by direction, C: Residential, D: None
     widd = 'C'  # residential (default)
-    if BIM['occupancy_class'] in ['SINGLE FAM (000100), MULTI-FAMI (000300), COOPERATIV (000500)']:
+    if BIM['OccupancyClass'] in ['SINGLE FAM (000100), MULTI-FAMI (000300), COOPERATIV (000500)']:
         widd = 'C'  # residential
-    elif BIM['occupancy_class'] in ['VACANT/XFO (000070), VACANT (000000), VACANT COM (001000), VACANT COM (001070), '
+    elif BIM['OccupancyClass'] in ['VACANT/XFO (000070), VACANT (000000), VACANT COM (001000), VACANT COM (001070), '
                                     'NO AG ACRE (009900)']:
         widd = 'D'  # None
     else:
         widd = 'A'  # Res/Comm
 
     # Window area ratio
-    if BIM['window_area'] < 0.33:
+    if BIM['WindowArea'] < 0.33:
         wwr = 'low'
-    elif BIM['window_area'] < 0.5:
+    elif BIM['WindowArea'] < 0.5:
         wwr = 'med'
     else:
         wwr = 'hig'
@@ -123,8 +123,8 @@ def MECB_config(BIM):
     # structure in compliance with the design pressure requirements set forth in Chapter 16. Section 1523.6.5.2.4
     # outlines various testing requirements to ensure proper resistance. Assume this corresponds to a superior roof
     # attachment in HVHZ.
-    if BIM['year_built'] < 2001:
-        if not BIM['hvhz']:
+    if BIM['YearBuilt'] < 2001:
+        if not BIM['HVHZ']:
             mrda = 'std'  # standard
         else:
             mrda = 'sup'  # superior
@@ -137,16 +137,16 @@ def MECB_config(BIM):
         mrda = 'std'
 
     # Window area ratio
-    if BIM['window_area'] < 0.33:
+    if BIM['WindowArea'] < 0.33:
         wwr = 'low'
-    elif BIM['window_area'] < 0.5:
+    elif BIM['WindowArea'] < 0.5:
         wwr = 'med'
     else:
         wwr = 'hig'
 
-    if BIM['stories'] <= 2:
+    if BIM['NumberOfStories'] <= 2:
         bldg_tag = 'MECBL'
-    elif BIM['stories'] <= 5:
+    elif BIM['NumberOfStories'] <= 5:
         bldg_tag = 'MECBM'
     else:
         bldg_tag = 'MECBH'
@@ -157,5 +157,5 @@ def MECB_config(BIM):
                   f"{int(shutters)}_" \
                   f"{widd}_" \
                   f"{mrda}_" \
-                  f"{int(BIM['terrain'])}"
+                  f"{int(BIM['Terrain'])}"
     return bldg_config

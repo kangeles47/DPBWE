@@ -65,19 +65,19 @@ def parse_BIM(BIM):
     # greater than a pre-defined limit.
     if BIM['YearBuilt'] > 2012:
         # The limit is 115 mph (ultimate wind speed, V_ult) in 2010-2017 FBC (see Section 1609.2)
-        HPR = BIM['DWSII'] > 115.0
+        HPR = BIM['V_ult'] > 115.0
     else:
         # The limit is 90 mph (basic wind speed, V_asd) in 2001-2009 FBC
         # Conversion: V_asd = V_ult*sqrt(0.6)
-        HPR = BIM['DWSII'] > 90.0/sqrt(0.6)
-    BIM['hpr'] = HPR
+        HPR = BIM['V_ult'] > 90.0/sqrt(0.6)
+    BIM['HPR'] = HPR
 
     # High-velocity hurricane zone (HVHZ):
     # Chapter 2 in 2001-2017 FBC defines HVHZ zone as Broward and Dade Counties. Note that before the FBC, these counties adhered to the South Florida Building Code (SFBC)
-    if 'BROWARD' in BIM['county'].upper() or 'DADE' in BIM['county'].upper():
-        BIM['hvhz'] = True
+    if 'BROWARD' in BIM['County'].upper() or 'DADE' in BIM['County'].upper():
+        BIM['HVHZ'] = True
     else:
-        BIM['hvhz'] = False
+        BIM['HVHZ'] = False
 
     # Wind Borne Debris
     # (Section 202 - FBC 2017 and 2014, Section 1609.2 - FBC 2010)
@@ -106,7 +106,7 @@ def parse_BIM(BIM):
             # Areas within hurricane-prone regions located in accordance with one of the following:
             # (1) Within 1 mile (1.61 km) of the coastal mean high water line where the basic wind speed, Vasd, is 110 mph (48m/s) or greater.
             # (2) Areas where the basic wind speed is 120 mph (53 m/s) or greater except from the eastern border of Franklin County to the Florida-Alabama line where the region includes areas only 1 mile of the coast.
-            if any(county in BIM['county'].upper() for county in panhandle_counties):
+            if any(county in BIM['County'].upper() for county in panhandle_counties):
                 panhandle_flag = True
             else:
                 pass
@@ -120,13 +120,13 @@ def parse_BIM(BIM):
         # Bay County, FL FEMA Flood Zones can easily be viewed at:
         # https://www.baycountyfl.gov/508/FEMA-Flood-Zones
         if panhandle_flag:
-            if (BIM['FloodZone'].startswith('A') or BIM['FloodZone'].startswith('V')) and BIM['DWSII'] >= general_lim:
+            if (BIM['FloodZone'].startswith('A') or BIM['FloodZone'].startswith('V')) and BIM['V_ult'] >= general_lim:
                 WBD = True
             else:
                 WBD = False
         else:
             WBD = (((BIM['FloodZone'].startswith('A') or BIM['FloodZone'].startswith('V')) and
-                    BIM['DWSII'] >= flood_lim) or (BIM['DWSII'] >= general_lim))
+                    BIM['V_ult'] >= flood_lim) or (BIM['V_ult'] >= general_lim))
         # Note: here if first criteria is met, this enforces 1-mi boundary for panhandle exemption.
         # In the future, it would be better to have an actually polygon or line that creates a boundary to easily query
     BIM['WBD'] = WBD
@@ -149,11 +149,11 @@ def parse_BIM(BIM):
         terrain = 15  # light suburban
     else:
         # Check for coastal cities:
-        if any(city == BIM['city'].upper() for city in coastal_cities_fl):
+        if any(city == BIM['City'].upper() for city in coastal_cities_fl):
             terrain = 3
         else:
             # Assume light, suburban terrain:
             terrain = 15  # Default value
-    BIM['terrain'] = terrain
+    BIM['Terrain'] = terrain
 
     return BIM

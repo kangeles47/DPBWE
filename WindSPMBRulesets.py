@@ -55,7 +55,7 @@ def SPMB_config(BIM):
     """
 
     # Roof Deck Age (~ Roof Quality)
-    if BIM['year_built'] >= (datetime.datetime.now().year - 50):
+    if BIM['YearBuilt'] >= (datetime.datetime.now().year - 50):
         roof_quality = 'god'
     else:
         roof_quality = 'por'
@@ -71,15 +71,15 @@ def SPMB_config(BIM):
     # requirements do not apply landward of designated contour line in Figure 1606.
     # Note that previous logic to designate meta-variable WBD will ensure Panhandle exemption for construction built
     # between 2001 and 2007 FBC.
-    if BIM['year_built'] > 2001:
+    if BIM['YearBuilt'] > 2001:
         shutters = BIM['WBD']
-    elif 1994 < BIM['year_built'] <= 2001:
+    elif 1994 < BIM['YearBuilt'] <= 2001:
         # 1994 SFBC: Section 3501.1 - Specifies that exterior wall cladding, surfacing and glazing within
         # lowest 30 ft of structure must be sufficiently strong to resist large missile impact test; > 30 ft
         # must be able to resist small missile impact test
         # Since homes outside of HVHZ would have been built following CABO, it is assumed that no shutter protection
         # was enacted.
-        if BIM['hvhz']:
+        if BIM['HVHZ']:
             shutters = True
         else:
             shutters = False
@@ -97,8 +97,8 @@ def SPMB_config(BIM):
     # structure in compliance with the design pressure requirements set forth in Chapter 16. Section 1523.6.5.2.4
     # outlines various testing requirements to ensure proper resistance. Assume this corresponds to a superior roof
     # attachment in HVHZ.
-    if BIM['year_built'] < 2001:
-        if not BIM['hvhz']:
+    if BIM['YearBuilt'] < 2001:
+        if not BIM['HVHZ']:
             mrda = 'std'  # standard
         else:
             mrda = 'sup'  # superior
@@ -110,9 +110,9 @@ def SPMB_config(BIM):
         # Assume all connections before FBC are standard.
         mrda = 'std'
 
-    if BIM['area'] <= 4000:
+    if BIM['Area'] <= 4000:
         bldg_tag = 'SPMBS'
-    elif BIM['area'] <= 50000:
+    elif BIM['Area'] <= 50000:
         bldg_tag = 'SPMBM'
     else:
         bldg_tag = 'SPMBL'
@@ -121,5 +121,5 @@ def SPMB_config(BIM):
                   f"{roof_quality}_" \
                   f"{int(shutters)}_" \
                   f"{mrda}_" \
-                  f"{int(BIM['terrain'])}"
+                  f"{int(BIM['Terrain'])}"
     return bldg_config
