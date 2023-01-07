@@ -39,6 +39,16 @@
 
 
 def building_class(BIM):
+    """
+    A function to identify HAZUS building class using occupancy and frame type information.
+
+    :param BIM: dictionary
+        Contains the information that is available about the asset and will be
+        used to auto-populate the damage and loss model.
+    :return:
+        One of the standard building class labels from HAZUS (bldg_class) in auto-populate function
+
+    """
     wmuh_occupancies = ['MULTI-FAMI (000300)', 'COOPERATIV (000500)', 'HOTELS AND (003900)']
     comm_eng_occupancies = ['OFFICE BLD (001700)', 'STORES, 1 (001100)', 'DRIVE-IN R (002200)']
     if BIM['OccupancyClass'] == 'SINGLE FAM (000100)':
@@ -51,7 +61,7 @@ def building_class(BIM):
     elif any(occ == BIM['OccupancyClass'] for occ in wmuh_occupancies):
         # Multi-family homes and Multi-unit hotel/motels:
         if 'STEEL' in BIM['frame_type']:  # engineered residential
-            return 'SERB'
+            return 'SERB'  # Note: ruleset for SERB still needs to be formalized for FL
         elif 'CONCRETE' in BIM['frame_type']:  # engineered residential
             return 'CERB'
         else:

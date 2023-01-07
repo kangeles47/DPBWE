@@ -51,7 +51,7 @@ def WMUH_config(BIM):
     Returns
     -------
     config: str
-        A string that identifies a specific configration within this buidling
+        A string that identifies a specific configuration within this building
         class.
     """
 
