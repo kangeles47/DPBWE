@@ -42,6 +42,13 @@ def building_class(BIM):
     """
     A function to identify HAZUS building class using occupancy and frame type information.
 
+    Note: the occupancies listed here should be considered an extensible baseline that can be modified as additional
+    rulesets are created for other HAZUS classes. The full list of occupancy codes for the Bay County can be found on
+    the property appraisers website by searching comparables (see link below).
+
+    Click on "Comp Search" --> https://qpublic.schneidercorp.com/application.aspx?app=BayCountyFL&PageType=Search
+    [Accessed 1/7/2023]
+
     :param BIM: dictionary
         Contains the information that is available about the asset and will be
         used to auto-populate the damage and loss model.
@@ -50,7 +57,10 @@ def building_class(BIM):
 
     """
     wmuh_occupancies = ['MULTI-FAMI (000300)', 'COOPERATIV (000500)', 'HOTELS AND (003900)']
-    comm_eng_occupancies = ['OFFICE BLD (001700)', 'STORES, 1 (001100)', 'DRIVE-IN R (002200)']
+    comm_eng_occupancies = ['FINANCIAL (002300)', 'MIXED USE (001550)', 'OFFICE BLD (001700)', 'STORES, 1 (001100)',
+                            'SUPERMARKE (001400)', 'STORE/OFFI (001200)', 'RESTAURANT (002100)', 'PROFESSION (001900)',
+                            'CHURCHES (007100)', 'COMMUNITY (001600)', 'COUNTY (008600)', 'MUNICIPAL (008900)',
+                            'FEDERAL (008800)']
     if BIM['OccupancyClass'] == 'SINGLE FAM (000100)':
         # Single family homes in HAZUS can only have hip or gable roofs
         if 'MASONRY' in BIM['FrameType']:
@@ -71,6 +81,8 @@ def building_class(BIM):
                 # Assume that this is a wood frame structural system
                 return 'WMUH'
     else:
+        if BIM['OccupancyClass'] == 'WAREHOUSE- (004800)' and 'MASONRY' in BIM['FrameType'] and BIM['NumberOfStories'] == 1:
+            return 'MLRI'
         spbm_occupancies = ['GYM (003350)', 'WAREHOUSE- (004800)']
         # Choose from remaining commercial occupancies:
         if 'STEEL' in BIM['FrameType']:  # engineered residential
