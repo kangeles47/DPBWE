@@ -1,3 +1,42 @@
+# Copyright (c) 2022 University of Notre Dame
+#
+# This file extends the original rulesets developed under DOI: https://doi.org/10.17603/ds2-83ca-r890 as part of the SimCenter Backend Applications
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# You should have received a copy of the BSD 3-Clause License along with
+# this file. If not, see <http://www.opensource.org/licenses/>.
+#
+# Contributors:
+# Karen Angeles
+#
+# Based on rulesets developed by:
+# Karen Angeles
+
 import numpy as np
 from math import sqrt
 
@@ -5,37 +44,22 @@ from math import sqrt
 def parse_BIM(BIM):
     """
     Parses the information provided in the BIM model.
-    The parameters below list the expected inputs
-    Parameters
-    ----------
-    stories: str
-        Number of stories
-    yearBuilt: str
-        Year of construction.
-    roofType: {'hip', 'hipped', 'gabled', 'gable', 'flat'}
-        One of the listed roof shapes that best describes the building.
-    occupancy: str
-        Occupancy type.
-    buildingDescription: str
-        MODIV code that provides additional details about the building
-    structType: {'Stucco', 'Frame', 'Stone', 'Brick'}
-        One of the listed structure types that best describes the building.
-    V_design: string
-        Ultimate Design Wind Speed was introduced in the 2012 IBC. Officially
-        called “Ultimate Design Wind Speed (Vult); equivalent to the design
-        wind speeds taken from hazard maps in ASCE 7 or ATC's API. Unit is
-        assumed to be mph.
-    area: float
-        Plan area in ft2.
-    z0: string
-        Roughness length that characterizes the surroundings.
+
+    The attributes below list the expected metadata in the BIM file:
+    Year Built: Building Year of Construction
+    DWSII: The ultimate design wind speed, in mph
+    county: The name of the Florida county the asset resides in (not case-sensitive)
+    FloodZone: The FEMA flood zone.
+    city: The name of the city the asset resides in
+    lulc: The LULC category (see rulesets below for additional resources)
+
     Returns
     -------
     BIM: dictionary
         Parsed building characteristics.
     """
 
-    # Hurricane-Prone Region (HRP)
+    # Hurricane-Prone Region (HPR)
     # Areas vulnerable to hurricane, defined as the U.S. Atlantic Ocean and
     # Gulf of Mexico coasts where the ultimate design wind speed, V_ult is
     # greater than a pre-defined limit.
@@ -116,7 +140,7 @@ def parse_BIM(BIM):
     # In the future, robust rulests can be formalized by consulting LULC categories for FL
     # https://geodata.dep.state.fl.us/datasets/FDEP::statewide-land-use-land-cover/about
     # Note that, for coastal cities, it may be more appropriate to designate open terrain conditions:
-    coastal_cities_fl = ['MEXICO BEACH', 'PANAMA CITY BEACH']
+    coastal_cities_fl = ['MEXICO BEACH', 'PANAMA CITY BEACH']  # Add to list as rulesets get expanded for other FL regions
     if BIM['LULC'] == 1400:  # Commercial and services
         terrain = 35  # suburban
     elif BIM['LULC'] == 1330:  # High density, multiple dwelling units, low rise
