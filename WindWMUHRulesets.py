@@ -120,19 +120,42 @@ def WMUH_config(BIM):
     # 1990 are in poor condition, and SPMs installed before 1985 are in poor
     # condition.
     else:
-        if BIM['YearBuilt'] >= 1975:
+        roof_cover = ''
+        # First try with assessor-reported roof cover:
+        if BIM['RoofCover'].lower() == 'SINGLE PLY':
             roof_cover = 'spm'
-            if BIM['YearBuilt'] >= (datetime.datetime.now().year - 35):
-                roof_quality = 'god'
-            else:
-                roof_quality = 'por'
-        else:
-            # year < 1975
+        elif BIM['RoofCover'].upper() == 'BUILT-UP':
             roof_cover = 'bur'
-            if BIM['YearBuilt'] >= (datetime.datetime.now().year - 30):
+        # Roof quality:
+        if len(roof_cover) > 0:
+            if BIM['RoofShape'] in ['gab', 'hip']:
                 roof_quality = 'god'
             else:
-                roof_quality = 'por'
+                if BIM['year_built'] >= 1975 and roof_cover == 'spm':
+                    if BIM['year_built'] >= (datetime.datetime.now().year - 35):
+                        roof_quality = 'god'
+                    else:
+                        roof_quality = 'por'
+                else:
+                    if BIM['year_built'] >= (datetime.datetime.now().year - 30):
+                        roof_quality = 'god'
+                    else:
+                        roof_quality = 'por'
+        else:
+            # Default rulesets:
+            if BIM['YearBuilt'] >= 1975:
+                roof_cover = 'spm'
+                if BIM['YearBuilt'] >= (datetime.datetime.now().year - 35):
+                    roof_quality = 'god'
+                else:
+                    roof_quality = 'por'
+            else:
+                # year < 1975
+                roof_cover = 'bur'
+                if BIM['YearBuilt'] >= (datetime.datetime.now().year - 30):
+                    roof_quality = 'god'
+                else:
+                    roof_quality = 'por'
 
     # Roof Deck Attachment (RDA)
     # 2017/2014 FBC: Section 2322.2.5 - requires 8d nails, 6"/6" spacing for roof sheathing in HVHZ

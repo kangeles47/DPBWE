@@ -81,11 +81,29 @@ def MLRI_config(BIM):
         MRDA = 'std'  # standard
 
     # Roof cover (HAZUS) and quality
+    roof_cover = ''
+    # First try with assessor-reported roof cover:
     if BIM['RoofCover'].lower() == 'SINGLE PLY':
         roof_cover = 'spm'
     elif BIM['RoofCover'].upper() == 'BUILT-UP':
         roof_cover = 'bur'
+    # Roof quality:
+    if len(roof_cover) > 0:
+        if BIM['RoofShape'] in ['gab', 'hip']:
+            roof_quality = 'god'
+        else:
+            if year >= 1975 and roof_cover == 'spm':
+                if BIM['year_built'] >= (datetime.datetime.now().year - 35):
+                    roof_quality = 'god'
+                else:
+                    roof_quality = 'por'
+            else:
+                if BIM['year_built'] >= (datetime.datetime.now().year - 30):
+                    roof_quality = 'god'
+                else:
+                    roof_quality = 'por'
     else:
+        # Default rulesets:
         if BIM['RoofShape'] in ['gab', 'hip']:
             roof_cover = 'nav'
             roof_quality = 'god' # default supported by HAZUS
@@ -109,5 +127,5 @@ def MLRI_config(BIM):
                   f"{int(shutters)}_" \
                   f"{int(MR)}_" \
                   f"{MRDA}_" \
-                  f"{int(BIM['Terrain'])}"
+                  f"{int(BIM['terrain'])}"
     return bldg_config

@@ -57,15 +57,21 @@ def MECB_config(BIM):
     # However, the FBC only addresses installation and material standards of different roof covers,
     # but not in what circumstance each must be used.
     # Assign roof cover types considering roof shape and construction trends.
-    if BIM['RoofShape'] in ['gab', 'hip']:
+    # First try with assessor-reported roof cover:
+    if BIM['RoofCover'].lower() == 'SINGLE PLY':
+        roof_cover = 'spm'
+    elif BIM['RoofCover'].upper() == 'BUILT-UP':
         roof_cover = 'bur'
-        # Warning: HAZUS does not have N/A option for CECB, so here we use bur
     else:
-        if BIM['YearBuilt'] >= 1975:
-            roof_cover = 'spm'
-        else:
-            # year < 1975
+        if BIM['RoofShape'] in ['gab', 'hip']:
             roof_cover = 'bur'
+            # Warning: HAZUS does not have N/A option for CECB, so here we use bur
+        else:
+            if BIM['YearBuilt'] >= 1975:
+                roof_cover = 'spm'
+            else:
+                # year < 1975
+                roof_cover = 'bur'
 
     # Shutters
     # Section 1609.1.4 in FBC 2007-2017 says protection of openings required for buildings located in WBD regions,
