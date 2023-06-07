@@ -93,12 +93,12 @@ def MLRI_config(BIM):
             roof_quality = 'god'
         else:
             if year >= 1975 and roof_cover == 'spm':
-                if BIM['year_built'] >= (datetime.datetime.now().year - 35):
+                if BIM['YearBuilt'] >= (datetime.datetime.now().year - 35):
                     roof_quality = 'god'
                 else:
                     roof_quality = 'por'
             else:
-                if BIM['year_built'] >= (datetime.datetime.now().year - 30):
+                if BIM['YearBuilt'] >= (datetime.datetime.now().year - 30):
                     roof_quality = 'god'
                 else:
                     roof_quality = 'por'
@@ -110,14 +110,14 @@ def MLRI_config(BIM):
         else:
             if year >= 1975:
                 roof_cover = 'spm'
-                if BIM['year_built'] >= (datetime.datetime.now().year - 35):
+                if BIM['YearBuilt'] >= (datetime.datetime.now().year - 35):
                     roof_quality = 'god'
                 else:
                     roof_quality = 'por'
             else:
                 # year < 1975
                 roof_cover = 'bur'
-                if BIM['year_built'] >= (datetime.datetime.now().year - 30):
+                if BIM['YearBuilt'] >= (datetime.datetime.now().year - 30):
                     roof_quality = 'god'
                 else:
                     roof_quality = 'por'
@@ -127,5 +127,5 @@ def MLRI_config(BIM):
                   f"{int(shutters)}_" \
                   f"{int(MR)}_" \
                   f"{MRDA}_" \
-                  f"{int(BIM['terrain'])}"
+                  f"{int(BIM['Terrain'])}"
     return bldg_config

@@ -94,7 +94,7 @@ def MERB_config(BIM):
     #  be applied with corrosion-resistant fasteners in accordance with
     # the manufacturer’s instructions. Fasteners are to be applied along
     # the overlap not more than 36 inches on center.
-    if BIM['V_ult'] > 142:
+    if BIM['DWSII'] > 142:
         MRDA = 'std'  # standard
     else:
         MRDA = 'sup'  # superior

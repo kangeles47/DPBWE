@@ -131,13 +131,13 @@ def WMUH_config(BIM):
             if BIM['RoofShape'] in ['gab', 'hip']:
                 roof_quality = 'god'
             else:
-                if BIM['year_built'] >= 1975 and roof_cover == 'spm':
-                    if BIM['year_built'] >= (datetime.datetime.now().year - 35):
+                if BIM['YearBuilt'] >= 1975 and roof_cover == 'spm':
+                    if BIM['YearBuilt'] >= (datetime.datetime.now().year - 35):
                         roof_quality = 'god'
                     else:
                         roof_quality = 'por'
                 else:
-                    if BIM['year_built'] >= (datetime.datetime.now().year - 30):
+                    if BIM['YearBuilt'] >= (datetime.datetime.now().year - 30):
                         roof_quality = 'god'
                     else:
                         roof_quality = 'por'
@@ -174,7 +174,7 @@ def WMUH_config(BIM):
         if BIM['HVHZ']:
             rda = '8s'
         else:
-            if BIM['V_ult'] > 142.0:
+            if BIM['DWSII'] > 142.0:
                 rda = '8s'
             else:
                 rda = '8d'

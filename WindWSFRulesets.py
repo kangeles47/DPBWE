@@ -114,7 +114,7 @@ def WSF_config(BIM):
         if BIM['YearBuilt'] > 2001:
             # Table R602.2(1) of 2007 FBCR requires 8d nails with 6"/12" spacing for Vasd less that 100 mph
             # 8d nails with 6"/6" spacing for Vasd > 100 mph.
-            if BIM['V_ult'] > 130:
+            if BIM['DWSII'] > 130:
                 rda = '8s'
             else:
                 rda = '8d'  # 8d @ 6"/12" ('B' in the Reorganized Rulesets - WIND)
