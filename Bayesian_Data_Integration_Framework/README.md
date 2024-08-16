@@ -38,11 +38,11 @@ Fragilities are automatically created for a given building's components accordin
 - Data-driven Bayesian approach reveals hazard intensities, building classes, and damage measures to be targeted in future, federally-funded reconnaissance missions
 
 ## Publications
-Note: the research developments described above have been formalized into a manuscript that is currently under review in [Structural Safety](https://www.journals.elsevier.com/structural-safety) and the link for this article will be included once it is available.
+The accompanying journal publication for this work can be found in [Structural Safety](https://doi.org/10.1016/j.strusafe.2022.102260).
 
-In the manuscript, the framework is applied to deliver roof cover fragilities for the following two case studies: 
+In the paper, the framework is applied to deliver roof cover fragilities for the following two case studies: 
 1. Hurricane Michael - single family homes with asphalt shingle roofs (considering construction before/after Florida Building Code) using [field observations](https://www.designsafe-ci.org/data/browser/public/designsafe.storage.published/PRJ-2113) and post-disaster building [permit data](https://applications.baycountyfl.gov/Search/permit.aspx) from Florida's Bay County
-2. Hurricane Irma - instutional buildings with built-up roofs using [field observations](https://www.designsafe-ci.org/data/browser/public/designsafe.storage.published//PRJ-1828) and [regional damage data from FEMA](https://www.fema.gov/about/openfema/data-sets#hazard)
+2. Hurricane Irma - institutional buildings with built-up roofs using [field observations](https://www.designsafe-ci.org/data/browser/public/designsafe.storage.published//PRJ-1828) and [regional damage data from FEMA](https://www.fema.gov/about/openfema/data-sets#hazard)
 
 ## Overview of Skills Necessary to Develop this Project
 ### Data Science
